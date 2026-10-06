@@ -355,3 +355,5 @@ section h2:before,section h2:after{content:"";height:1px;width:48px;background:v
   /* Footer */
   footer,footer.bg--dark{background:var(--br-surface2)!important}
 }
+
+.br-gate input[type=email]{flex-basis:100%}

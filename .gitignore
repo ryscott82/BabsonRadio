@@ -1,0 +1,16 @@
+# macOS / Xcode
+.DS_Store
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+.build/
+
+# Web app
+node_modules/
+.next/
+.env*
+!.env.example
+
+# Local scratch
+_to_delete/

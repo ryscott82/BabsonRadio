@@ -11,6 +11,8 @@ struct ProfileView: View {
     var body: some View {
         if auth.isSignedIn, let user = auth.currentUser {
             SignedInProfileView(user: user)
+        } else if auth.needsEmailVerification {
+            VerifyEmailView()
         } else {
             AuthView()
         }
@@ -46,6 +48,7 @@ private struct SignedInProfileView: View {
     @State private var selectedDuration: InviteDuration = .sevenDays
     @State private var activeInvites: [GuestInvite] = []
     @State private var inviteSent = false
+    @State private var inviteError: String? = nil
 
     var body: some View {
         NavigationStack {
@@ -62,13 +65,18 @@ private struct SignedInProfileView: View {
                     listenersSection
                         .padding(.bottom, 32)
 
-                    // ── Guest access section ───────────────────────
-                    guestInviteSection
-                        .padding(.bottom, 20)
+                    // Students only: developers have no babson.edu identity to sponsor guests with.
+                    if !user.isDeveloper {
+                        // ── Guest access section ───────────────────────
+                        guestInviteSection
+                            .padding(.bottom, 20)
 
-                    // ── Invite contacts section ─────────────────────
-                    inviteSection
-                        .padding(.bottom, 40)
+                        // ── Invite contacts section ─────────────────────
+                        inviteSection
+                            .padding(.bottom, 40)
+                    } else {
+                        Color.clear.frame(height: 40)
+                    }
                 }
             }
             .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
@@ -147,6 +155,9 @@ private struct SignedInProfileView: View {
                 Text(user.displayName)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                if user.isDeveloper {
+                    BRTagChip(text: "DEVELOPER", style: .gold)
+                }
                 Text(user.email)
                     .font(.system(size: 13))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
@@ -300,6 +311,12 @@ private struct SignedInProfileView: View {
                     .buttonStyle(.plain)
                     .disabled(guestEmail.trimmingCharacters(in: .whitespaces).isEmpty || inviteSent)
                     .animation(.easeInOut(duration: 0.2), value: inviteSent)
+
+                    if let inviteError {
+                        Text(inviteError)
+                            .font(.system(size: 12))
+                            .foregroundColor(.brRed)
+                    }
                 }
                 .padding(18)
 
@@ -359,19 +376,24 @@ private struct SignedInProfileView: View {
             invitedBy: user.displayName
         )
 
-        withAnimation {
-            activeInvites.insert(invite, at: 0)
-            inviteSent = true
-        }
-
-        // TODO: Firebase — write invite to Firestore invites/{inviteId}
-        // TODO: Firebase — trigger Cloud Function to email the guest
-
-        // Reset form after a moment
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            withAnimation {
-                guestEmail = ""
-                inviteSent = false
+        inviteError = nil
+        Task {
+            do {
+                let _: EmptyResponse = try await BackendAPI.post("/api/guest/invite", [
+                    "guestEmail": trimmed.lowercased(),
+                    "duration": selectedDuration.apiKey,
+                ])
+                withAnimation {
+                    activeInvites.insert(invite, at: 0)
+                    inviteSent = true
+                }
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                withAnimation {
+                    guestEmail = ""
+                    inviteSent = false
+                }
+            } catch {
+                inviteError = (error as? BackendError)?.message ?? error.localizedDescription
             }
         }
     }

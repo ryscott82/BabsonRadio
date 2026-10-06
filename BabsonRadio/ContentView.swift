@@ -20,6 +20,11 @@ struct ContentView: View {
                     BRTabIcon(systemName: "magnifyingglass", label: "Browse")
                 }
 
+            SlotsView()
+                .tabItem {
+                    BRTabIcon(systemName: "mic", label: "Go On Air")
+                }
+
             ProfileView()
                 .tabItem {
                     BRTabIcon(systemName: "person", label: "Profile")

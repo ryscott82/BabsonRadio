@@ -133,15 +133,17 @@
     try { sessionStorage.removeItem('br-stream'); } catch (e) {} /* unlock is memory-only: never stored, gone on refresh */
     if (lock) lock.addEventListener('click', function () {
       form.hidden = !form.hidden; lock.setAttribute('aria-expanded', String(!form.hidden));
-      if (!form.hidden) pw.focus();
+      if (!form.hidden) (form.querySelector('input') || pw).focus();
     });
     if (!form) return;
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       if (!window.crypto || !crypto.subtle) { msg.textContent = 'Unlocking needs a secure (https) page.'; return; }
+      var emv = $('#br-em');
+      if (emv && emv.value.trim() !== '') { msg.textContent = 'Incorrect password.'; pw.select(); return; } // decoy: any email means no access
       msg.textContent = 'Checking...';
       decryptStream(pw.value.trim()).then(function (url) {
-        pw.value = ''; msg.textContent = ''; open(url);
+        pw.value = ''; var em = $('#br-em'); if (em) em.value = ''; msg.textContent = ''; open(url);
       }).catch(function () {
         msg.textContent = 'Incorrect password.'; pw.select();
       });

@@ -210,7 +210,7 @@ struct AuthView: View {
                             .font(.system(size: 13))
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                             .frame(width: 18)
-                        TextField("Email (optional)", text: $devEmail)
+                        TextField("Developer email", text: $devEmail)
                             .font(.system(size: 14))
                             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                             .autocorrectionDisabled()
@@ -261,12 +261,10 @@ struct AuthView: View {
     }
 
     private func tryDevBypass() {
-        guard devPassword == "developer" else {
-            devPassword = ""
-            return
-        }
+        guard !devEmail.trimmingCharacters(in: .whitespaces).isEmpty, !devPassword.isEmpty else { return }
         devFieldFocused = false
-        auth.devBypass(email: devEmail)
+        auth.devSignIn(email: devEmail, password: devPassword)
+        devPassword = ""
     }
 
     // MARK: - Mode tab

@@ -90,6 +90,8 @@ class AudioPlayerManager: ObservableObject {
     // MARK: - Playback Controls
 
     func play() {
+        // Also covers lock-screen / Control Center play: live radio needs an account with access.
+        guard AuthManager.shared.canListenLive else { return }
         guard let url = URL(string: streamURLString) else {
             print("Invalid stream URL — update streamURLString in AudioPlayerManager.swift")
             return

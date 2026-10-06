@@ -4,9 +4,9 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 
-/** Wrap locked content: <LockedGate>…</LockedGate>. Members (Babson or active guest) see children. */
+/** Wrap stored content (episodes/backlog). Only Babson students and developers see children — never guests. */
 export default function LockedGate({ children }: { children: ReactNode }) {
-  const { loading, user, needsVerification, hasMemberAccess, guestPass } = useAuth()
+  const { loading, user, needsVerification, hasMemberAccess, isGuest } = useAuth()
   if (loading) return null
   if (hasMemberAccess) return <>{children}</>
 
@@ -14,9 +14,9 @@ export default function LockedGate({ children }: { children: ReactNode }) {
     ? 'Sign in with your Babson email to listen.'
     : needsVerification
       ? 'Verify your Babson email to unlock this.'
-      : guestPass
-        ? 'Your guest pass has ended. Ask a Babson student for a new one.'
-        : 'This is for Babson students. Ask one to sponsor you.'
+      : isGuest
+        ? 'Stored episodes are for Babson students. Guests can listen live.'
+        : 'This is for Babson students.'
 
   return (
     <div className="rounded-2xl border border-br-dk-border bg-br-dk-surface p-8 text-center">
@@ -24,7 +24,7 @@ export default function LockedGate({ children }: { children: ReactNode }) {
       <p className="text-br-dk-sub text-sm mb-5">{message}</p>
       <div className="flex justify-center gap-4 font-display tracking-widest text-sm">
         <Link href="/auth" className="text-br-gold">SIGN IN</Link>
-        <Link href="/auth/guest" className="text-br-dk-sub hover:text-br-dk-text">GUEST ACCESS</Link>
+        {!user && <Link href="/auth/guest" className="text-br-dk-sub hover:text-br-dk-text">GUEST ACCESS</Link>}
       </div>
     </div>
   )

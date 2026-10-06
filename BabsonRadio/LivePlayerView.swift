@@ -5,6 +5,7 @@ import MediaPlayer
 
 struct LivePlayerView: View {
     @StateObject private var audio = AudioPlayerManager.shared
+    @StateObject private var auth = AuthManager.shared
     @Environment(\.colorScheme) var scheme
 
     var body: some View {
@@ -30,6 +31,16 @@ struct LivePlayerView: View {
                 // ── Play / Stop Control ─────────────────────────────
                 playControl
                     .padding(.top, 28)
+                    .opacity(auth.canListenLive ? 1 : 0.4)
+
+                if !auth.canListenLive {
+                    Text(lockedMessage)
+                        .font(.system(size: 13))
+                        .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                        .padding(.top, 12)
+                }
 
                 // ── Volume row ──────────────────────────────────────
                 volumeRow
@@ -94,8 +105,17 @@ struct LivePlayerView: View {
         }
     }
 
+    private var lockedMessage: String {
+        guard auth.isSignedIn, let u = auth.currentUser else {
+            return "Sign in from the Profile tab to listen — or start a free 3-day guest trial."
+        }
+        return u.isGuest
+            ? "Your guest access has ended. Ask a Babson student to sponsor you from the Profile tab."
+            : "Listening isn't available right now."
+    }
+
     private var playControl: some View {
-        Button(action: { audio.toggle() }) {
+        Button(action: { if auth.canListenLive { audio.toggle() } }) {
             ZStack {
                 Circle()
                     .fill(scheme == .dark ? Color.brGold : Color.brGreen)

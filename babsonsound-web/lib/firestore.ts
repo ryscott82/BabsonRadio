@@ -7,22 +7,19 @@ import {
   where,
   orderBy,
   limit,
-  onSnapshot,
-  type QuerySnapshot,
-  type DocumentData,
 } from 'firebase/firestore'
 import { db } from './firebase'
 
 // ── Shows ──────────────────────────────────────────────────────
 
-export async function getShows() {
+async function _getShows() {
   const snap = await getDocs(
     query(collection(db, 'shows'), where('isActive', '==', true), orderBy('name'))
   )
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 
-export async function getShowBySlug(slug: string) {
+async function _getShowBySlug(slug: string) {
   const snap = await getDocs(
     query(collection(db, 'shows'), where('slug', '==', slug), limit(1))
   )
@@ -31,7 +28,7 @@ export async function getShowBySlug(slug: string) {
   return { id: d.id, ...d.data() }
 }
 
-export async function getFeaturedShows() {
+async function _getFeaturedShows() {
   const snap = await getDocs(
     query(collection(db, 'shows'), where('isFeatured', '==', true), where('isActive', '==', true))
   )
@@ -40,14 +37,14 @@ export async function getFeaturedShows() {
 
 // ── Episodes ───────────────────────────────────────────────────
 
-export async function getRecentEpisodes(count = 10) {
+async function _getRecentEpisodes(count = 10) {
   const snap = await getDocs(
     query(collection(db, 'episodes'), orderBy('publishedAt', 'desc'), limit(count))
   )
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 
-export async function getEpisodesByShow(showId: string) {
+async function _getEpisodesByShow(showId: string) {
   const snap = await getDocs(
     query(
       collection(db, 'episodes'),
@@ -58,7 +55,7 @@ export async function getEpisodesByShow(showId: string) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 
-export async function getFeaturedEpisodes() {
+async function _getFeaturedEpisodes() {
   const snap = await getDocs(
     query(collection(db, 'episodes'), where('isFeatured', '==', true), orderBy('publishedAt', 'desc'), limit(6))
   )
@@ -67,14 +64,14 @@ export async function getFeaturedEpisodes() {
 
 // ── Schedule ───────────────────────────────────────────────────
 
-export async function getSchedule() {
+async function _getSchedule() {
   const snap = await getDocs(
     query(collection(db, 'schedule'), where('isActive', '==', true), orderBy('dayOfWeek'), orderBy('startTime'))
   )
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 
-export async function getTodaySchedule() {
+async function _getTodaySchedule() {
   const today = new Date().getDay() // 0=Sun
   const snap = await getDocs(
     query(
@@ -87,11 +84,25 @@ export async function getTodaySchedule() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 
-// ── Presence / listener count ──────────────────────────────────
+// ── Fail-soft wrappers ─────────────────────────────────────────
+// Pages are pre-rendered at build time. A missing index or a rules denial should show an empty
+// section, never break the whole deploy. (Episodes are private to students, so an anonymous
+// server render may legitimately get nothing back.)
 
-export function subscribeToListenerCount(callback: (count: number) => void) {
-  return onSnapshot(
-    query(collection(db, 'presence'), where('isListening', '==', true)),
-    (snap: QuerySnapshot<DocumentData>) => callback(snap.size)
-  )
+async function soft<T>(fn: () => Promise<T>, fallback: T, label: string): Promise<T> {
+  try {
+    return await fn()
+  } catch (e) {
+    console.error(`[firestore] ${label} failed:`, e instanceof Error ? e.message : e)
+    return fallback
+  }
 }
+
+export const getShows            = () => soft(_getShows, [], 'getShows')
+export const getShowBySlug       = (slug: string) => soft(() => _getShowBySlug(slug), null, 'getShowBySlug')
+export const getFeaturedShows    = () => soft(_getFeaturedShows, [], 'getFeaturedShows')
+export const getRecentEpisodes   = (count = 10) => soft(() => _getRecentEpisodes(count), [], 'getRecentEpisodes')
+export const getEpisodesByShow   = (showId: string) => soft(() => _getEpisodesByShow(showId), [], 'getEpisodesByShow')
+export const getFeaturedEpisodes = () => soft(_getFeaturedEpisodes, [], 'getFeaturedEpisodes')
+export const getSchedule         = () => soft(_getSchedule, [], 'getSchedule')
+export const getTodaySchedule    = () => soft(_getTodaySchedule, [], 'getTodaySchedule')

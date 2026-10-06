@@ -1,5 +1,6 @@
 import { getShowBySlug, getEpisodesByShow } from '@/lib/firestore'
 import EpisodeCard from '@/components/EpisodeCard'
+import { LikesProvider, LikeBar } from '@/components/Likes'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
@@ -79,11 +80,16 @@ export default async function ShowPage({ params }: Props) {
       {episodes.length === 0 ? (
         <p className="text-br-dk-muted text-sm py-12 text-center">No episodes published yet.</p>
       ) : (
-        <div className="space-y-3">
-          {episodes.map((ep: any) => (
-            <EpisodeCard key={ep.id} episode={ep} layout="row" />
-          ))}
-        </div>
+        <LikesProvider ids={episodes.map((ep: any) => ep.id)}>
+          <div className="space-y-3">
+            {episodes.map((ep: any) => (
+              <div key={ep.id}>
+                <EpisodeCard episode={ep} layout="row" />
+                <LikeBar episodeId={ep.id} />
+              </div>
+            ))}
+          </div>
+        </LikesProvider>
       )}
     </div>
   )

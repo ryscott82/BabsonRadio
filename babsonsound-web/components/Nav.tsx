@@ -7,7 +7,7 @@ import { signOut } from '@/lib/auth'
 import { useState } from 'react'
 
 export default function Nav() {
-  const { user, userDoc, isAdmin, isBabson } = useAuth()
+  const { user, userDoc, isAdmin, isBabson, isGuest } = useAuth()
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -93,6 +93,15 @@ export default function Nav() {
                       className="block px-4 py-3 text-sm text-br-dk-text hover:bg-br-dk-surface2 transition-colors border-t border-br-dk-border"
                     >
                       Guest access
+                    </Link>
+                  )}
+                  {isGuest && (
+                    <Link
+                      href="/auth/guest"
+                      onClick={() => setMenuOpen(false)}
+                      className="block px-4 py-3 text-sm text-br-dk-text hover:bg-br-dk-surface2 transition-colors border-t border-br-dk-border"
+                    >
+                      My guest access
                     </Link>
                   )}
                   <button

@@ -34,17 +34,27 @@ interface AuthContextValue {
   isBabson: boolean
   /** developer account (custom claim; no babson.edu email needed) */
   isDeveloper: boolean
+  /** signed in with a non-Babson email (guest account) */
+  isGuest: boolean
   /** signed in with a babson.edu address that still needs verifying */
   needsVerification: boolean
   guestPass: GuestPass | null
-  /** Babson student OR guest with an active pass → locked content is open */
+  /** ms timestamp the guest's one-time trial ends, if they have one */
+  guestTrialEndsAt: number | null
+  passActive: boolean
+  trialActive: boolean
+  /** LIVE radio: students, developers, and guests with an active trial or sponsored pass */
+  canListenLive: boolean
+  /** Stored content (episodes/backlog): students and developers ONLY — never guests */
   hasMemberAccess: boolean
   reload: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null, userDoc: null, loading: true, isAdmin: false, isHost: false,
-  isBabson: false, isDeveloper: false, needsVerification: false, guestPass: null, hasMemberAccess: false,
+  isBabson: false, isDeveloper: false, isGuest: false, needsVerification: false,
+  guestPass: null, guestTrialEndsAt: null, passActive: false, trialActive: false,
+  canListenLive: false, hasMemberAccess: false,
   reload: async () => {},
 })
 
@@ -52,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser]         = useState<User | null>(null)
   const [userDoc, setUserDoc]   = useState<UserDoc | null>(null)
   const [guestPass, setPass]    = useState<GuestPass | null>(null)
+  const [trialEndsAt, setTrial] = useState<number | null>(null)
   const [loading, setLoading]   = useState(true)
   const [isDeveloper, setDev]   = useState(false)
   const [now, setNow]           = useState(() => Date.now())
@@ -66,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setUserDoc(null)
         setPass(null)
+        setTrial(null)
         setDev(false)
       }
       setLoading(false)
@@ -73,10 +85,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsub
   }, [])
 
-  // Live guest pass (so approval/revocation shows up without a refresh).
+  // Live guest pass + trial (so approval/revocation shows up without a refresh).
   useEffect(() => {
     if (!user) return
-    return onSnapshot(
+    const u1 = onSnapshot(
       doc(db, 'guestPasses', user.uid),
       snap => setPass(snap.exists()
         ? {
@@ -87,16 +99,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         : null),
       () => setPass(null),
     )
+    const u2 = onSnapshot(
+      doc(db, 'guestTrials', user.uid),
+      snap => setTrial(snap.exists() ? snap.get('expiresAt').toMillis() : null),
+      () => setTrial(null),
+    )
+    return () => { u1(); u2() }
   }, [user])
 
-  // Re-evaluate at the moment a pass expires.
+  // Re-evaluate at the moment the next trial/pass expires.
   useEffect(() => {
-    if (!guestPass || guestPass.revoked) return
-    const ms = guestPass.expiresAt - Date.now()
-    if (ms <= 0) return
+    const ends = [trialEndsAt, guestPass && !guestPass.revoked ? guestPass.expiresAt : null]
+      .filter((t): t is number => t !== null && t > Date.now())
+    if (!ends.length) return
+    const ms = Math.min(...ends) - Date.now()
     const t = setTimeout(() => setNow(Date.now()), Math.min(ms + 500, 2 ** 31 - 1))
     return () => clearTimeout(t)
-  }, [guestPass])
+  }, [guestPass, trialEndsAt])
 
   const reload = useCallback(async () => {
     const u = await refreshUser()
@@ -109,14 +128,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const babsonEmail = !!user?.email && isBabsonEmail(user.email)
   const isBabson = babsonEmail && user!.emailVerified
   const needsVerification = babsonEmail && !user!.emailVerified
+  const isGuest = !!user && !babsonEmail && !isDeveloper
   const passActive = !!guestPass && !guestPass.revoked && guestPass.expiresAt > now
+  const trialActive = trialEndsAt !== null && trialEndsAt > now
+  const isStudent = isBabson || isDeveloper
   const isAdmin = isDeveloper || (isBabson && userDoc?.role === 'superAdmin')
   const isHost  = isAdmin || (isBabson && userDoc?.role === 'showHost')
 
   return (
     <AuthContext.Provider value={{
-      user, userDoc, loading, isAdmin, isHost, isBabson, isDeveloper, needsVerification,
-      guestPass, hasMemberAccess: isBabson || isDeveloper || passActive, reload,
+      user, userDoc, loading, isAdmin, isHost, isBabson, isDeveloper, isGuest, needsVerification,
+      guestPass, guestTrialEndsAt: trialEndsAt, passActive, trialActive,
+      canListenLive: isStudent || (isGuest && (passActive || trialActive)),
+      hasMemberAccess: isStudent,
+      reload,
     }}>
       {children}
     </AuthContext.Provider>

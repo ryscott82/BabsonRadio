@@ -40,3 +40,17 @@ and update the App Store privacy "nutrition label" (Contacts → linked to user,
 - Phone numbers aren't SMS-verified (by choice), so someone can register a number that isn't theirs.
 - Locked-content gating protects Firestore docs, not the media files themselves.
 - Guests learn nothing until a sponsor acts; there's no email/push notification to the sponsor yet.
+
+## Access tiers (current model)
+
+| Who | Live radio | Stored episodes |
+|---|---|---|
+| Student (verified @babson.edu) | yes | yes |
+| Developer (`developer` claim) | yes | yes |
+| Guest, first 3 days after sign-up (automatic trial) | yes | **never** |
+| Guest with a student-sponsored pass (24h / 7d / 30d / semester) | yes, until it ends | **never** |
+
+- Guests sign up with email + password (free Firebase Auth; no SMS, no email links). The trial starts on first sign-in; verifying the email is only needed before asking a student to sponsor.
+- `GET /api/guest/status` reports `canListenLive` / `canAccessBacklog`. Episodes are protected by Firestore rules (`isMember()` = students + developers), not just the UI.
+- The live stream URL itself is public, so live gating is in the apps' UI.
+- Phone numbers are only used for the contacts network, never for access, so SMS verification can be dropped without breaking anything.

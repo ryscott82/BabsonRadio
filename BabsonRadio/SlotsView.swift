@@ -18,7 +18,9 @@ struct SlotsView: View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
-                    if auth.isSignedIn {
+                    if auth.currentUser?.isGuest == true {
+                        GuestLockedNote(text: "Requesting air time is for Babson students. Ask a student to feature your show.")
+                    } else if auth.isSignedIn {
                         signedInContent
                     } else {
                         signedOutPrompt

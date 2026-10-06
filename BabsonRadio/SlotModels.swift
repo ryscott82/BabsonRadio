@@ -38,4 +38,5 @@ nonisolated struct MeResponse: Decodable {
     let firstName: String
     let phoneNumber: String
     let role: String
+    let invisible: Bool?
 }

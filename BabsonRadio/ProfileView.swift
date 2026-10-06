@@ -10,7 +10,7 @@ struct ProfileView: View {
 
     var body: some View {
         if auth.isSignedIn, let user = auth.currentUser {
-            SignedInProfileView(user: user)
+            if user.isGuest { GuestProfileView(user: user) } else { SignedInProfileView(user: user) }
         } else if auth.needsEmailVerification {
             VerifyEmailView()
         } else {
@@ -25,10 +25,13 @@ private struct SignedInProfileView: View {
     let user: BRUser
     @StateObject private var auth = AuthManager.shared
     @StateObject private var contacts = ContactsManager()
+    @StateObject private var presence = PresenceManager.shared
     @Environment(\.colorScheme) var scheme
 
     // Listeners (will come from Firestore presence in production)
-    @State private var listeners: [LiveListener] = LiveListener.sampleListeners
+    private var listeners: [LiveListener] {
+        (0..<min(presence.count, 24)).map { LiveListener(id: "anon-\($0)", colorSeed: $0) }
+    }
 
     // Single sheet driven by enum — never stack two .sheet modifiers
     enum ActiveSheet: Identifiable {
@@ -63,6 +66,9 @@ private struct SignedInProfileView: View {
 
                     // ── Tuned in right now ─────────────────────────
                     listenersSection
+                        .padding(.bottom, 20)
+
+                    invisibleSection
                         .padding(.bottom, 32)
 
                     // Students only: developers have no babson.edu identity to sponsor guests with.
@@ -77,6 +83,10 @@ private struct SignedInProfileView: View {
                     } else {
                         Color.clear.frame(height: 40)
                     }
+
+                    DeleteAccountButton()
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 40)
                 }
             }
             .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
@@ -200,10 +210,10 @@ private struct SignedInProfileView: View {
                     .frame(width: CGFloat(min(listeners.prefix(5).count, 5)) * 18 + 28, height: 28)
 
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("\(listeners.count) people tuned in")
+                        Text("\(presence.count) \(presence.count == 1 ? "person" : "people") tuned in")
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                        Text("Live right now")
+                        Text(presence.friendsLine ?? "Live right now")
                             .font(.system(size: 12))
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                     }
@@ -226,11 +236,30 @@ private struct SignedInProfileView: View {
             .brCard()
             .padding(.horizontal, 20)
 
-            Text("Listener identities are private.")
+            Text("You only see the names of people you know who are connected with you. Everyone else is anonymous.")
                 .font(.system(size: 11))
                 .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
                 .padding(.horizontal, 24)
         }
+    }
+
+    // MARK: - Invisible mode
+
+    private var invisibleSection: some View {
+        Toggle(isOn: Binding(get: { auth.isInvisible }, set: { auth.setInvisible($0) })) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Invisible mode")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                Text("Friends won't see you tuned in, and your likes won't show as \"your friend liked this\".")
+                    .font(.system(size: 12))
+                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+            }
+        }
+        .tint(scheme == .dark ? .brGold : .brGreen)
+        .padding(18)
+        .brCard()
+        .padding(.horizontal, 20)
     }
 
     // MARK: - Guest Access section

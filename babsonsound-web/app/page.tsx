@@ -1,5 +1,6 @@
 import LivePlayer from '@/components/LivePlayer'
 import EpisodeCard from '@/components/EpisodeCard'
+import { LikesProvider, LikeBar } from '@/components/Likes'
 import Link from 'next/link'
 import { getRecentEpisodes, getTodaySchedule, getFeaturedShows } from '@/lib/firestore'
 
@@ -55,11 +56,16 @@ export default async function HomePage() {
       {episodes.length > 0 && (
         <section>
           <SectionHeader title="RECENT EPISODES" href="/browse" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
-            {episodes.slice(0, 8).map((ep: any) => (
-              <EpisodeCard key={ep.id} episode={ep} />
-            ))}
-          </div>
+          <LikesProvider ids={episodes.slice(0, 8).map((ep: any) => ep.id)}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+              {episodes.slice(0, 8).map((ep: any) => (
+                <div key={ep.id}>
+                  <EpisodeCard episode={ep} />
+                  <LikeBar episodeId={ep.id} />
+                </div>
+              ))}
+            </div>
+          </LikesProvider>
         </section>
       )}
 

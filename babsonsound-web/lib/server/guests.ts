@@ -1,6 +1,6 @@
 import 'server-only'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
-import { GUEST_DURATIONS, MAX_ACTIVE_GUESTS_PER_STUDENT, type GuestDuration } from '../guest'
+import { GUEST_DURATIONS, GUEST_TRIAL_HOURS, MAX_ACTIVE_GUESTS_PER_STUDENT, type GuestDuration } from '../guest'
 import { HttpError } from './http'
 
 export function isDuration(v: unknown): v is GuestDuration {
@@ -21,10 +21,21 @@ function endOfDayET(ymd: string): Date | null {
   return null
 }
 
-/** Next configured semester end. Set SEMESTER_END_DATES="2026-12-18,2027-05-14,...". */
+/**
+ * Next semester end. SEMESTER_END_DATES is a comma-separated list of MM-DD dates that repeat every
+ * year (e.g. "12-18,05-14"). A full YYYY-MM-DD date is also accepted for a one-off. If unset, it
+ * defaults to Dec 18 and May 14.
+ */
 export function nextSemesterEnd(now = new Date()): Date {
-  const dates = (process.env.SEMESTER_END_DATES ?? '')
+  const entries = (process.env.SEMESTER_END_DATES || '12-18,05-14')
     .split(',').map(s => s.trim()).filter(Boolean)
+  const year = now.getUTCFullYear()
+  const candidates: string[] = []
+  for (const e of entries) {
+    if (/^\d{2}-\d{2}$/.test(e)) for (const y of [year, year + 1]) candidates.push(`${y}-${e}`)
+    else candidates.push(e)
+  }
+  const dates = candidates
     .map(endOfDayET).filter((d): d is Date => !!d && d > now)
     .sort((a, b) => a.getTime() - b.getTime())
   if (!dates.length) {
@@ -76,5 +87,18 @@ export async function ensureGuestUserDoc(db: Firestore, uid: string, email: stri
   await ref.set({
     firstName: name, displayName: name, email, role: 'guest', accountType: 'guest',
     hostOfShows: [], notifyNewEpisode: [], notifyGoesLive: [], joinedAt: Timestamp.now(),
+  })
+}
+
+/** One trial per account, started the first time the guest is seen. Returns its end time (ms). */
+export async function ensureTrial(db: Firestore, uid: string): Promise<number> {
+  const ref = db.collection('guestTrials').doc(uid)
+  return db.runTransaction(async tx => {
+    const snap = await tx.get(ref)
+    if (snap.exists) return (snap.get('expiresAt') as Timestamp).toMillis()
+    const now = Date.now()
+    const expiresAt = Timestamp.fromMillis(now + GUEST_TRIAL_HOURS * 3600_000)
+    tx.set(ref, { startedAt: Timestamp.fromMillis(now), expiresAt })
+    return expiresAt.toMillis()
   })
 }

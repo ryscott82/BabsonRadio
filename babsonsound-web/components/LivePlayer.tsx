@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { subscribeToListenerCount } from '@/lib/firestore'
+import Link from 'next/link'
+import { fetchPresence, friendsLine, sendHeartbeat } from '@/lib/presence'
+import { useAuth } from '@/contexts/AuthContext'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 
@@ -9,15 +11,38 @@ export default function LivePlayer() {
   const [isPlaying, setIsPlaying]     = useState(false)
   const [isBuffering, setIsBuffering] = useState(false)
   const [listenerCount, setListenerCount] = useState(0)
+  const [friends, setFriends] = useState<{ firstName: string }[]>([])
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const { loading, user, canListenLive, isGuest } = useAuth()
 
-  // Subscribe to live listener count from Firestore
+  // Stop immediately if access lapses (trial/pass ended, sign-out).
   useEffect(() => {
-    const unsub = subscribeToListenerCount(setListenerCount)
-    return unsub
-  }, [])
+    if (!loading && !canListenLive && audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.src = ''
+      queueMicrotask(() => { setIsPlaying(false); setIsBuffering(false) })
+    }
+  }, [loading, canListenLive])
+
+  // Listener count + connected friends (names only for verified students, never invisible people).
+  useEffect(() => {
+    let alive = true
+    const load = () => fetchPresence().then(p => { if (alive) { setListenerCount(p.count); setFriends(p.friends) } })
+    load()
+    const t = setInterval(load, 30_000)
+    return () => { alive = false; clearInterval(t) }
+  }, [user?.uid])
+
+  // Heartbeat while playing so the server knows we're tuned in.
+  useEffect(() => {
+    if (!isPlaying) return
+    sendHeartbeat(true)
+    const t = setInterval(() => sendHeartbeat(true), 60_000)
+    return () => { clearInterval(t); sendHeartbeat(false) }
+  }, [isPlaying])
 
   function togglePlay() {
+    if (!canListenLive) return
     if (!audioRef.current) {
       audioRef.current = new Audio(STREAM_URL)
       audioRef.current.addEventListener('waiting', () => setIsBuffering(true))
@@ -70,11 +95,22 @@ export default function LivePlayer() {
           </h2>
           <p className="text-br-dk-sub text-sm mb-6">Babson College — Internet Radio</p>
 
+          {!loading && !canListenLive && (
+            <p className="text-br-dk-sub text-sm mb-4">
+              {!user
+                ? <>Sign in with your Babson email, or <Link href="/auth/guest" className="text-br-gold">start a free guest trial</Link>.</>
+                : isGuest
+                  ? <>Your guest access has ended. <Link href="/auth/guest" className="text-br-gold">Ask a student to sponsor you</Link>.</>
+                  : <>Verify your Babson email to listen. <Link href="/auth" className="text-br-gold">Continue</Link>.</>}
+            </p>
+          )}
+
           {/* EQ animation + play button */}
           <div className="flex items-center gap-5 justify-center md:justify-start">
             <button
               onClick={togglePlay}
-              className="w-16 h-16 rounded-full bg-br-gold hover:bg-br-gold/90 transition-all flex items-center justify-center shadow-[0_4px_24px_rgba(221,208,85,0.35)] active:scale-95"
+              disabled={!canListenLive}
+              className="disabled:opacity-40 w-16 h-16 rounded-full bg-br-gold hover:bg-br-gold/90 transition-all flex items-center justify-center shadow-[0_4px_24px_rgba(221,208,85,0.35)] active:scale-95"
             >
               {isBuffering ? (
                 <svg className="w-6 h-6 animate-spin text-br-dk-bg" fill="none" viewBox="0 0 24 24">
@@ -110,6 +146,7 @@ export default function LivePlayer() {
             {listenerCount > 0 && (
               <span className="text-br-dk-sub text-sm">
                 {listenerCount} listening
+                {friends.length > 0 && <> · {friendsLine(friends)}</>}
               </span>
             )}
           </div>

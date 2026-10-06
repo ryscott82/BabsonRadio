@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { signIn, signUp, signOut, resendVerification, isBabsonEmail } from '@/lib/auth'
+import { signIn, signUp, signOut, resendVerification, isBabsonEmail, sendPasswordReset } from '@/lib/auth'
 import { normalizeUS } from '@/lib/phone'
 import { Card, ErrorText, Field, GhostButton, PrimaryButton, formatPhone } from '@/components/AuthUI'
 
@@ -96,6 +96,14 @@ function Forms() {
                placeholder={mode === 'create' ? 'At least 8 characters' : 'Password'} />
         <ErrorText>{error}</ErrorText>
         <PrimaryButton type="submit" busy={busy}>{mode === 'create' ? 'CREATE ACCOUNT' : 'SIGN IN'}</PrimaryButton>
+        {mode === 'signin' && (
+          <button type="button" className="block mx-auto text-sm text-br-dk-sub hover:text-br-dk-text"
+            onClick={async () => {
+              if (!email) return setError('Enter your email above first.')
+              await sendPasswordReset(email).catch(() => {})
+              setError('If that account exists, a reset link is on its way.')
+            }}>Forgot password?</button>
+        )}
       </form>
 
       <p className="text-center text-sm text-br-dk-sub mt-8">

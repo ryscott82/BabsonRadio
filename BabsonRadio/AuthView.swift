@@ -12,6 +12,7 @@ struct AuthView: View {
     @State private var password = ""
     @State private var displayName = ""
     @State private var phoneNumber = ""
+    @State private var showGuest = false
     @FocusState private var focusedField: Field?
 
     // Dev mode
@@ -139,13 +140,34 @@ struct AuthView: View {
                 .padding(.top, 24)
                 .disabled(auth.isLoading)
 
-                // ── Non-Babson note ────────────────────────────
-                Text("Don't have a Babson email? Ask a Babson student to invite you.")
+                if mode == .signIn {
+                    Button("Forgot password?") { auth.sendPasswordReset(email: email) }
+                        .font(.system(size: 13))
+                        .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                        .padding(.top, 14)
+                }
+                if let info = auth.infoMessage {
+                    Text(info)
+                        .font(.system(size: 12))
+                        .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 8)
+                }
+
+                // ── Guests ─────────────────────────────────────
+                Button(action: { showGuest = true }) {
+                    Text("No Babson email? Continue as a guest")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                }
+                .padding(.horizontal, 32)
+                .padding(.top, 20)
+                Text("Guests get 3 days of live radio free, and a Babson student can extend it.")
                     .font(.system(size: 12))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
-                    .padding(.top, 20)
+                    .padding(.top, 6)
                     .padding(.bottom, 32)
 
                 // ── Developer mode (hidden tap target) ─────────
@@ -157,6 +179,7 @@ struct AuthView: View {
         .ignoresSafeArea()
         .onTapGesture { focusedField = nil }
         .animation(.easeInOut(duration: 0.2), value: auth.errorMessage)
+        .sheet(isPresented: $showGuest) { GuestAuthView() }
     }
 
     // MARK: - Actions

@@ -21,18 +21,10 @@ service cloud.firestore {
       return signedIn() && request.auth.token.developer == true;
     }
 
-    function passPath() {
-      return /databases/$(database)/documents/guestPasses/$(request.auth.uid);
-    }
-    function hasGuestPass() {
-      return signedIn()
-        && exists(passPath())
-        && get(passPath()).data.revoked == false
-        && get(passPath()).data.expiresAt > request.time;
-    }
-
-    // Babson student, or a guest whose sponsored pass is still valid.
-    function isMember() { return isBabson() || isDeveloper() || hasGuestPass(); }
+    // Students and developers. Guests (trial or sponsored pass) get LIVE RADIO ONLY —
+    // that is gated in the apps, because the stream itself is not in Firestore — and
+    // never any stored content such as the episode backlog.
+    function isMember() { return isBabson() || isDeveloper(); }
 
     function role() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
@@ -52,7 +44,7 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Episodes marked isLocked: true need a member; everything else is public.
+    // Episodes marked isLocked: true are students/developers only (never guests); everything else is public.
     // NOTE: this protects the Firestore document (incl. its audioURL/youtubeID), not the
     // media file itself — private media would also need signed URLs / Storage rules.
     match /episodes/{id} {
@@ -60,9 +52,15 @@ service cloud.firestore {
       allow write: if isStaff();
     }
 
+    // Server-only: /api/presence decides who may see whom (names only for connected contacts,
+    // never for people in invisible mode). Clients can't read or write these directly.
     match /presence/{uid} {
-      allow read: if true;
-      allow write: if signedIn() && request.auth.uid == uid;
+      allow read, write: if false;
+    }
+
+    // Episode likes: server-only so "your friend liked this" can respect invisible mode.
+    match /likes/{id} {
+      allow read, write: if false;
     }
 
     // ── users ────────────────────────────────────────────────
@@ -85,6 +83,10 @@ service cloud.firestore {
     }
 
     // ── guest access (all writes via server routes) ──────────
+    match /guestTrials/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
     match /guestPasses/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid
                       || resource.data.sponsorUid == request.auth.uid);

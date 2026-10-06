@@ -29,6 +29,45 @@ class AuthManager: ObservableObject {
     /// Signed in with a babson.edu address that hasn't been verified yet.
     @Published var needsEmailVerification = false
     @Published var pendingEmail = ""
+    /// Guest-only: trial / sponsor pass details from /api/guest/status.
+    @Published var guestStatus: GuestStatus? = nil
+    private var expiryTimer: Timer?
+    /// Invisible mode: hides you from "tuned in" lists and from friends' "liked this" hints.
+    @Published var isInvisible = false
+
+    func setInvisible(_ value: Bool) {
+        let previous = isInvisible
+        isInvisible = value
+        Task {
+            do {
+                let _: EmptyResponse = try await BackendAPI.post("/api/me", ["invisible": value])
+            } catch {
+                isInvisible = previous
+                errorMessage = (error as? BackendError)?.message ?? "Couldn't save that setting."
+            }
+        }
+    }
+
+    /// LIVE radio: students and developers, plus guests with an active trial or sponsored pass.
+    /// (Stored episodes are separate and are NEVER available to guests.)
+    var canListenLive: Bool {
+        guard isSignedIn, let u = currentUser else { return false }
+        if !u.isGuest { return true }
+        return guestStatus?.hasLiveAccess(at: Date()) ?? false
+    }
+
+    /// Stops playback at the moment a guest's access runs out.
+    func scheduleExpiryCheck() {
+        expiryTimer?.invalidate()
+        guard let end = guestStatus?.liveAccessEnds, end > Date() else { return }
+        expiryTimer = Timer.scheduledTimer(withTimeInterval: end.timeIntervalSinceNow + 0.5, repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.objectWillChange.send(); self?.enforceAccess() }
+        }
+    }
+
+    func enforceAccess() {
+        if !canListenLive { AudioPlayerManager.shared.stop() }
+    }
 
     static let setupMessage = "Sign-in isn't set up in this build yet. Add the Firebase package and GoogleService-Info.plist (see SETUP_IOS.md)."
 
@@ -63,6 +102,8 @@ class AuthManager: ObservableObject {
             currentUser = nil
             isSignedIn = false
             needsEmailVerification = false
+            guestStatus = nil
+            enforceAccess()
             return
         }
 
@@ -70,10 +111,23 @@ class AuthManager: ObservableObject {
         let claims = try? await user.getIDTokenResult()
         let isDev = (claims?.claims["developer"] as? Bool) == true
 
-        // Students only (guests use the website for now); developers are exempt.
+        // Non-Babson, non-developer accounts are guests: live radio only (trial or sponsor pass).
         if !isDev && !Self.isBabsonEmail(email) {
-            try? Auth.auth().signOut()
-            errorMessage = "Use your @babson.edu email to sign in."
+            needsEmailVerification = false
+            guestStatus = try? await BackendAPI.get("/api/guest/status")
+            currentUser = BRUser(
+                id: user.uid,
+                displayName: user.displayName ?? "Guest",
+                email: email,
+                phoneNumber: "",
+                joinedDate: user.metadata.creationDate ?? Date(),
+                isDeveloper: false,
+                role: "guest",
+                emailVerifiedHint: user.isEmailVerified
+            )
+            isSignedIn = true
+            scheduleExpiryCheck()
+            enforceAccess()
             return
         }
         if !isDev && !user.isEmailVerified {
@@ -86,6 +140,7 @@ class AuthManager: ObservableObject {
         needsEmailVerification = false
 
         let me: MeResponse? = try? await BackendAPI.get("/api/me")
+        isInvisible = me?.invisible ?? false
         let apiName = me?.firstName ?? ""
         let fallbackName = user.displayName ?? String(email.prefix(while: { $0 != "@" })).capitalized
         currentUser = BRUser(
@@ -97,6 +152,7 @@ class AuthManager: ObservableObject {
             isDeveloper: isDev,
             role: me?.role ?? (isDev ? "developer" : "listener")
         )
+        guestStatus = nil
         isSignedIn = true
     }
 
@@ -160,6 +216,119 @@ class AuthManager: ObservableObject {
                 try await result.user.sendEmailVerification()
             } catch {
                 errorMessage = (error as? BackendError)?.message ?? error.localizedDescription
+            }
+            isLoading = false
+        }
+    }
+
+    // MARK: - Guests (free email + password; live radio only)
+
+    func guestSignUp(email: String, password: String, name: String) {
+        guard !Self.isBabsonEmail(email) else {
+            errorMessage = "You have a Babson email. Create a student account instead."
+            return
+        }
+        guard password.count >= 8 else { errorMessage = "Password must be at least 8 characters."; return }
+        guard Self.firebaseReady else { errorMessage = Self.setupMessage; return }
+        errorMessage = nil; infoMessage = nil; isLoading = true
+        Task {
+            do {
+                let result = try await Auth.auth().createUser(withEmail: Self.cleaned(email), password: password)
+                let change = result.user.createProfileChangeRequest()
+                let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                change.displayName = trimmed.isEmpty ? "Guest" : trimmed
+                try? await change.commitChanges()
+                try? await result.user.sendEmailVerification()
+                await apply(Auth.auth().currentUser)   // first status call starts the free trial
+            } catch {
+                let code = (error as NSError).code
+                if code == AuthErrorCode.emailAlreadyInUse.rawValue {
+                    errorMessage = "An account with that email already exists. Try signing in."
+                } else if code == AuthErrorCode.invalidEmail.rawValue {
+                    errorMessage = "Enter a valid email address."
+                } else if code == AuthErrorCode.weakPassword.rawValue {
+                    errorMessage = "That password is too weak."
+                } else {
+                    errorMessage = "Could not create the account. Please try again."
+                }
+            }
+            isLoading = false
+        }
+    }
+
+    func guestSignIn(email: String, password: String) {
+        guard !Self.isBabsonEmail(email) else {
+            errorMessage = "Use the student sign-in with your @babson.edu email."
+            return
+        }
+        guard Self.firebaseReady else { errorMessage = Self.setupMessage; return }
+        errorMessage = nil; infoMessage = nil; isLoading = true
+        Task {
+            do { _ = try await Auth.auth().signIn(withEmail: Self.cleaned(email), password: password) }
+            catch { errorMessage = "Incorrect email or password." }
+            isLoading = false
+        }
+    }
+
+    func sendPasswordReset(email: String) {
+        guard Self.firebaseReady else { errorMessage = Self.setupMessage; return }
+        let e = Self.cleaned(email)
+        guard !e.isEmpty else { errorMessage = "Enter your email first."; return }
+        errorMessage = nil; infoMessage = nil
+        Task {
+            try? await Auth.auth().sendPasswordReset(withEmail: e)
+            infoMessage = "If that account exists, a reset link is on its way."   // never reveal which accounts exist
+        }
+    }
+
+    /// Re-reads the account and the guest's trial / pass / request state.
+    func refreshGuestStatus() {
+        guard let user = Auth.auth().currentUser else { return }
+        Task {
+            try? await user.reload()
+            _ = try? await user.getIDToken(forcingRefresh: true)
+            await apply(Auth.auth().currentUser)
+        }
+    }
+
+    func requestSponsor(email: String) {
+        errorMessage = nil; infoMessage = nil
+        Task {
+            do {
+                let _: EmptyResponse = try await BackendAPI.post("/api/guest/request", [
+                    "sponsorEmail": Self.cleaned(email),
+                    "name": currentUser?.displayName ?? "Guest",
+                ])
+                infoMessage = "Request sent."
+                await apply(Auth.auth().currentUser)
+            } catch {
+                errorMessage = (error as? BackendError)?.message ?? error.localizedDescription
+            }
+        }
+    }
+
+    /// Permanently deletes the account and its data (re-checks the password first).
+    func deleteAccount(password: String) {
+        guard let user = Auth.auth().currentUser, let email = user.email else { return }
+        errorMessage = nil; infoMessage = nil; isLoading = true
+        Task {
+            do {
+                try await user.reauthenticate(with: EmailAuthProvider.credential(withEmail: email, password: password))
+            } catch {
+                errorMessage = "Incorrect password."
+                isLoading = false
+                return
+            }
+            do {
+                _ = try await user.getIDToken(forcingRefresh: true)
+                let _: EmptyResponse = try await BackendAPI.post("/api/me/delete", ["confirm": "DELETE"])
+                try? Auth.auth().signOut()
+                currentUser = nil
+                isSignedIn = false
+                guestStatus = nil
+                enforceAccess()
+            } catch {
+                errorMessage = (error as? BackendError)?.message ?? "Couldn't delete the account. Try again."
             }
             isLoading = false
         }
@@ -231,6 +400,8 @@ class AuthManager: ObservableObject {
         currentUser = nil
         isSignedIn = false
         needsEmailVerification = false
+        guestStatus = nil
+        enforceAccess()
     }
 
 #else
@@ -256,6 +427,13 @@ class AuthManager: ObservableObject {
         errorMessage = Self.setupMessage
 #endif
     }
+
+    func guestSignUp(email: String, password: String, name: String) { errorMessage = Self.setupMessage }
+    func guestSignIn(email: String, password: String) { errorMessage = Self.setupMessage }
+    func sendPasswordReset(email: String) { errorMessage = Self.setupMessage }
+    func refreshGuestStatus() {}
+    func requestSponsor(email: String) { errorMessage = Self.setupMessage }
+    func deleteAccount(password: String) { errorMessage = Self.setupMessage }
 
     func resendVerification() {}
     func checkVerification() {}
@@ -353,6 +531,9 @@ struct BRUser: Identifiable {
     var joinedDate: Date
     var isDeveloper: Bool = false
     var role: String = "listener"
+    var emailVerifiedHint: Bool = false   // guests: Firebase's emailVerified flag at sign-in
+
+    var isGuest: Bool { role == "guest" }
 
     var initials: String {
         let parts = displayName.split(separator: " ")
@@ -396,5 +577,28 @@ extension InviteDuration {
         case .thirtyDays:    return "30d"
         case .endOfSemester: return "semester"
         }
+    }
+}
+
+// MARK: - Guest access status (server: /api/guest/status)
+
+nonisolated struct GuestStatus: Decodable {
+    struct Pass: Decodable {
+        let sponsorName: String
+        let expiresAt: Date
+    }
+    let emailVerified: Bool?
+    let trialEndsAt: Date?
+    let pass: Pass?
+    let requestStatus: String?
+
+    /// Latest moment live radio is allowed (the later of trial end and sponsor-pass end).
+    var liveAccessEnds: Date? {
+        [trialEndsAt, pass?.expiresAt].compactMap { $0 }.max()
+    }
+
+    func hasLiveAccess(at date: Date) -> Bool {
+        guard let end = liveAccessEnds else { return false }
+        return end > date
     }
 }

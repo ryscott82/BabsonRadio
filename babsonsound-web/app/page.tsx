@@ -1,0 +1,119 @@
+import LivePlayer from '@/components/LivePlayer'
+import EpisodeCard from '@/components/EpisodeCard'
+import Link from 'next/link'
+import { getRecentEpisodes, getTodaySchedule, getFeaturedShows } from '@/lib/firestore'
+
+export const revalidate = 60 // re-fetch data every 60 seconds
+
+export default async function HomePage() {
+  const [episodes, schedule, shows] = await Promise.all([
+    getRecentEpisodes(8),
+    getTodaySchedule(),
+    getFeaturedShows(),
+  ])
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-16">
+
+      {/* ── Live Player ──────────────────────────────────────── */}
+      <section>
+        <LivePlayer />
+      </section>
+
+      {/* ── Today's Schedule ─────────────────────────────────── */}
+      {schedule.length > 0 && (
+        <section>
+          <SectionHeader title="TODAY'S SCHEDULE" />
+          <div className="rounded-xl overflow-hidden border border-br-dk-border divide-y divide-br-dk-border">
+            {schedule.map((slot: any) => (
+              <div key={slot.id} className={`flex items-center gap-4 px-5 py-4 ${slot.isLive ? 'bg-br-green/5' : 'bg-br-dk-surface'}`}>
+                <span className={`font-display text-sm tracking-wider w-20 shrink-0 ${slot.isLive ? 'text-br-gold' : 'text-br-dk-sub'}`}>
+                  {slot.startTime}
+                </span>
+                {slot.isLive && <span className="w-2 h-2 rounded-full bg-br-red shrink-0" />}
+                <div>
+                  <p className={`text-sm font-medium ${slot.isLive ? 'text-br-dk-text' : 'text-br-dk-sub'}`}>
+                    {slot.showName}
+                  </p>
+                  {slot.hostNames?.length > 0 && (
+                    <p className="text-br-dk-muted text-xs">{slot.hostNames.join(', ')}</p>
+                  )}
+                </div>
+                {slot.isLive && (
+                  <div className="ml-auto flex items-center gap-1.5 bg-br-red/20 border border-br-red/30 px-2.5 py-1 rounded">
+                    <span className="w-1 h-1 rounded-full bg-br-red" />
+                    <span className="font-display text-br-red text-[10px] tracking-widest">LIVE</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Recent Episodes ───────────────────────────────────── */}
+      {episodes.length > 0 && (
+        <section>
+          <SectionHeader title="RECENT EPISODES" href="/browse" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+            {episodes.slice(0, 8).map((ep: any) => (
+              <EpisodeCard key={ep.id} episode={ep} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Featured Shows ────────────────────────────────────── */}
+      {shows.length > 0 && (
+        <section>
+          <SectionHeader title="SHOWS" href="/shows" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {shows.map((show: any) => (
+              <Link
+                key={show.id}
+                href={`/shows/${show.slug}`}
+                className="group flex items-center gap-4 p-4 rounded-xl bg-br-dk-surface border border-br-dk-border hover:border-br-dk-border2 transition-colors"
+              >
+                <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-[#003D27] to-br-green flex items-center justify-center shrink-0 overflow-hidden">
+                  {show.artworkURL
+                    ? <img src={show.artworkURL} alt={show.name} className="w-full h-full object-cover" />
+                    : <span className="font-display text-br-gold text-xl">{show.name[0]}</span>
+                  }
+                </div>
+                <div className="min-w-0">
+                  <p className="text-br-dk-text text-sm font-medium truncate group-hover:text-br-gold transition-colors">
+                    {show.name}
+                  </p>
+                  <p className="text-br-dk-sub text-xs truncate">{show.description}</p>
+                  <p className="text-br-dk-muted text-xs">{show.totalEpisodes ?? 0} episodes</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Empty state when no content in Firestore yet */}
+      {episodes.length === 0 && shows.length === 0 && schedule.length === 0 && (
+        <div className="text-center py-24 text-br-dk-muted">
+          <p className="font-display text-2xl tracking-widest mb-2">COMING SOON</p>
+          <p className="text-sm">Episodes and shows will appear here once published.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SectionHeader({ title, href }: { title: string; href?: string }) {
+  return (
+    <div className="flex items-center gap-4 mb-6">
+      <h2 className="font-display text-br-dk-text text-xl tracking-[0.1em] shrink-0">{title}</h2>
+      <div className="flex-1 h-px bg-br-dk-border" />
+      {href && (
+        <Link href={href} className="font-display text-br-gold text-xs tracking-widest hover:text-br-gold/80 shrink-0">
+          SEE ALL
+        </Link>
+      )}
+    </div>
+  )
+}

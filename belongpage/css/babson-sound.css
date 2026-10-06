@@ -1,0 +1,357 @@
+/* ==========================================================================
+   BABSON SOUND — sitewide stylesheet (home, radio, events, leadership team)
+   Load on every page. It only restyles existing classes plus the new .br-* blocks,
+   so the markup Campus Groups fills in (stats, events, officers) keeps working.
+   It only restyles existing classes. It never touches the markup that Campus
+   Groups fills in (stats, featured events, officers), so those keep working.
+   Colors / type match the iOS app (BrandKit.swift): Bebas Neue, green/gold/red,
+   dark by default, light (cream + green) when the visitor's device is light.
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+
+:root{
+  --br-green:#006644; --br-green-mid:#007A50; --br-gold:#DDD055; --br-red:#C8302A;
+  --br-bg:#080808; --br-surface:#111; --br-surface2:#1A1A1A; --br-border:#252525; --br-border2:#303030;
+  --br-text:#E8E8E8; --br-sub:#8a8a8a; --br-accent:#006644; --br-accent-text:#2EC48D; --br-on-accent:#fff;
+  --br-shadow:0 3px 10px rgba(0,0,0,.55);
+}
+@media (prefers-color-scheme:light){:root{
+  --br-bg:#F5F0E8; --br-surface:#FDFAF4; --br-surface2:#EDE8DC; --br-border:#D8D0BE; --br-border2:#D8D0BE;
+  --br-text:#1A1710; --br-sub:#6A6258; --br-accent:#006644; --br-accent-text:#006644; --br-on-accent:#fff; --br-shadow:0 3px 8px rgba(0,0,0,.07);
+}}
+
+/* ---- Base --------------------------------------------------------------- */
+html,body,.main-container{background:var(--br-bg)!important;color:var(--br-text)}
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif!important}
+section{background:var(--br-bg)!important;color:var(--br-text)}
+section.bg--primary{background:var(--br-surface)!important}
+h1,h2,h3,h4,h5,.h4,.h5{font-family:"Bebas Neue",Impact,"Arial Narrow",sans-serif!important;font-weight:400!important;letter-spacing:.08em;color:var(--br-text)!important}
+h2{font-size:clamp(30px,4vw,42px)!important}
+p,.lead,li,span{color:var(--br-sub)}
+a{color:var(--br-accent-text)}
+section h2{display:flex;align-items:center;gap:14px;justify-content:center}
+section h2:before,section h2:after{content:"";height:1px;width:48px;background:var(--br-border2)}
+
+/* ---- Header / nav ------------------------------------------------------- */
+.nav-container,.nav-container .bar,nav.bar{background:color-mix(in srgb,var(--br-bg) 90%,transparent)!important;border-bottom:1px solid var(--br-border)!important;box-shadow:none!important}
+.menu-horizontal>li>span>a,.menu-horizontal>li>a,.bar .menu-horizontal a{font-family:"Bebas Neue",Impact,sans-serif!important;font-size:18px!important;letter-spacing:.14em;color:var(--br-sub)!important;text-transform:uppercase}
+.menu-horizontal>li.active>span>a,.menu-horizontal a:hover{color:var(--br-accent-text)!important}
+.hamburger-toggle i{color:var(--br-text)!important}
+.logo{max-height:2.6em}
+
+/* ---- Buttons ------------------------------------------------------------ */
+.stack-blue-btn,.stack-blue-btn .btn__text{background:transparent!important;border:0!important;box-shadow:none!important}
+.stack-blue-btn a,a.btn,.btn--primary{display:inline-block;font-family:"Bebas Neue",Impact,sans-serif!important;font-size:20px!important;letter-spacing:.16em;background:var(--br-accent)!important;color:var(--br-on-accent)!important;padding:10px 26px!important;border-radius:8px!important;text-decoration:none!important;border:0!important;transition:filter .15s}
+.stack-blue-btn a:hover{filter:brightness(1.1)}
+
+/* ---- Hero (the group banner) ------------------------------------------- */
+.cover.imagebg{background-color:#0C1A13!important}
+.cover.imagebg:before,.cover.imagebg .background-image-holder:after{background:linear-gradient(135deg,rgba(12,26,19,.88),rgba(8,8,8,.92))!important;opacity:1!important}
+.cover.imagebg h1,.cover.imagebg h3{color:#E8E8E8!important}
+.cover.imagebg,.cover.imagebg.height-80{height:auto!important;min-height:0!important;padding:56px 0!important}
+.cover.imagebg .pos-vertical-center{position:static!important;transform:none!important;top:auto!important}
+.cover.imagebg h1{font-size:clamp(54px,9vw,96px)!important;letter-spacing:.12em;margin:0}
+.cover.imagebg h3{color:#2EC48D!important;letter-spacing:.2em;font-size:clamp(18px,3vw,26px)!important}
+
+/* ---- Quick-facts plug (11 Officers / 189 Members / ...) ----------------- */
+.mailer-section-icons .text-block{background:var(--br-surface);border:1px solid var(--br-border2);border-radius:14px;padding:22px 12px;box-shadow:var(--br-shadow);margin-bottom:14px}
+.mailer-section-icons h2{display:block!important;font-size:54px!important;line-height:1;color:var(--br-accent-text)!important}
+.mailer-section-icons h2:before,.mailer-section-icons h2:after{display:none}
+.mailer-section-icons p{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--br-sub);margin:4px 0 0}
+.blue-lg-icon,.blue-lg-icon i,.icon-cont{color:var(--br-accent-text)!important}
+
+/* ---- Featured-events plug ---------------------------------------------- */
+.wrapper-events--featured .feature,.section-cont__content-events--featured .feature{background:var(--br-surface);border:1px solid var(--br-border2);border-radius:14px;overflow:hidden;box-shadow:var(--br-shadow);padding-bottom:16px}
+.wrapper-events--featured img{border-radius:14px 14px 0 0}
+.section-cont__content-events_month_featured,.section-cont__content-events_day_featured{font-family:"Bebas Neue",Impact,sans-serif;font-size:22px;letter-spacing:.12em;color:var(--br-accent-text)!important}
+.section-cont__content-events_time_featured{color:var(--br-sub)}
+.section-cont__content-events_name_featured{color:var(--br-text)!important;font-size:26px!important;margin-top:6px}
+.cg_dynamic_msg{background:var(--br-surface);border:1px dashed var(--br-border2);border-radius:14px;padding:34px 20px;color:var(--br-sub)!important;font-size:26px!important}
+.section-cont__content-events--featured a:not([class]){color:var(--br-accent-text)!important;font-family:"Bebas Neue",Impact,sans-serif;letter-spacing:.14em;font-size:18px}
+
+/* ---- Benefit cards ------------------------------------------------------ */
+.feature-3.boxed,.boxed--border{background:var(--br-surface)!important;border:1px solid var(--br-border2)!important;border-radius:14px!important;box-shadow:var(--br-shadow)}
+.feature-3 p{color:var(--br-sub)}
+
+/* ---- Leadership / officers plug ---------------------------------------- */
+[class*="section-cont__content-officers--"]{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px;margin:0!important}
+[class*="section-cont__content-officers--"]>[class*="col-"]{width:auto!important;max-width:none!important;float:none!important;padding:0!important;margin:0!important}
+[class*="section-cont__content-officers--"] .feature-8{background:var(--br-surface);border:1px solid var(--br-border2);border-radius:14px;padding:22px 12px;box-shadow:var(--br-shadow);height:100%;width:100%}
+[class*="section-cont__content-officers--"] .image-wrapper{position:relative!important;width:92px!important;height:92px!important;margin:0 auto 12px!important;border-radius:50%;overflow:hidden;border:2px solid rgba(46,196,141,.45);background:linear-gradient(135deg,#003D27,var(--br-green))!important}
+[class*="section-cont__content-officers--"] .image-wrapper img{position:static!important;display:block;width:100%!important;height:100%!important;object-fit:cover;border-radius:50%}
+[class*="section-cont__content-officers--"] h3{margin:0 0 8px!important}
+[class*="section-cont__content-officers--"] h3 span{font-size:22px!important;line-height:1.1;display:block}
+.section-cont__content-officers_position{display:inline-block;font-family:"Bebas Neue",Impact,sans-serif;font-size:13px;letter-spacing:.16em;background:var(--br-green);color:#fff!important;padding:2px 10px;border-radius:3px;text-transform:uppercase}
+
+/* ---- Join banner + footer ---------------------------------------------- */
+.imageblock.subscribe-video-1{background:linear-gradient(135deg,#003D27,#006644)!important}
+.imageblock.subscribe-video-1 h1,.imageblock.subscribe-video-1 p{color:#fff!important}
+.imageblock.subscribe-video-1 .stack-blue-btn a{background:#F5F0E8!important;color:#006644!important}
+.switchable.simple-three,.footer-1,footer{background:var(--br-surface)!important;border-top:1px solid var(--br-border)}
+.simple-three input,.simple-three textarea{background:var(--br-bg)!important;color:var(--br-text)!important;border:1px solid var(--br-border2)!important;border-radius:8px}
+
+/* ==========================================================================
+   LIVE PLAYER (the block in radio-player-section.html)
+   ========================================================================== */
+#br-player{padding:28px 0 8px}
+#br-player .br-hero{position:relative;overflow:hidden;border-radius:20px;background:linear-gradient(135deg,#0C1A13,#080808);border:1px solid var(--br-border2);box-shadow:var(--br-shadow)}
+#br-player .br-hero:before{content:"";position:absolute;top:-70px;right:-50px;width:300px;height:300px;border-radius:50%;background:rgba(0,102,68,.35);filter:blur(70px)}
+#br-player .br-hero:after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.14) 0 1px,transparent 1px 3px),url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.09'/%3E%3C/svg%3E");opacity:.8}
+#br-player .br-in{position:relative;z-index:1;display:grid;grid-template-columns:minmax(200px,290px) 1fr;gap:40px;align-items:center;padding:40px;text-align:left}
+#br-player .br-art{position:relative;aspect-ratio:1;border-radius:16px;background:linear-gradient(135deg,#0C1A13,#080808);border:1px solid rgba(221,208,85,.18);display:flex;align-items:center;justify-content:center;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#br-player .d{font-family:"Bebas Neue",Impact,sans-serif!important;font-weight:400}
+#br-player .br-art .a{display:block;font-size:18px;letter-spacing:.35em;color:rgba(221,208,85,.9)}
+#br-player .br-art .b{display:block;font-size:clamp(46px,7vw,62px);letter-spacing:.14em;color:rgba(255,255,255,.93);line-height:1}
+#br-player .br-art hr{position:absolute;left:0;right:0;bottom:52px;margin:0;border:0;height:1px;background:rgba(221,208,85,.5)}
+#br-player .br-led{position:absolute;left:16px;bottom:16px;display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.22em;color:rgba(255,255,255,.45)}
+#br-player .br-led i{width:8px;height:8px;border-radius:50%;background:#444;transition:.2s}
+#br-player.playing .br-led i{background:#1fd18a;box-shadow:0 0 0 4px rgba(0,122,80,.35),0 0 10px #1fd18a}
+#br-player .chips{display:flex;gap:8px;margin-bottom:10px}
+#br-player .chip{font-size:12px;letter-spacing:.18em;padding:2px 9px;border-radius:3px;background:rgba(255,255,255,.1);color:#aaa}
+#br-player .chip.gold{background:var(--br-green);color:#fff}
+#br-player h2.br-title{display:block!important;font-size:clamp(46px,7vw,74px)!important;line-height:.95;margin:0 0 6px;color:#E8E8E8!important}
+#br-player h2.br-title:before,#br-player h2.br-title:after{display:none}
+#br-player .br-sub{color:#999;font-size:15px;margin:0 0 26px}
+#br-player .ctl{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+#br-player .play{width:72px;height:72px;border-radius:50%;border:0;cursor:pointer;background:var(--br-green);color:#fff;display:grid;place-items:center;box-shadow:0 0 0 3px rgba(46,196,141,.22),0 6px 18px rgba(0,102,68,.55);transition:.15s;padding:0}
+#br-player .play:hover{transform:scale(1.05)}#br-player .play:active{transform:scale(.96)}
+#br-player .play svg{width:28px;height:28px;fill:currentColor}
+#br-player .i-stop,#br-player .i-spin{display:none}
+#br-player.playing .i-play{display:none}#br-player.playing .i-stop{display:block}
+#br-player.buffering .i-play,#br-player.buffering .i-stop{display:none}#br-player.buffering .i-spin{display:block;animation:brspin 1s linear infinite}
+@keyframes brspin{to{transform:rotate(360deg)}}
+#br-player .onair{display:inline-flex;align-items:center;gap:6px;background:var(--br-red);color:#fff;padding:3px 10px;border-radius:3px;font-size:13px;letter-spacing:.2em;box-shadow:0 2px 6px rgba(200,48,42,.35)}
+#br-player .onair i{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.75);animation:brpulse 1.4s infinite}
+@keyframes brpulse{50%{opacity:.25}}
+#br-player .onair[hidden]{display:none}
+#br-player .eq{display:none;align-items:flex-end;gap:4px;height:30px}#br-player.playing .eq{display:flex}
+#br-player .eq i{width:4px;height:100%;background:#2EC48D;border-radius:2px;transform-origin:bottom;animation:breq .8s ease-in-out infinite}
+#br-player .eq i:nth-child(2){animation-delay:.15s}#br-player .eq i:nth-child(3){animation-delay:.3s}#br-player .eq i:nth-child(4){animation-delay:.1s}
+@keyframes breq{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
+#br-player .vol{display:flex;align-items:center;gap:10px;color:#777;margin-top:26px;max-width:340px}
+#br-player .vol input[type=range]{flex:1;accent-color:#2EC48D;height:24px!important;background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important}
+#br-player .vol svg{width:16px;height:16px;fill:currentColor}
+#br-player .status{font-size:13px;color:#888;min-height:20px;margin-top:12px}
+#br-player audio{width:100%;margin-top:16px}
+#br-player.js audio{display:none}
+@media(max-width:760px){
+  #br-player .br-in{grid-template-columns:1fr;padding:24px;gap:26px;text-align:center}
+  #br-player .br-art{max-width:240px;margin:0 auto}
+  #br-player .ctl,#br-player .chips,#br-player .vol{justify-content:center;margin-left:auto;margin-right:auto}
+}
+@media(prefers-reduced-motion:reduce){#br-player *{animation:none!important;transition:none!important}}
+
+/* ==========================================================================
+   Added for the 4-page build
+   ========================================================================== */
+/* Kicker above section titles, e.g. "A BABSON SOUND PROJECT" */
+.br-kicker{display:block;text-align:center;font-family:"Bebas Neue",Impact,sans-serif;font-size:14px;letter-spacing:.32em;color:var(--br-accent-text);margin-bottom:6px}
+.br-lead{max-width:640px;margin:0 auto}
+.br-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:22px}
+.br-btn{display:inline-block;font-family:"Bebas Neue",Impact,sans-serif;font-size:20px;letter-spacing:.16em;background:var(--br-accent);color:var(--br-on-accent)!important;padding:10px 26px;border-radius:8px;text-decoration:none!important;transition:filter .15s,transform .15s}
+.br-btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.br-btn.ghost{background:transparent;color:var(--br-text)!important;border:1px solid var(--br-border2)}
+.simple-section-title-bg{background-color:#0C1A13!important}
+.simple-section-title-bg:before{background:linear-gradient(135deg,rgba(12,26,19,.9),rgba(8,8,8,.94))!important;opacity:1!important}
+.simple-section-title-bg h1{font-size:clamp(48px,8vw,84px)!important;letter-spacing:.14em;color:#E8E8E8!important}
+
+/* Scroll reveal (added by babson-sound.js; content stays visible if JS is off) */
+.br-js .br-reveal{opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease;transition-delay:var(--br-delay,0s)}
+.br-js .br-reveal.in{opacity:1;transform:none}
+
+/* Cursor spotlight on cards */
+.br-spot{position:relative;overflow:hidden}
+.br-spot:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),rgba(46,196,141,.16),transparent 70%)}
+.br-spot:hover:before{opacity:1}
+
+/* Player: ambient visualizer (canvas drawn by babson-sound.js) */
+#br-player .br-viz{display:none;width:100%;max-width:340px;height:44px;margin-top:18px}
+#br-player.playing .br-viz{display:block}
+#br-player .eq{display:none!important}
+#br-player .br-link{display:inline-block;margin-top:14px;font-family:"Bebas Neue",Impact,sans-serif;letter-spacing:.16em;color:var(--br-accent-text)!important;text-decoration:none!important}
+
+/* Schedule (rendered by babson-sound.js from BR_CONFIG.schedule; hidden when empty) */
+#br-schedule[hidden]{display:none}
+.br-sched{max-width:760px;margin:0 auto;border:1px solid var(--br-border2);border-radius:14px;overflow:hidden;background:var(--br-surface);box-shadow:var(--br-shadow);text-align:left}
+.br-row{display:flex;align-items:center;gap:14px;padding:15px 18px}.br-row+.br-row{border-top:1px solid var(--br-border)}
+.br-row.live{background:rgba(0,102,68,.09)}
+.br-row .t{width:92px;flex:none;font-family:"Bebas Neue",Impact,sans-serif;font-size:16px;letter-spacing:.05em;color:var(--br-sub)}.br-row.live .t{color:var(--br-accent-text)}
+.br-row .dot{width:6px;height:6px;border-radius:50%;flex:none}.br-row.live .dot{background:var(--br-red)}
+.br-row b{display:block;color:var(--br-text);font-weight:500;font-size:15px}.br-row small{color:var(--br-sub);font-size:12.5px}
+.br-row .onair{margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:var(--br-red);color:#fff;padding:3px 10px;border-radius:3px;font-family:"Bebas Neue",Impact,sans-serif;font-size:13px;letter-spacing:.2em}
+
+/* Light-mode contrast fixes for the always-dark player + page banners */
+@media (prefers-color-scheme:light){.cover.imagebg h1,.simple-section-title-bg h1{color:#F5F0E8!important}}
+@media(prefers-reduced-motion:reduce){.br-js .br-reveal{opacity:1;transform:none;transition:none}.br-spot:before{display:none}}
+
+/* ==========================================================================
+   Built-in nav bar (used when the page is shown without the Campus Groups header;
+   hidden automatically when the Campus Groups nav is present)
+   ========================================================================== */
+.br-nav{position:fixed;top:0;left:0;right:0;z-index:9999;background:color-mix(in srgb,var(--br-bg) 90%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--br-border);font-family:"Bebas Neue",Impact,"Arial Narrow",sans-serif}
+.br-nav-in{max-width:1080px;margin:0 auto;padding:0 20px;height:64px;display:flex;align-items:center;gap:22px}
+.br-mark{display:flex;flex-direction:column;line-height:.9;text-decoration:none!important}
+.br-mark b{font-weight:400;font-size:13px;letter-spacing:.3em;color:var(--br-accent-text)}
+.br-mark span{font-size:26px;letter-spacing:.3em;color:var(--br-text);margin-top:2px}
+.br-links{display:flex;gap:2px;flex:1}
+.br-links a{font-size:18px;letter-spacing:.14em;color:var(--br-sub)!important;padding:6px 12px;border-radius:6px;text-decoration:none!important;text-transform:uppercase;transition:color .15s,background .15s}
+.br-links a:hover{color:var(--br-text)!important;background:var(--br-surface)}
+.br-links a[aria-current=page]{color:var(--br-accent-text)!important;background:var(--br-surface)}
+.br-nav .br-air{display:inline-flex;align-items:center;gap:6px;background:var(--br-red);color:#fff;padding:3px 10px;border-radius:3px;font-size:13px;letter-spacing:.2em;box-shadow:0 2px 6px rgba(200,48,42,.35)}
+.br-nav .br-air[hidden]{display:none}
+.br-nav .br-air i{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.75);animation:brpulse 1.4s infinite}
+.br-nav .br-join{font-size:18px;letter-spacing:.16em;background:var(--br-accent);color:#fff!important;padding:8px 20px;border-radius:8px;text-decoration:none!important;transition:filter .15s}
+.br-nav .br-join:hover{filter:brightness(1.15)}
+.br-nav[hidden]{display:none!important}
+.br-widget-slot{display:none}
+@media(max-width:760px){
+  .br-nav-in{height:auto;flex-wrap:wrap;padding-top:10px;padding-bottom:8px;gap:8px 14px}
+  .br-links{order:3;flex-basis:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .br-links a{font-size:16px;padding:6px 10px;white-space:nowrap}
+  .br-nav .br-air{display:none}
+  .br-nav .br-join{margin-left:auto;padding:7px 16px;font-size:16px}
+}
+
+/* ==========================================================================
+   Polish pass
+   ========================================================================== */
+/* Hero: animated glow + grain so the banner has depth (content stays above) */
+.cover.imagebg{position:relative;overflow:hidden}
+.cover.imagebg:after{content:"";position:absolute;inset:-20%;pointer-events:none;z-index:1;
+  background:radial-gradient(40% 55% at 18% 30%,rgba(0,122,80,.38),transparent 70%),radial-gradient(35% 50% at 82% 70%,rgba(46,196,141,.16),transparent 70%);
+  animation:brdrift 16s ease-in-out infinite alternate}
+@keyframes brdrift{to{transform:translate3d(4%,-3%,0) scale(1.08)}}
+.cover.imagebg .container{position:relative;z-index:2}
+.cover.imagebg h1{font-size:clamp(56px,11vw,120px)!important;line-height:.9;text-shadow:0 0 40px rgba(46,196,141,.28)}
+.cover.imagebg h3{margin-top:14px!important}
+
+/* Marquee strip under the hero */
+.br-marquee{overflow:hidden;border-top:1px solid var(--br-border2);border-bottom:1px solid var(--br-border2);background:var(--br-surface);padding:12px 0;white-space:nowrap}
+.br-marquee-track{display:inline-flex;animation:brmarq 38s linear infinite;will-change:transform}
+.br-marquee span{font-family:"Bebas Neue",Impact,sans-serif;font-size:26px;letter-spacing:.2em;color:var(--br-sub);padding:0 22px}
+.br-marquee i{font-style:normal;color:var(--br-accent-text);padding:0 4px}
+@keyframes brmarq{to{transform:translateX(-50%)}}
+.br-marquee:hover .br-marquee-track{animation-play-state:paused}
+
+/* Volume slider: the theme hides native range tracks, so draw our own */
+#br-player .vol input[type=range]{-webkit-appearance:none;appearance:none;height:24px!important;cursor:pointer}
+#br-player .vol input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:rgba(255,255,255,.22)}
+#br-player .vol input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:rgba(255,255,255,.22)}
+#br-player .vol input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;margin-top:-6px;border-radius:50%;background:#2EC48D;border:2px solid #0C1A13}
+#br-player .vol input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#2EC48D;border:2px solid #0C1A13}
+
+/* Native audio bar is only a no-JS fallback; keep it quiet and on-brand */
+#br-player audio{color-scheme:dark;border-radius:999px}
+#br-player.playing .br-hero{border-color:rgba(46,196,141,.45);box-shadow:0 0 0 1px rgba(46,196,141,.2),0 10px 40px rgba(0,102,68,.35)}
+
+/* Card hover lift */
+.feature-3.boxed,.mailer-section-icons .text-block,[class*="section-cont__content-officers--"] .feature-8,.wrapper-events--featured .feature{transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease}
+.feature-3.boxed:hover,.mailer-section-icons .text-block:hover,[class*="section-cont__content-officers--"] .feature-8:hover,.wrapper-events--featured .feature:hover{transform:translateY(-4px);border-color:rgba(46,196,141,.5)!important}
+
+/* Nav: clearer active state */
+.br-links a[aria-current=page]{box-shadow:inset 0 -2px 0 var(--br-accent-text)}
+@media(prefers-reduced-motion:reduce){.cover.imagebg:after,.br-marquee-track{animation:none!important}}
+
+.br-nav-spacer{height:64px}
+.br-nav[hidden]+.br-nav-spacer{display:none!important}
+@media(max-width:760px){.br-nav-spacer{height:98px}}
+
+.br-marquee+section{padding-top:48px}
+
+/* ==========================================================================
+   Radio announcement + developer gate
+   ========================================================================== */
+.br-soon{display:inline-flex;align-items:center;gap:8px;font-family:"Bebas Neue",Impact,sans-serif;font-size:16px;letter-spacing:.28em;color:#fff;background:var(--br-red);padding:4px 14px;border-radius:3px;box-shadow:0 2px 10px rgba(200,48,42,.4)}
+.br-soon i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.8);animation:brpulse 1.4s infinite}
+.br-coming{position:relative;overflow:hidden;text-align:center;padding:clamp(72px,12vw,150px) 0 clamp(64px,10vw,120px)!important;background:linear-gradient(135deg,#0C1A13,#080808)!important;border-bottom:1px solid var(--br-border2)}
+.br-coming:before{content:"";position:absolute;inset:-25%;pointer-events:none;background:radial-gradient(38% 50% at 22% 35%,rgba(0,122,80,.45),transparent 70%),radial-gradient(34% 46% at 80% 70%,rgba(46,196,141,.2),transparent 70%);animation:brdrift 16s ease-in-out infinite alternate}
+.br-coming:after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.14) 0 1px,transparent 1px 3px);opacity:.7}
+.br-coming .container{position:relative;z-index:2}
+.br-coming .br-kicker{margin-top:22px;color:#2EC48D}
+.br-coming h1{font-size:clamp(60px,13vw,150px)!important;line-height:.88;margin:0 0 18px!important;color:#E8E8E8!important;text-shadow:0 0 50px rgba(46,196,141,.3)}
+.br-coming .br-lead{color:#a8a8a8;font-size:clamp(16px,2vw,20px)}
+.br-eqidle{display:flex;justify-content:center;align-items:flex-end;gap:5px;height:34px;margin-top:38px}
+.br-eqidle i{width:5px;height:100%;border-radius:3px;background:linear-gradient(#2EC48D,#006644);transform-origin:bottom;animation:breq 1.1s ease-in-out infinite}
+.br-eqidle i:nth-child(2n){animation-delay:.2s}.br-eqidle i:nth-child(3n){animation-delay:.45s}.br-eqidle i:nth-child(5n){animation-delay:.7s}
+@keyframes breq{0%,100%{transform:scaleY(.2)}50%{transform:scaleY(1)}}
+.br-teaser{padding-bottom:0}
+.br-gate-wrap{padding-top:28px!important;padding-bottom:8px!important;text-align:center}
+.br-gate-wrap[hidden],#br-unlocked[hidden],.br-gate[hidden]{display:none!important}
+.br-lock{display:inline-flex;align-items:center;gap:8px;background:none;border:0;cursor:pointer;color:var(--br-sub);font-family:"Bebas Neue",Impact,sans-serif;font-size:16px;letter-spacing:.2em;padding:8px 12px;border-radius:6px;transition:color .15s,background .15s}
+.br-lock:hover,.br-lock[aria-expanded=true]{color:var(--br-text);background:var(--br-surface)}
+.br-lock svg{width:15px;height:15px;fill:currentColor}
+.br-gate{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:14px auto 0;max-width:420px}
+.br-gate input{flex:1;min-width:180px;background:var(--br-surface)!important;color:var(--br-text)!important;border:1px solid var(--br-border2)!important;border-radius:8px;padding:10px 14px;height:auto!important;font-size:15px}
+.br-gate input:focus{outline:2px solid rgba(46,196,141,.6);outline-offset:1px}
+.br-gate .br-btn{border:0;cursor:pointer}
+#br-gate-msg{flex-basis:100%;min-height:20px;margin:4px 0 0;font-size:13px;color:var(--br-sub)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media(prefers-reduced-motion:reduce){.br-coming:before,.br-eqidle i,.br-soon i{animation:none!important}}
+
+/* Join banner (Leadership page): the platform forces it to full window height; keep it a normal banner */
+.imageblock.subscribe-video-1{height:auto!important;min-height:min(480px,70vh)!important}
+
+/* Big announcement on the home page */
+.br-teaser{padding-top:clamp(70px,10vw,140px)!important;padding-bottom:clamp(70px,10vw,140px)!important;position:relative;overflow:hidden}
+.br-teaser:before{content:"";position:absolute;left:50%;top:50%;width:min(1100px,130vw);height:min(700px,90vw);transform:translate(-50%,-50%);background:radial-gradient(closest-side,rgba(46,196,141,.28),rgba(0,102,68,.1) 55%,transparent 75%);animation:brglow 6s ease-in-out infinite;pointer-events:none}
+@keyframes brglow{0%,100%{opacity:.7;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}}
+.br-teaser .container{position:relative}
+.br-teaser .br-soon{font-size:clamp(18px,2.2vw,26px);padding:8px 22px}
+.br-teaser h2.br-mega{font-family:"Bebas Neue",Impact,sans-serif!important;font-size:clamp(72px,17vw,240px)!important;line-height:.84!important;letter-spacing:.01em;margin:.12em 0 .18em!important;color:#E8E8E8!important;text-shadow:0 0 70px rgba(46,196,141,.45)}
+.br-teaser .br-lead{font-size:clamp(18px,2.4vw,28px)!important;max-width:760px;margin-left:auto;margin-right:auto}
+.br-teaser .br-btn{font-size:clamp(20px,2.2vw,28px);padding:14px 38px}
+@media(prefers-color-scheme:light){.br-teaser h2.br-mega{color:#111!important;text-shadow:none}}
+/* Semester classics */
+.br-classics{max-width:900px;margin:10px auto 34px;text-align:center}
+.br-classics h3{font-family:"Bebas Neue",Impact,sans-serif;font-size:clamp(30px,4.5vw,52px);letter-spacing:.02em;margin:6px 0 20px}
+.br-chips{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.br-chips li{font-family:"Bebas Neue",Impact,sans-serif;font-size:clamp(18px,2.2vw,24px);letter-spacing:.08em;padding:8px 18px;border-radius:999px;border:1px solid rgba(46,196,141,.5);background:rgba(0,102,68,.18);color:var(--br-accent-text)}
+.br-chips li.more{border-style:dashed;background:none;opacity:.85}
+
+/* ==========================================================================
+   Light mode: warm paper feel, like the iOS app (cream, warm ink, soft brown shadows,
+   deep brand-green heroes instead of near-black ones)
+   ========================================================================== */
+@media (prefers-color-scheme:light){
+  :root{--br-warm-shadow:0 6px 18px rgba(74,52,16,.10),0 1px 3px rgba(74,52,16,.08);--br-ink:#1A1710;--br-cream:#F5F0E8}
+  html,body,.main-container{background:#F5F0E8!important}
+  section{background:transparent!important}
+  section.bg--primary{background:var(--br-surface2)!important}
+  ::selection{background:rgba(0,102,68,.22);color:var(--br-ink)}
+  h1,h2,h3,h4,h5,.h4,.h5{color:var(--br-ink)!important}
+  p,.lead,li,span{color:var(--br-sub)}
+  .br-nav{background:rgba(248,243,234,.88)!important;box-shadow:0 1px 0 var(--br-border),0 6px 20px rgba(74,52,16,.06)!important}
+  .br-links a.on,.br-links a:hover{background:#FDFAF4}
+
+  /* Cards: cream surfaces, warm borders, soft brown shadows */
+  .mailer-section-icons .text-block,.feature-3.boxed,.wrapper-events--featured .feature,[class*="section-cont__content-officers--"] .feature-8,#br-player .br-hero,.br-sched{
+    background:var(--br-surface)!important;border-color:var(--br-border)!important;box-shadow:var(--br-warm-shadow)!important}
+  .cg_dynamic_msg{background:var(--br-surface);border-color:#CFC5AE;color:var(--br-sub)!important;box-shadow:var(--br-warm-shadow)}
+  .br-marquee{background:var(--br-surface2);border-color:var(--br-border)}
+  .br-marquee span{color:#7A7062}
+  .br-chips li{background:rgba(0,102,68,.09);border-color:rgba(0,102,68,.35);color:#005A3B}
+  section h2:before,section h2:after{background:#CFC5AE}
+
+  /* Heroes: deep brand green with cream type */
+  .cover.imagebg,.simple-section-title-bg,.br-coming{background:linear-gradient(135deg,#0A6B49,#00553A 60%,#004630)!important}
+  .cover.imagebg:before,.cover.imagebg .background-image-holder:after,.simple-section-title-bg:before{background:linear-gradient(135deg,rgba(0,102,68,.55),rgba(0,60,40,.7))!important}
+  .br-coming:after{opacity:.25}
+  .cover.imagebg h1,.simple-section-title-bg h1,.br-coming h1{color:var(--br-cream)!important;text-shadow:0 2px 30px rgba(0,40,26,.35)}
+  .cover.imagebg h3,.br-coming .br-kicker{color:#DDD055!important}
+  .br-coming .br-lead{color:rgba(245,240,232,.82)}
+  .br-coming .br-btn.ghost{color:var(--br-cream)!important;border-color:rgba(245,240,232,.55)}
+  .br-coming .br-btn:not(.ghost){background:var(--br-cream);color:#00553A!important}
+  .br-eqidle i{background:linear-gradient(#DDD055,#F5F0E8)}
+  .cover.imagebg .stack-blue-btn a,.cover.imagebg .btn{background:var(--br-cream)!important;color:#00553A!important}
+
+  /* Teaser on home: warm paper, ink headline, soft green glow */
+  .br-teaser:before{background:radial-gradient(closest-side,rgba(0,122,80,.16),rgba(221,208,85,.10) 55%,transparent 75%)}
+  .br-teaser h2.br-mega{color:var(--br-ink)!important;text-shadow:none}
+  .br-teaser .br-btn.ghost{border-color:#00664466;color:#005A3B!important;background:rgba(253,250,244,.7)}
+
+  .cg_dynamic_msg,.cg_dynamic_msg *{color:var(--br-sub)!important;opacity:1!important}
+  section.bg--primary h2,section.bg--primary h2 *{color:var(--br-ink)!important;opacity:1!important}
+
+  /* Footer */
+  footer,footer.bg--dark{background:var(--br-surface2)!important}
+}

@@ -1,0 +1,65 @@
+<!-- BABSON RADIO LIVE PLAYER (a Babson Sound feature)
+     Home page: add as a new section directly BELOW the Babson Sound banner, so the page stays Babson Sound's.
+     Radio page: use radio.html, which is this same block with a page heading.
+     Needs babson-radio-theme.css. The stream URL is the same Asura Icecast mount the iOS app uses.
+     If scripts are stripped by the page editor, the plain browser audio control still plays the stream. -->
+<section id="br-player" data-stream="https://a12.asurahosting.com:8360/radio.mp3">
+  <div class="container">
+    <div class="br-hero"><div class="br-in">
+      <div class="br-art">
+        <div><span class="a d">BABSON</span><span class="b d">RADIO</span></div>
+        <hr>
+        <div class="br-led d"><i></i>INTERNET RADIO</div>
+      </div>
+      <div>
+        <div class="chips d"><span class="chip gold">LIVE</span><span class="chip">AUTO DJ</span><span class="chip">BY BABSON SOUND</span></div>
+        <h2 class="br-title d">Live Stream</h2>
+        <p class="br-sub">Babson College &mdash; student-run internet radio, on all day.</p>
+        <div class="ctl">
+          <button class="play" id="br-play" type="button" aria-label="Play live stream">
+            <svg class="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
+            <svg class="i-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9" opacity=".25"/><path d="M12 3a9 9 0 0 1 9 9" stroke-linecap="round"/></svg>
+          </button>
+          <div class="eq"><i></i><i></i><i></i><i></i></div>
+          <span class="onair d" id="br-air" hidden><i></i>ON AIR</span>
+        </div>
+        <div class="vol">
+          <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9z"/></svg>
+          <input id="br-vol" type="range" min="0" max="1" step=".01" value="1" aria-label="Volume">
+          <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>
+        </div>
+        <div class="status" id="br-status" aria-live="polite"></div>
+        <audio id="br-aud" controls preload="none" src="https://a12.asurahosting.com:8360/radio.mp3"></audio>
+      </div>
+    </div></div>
+  </div>
+</section>
+<script>
+(function(){
+  var box=document.getElementById('br-player'); if(!box) return;
+  box.classList.add('js');
+  var a=document.getElementById('br-aud'), btn=document.getElementById('br-play'),
+      st=document.getElementById('br-status'), vol=document.getElementById('br-vol'),
+      air=document.getElementById('br-air'), URL0=box.getAttribute('data-stream');
+  function set(s){
+    box.classList.toggle('playing',s==='playing'); box.classList.toggle('buffering',s==='buffering');
+    air.hidden=(s!=='playing');
+    btn.setAttribute('aria-label',s==='playing'?'Stop live stream':'Play live stream');
+    st.textContent=(s==='buffering')?'Connecting to the stream…':'';
+  }
+  a.removeAttribute('controls'); a.removeAttribute('src'); a.preload='none';
+  btn.addEventListener('click',function(){
+    if(box.classList.contains('playing')||box.classList.contains('buffering')){
+      a.pause(); a.removeAttribute('src'); a.load(); set('idle'); return;
+    }
+    set('buffering'); a.src=URL0+'?t='+Date.now();   // always join at the live edge
+    var p=a.play();
+    if(p&&p.catch) p.catch(function(){ set('idle'); st.textContent='Could not start the stream. Try again in a moment.'; });
+  });
+  a.addEventListener('playing',function(){set('playing');});
+  a.addEventListener('waiting',function(){set('buffering');});
+  a.addEventListener('error',function(){ if(a.getAttribute('src')){ set('idle'); st.textContent='Stream unavailable right now. Please try again shortly.'; }});
+  vol.addEventListener('input',function(){a.volume=+vol.value;});
+})();
+</script>

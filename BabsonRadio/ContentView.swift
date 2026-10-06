@@ -1,17 +1,50 @@
 import SwiftUI
-import Playgrounds
 
 struct ContentView: View {
+    @Environment(\.colorScheme) var scheme
+
     var body: some View {
-        Text("Hello, world!")
-            .padding()
+        TabView {
+            LivePlayerView()
+                .tabItem {
+                    BRTabIcon(systemName: "radio", label: "Live")
+                }
+
+            FeedView()
+                .tabItem {
+                    BRTabIcon(systemName: "rectangle.stack", label: "Shows")
+                }
+
+            SearchView()
+                .tabItem {
+                    BRTabIcon(systemName: "magnifyingglass", label: "Browse")
+                }
+
+            ProfileView()
+                .tabItem {
+                    BRTabIcon(systemName: "person", label: "Profile")
+                }
+        }
+        .tint(scheme == .dark ? .brGold : .brGreen)
+        .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
     }
 }
 
-#Preview {
-    ContentView()
+// MARK: - Tab bar icon helper
+
+private struct BRTabIcon: View {
+    let systemName: String
+    let label: String
+
+    var body: some View {
+        Label(label, systemImage: systemName)
+    }
 }
 
-#Playground {
-    _ = 1 + 2
+// MARK: - Placeholder screens (will be replaced)
+
+
+
+#Preview {
+    ContentView()
 }

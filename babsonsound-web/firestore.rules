@@ -1,0 +1,116 @@
+rules_version = '2';
+
+// REVIEW BEFORE DEPLOYING: `firebase deploy --only firestore:rules` replaces whatever rules
+// are currently live. Collections other than the ones below (shows, episodes, schedule,
+// presence, users, guest*, connections) are denied by default — add any I didn't know about.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── helpers ──────────────────────────────────────────────
+    function signedIn() { return request.auth != null; }
+
+    // Verified @babson.edu address. (Firebase lowercases emails in the token.)
+    function isBabson() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.*@babson\\.edu$');
+    }
+
+    // Developer accounts: created with scripts/create-developer.mjs (custom claim, no babson.edu email).
+    function isDeveloper() {
+      return signedIn() && request.auth.token.developer == true;
+    }
+
+    function passPath() {
+      return /databases/$(database)/documents/guestPasses/$(request.auth.uid);
+    }
+    function hasGuestPass() {
+      return signedIn()
+        && exists(passPath())
+        && get(passPath()).data.revoked == false
+        && get(passPath()).data.expiresAt > request.time;
+    }
+
+    // Babson student, or a guest whose sponsored pass is still valid.
+    function isMember() { return isBabson() || isDeveloper() || hasGuestPass(); }
+
+    function role() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function isStaff() {
+      return isDeveloper() || (isBabson() && role() in ['superAdmin', 'showHost']);
+    }
+    function isAdmin() { return isDeveloper() || (isBabson() && role() == 'superAdmin'); }
+
+    // ── public ───────────────────────────────────────────────
+    match /shows/{id} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+    match /schedule/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Episodes marked isLocked: true need a member; everything else is public.
+    // NOTE: this protects the Firestore document (incl. its audioURL/youtubeID), not the
+    // media file itself — private media would also need signed URLs / Storage rules.
+    match /episodes/{id} {
+      allow read: if resource.data.get('isLocked', false) == false || isMember();
+      allow write: if isStaff();
+    }
+
+    match /presence/{uid} {
+      allow read: if true;
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // ── users ────────────────────────────────────────────────
+    // Created by the server only (signup / guest routes). Owners may edit a few
+    // harmless fields — never role, email, phone or hostOfShows.
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if false;
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['displayName', 'firstName', 'notifyNewEpisode', 'notifyGoesLive']);
+      allow update: if isAdmin();
+      allow delete: if false;
+
+      // Contact-network edges: written by /api/contacts/match only.
+      match /connections/{other} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow write: if false;
+      }
+    }
+
+    // ── guest access (all writes via server routes) ──────────
+    match /guestPasses/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid
+                      || resource.data.sponsorUid == request.auth.uid);
+      allow write: if false;
+    }
+    match /guestRequests/{id} {
+      allow read: if signedIn() && (resource.data.guestUid == request.auth.uid
+                      || resource.data.sponsorUid == request.auth.uid);
+      allow write: if false;
+    }
+
+    // ── on-air slots (all writes via server routes) ──────────
+    // Approved bookings: any member can see what's taken.
+    match /airSlots/{id} {
+      allow read: if isMember();
+      allow write: if false;
+    }
+    // Requests: the requester and staff can read; staff review them on /admin/slots.
+    match /slotRequests/{id} {
+      allow read: if signedIn() && (resource.data.requesterUid == request.auth.uid || isStaff());
+      allow write: if false;
+    }
+
+    // Server-only: phone lookup index, pending invites, sync rate limits.
+    match /phoneIndex/{id}    { allow read, write: if false; }
+    match /guestInvites/{id}  { allow read, write: if false; }
+    match /contactSyncs/{id}  { allow read, write: if false; }
+  }
+}

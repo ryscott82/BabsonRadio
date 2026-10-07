@@ -197,3 +197,43 @@ enum BabsonLinks {
         instagramHandle.isEmpty ? nil : URL(string: "https://www.instagram.com/\(instagramHandle)/")
     }
 }
+
+
+// MARK: - Profile button (top-right corner of every page; same look as the website)
+
+struct ProfileCircleButton: View {
+    @StateObject private var auth = AuthManager.shared
+    @Environment(\.colorScheme) var scheme
+    @State private var showProfile = false
+
+    var body: some View {
+        Button { showProfile = true } label: {
+            ZStack {
+                Circle()
+                    .fill(scheme == .dark ? Color.brGold : Color.brGreen)
+                    .shadow(color: .black.opacity(0.28), radius: 0, x: 0, y: 2)
+                if let user = auth.currentUser {
+                    Text(user.initials)
+                        .font(BRFont.display(14))
+                        .kerning(0.5)
+                        .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
+                } else {
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
+                }
+            }
+            .frame(width: 34, height: 34)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Profile")
+        .sheet(isPresented: $showProfile) { ProfileView() }
+    }
+}
+
+extension View {
+    /// Adds the profile circle to the top-right of a page that has a navigation bar.
+    func profileButton() -> some View {
+        toolbar { ToolbarItem(placement: .topBarTrailing) { ProfileCircleButton() } }
+    }
+}

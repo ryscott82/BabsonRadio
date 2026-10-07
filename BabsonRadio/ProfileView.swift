@@ -6,6 +6,8 @@ import Contacts
 // Shows AuthView if signed out, signed-in profile otherwise.
 
 struct ProfileView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var showReport = false
     @StateObject private var auth = AuthManager.shared
 
     var body: some View {
@@ -75,8 +77,12 @@ private struct SignedInProfileView: View {
                     if !user.isGuest {
                         goOnAirRow
                             .padding(.horizontal, 20)
-                            .padding(.bottom, 32)
+                            .padding(.bottom, 20)
                     }
+
+                    reportRow
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 32)
 
                     // Students only: developers have no babson.edu identity to sponsor guests with.
                     if !user.isDeveloper {
@@ -122,9 +128,14 @@ private struct SignedInProfileView: View {
                             .kerning(3)
                     }
                 }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Done") { dismiss() }
+                        .font(.system(size: 14, weight: .medium))
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Sign Out") {
                         auth.signOut()
+                        dismiss()
                     }
                     .font(.system(size: 13))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
@@ -210,6 +221,35 @@ private struct SignedInProfileView: View {
     }
 
     // MARK: - Listeners section
+
+    private var reportRow: some View {
+        Button { showReport = true } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "ladybug")
+                    .font(.system(size: 18))
+                    .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Report a bug or suggest a feature")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                        .multilineTextAlignment(.leading)
+                    Text("Something wrong, or an idea? Tell us.")
+                        .font(.system(size: 13))
+                        .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .brCard()
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showReport) { FeedbackView() }
+    }
 
     private var goOnAirRow: some View {
         NavigationLink {
@@ -856,5 +896,67 @@ struct BRContact: Identifiable {
         ]
         let hash = abs(name.hashValue)
         return palette[hash % palette.count]
+    }
+}
+
+
+// MARK: - Report a bug / suggest a feature
+
+struct FeedbackView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var type = "bug"
+    @State private var message = ""
+    @State private var isSending = false
+    @State private var sent = false
+    @State private var errorText: String?
+
+    private var version: String {
+        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        return "\(v) (\(b))"
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Picker("Type", selection: $type) {
+                        Text("Something is wrong").tag("bug")
+                        Text("Idea").tag("feature")
+                    }
+                    .pickerStyle(.segmented)
+                }
+                Section(type == "bug" ? "What happened? What did you expect?" : "What would make Babson Radio better?") {
+                    TextEditor(text: $message).frame(minHeight: 140)
+                }
+                if let errorText { Section { Text(errorText).foregroundStyle(.red) } }
+                if sent { Section { Text("Sent. Thank you, we read every one.").foregroundStyle(.green) } }
+            }
+            .navigationTitle("Report or suggest")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button(sent ? "Done" : "Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(isSending ? "Sending…" : "Send") { send() }
+                        .disabled(isSending || sent || message.trimmingCharacters(in: .whitespacesAndNewlines).count < 5)
+                }
+            }
+        }
+    }
+
+    private func send() {
+        isSending = true; errorText = nil
+        Task {
+            do {
+                let _: EmptyResponse = try await BackendAPI.post("/api/feedback", [
+                    "type": type, "message": message.trimmingCharacters(in: .whitespacesAndNewlines),
+                    "platform": "ios", "appVersion": version,
+                ])
+                sent = true; message = ""
+            } catch {
+                errorText = (error as? BackendError)?.message ?? error.localizedDescription
+            }
+            isSending = false
+        }
     }
 }

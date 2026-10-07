@@ -66,6 +66,12 @@ export default function AdminPage() {
               href="/admin/autoschedule"
             />
             <AdminCard
+              title="Bugs & Ideas"
+              description="Reports and feature ideas sent from the website and the app. Mark them done as you go."
+              icon="🐞"
+              href="/admin/feedback"
+            />
+            <AdminCard
               title="Users"
               description="View all users, manage roles, and review guest access invites."
               icon="👥"

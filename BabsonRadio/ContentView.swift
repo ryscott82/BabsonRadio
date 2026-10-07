@@ -20,14 +20,10 @@ struct ContentView: View {
                     BRTabIcon(systemName: "rectangle.stack", label: "Shows")
                 }
 
+            // Search is the right-most tab; Profile is the circle button in the top corner of every page.
             SearchView()
                 .tabItem {
-                    BRTabIcon(systemName: "magnifyingglass", label: "Browse")
-                }
-
-            ProfileView()
-                .tabItem {
-                    BRTabIcon(systemName: "person", label: "Profile")
+                    BRTabIcon(systemName: "magnifyingglass", label: "Search")
                 }
         }
         .tint(scheme == .dark ? .brGold : .brGreen)

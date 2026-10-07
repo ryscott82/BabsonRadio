@@ -12,13 +12,17 @@ export default function Nav() {
   const { user, userDoc, isAdmin, isBabson, isGuest } = useAuth()
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
+  const initials = (() => {
+    const first = (userDoc?.firstName ?? userDoc?.displayName ?? user?.displayName ?? user?.email ?? 'U').trim()
+    const last = (userDoc?.lastName ?? '').trim()
+    return ((first[0] ?? 'U') + (last[0] ?? '')).toUpperCase()
+  })()
   if (pathname === '/coming-soon') return null
 
   const navLinks = [
     { href: '/',        label: 'Live' },
     { href: '/schedule', label: 'Schedule' },
     { href: '/shows',   label: 'Shows' },
-    { href: '/browse',  label: 'Browse' },
     { href: '/slots',   label: 'Go On Air' },
   ]
 
@@ -76,6 +80,12 @@ export default function Nav() {
               Admin
             </Link>
           )}
+          <Link href="/browse"
+            className={`font-display tracking-widest text-sm px-4 py-2 rounded-md transition-colors ${
+              pathname.startsWith('/browse') ? 'text-br-gold bg-br-dk-surface' : 'text-br-dk-sub hover:text-br-dk-text hover:bg-br-dk-surface'
+            }`}>
+            Search
+          </Link>
         </nav>
 
         {/* Right side */}
@@ -97,14 +107,11 @@ export default function Nav() {
             <div className="relative">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                aria-pressed={menuOpen} className="sk-key flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm"
+                aria-label="Profile menu"
+                aria-pressed={menuOpen}
+                className="sk-btn rounded-full w-9 h-9 flex items-center justify-center font-display text-sm"
               >
-                <span className="w-6 h-6 rounded-full bg-br-green flex items-center justify-center font-display text-white text-xs">
-                  {(userDoc?.displayName ?? user.email ?? 'U')[0].toUpperCase()}
-                </span>
-                <span className="text-br-dk-sub text-xs hidden sm:block">
-                  {userDoc?.displayName ?? user.email}
-                </span>
+                {initials}
               </button>
               {menuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-44 sk-raised rounded-xl overflow-hidden">
@@ -187,6 +194,10 @@ export default function Nav() {
              className="font-display tracking-widest text-sm text-br-gold py-2">
             Join Babson Sound
           </a>
+          <Link href="/browse" onClick={() => setMenuOpen(false)}
+            className="font-display tracking-widest text-sm text-br-dk-sub hover:text-br-dk-text py-2">
+            Search
+          </Link>
           {isAdmin && (
             <Link href="/admin" onClick={() => setMenuOpen(false)}
               className="font-display tracking-widest text-sm text-br-dk-sub hover:text-br-dk-text py-2">

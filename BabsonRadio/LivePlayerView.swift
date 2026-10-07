@@ -80,6 +80,8 @@ struct LivePlayerView: View {
                 OnAirBadge()
                     .transition(.scale.combined(with: .opacity))
             }
+
+            ProfileCircleButton()
         }
         .animation(.easeInOut(duration: 0.25), value: audio.isPlaying)
         .padding(.top, topInset)

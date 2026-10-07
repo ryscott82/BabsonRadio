@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from '@/lib/server/admin'
 import { passwordMatches, prelaunchToken } from '@/lib/prelaunch'
+import { classifyServerError } from '@/lib/errors'
 
 export const runtime = 'nodejs'
 
@@ -34,11 +35,17 @@ export async function POST(req: Request) {
     await new Promise(r => setTimeout(r, 800)) // slows down guessing
     return NextResponse.json({ error: 'That password is not right.', code: 'BR-PRE-001' }, { status: 401 })
   }
-  await ensurePreviewUser()
-  const customToken = await adminAuth().createCustomToken(PREVIEW_UID, { developer: true })
-  return NextResponse.json({
-    ok: true,
-    gate: await prelaunchToken(process.env.PRELAUNCH_PASSWORD as string),
-    customToken,
-  })
+  const gate = await prelaunchToken(process.env.PRELAUNCH_PASSWORD as string)
+
+  // The password is right, so the site always opens. Signing in as the Preview account needs the Firebase
+  // service account; if that part fails, still let them in and report why (logged in Vercel as well).
+  try {
+    await ensurePreviewUser()
+    const customToken = await adminAuth().createCustomToken(PREVIEW_UID, { developer: true })
+    return NextResponse.json({ ok: true, gate, customToken })
+  } catch (e) {
+    const code = classifyServerError(e)
+    console.error(`[prelaunch unlock] sign-in step failed ${code}`, e)
+    return NextResponse.json({ ok: true, gate, customToken: null, warning: code })
+  }
 }

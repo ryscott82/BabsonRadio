@@ -46,6 +46,7 @@ struct FeedView: View {
             }
             .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
             .navigationTitle("")
+            .profileButton()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {

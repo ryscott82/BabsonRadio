@@ -183,6 +183,7 @@ class AuthManager: ObservableObject {
             isDeveloper: isDev,
             role: me?.role ?? (isDev ? "developer" : "listener")
         )
+        currentUser?.lastName = me?.lastName ?? ""
         guestStatus = nil
         isSignedIn = true
     }
@@ -583,10 +584,14 @@ struct BRUser: Identifiable {
     var isDeveloper: Bool = false
     var role: String = "listener"
     var emailVerifiedHint: Bool = false   // guests: Firebase's emailVerified flag at sign-in
+    var lastName: String = ""
 
     var isGuest: Bool { role == "guest" }
 
     var initials: String {
+        if !lastName.isEmpty, let f = displayName.first, let l = lastName.first {
+            return "\(f)\(l)".uppercased()
+        }
         let parts = displayName.split(separator: " ")
         if parts.count >= 2 {
             return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()

@@ -37,6 +37,7 @@ struct SearchView: View {
                 }
             }
             .navigationTitle("")
+            .profileButton()
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $query,

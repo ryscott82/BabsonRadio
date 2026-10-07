@@ -116,6 +116,7 @@ service cloud.firestore {
     match /contactSyncs/{id}  { allow read, write: if false; }
     // Auto-scheduler settings and generated filler blocks: server only (served via /api routes).
     match /config/{id}        { allow read, write: if false; }
+    match /feedback/{id}      { allow read, write: if false; }
     match /autoBlocks/{id}    { allow read, write: if false; }
   }
 }

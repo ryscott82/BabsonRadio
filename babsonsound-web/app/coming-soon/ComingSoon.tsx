@@ -53,13 +53,15 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
       })
       if (!res.ok) {
         const d = await res.json().catch(() => ({}))
-        setError(`${d.error ?? 'Could not unlock.'}${d.code ? ` (${d.code})` : ''}`)
+        setError(`${d.error ?? 'Could not unlock.'} (${d.code ?? `BR-SRV-000, status ${res.status}`})`)
       } else {
         const d = await res.json()
         // Session cookie (no expiry) that PreviewLock removes on refresh; sign-in kept in memory only.
         document.cookie = `${PRELAUNCH_COOKIE}=${d.gate}; path=/; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`
-        await setPersistence(auth, inMemoryPersistence)
-        await signInWithCustomToken(auth, d.customToken)
+        if (d.customToken) {
+          await setPersistence(auth, inMemoryPersistence)
+          await signInWithCustomToken(auth, d.customToken)
+        }
         router.replace('/')
         router.refresh()
       }
@@ -79,19 +81,17 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
         {arrived ? "We're getting on the air. Check back in a moment." : 'Student radio returns October 22.'}
       </p>
 
+      <a href={LINKS.interest} target="_blank" rel="noopener noreferrer"
+         className="sk-btn block w-full max-w-3xl font-display tracking-[0.12em] text-3xl sm:text-5xl md:text-6xl leading-none px-6 py-7 sm:py-9 rounded-2xl mb-3">
+        FILL OUT THE INTEREST FORM
+      </a>
+      <p className="text-br-dk-sub text-base sm:text-lg mb-14">Takes under a minute. Tell us what you want to hear.</p>
+
       <div className="flex items-start gap-3 sm:gap-6 mb-14" role="timer" aria-label="Time until October 22">
         <Tile value={t.days} label="DAYS" />
         <Tile value={t.hours} label="HOURS" />
         <Tile value={t.mins} label="MINUTES" />
         <Tile value={t.secs} label="SECONDS" />
-      </div>
-
-      <div className="mb-12 space-y-3 max-w-sm w-full">
-        <p className="text-sm text-br-dk-sub">Tell us what you want to hear. It takes under a minute.</p>
-        <a href={LINKS.interest} target="_blank" rel="noopener noreferrer"
-           className="sk-btn block w-full font-display tracking-[0.2em] text-base py-4 rounded-xl">
-          FILL OUT THE INTEREST FORM
-        </a>
       </div>
 
       {!open ? (

@@ -575,6 +575,7 @@ struct ScheduleView: View {
             .refreshable { await slots.loadFeed() }
             .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
             .navigationTitle("")
+            .profileButton()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {

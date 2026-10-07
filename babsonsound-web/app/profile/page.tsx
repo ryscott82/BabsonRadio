@@ -7,6 +7,43 @@ import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet, deleteMyAccount, signOut } from '@/lib/auth'
 import { Card, ErrorText, Field, GhostButton, PrimaryButton } from '@/components/AuthUI'
 
+function ReportForm() {
+  const [type, setType] = useState<'bug' | 'feature'>('bug')
+  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState('')
+  const [err, setErr] = useState('')
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault(); setBusy(true); setErr(''); setNotice('')
+    try {
+      await api('/api/feedback', { type, message, platform: 'web', page: window.location.pathname })
+      setMessage(''); setNotice('Sent. Thank you, we read every one.')
+    } catch (error) { setErr(error instanceof Error ? error.message : 'Could not send.') }
+    setBusy(false)
+  }
+
+  return (
+    <form onSubmit={send} className="sk-raised rounded-2xl p-5 space-y-3">
+      <h2 className="font-display text-br-dk-text tracking-widest text-sm">REPORT A BUG OR SUGGEST A FEATURE</h2>
+      <div className="grid grid-cols-2 gap-2">
+        {(['bug', 'feature'] as const).map(k => (
+          <button key={k} type="button" aria-pressed={type === k} onClick={() => setType(k)}
+                  className="sk-key rounded-lg py-2 text-xs font-display tracking-widest text-br-dk-text">
+            {k === 'bug' ? 'SOMETHING IS WRONG' : 'IDEA'}
+          </button>
+        ))}
+      </div>
+      <textarea className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none" rows={4} maxLength={2000}
+                value={message} onChange={e => setMessage(e.target.value)} required
+                placeholder={type === 'bug' ? 'What happened? What did you expect?' : 'What would make Babson Radio better?'} />
+      <ErrorText>{err}</ErrorText>
+      {notice && <p className="text-sm text-br-gold">{notice}</p>}
+      <PrimaryButton type="submit" busy={busy}>SEND</PrimaryButton>
+    </form>
+  )
+}
+
 export default function ProfilePage() {
   const { user, userDoc, loading, isBabson, isDeveloper, isGuest } = useAuth()
   const router = useRouter()
@@ -65,6 +102,8 @@ export default function ProfilePage() {
           </div>
         )}
         <ErrorText>{error}</ErrorText>
+
+        <ReportForm />
 
         {isBabson && <p className="text-center text-sm"><Link href="/guest-access" className="text-br-gold">Guest access</Link></p>}
 

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { fetchPresence, friendsLine, sendHeartbeat } from '@/lib/presence'
 import { useAuth } from '@/contexts/AuthContext'
+import { useNowPlaying } from '@/lib/nowplaying'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 
@@ -14,6 +15,13 @@ export default function LivePlayer() {
   const [friends, setFriends] = useState<{ firstName: string }[]>([])
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const { loading, user, canListenLive, isGuest } = useAuth()
+  const np = useNowPlaying()
+  const hasSong = !!np?.configured && !!np.title
+  const [clock, setClock] = useState(0)
+  useEffect(() => { const t = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(t) }, [])
+  // Progress between polls: elapsed at the time of the last poll plus the seconds since.
+  const pct = np && np.duration > 0
+    ? Math.min(100, ((np.elapsed + Math.max(0, clock - np.receivedAt) / 1000) / np.duration) * 100) : 0
 
   // Stop immediately if access lapses (trial/pass ended, sign-out).
   useEffect(() => {
@@ -69,10 +77,15 @@ export default function LivePlayer() {
 
         {/* Art block */}
         <div className="relative shrink-0 w-44 h-44 md:w-56 md:h-56 rounded-xl overflow-hidden bg-gradient-to-br from-[#003D27] to-[#006644] grain flex items-center justify-center">
-          <div className="text-center">
-            <p className="font-display text-br-brass/80 text-sm tracking-[0.4em]">BABSON</p>
-            <p className="font-display text-white text-4xl tracking-[0.2em]">RADIO</p>
-          </div>
+          {np?.art ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={np.art} alt={hasSong ? `Cover for ${np.title}` : ''} className="absolute inset-0 w-full h-full object-cover" />
+          ) : (
+            <div className="text-center">
+              <p className="font-display text-br-brass/80 text-sm tracking-[0.4em]">BABSON</p>
+              <p className="font-display text-white text-4xl tracking-[0.2em]">RADIO</p>
+            </div>
+          )}
           {/* Gold stripe */}
           <div className="absolute bottom-8 inset-x-0 h-px bg-br-brass/50" />
           {/* LED */}
@@ -90,10 +103,24 @@ export default function LivePlayer() {
             <span className="font-display text-white text-xs tracking-[0.25em]">On Air</span>
           </div>
 
-          <h2 className="font-display text-br-dk-text text-4xl md:text-5xl tracking-wide mb-1">
-            Live Stream
+          <h2 className="font-display text-br-dk-text text-3xl md:text-4xl tracking-wide mb-1">
+            {hasSong ? np!.title : 'Live Stream'}
           </h2>
-          <p className="text-br-dk-sub text-sm mb-6">Babson College — Internet Radio</p>
+          <p className="text-br-dk-sub text-sm mb-1">
+            {hasSong ? (np!.artist || 'Babson Radio') : 'Babson College — Internet Radio'}
+          </p>
+          {hasSong && np!.isLive && np!.streamer && (
+            <p className="text-br-gold text-xs mb-1">Live with {np!.streamer}</p>
+          )}
+          {hasSong && np!.duration > 0 && (
+            <div className="h-1 w-full max-w-xs mx-auto md:mx-0 rounded-full bg-br-dk-border overflow-hidden mt-2" aria-hidden>
+              <div className="h-full bg-br-gold" style={{ width: `${pct}%` }} />
+            </div>
+          )}
+          {hasSong && np!.next && (
+            <p className="text-br-dk-sub text-xs mt-2">Next: {np!.next.title}{np!.next.artist ? ` · ${np!.next.artist}` : ''}</p>
+          )}
+          <div className="mb-6" />
 
           {!loading && !canListenLive && (
             <p className="text-br-dk-sub text-sm mb-4">

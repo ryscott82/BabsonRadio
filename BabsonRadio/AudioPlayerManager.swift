@@ -1,6 +1,25 @@
 import AVFoundation
 import MediaPlayer
 import Combine
+#if canImport(UIKit)
+import UIKit
+#endif
+
+/// What is on air, from the website's /api/nowplaying (which reads AzuraCast).
+nonisolated struct NowPlayingInfo: Decodable, Equatable {
+    struct Next: Decodable, Equatable { let title: String; let artist: String }
+    let configured: Bool
+    let title: String
+    let artist: String
+    let album: String
+    let art: String
+    let elapsed: Double
+    let duration: Double
+    let isLive: Bool
+    let streamer: String
+    let listeners: Int
+    let next: Next?
+}
 
 class AudioPlayerManager: ObservableObject {
 
@@ -16,6 +35,15 @@ class AudioPlayerManager: ObservableObject {
     @Published var nowPlayingTitle = "Babson Radio"
     @Published var nowPlayingSubtitle = "Live Stream"
     @Published var isBuffering = false
+    /// Latest song info (nil until the first successful fetch).
+    @Published var nowPlaying: NowPlayingInfo?
+    /// When `nowPlaying` was fetched, so the progress bar can run between polls.
+    @Published var nowPlayingFetchedAt = Date()
+
+    private var pollTask: Task<Void, Never>?
+    private var pollUsers = 0
+    private var artworkURL = ""
+    private var artwork: Any?   // MPMediaItemArtwork (kept as Any so macOS builds don't need UIKit)
 
     private var player: AVPlayer?
     private var playerItem: AVPlayerItem?
@@ -120,6 +148,7 @@ class AudioPlayerManager: ObservableObject {
 
         player?.play()
         isPlaying = true
+        startPolling()
         updateNowPlayingInfo()
     }
 
@@ -127,11 +156,55 @@ class AudioPlayerManager: ObservableObject {
         player?.pause()
         isPlaying = false
         isBuffering = false
+        stopPolling()
         updateNowPlayingInfo()
     }
 
     func toggle() {
         isPlaying ? stop() : play()
+    }
+
+    // MARK: - Now playing (song info)
+
+    /// Call when a screen that shows the song appears; pair with `stopPolling()`. Playing also keeps it going.
+    func startPolling() {
+        pollUsers += 1
+        guard pollTask == nil else { return }
+        pollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.refreshNowPlaying()
+                try? await Task.sleep(nanoseconds: 12_000_000_000)
+            }
+        }
+    }
+
+    func stopPolling() {
+        pollUsers = max(0, pollUsers - 1)
+        if pollUsers == 0 && !isPlaying { pollTask?.cancel(); pollTask = nil }
+    }
+
+    func refreshNowPlaying() async {
+        guard let np: NowPlayingInfo = try? await BackendAPI.get("/api/nowplaying"), np.configured else { return }
+        let changed = np.title != nowPlaying?.title || np.artist != nowPlaying?.artist
+        nowPlaying = np
+        nowPlayingFetchedAt = Date()
+        if !np.title.isEmpty {
+            nowPlayingTitle = np.title
+            nowPlayingSubtitle = np.artist
+        }
+        if np.art != artworkURL { await loadArtwork(np.art) }
+        if changed || artworkURL.isEmpty == false { updateNowPlayingInfo() }
+    }
+
+    private func loadArtwork(_ urlString: String) async {
+        artworkURL = urlString
+        artwork = nil
+#if canImport(UIKit)
+        guard let url = URL(string: urlString),
+              let (data, _) = try? await URLSession.shared.data(from: url),
+              let image = UIImage(data: data) else { return }
+        artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+#endif
     }
 
     // MARK: - Lock Screen / Control Center
@@ -152,7 +225,9 @@ class AudioPlayerManager: ObservableObject {
     private func updateNowPlayingInfo() {
         var info = [String: Any]()
         info[MPMediaItemPropertyTitle]  = nowPlayingTitle
-        info[MPMediaItemPropertyArtist] = "Babson Radio"
+        info[MPMediaItemPropertyArtist] = nowPlayingSubtitle.isEmpty ? "Babson Radio" : nowPlayingSubtitle
+        if let album = nowPlaying?.album, !album.isEmpty { info[MPMediaItemPropertyAlbumTitle] = album }
+        if let art = artwork as? MPMediaItemArtwork { info[MPMediaItemPropertyArtwork] = art }
         info[MPNowPlayingInfoPropertyIsLiveStream] = true
         info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info

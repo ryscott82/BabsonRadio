@@ -55,6 +55,8 @@ struct LivePlayerView: View {
             .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
             .ignoresSafeArea(edges: .top)
         }
+        .onAppear { audio.startPolling() }
+        .onDisappear { audio.stopPolling() }
     }
 
     // MARK: - Sub-views
@@ -90,19 +92,43 @@ struct LivePlayerView: View {
     private var nowPlayingInfo: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                BRTagChip(text: "LIVE", style: .gold)
+                BRTagChip(text: audio.nowPlaying?.isLive == true ? "LIVE DJ" : "LIVE", style: .gold)
                 BRTagChip(text: ScheduleItem.sampleSchedule.first(where: { $0.isLive })?.showName.uppercased() ?? "BABSON RADIO", style: .subtle)
                 Spacer()
             }
 
-            Text(ScheduleItem.sampleSchedule.first(where: { $0.isLive })?.showName ?? "Babson Radio")
-                .font(BRFont.display(34))
+            let song = audio.nowPlaying.flatMap { $0.title.isEmpty ? nil : $0 }
+            Text(song?.title ?? "Babson Radio")
+                .font(BRFont.display(song == nil ? 34 : 28))
                 .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                 .kerning(1)
+                .lineLimit(2)
 
-            Text(ScheduleItem.sampleSchedule.first(where: { $0.isLive })?.host ?? "Curated Mix")
+            Text(song.map { $0.artist.isEmpty ? "Babson Radio" : $0.artist } ?? "Live Stream")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+
+            if let song, song.isLive, !song.streamer.isEmpty {
+                Text("Live with \(song.streamer)")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+            }
+
+            if let song, song.duration > 0 {
+                TimelineView(.periodic(from: .now, by: 1)) { ctx in
+                    let t = song.elapsed + ctx.date.timeIntervalSince(audio.nowPlayingFetchedAt)
+                    ProgressView(value: min(max(t / song.duration, 0), 1))
+                        .tint(scheme == .dark ? .brGold : .brGreen)
+                        .padding(.top, 6)
+                }
+            }
+
+            if let next = audio.nowPlaying?.next {
+                Text("Next: \(next.title)\(next.artist.isEmpty ? "" : " · \(next.artist)")")
+                    .font(.system(size: 12))
+                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                    .lineLimit(1)
+            }
         }
     }
 
@@ -222,6 +248,7 @@ struct LivePlayerView: View {
 
 struct PlayerArtCard: View {
     @Environment(\.colorScheme) var scheme
+    @ObservedObject private var audio = AudioPlayerManager.shared
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
@@ -280,6 +307,18 @@ struct PlayerArtCard: View {
                     Spacer()
                 }
                 Spacer()
+            }
+
+            // Album art for the current song (covers the wordmark when there is one)
+            if let art = audio.nowPlaying?.art, !art.isEmpty, let url = URL(string: art) {
+                Color.clear
+                    .aspectRatio(1, contentMode: .fit)
+                    .overlay(
+                        AsyncImage(url: url) { phase in
+                            if let image = phase.image { image.resizable().scaledToFill() } else { Color.clear }
+                        }
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
             }
 
             // Bottom-left: indicator light + freq label

@@ -27,6 +27,7 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
   const launch = new Date(launchISO).getTime()
   const [now, setNow] = useState<number | null>(null)
   const [open, setOpen] = useState(false)
+  const [email, setEmail] = useState('') // decoy: must stay empty
   const [pw, setPw] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -44,7 +45,7 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
     e.preventDefault(); setBusy(true); setError('')
     try {
       const res = await fetch('/api/prelaunch/unlock', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw, email }),
       })
       if (!res.ok) {
         const d = await res.json().catch(() => ({}))
@@ -82,6 +83,8 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
         </button>
       ) : (
         <form onSubmit={unlock} className="w-full max-w-xs space-y-4 text-left sk-raised rounded-2xl p-5">
+          <Field label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)}
+                 autoComplete="off" placeholder="Leave blank" />
           <Field label="Developer password" type="password" value={pw} onChange={e => setPw(e.target.value)}
                  autoComplete="current-password" autoFocus />
           <ErrorText>{error}</ErrorText>

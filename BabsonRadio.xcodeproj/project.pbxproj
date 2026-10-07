@@ -6,6 +6,11 @@
 	objectVersion = 90;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		946DA56C3075D5080065A9A2 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 946DA56B3075D5080065A9A2 /* FirebaseAuth */; };
+		946DA56E3075D5080065A9A2 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 946DA56D3075D5080065A9A2 /* FirebaseCore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* BabsonRadio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BabsonRadio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -35,6 +40,8 @@
 		000000000000000130000000 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				946DA56E3075D5080065A9A2 /* FirebaseCore in Frameworks */,
+				946DA56C3075D5080065A9A2 /* FirebaseAuth in Frameworks */,
 			);
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -73,6 +80,10 @@
 				000000000000000000000010 /* BabsonRadio */,
 			);
 			name = BabsonRadio;
+			packageProductDependencies = (
+				946DA56B3075D5080065A9A2 /* FirebaseAuth */,
+				946DA56D3075D5080065A9A2 /* FirebaseCore */,
+			);
 			productName = MyApp;
 			productReference = 000000000000000000000120 /* BabsonRadio.app */;
 			productType = "com.apple.product-type.application";
@@ -101,6 +112,9 @@
 			);
 			mainGroup = 000000000000000000000001;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				946DA56A3075D5080065A9A2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 90;
 			productRefGroup = 000000000000000000000020 /* Products */;
 			projectDirPath = "";
@@ -388,6 +402,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		946DA56A3075D5080065A9A2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.19.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		946DA56B3075D5080065A9A2 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 946DA56A3075D5080065A9A2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		946DA56D3075D5080065A9A2 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 946DA56A3075D5080065A9A2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 000000000000000000000000 /* Project object */;
 }

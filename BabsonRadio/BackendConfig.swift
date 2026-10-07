@@ -6,7 +6,7 @@ import Foundation
 // A phone can't reach "localhost", so this must be a real URL.
 
 enum BackendConfig {
-    static let baseURLString = "https://YOUR-SITE-URL-HERE"
+    static let baseURLString = "https://babsonradio.com"
 
     static var isConfigured: Bool { !baseURLString.contains("YOUR-SITE") }
 }

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyBJdI8dn0OKQCZdHhGxUnLkB7Dr0oBiB60</string>
+	<key>GCM_SENDER_ID</key>
+	<string>59924433878</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.ryanscottpersonalteam.BabsonRadio</string>
+	<key>PROJECT_ID</key>
+	<string>babson-radio</string>
+	<key>STORAGE_BUCKET</key>
+	<string>babson-radio.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:59924433878:ios:9996a61068a26c036df277</string>
+</dict>
+</plist>

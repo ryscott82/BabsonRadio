@@ -43,6 +43,11 @@ class AudioPlayerManager: ObservableObject {
     /// When `nowPlaying` was fetched, so the progress bar can run between polls.
     @Published var nowPlayingFetchedAt = Date()
 
+    /// Set every 5 minutes of listening while signed out; the player screen shows the sign-in invitation.
+    @Published var showSignInPrompt = false
+    private var previewTimer: Timer?
+    private var previewSeconds = 0
+
     private var pollTask: Task<Void, Never>?
     private var pollUsers = 0
     private var artworkURL = ""
@@ -122,7 +127,8 @@ class AudioPlayerManager: ObservableObject {
 
     func play() {
         // Also covers lock-screen / Control Center play: live radio needs an account with access.
-        guard AuthManager.shared.canListenLive else { return }
+        // Signed-out visitors can preview the live stream; signed-in people need access (students, trial or pass).
+        guard AuthManager.shared.canListenLive || !AuthManager.shared.isSignedIn else { return }
         guard let url = URL(string: streamURLString) else {
             print("Invalid stream URL — update streamURLString in AudioPlayerManager.swift")
             return
@@ -151,6 +157,7 @@ class AudioPlayerManager: ObservableObject {
 
         player?.play()
         isPlaying = true
+        startPreviewPrompts()
         startPolling()
         updateNowPlayingInfo()
     }
@@ -159,12 +166,29 @@ class AudioPlayerManager: ObservableObject {
         player?.pause()
         isPlaying = false
         isBuffering = false
+        previewTimer?.invalidate(); previewTimer = nil
         stopPolling()
         updateNowPlayingInfo()
     }
 
     func toggle() {
         isPlaying ? stop() : play()
+    }
+
+    // MARK: - Preview prompt (signed-out listeners)
+
+    private func startPreviewPrompts() {
+        previewTimer?.invalidate(); previewTimer = nil
+        previewSeconds = 0
+        guard !AuthManager.shared.isSignedIn else { return }
+        previewTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                if AuthManager.shared.isSignedIn { self.previewTimer?.invalidate(); self.previewTimer = nil; return }
+                self.previewSeconds += 1
+                if self.previewSeconds >= 300 { self.previewSeconds = 0; self.showSignInPrompt = true }
+            }
+        }
     }
 
     // MARK: - Now playing (song info)

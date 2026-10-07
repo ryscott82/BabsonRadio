@@ -8,6 +8,7 @@ import { auth } from '@/lib/firebase'
 import { rememberUnlock } from '@/lib/prelaunch-client'
 import { LINKS } from '@/lib/links'
 import { ErrorText, Field, PrimaryButton } from '@/components/AuthUI'
+import ShareFormButton from '@/components/ShareFormButton'
 
 function parts(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000))
@@ -86,7 +87,8 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
          className="sk-btn block w-full max-w-3xl font-display tracking-[0.12em] text-3xl sm:text-5xl md:text-6xl leading-none px-6 py-7 sm:py-9 rounded-2xl mb-3">
         FILL OUT THE INTEREST FORM
       </a>
-      <p className="text-br-dk-sub text-base sm:text-lg mb-14">Takes under a minute. Tell us what you want to hear.</p>
+      <p className="text-br-dk-sub text-base sm:text-lg mb-5">Takes under a minute. Tell us what you want to hear.</p>
+      <ShareFormButton className="mb-14" />
 
       <div className="flex items-start gap-3 sm:gap-6 mb-14" role="timer" aria-label="Time until October 22">
         <Tile value={t.days} label="DAYS" />
@@ -98,6 +100,7 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
       <p className="text-sm text-br-dk-sub mb-3">
         Beta tester? <Link href="/auth" className="underline underline-offset-4 text-br-dk-text">Sign in or create your account</Link>
       </p>
+      <p className="text-xs text-br-dk-sub mb-3"><Link href="/privacy" className="underline underline-offset-4">Privacy policy</Link></p>
       {!open ? (
         <button onClick={() => setOpen(true)} className="text-xs text-br-dk-sub hover:text-br-dk-text underline underline-offset-4">
           Developer access

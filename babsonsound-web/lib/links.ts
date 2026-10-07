@@ -6,6 +6,8 @@ export const LINKS = {
   // Babson Radio interest form (Google Forms). The main call to action right now.
   interest: 'https://docs.google.com/forms/d/1e83KoSDG4Ns-BFChmZZAlPhjvGvaO1a5YokSaViEuEM/viewform',
   about: 'https://belong.babson.edu/BCR',
+  // Babson College's own privacy policy (also applies to Babson Radio).
+  babsonPrivacy: 'https://babson.edu/privacy-policy/',
   events: 'https://belong.babson.edu/bcr/events/',
   // The page the "Join Now" button on our Belong page opens.
   join: 'https://belong.babson.edu/bcr/club_signup',

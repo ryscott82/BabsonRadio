@@ -15,7 +15,11 @@ export default function LivePlayer() {
   const [listenerCount, setListenerCount] = useState(0)
   const [friends, setFriends] = useState<{ firstName: string }[]>([])
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const { loading, user, canListenLive, isGuest } = useAuth()
+  const { loading, user, canListenLive: memberListen, isGuest } = useAuth()
+  // Signed-out visitors can preview the live stream; they get a sign-up prompt every 5 minutes of listening.
+  const previewing = !loading && !user
+  const canListenLive = memberListen || previewing
+  const [prompt, setPrompt] = useState(false)
   const np = useNowPlaying()
   const hasSong = !!np?.configured && !!np.title
   const [clock, setClock] = useState(0)
@@ -41,6 +45,15 @@ export default function LivePlayer() {
     const t = setInterval(load, 30_000)
     return () => { alive = false; clearInterval(t) }
   }, [user?.uid])
+
+  // Every 5 minutes of listening while signed out, invite them to make an account (the audio keeps playing).
+  useEffect(() => {
+    if (!isPlaying || !previewing) return
+    let seconds = 0
+    const t = setInterval(() => { if (++seconds >= 300) { seconds = 0; setPrompt(true) } }, 1000)
+    return () => clearInterval(t)
+  }, [isPlaying, previewing])
+  useEffect(() => { if (user) queueMicrotask(() => setPrompt(false)) }, [user])
 
   // Heartbeat while playing so the server knows we're tuned in.
   useEffect(() => {
@@ -125,6 +138,12 @@ export default function LivePlayer() {
           )}
           <div className="mb-6" />
 
+          {previewing && (
+            <p className="text-br-dk-sub text-xs mb-4">
+              You are previewing the live stream. <Link href="/auth" className="text-br-gold">Sign in</Link> or{' '}
+              <Link href="/auth" className="text-br-gold">create a free account</Link> for reminders, friends and more.
+            </p>
+          )}
           {!loading && !canListenLive && (
             <p className="text-br-dk-sub text-sm mb-4">
               {!user
@@ -182,6 +201,17 @@ export default function LivePlayer() {
           </div>
         </div>
       </div>
+      {prompt && (
+        <div className="fixed inset-0 z-[60] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={() => setPrompt(false)}>
+          <div role="dialog" aria-modal="true" aria-label="Create an account" onClick={e => e.stopPropagation()}
+               className="sk-raised rounded-2xl p-6 w-full max-w-sm space-y-4 text-center">
+            <h3 className="font-display text-br-dk-text text-2xl tracking-wide">Enjoying Babson Radio?</h3>
+            <p className="text-sm text-br-dk-sub">Create a free account to get show reminders, see who is tuned in, and keep your place. The music keeps playing.</p>
+            <Link href="/auth" className="sk-btn block rounded-xl py-3 text-sm font-display tracking-[0.2em]">CREATE ACCOUNT OR SIGN IN</Link>
+            <button onClick={() => setPrompt(false)} className="text-sm text-br-dk-sub">Keep listening</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

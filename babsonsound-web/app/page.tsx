@@ -3,6 +3,7 @@ import EpisodeCard from '@/components/EpisodeCard'
 import { LikesProvider, LikeBar } from '@/components/Likes'
 import Link from 'next/link'
 import { LINKS } from '@/lib/links'
+import ShareFormButton from '@/components/ShareFormButton'
 import { getRecentEpisodes, getTodaySchedule, getFeaturedShows } from '@/lib/firestore'
 
 export const revalidate = 60 // re-fetch data every 60 seconds
@@ -23,10 +24,13 @@ export default async function HomePage() {
           <h2 className="font-display text-br-dk-text text-2xl tracking-wide">TELL US WHAT YOU WANT TO HEAR</h2>
           <p className="text-sm text-br-dk-sub mt-1">Music, podcasts, sports highlights. The interest form takes under a minute.</p>
         </div>
-        <a href={LINKS.interest} target="_blank" rel="noopener noreferrer"
-           className="sk-btn font-display tracking-[0.2em] text-sm px-6 py-3.5 rounded-xl text-center shrink-0">
-          FILL OUT THE FORM
-        </a>
+        <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+          <a href={LINKS.interest} target="_blank" rel="noopener noreferrer"
+             className="sk-btn font-display tracking-[0.2em] text-sm px-6 py-3.5 rounded-xl text-center">
+            FILL OUT THE FORM
+          </a>
+          <ShareFormButton className="text-center" />
+        </div>
       </section>
 
       {/* ── Live Player ──────────────────────────────────────── */}

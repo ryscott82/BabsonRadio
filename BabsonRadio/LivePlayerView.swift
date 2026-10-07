@@ -7,6 +7,10 @@ struct LivePlayerView: View {
     @StateObject private var audio = AudioPlayerManager.shared
     @StateObject private var auth = AuthManager.shared
     @Environment(\.colorScheme) var scheme
+    @State private var showProfileSheet = false
+
+    /// Signed-out visitors can preview the stream.
+    private var canPlay: Bool { auth.canListenLive || !auth.isSignedIn }
 
     /// The on-air event's color, or the station gold/green.
     private var accent: Color {
@@ -37,9 +41,16 @@ struct LivePlayerView: View {
                 // ── Play / Stop Control ─────────────────────────────
                 playControl
                     .padding(.top, 28)
-                    .opacity(auth.canListenLive ? 1 : 0.4)
+                    .opacity(canPlay ? 1 : 0.4)
 
-                if !auth.canListenLive {
+                if !auth.isSignedIn {
+                    Text("You're previewing the live stream. Sign in or create a free account from the Profile tab for reminders, friends and more.")
+                        .font(.system(size: 13))
+                        .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                        .padding(.top, 12)
+                } else if !auth.canListenLive {
                     Text(lockedMessage)
                         .font(.system(size: 13))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
@@ -67,6 +78,13 @@ struct LivePlayerView: View {
             }
             .ignoresSafeArea(edges: .top)
         }
+        .alert("Enjoying Babson Radio?", isPresented: $audio.showSignInPrompt) {
+            Button("Create account or sign in") { showProfileSheet = true }
+            Button("Keep listening", role: .cancel) {}
+        } message: {
+            Text("Create a free account to get show reminders and see who is tuned in. The music keeps playing.")
+        }
+        .sheet(isPresented: $showProfileSheet) { ProfileView() }
         .onAppear { audio.startPolling() }
         .onDisappear { audio.stopPolling() }
     }
@@ -160,7 +178,7 @@ struct LivePlayerView: View {
     }
 
     private var playControl: some View {
-        Button(action: { if auth.canListenLive { audio.toggle() } }) {
+        Button(action: { if canPlay { audio.toggle() } }) {
             ZStack {
                 Circle()
                     .fill(scheme == .dark ? Color.brGold : Color.brGreen)
@@ -224,8 +242,25 @@ struct LivePlayerView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
 
+            ShareLink(item: BabsonLinks.interest,
+                      subject: Text("Babson Radio"),
+                      message: Text("Student radio is coming back to Babson. Tell them what you want to hear:")) {
+                HStack(spacing: 8) {
+                    Spacer()
+                    Image(systemName: "square.and.arrow.up")
+                    Text("SHARE THE FORM")
+                        .font(BRFont.display(15))
+                        .kerning(2)
+                    Spacer()
+                }
+                .padding(.vertical, 14)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(scheme == .dark ? Color.brGold : Color.brGreen, lineWidth: 1.5))
+                .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+            }
+
             HStack(spacing: 22) {
                 Link("About us", destination: BabsonLinks.about)
+                Link("Privacy", destination: BabsonLinks.privacy)
                 Link("Events", destination: BabsonLinks.events)
                 if let ig = BabsonLinks.instagram {
                     Link(destination: ig) {

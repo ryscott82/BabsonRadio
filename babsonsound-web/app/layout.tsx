@@ -27,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <Nav />
           <VerifyBanner />
-          <main className="pt-16">
+          <main className="relative z-[1] pt-16">
             {children}
           </main>
           <Footer />

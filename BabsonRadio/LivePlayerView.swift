@@ -157,6 +157,24 @@ struct LivePlayerView: View {
                     .foregroundColor(accent)
             }
 
+            if let note = audio.nowPlaying?.note, !(note.headline.isEmpty && note.message.isEmpty) {
+                VStack(spacing: 4) {
+                    if !note.headline.isEmpty {
+                        Text(note.headline)
+                            .font(.system(size: 14, weight: .bold))
+                    }
+                    if !note.message.isEmpty {
+                        Text(note.message)
+                            .font(.system(size: 13))
+                    }
+                }
+                .multilineTextAlignment(.center)
+                .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                .padding(12)
+                .frame(maxWidth: .infinity)
+                .background(accent.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
+            }
+
             if let song, song.isLive, !song.streamer.isEmpty {
                 Text("Live with \(song.streamer)")
                     .font(.system(size: 12, weight: .semibold))

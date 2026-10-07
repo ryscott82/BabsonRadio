@@ -13,8 +13,7 @@ export const LINKS = {
   join: 'https://belong.babson.edu/bcr/club_signup',
 } as const
 
-/** Contact email for legal and privacy notices (copyright complaints, data requests). Set this before launch. */
-export const CONTACT_EMAIL = ''
+// The contact email lives on the server (app/api/contact/route.ts) and is only shown to signed-in people.
 
 /** Instagram handle without the @ (e.g. 'babsonsound'). Leave empty to hide the Instagram links. */
 export const INSTAGRAM_HANDLE = 'babson.sound'

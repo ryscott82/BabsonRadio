@@ -2,6 +2,8 @@ import { adminDb } from '@/lib/server/admin'
 import { handle } from '@/lib/server/http'
 import { HOST_WINDOW_MS, hostContext, occurrenceId, showOpen } from '@/lib/server/host'
 import { azNowPlaying } from '@/lib/server/azuracast'
+import { canEditAnyShow } from '@/lib/server/host'
+import { EMOJIS, getNote, parseSongs, reactionSummary } from '@/lib/server/live'
 
 export const runtime = 'nodejs'
 
@@ -18,8 +20,26 @@ export async function GET(req: Request) {
     const pending = (await db.collection('showUpdates').where('requestedBy', '==', c.t.uid).get()).docs
       .filter(d => d.get('status') === 'pending').map(d => ({ id: d.id, scheduleId: d.get('scheduleId'), showName: d.get('showName') ?? '' }))
 
+    // Passive feed for each show whose window is open: pinned note, reactions, ratings, upvoted songs.
+    const insights: Record<string, unknown> = {}
+    for (const sh of c.open.slice(0, 3)) {
+      const id = occurrenceId(sh)
+      const [note, rx, ratings, list, votes] = await Promise.all([
+        getNote(db, id, now), reactionSummary(db, id, now),
+        db.collection('ratings').where('occId', '==', id).get(),
+        db.collection('setlists').doc(id).get(), db.collection('setlistVotes').doc(id).get(),
+      ])
+      const stars = ratings.docs.map(d => d.get('stars') as number)
+      const v = (votes.get('votes') ?? {}) as Record<string, string[]>
+      insights[id] = {
+        note, reactions: rx.total, recentReactions: rx.recent,
+        ratingCount: stars.length, ratingAvg: stars.length ? Math.round((stars.reduce((a, b) => a + b, 0) / stars.length) * 10) / 10 : 0,
+        songs: parseSongs(String(list.get('songs') ?? '')).map(x => ({ ...x, votes: v[x.id]?.length ?? 0 })).sort((a, b) => b.votes - a.votes),
+      }
+    }
+
     return {
-      staff: c.staff, controlsOpen, windowHours: HOST_WINDOW_MS / 3_600_000, now,
+      staff: c.staff, canEditAny: await canEditAnyShow(db, c.t), emojis: EMOJIS, insights, controlsOpen, windowHours: HOST_WINDOW_MS / 3_600_000, now,
       shows: c.shows.map(s => ({ ...s, id: occurrenceId(s), open: showOpen(s, now) })),
       nowPlaying, pending,
     }

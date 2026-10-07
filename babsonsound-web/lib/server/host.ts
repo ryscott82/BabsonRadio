@@ -1,7 +1,7 @@
 import 'server-only'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 import type { DecodedIdToken } from 'firebase-admin/auth'
-import { localParts, parseClock } from '../autoschedule'
+import { localParts, occursOn, parseClock, type Repeat } from '../autoschedule'
 import { loadConfig } from './autoschedule'
 import { localDate, localToUtc } from './tz'
 import { HttpError, isBabsonToken, isDeveloperToken, requireUser } from './http'
@@ -41,7 +41,8 @@ export async function hostShows(db: Firestore, uid: string, now: number, days = 
     const [y, m, dd] = localDate(probe, tz)
     const dow = localParts(probe, tz).dow
     for (const w of weekly.docs) {
-      if (w.get('isActive') === false || w.get('dayOfWeek') !== dow) continue
+      if (w.get('isActive') === false) continue
+      if (!occursOn({ dayOfWeek: w.get('dayOfWeek'), repeat: w.get('repeat'), anchor: w.get('anchor'), weeks: w.get('weeks'), dates: w.get('dates') } as Repeat & { dayOfWeek?: number }, dow, y, m, dd)) continue
       const s = parseClock(String(w.get('startTime') ?? ''))
       if (s === null) continue
       const e = parseClock(String(w.get('endTime') ?? ''))
@@ -60,6 +61,14 @@ export async function isStaffUser(db: Firestore, t: DecodedIdToken): Promise<boo
   if (isDeveloperToken(t)) return true
   if (!isBabsonToken(t)) return false
   return (await db.collection('users').doc(t.uid).get()).get('role') === 'superAdmin'
+}
+
+/** Directors, admins and developers can change live info on any show. Hosts only on their own. */
+export async function canEditAnyShow(db: Firestore, t: DecodedIdToken): Promise<boolean> {
+  if (isDeveloperToken(t)) return true
+  if (!isBabsonToken(t)) return false
+  const role = (await db.collection('users').doc(t.uid).get()).get('role')
+  return role === 'superAdmin' || role === 'director'
 }
 
 export interface HostContext { t: DecodedIdToken; staff: boolean; shows: HostShow[]; open: HostShow[] }

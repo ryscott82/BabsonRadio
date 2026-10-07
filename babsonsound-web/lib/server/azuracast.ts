@@ -148,3 +148,9 @@ export async function azSkip(): Promise<void> {
   if (!azuraConfigured()) throw new Error('AzuraCast is not configured')
   await az(`/station/${station()}/backend/skip`, { method: 'POST' })
 }
+
+/** Start/stop the broadcast engine (backend = AutoDJ, frontend = the stream server). Needs "Manage station broadcasting". */
+export async function azControl(part: 'backend' | 'frontend', action: 'start' | 'stop' | 'restart'): Promise<void> {
+  if (!azuraConfigured()) throw new Error('AzuraCast is not configured')
+  await az(`/station/${station()}/${part}/${action}`, { method: 'POST' })
+}

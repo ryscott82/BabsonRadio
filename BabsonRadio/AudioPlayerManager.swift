@@ -22,6 +22,9 @@ nonisolated struct NowPlayingInfo: Decodable, Equatable {
     /// Scheduled show/event on air now, and its color (#RRGGBB, empty = default).
     let showTitle: String?
     let color: String?
+    /// Message a host or admin pinned for the current show.
+    struct Note: Decodable, Equatable { let headline: String; let message: String }
+    let note: Note?
 }
 
 class AudioPlayerManager: ObservableObject {

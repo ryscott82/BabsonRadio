@@ -10,6 +10,11 @@ export interface NowPlaying {
   next: { title: string; artist: string } | null
   showTitle: string
   color: string
+  occId: string
+  isShow: boolean
+  showStart: number
+  showEnd: number
+  note: { headline: string; message: string; updatedAt: number; by: string } | null
   updatedAt: number
   /** client clock (ms) when this was fetched, for the progress bar */
   receivedAt: number

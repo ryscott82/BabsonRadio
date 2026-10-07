@@ -1,6 +1,6 @@
 import 'server-only'
 import { adminDb } from './admin'
-import { buildScheduleFeed } from './scheduleFeed'
+import { currentOnAir, getNote, type LiveNote } from './live'
 
 // Public "what is on air" feed for the website and the iOS app.
 // Reads AzuraCast's public now-playing endpoint (no API key). Env: AZURACAST_URL, AZURACAST_STATION_ID.
@@ -15,6 +15,13 @@ export interface NowPlayingInfo {
   /** The scheduled show/event on air right now, and the color its scheduler picked ('' = default). */
   showTitle: string
   color: string
+  /** The airing on right now (also for genre blocks), for reactions, ratings and votes. Empty when nothing is scheduled. */
+  occId: string
+  isShow: boolean
+  showStart: number
+  showEnd: number
+  /** A message the host or staff pinned to this show, or null. */
+  note: LiveNote | null
   updatedAt: number
 }
 
@@ -23,7 +30,8 @@ let cache: { at: number; value: NowPlayingInfo } | null = null
 
 const empty = (configured: boolean): NowPlayingInfo => ({
   configured, title: '', artist: '', album: '', art: '', elapsed: 0, duration: 0,
-  isLive: false, streamer: '', listeners: 0, next: null, showTitle: '', color: '', updatedAt: Date.now(),
+  isLive: false, streamer: '', listeners: 0, next: null, showTitle: '', color: '',
+  occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, updatedAt: Date.now(),
 })
 
 type Song = { text?: string; artist?: string; title?: string; album?: string; art?: string }
@@ -34,18 +42,18 @@ type Raw = {
   listeners?: { current?: number; total?: number }
 }
 
-const RANK = { event: 0, slot: 1, weekly: 2, auto: 3 } as const
-
 /** The scheduled thing on air right now (one-time event > student slot > weekly show > genre block). */
-async function onAir(): Promise<{ showTitle: string; color: string }> {
+async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'color' | 'occId' | 'isShow' | 'showStart' | 'showEnd' | 'note'>> {
+  const none = { showTitle: '', color: '', occId: '', isShow: false, showStart: 0, showEnd: 0, note: null }
   try {
-    const now = Date.now()
-    const items = (await buildScheduleFeed(adminDb(), { days: 1, showStudentHosts: false, now }))
-      .filter(i => i.startAt <= now && i.endAt > now)
-      .sort((a, b) => RANK[a.source] - RANK[b.source])
-    const top = items[0]
-    return top ? { showTitle: top.source === 'auto' ? '' : top.title, color: top.color } : { showTitle: '', color: '' }
-  } catch { return { showTitle: '', color: '' } }
+    const db = adminDb()
+    const cur = await currentOnAir(db)
+    if (!cur) return none
+    return {
+      showTitle: cur.isShow ? cur.item.title : '', color: cur.item.color, occId: cur.occId, isShow: cur.isShow,
+      showStart: cur.item.startAt, showEnd: cur.item.endAt, note: await getNote(db, cur.occId),
+    }
+  } catch { return none }
 }
 
 export async function getNowPlaying(): Promise<NowPlayingInfo> {

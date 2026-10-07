@@ -9,8 +9,14 @@ import ImagePicker from '@/components/ImagePicker'
 
 interface HShow { id: string; key: string; kind: 'weekly' | 'slot'; refId: string; title: string; startAt: number; endAt: number; open: boolean }
 interface NowPlaying { song: string; elapsed: number; duration: number; isLive: boolean; streamer: string; listeners: number }
+interface Insight {
+  note: { headline: string; message: string } | null
+  reactions: Record<string, number>; recentReactions: Record<string, number>
+  ratingCount: number; ratingAvg: number
+  songs: { id: string; text: string; votes: number }[]
+}
 interface Status {
-  staff: boolean; controlsOpen: boolean; windowHours: number; now: number
+  staff: boolean; canEditAny: boolean; insights: Record<string, Insight>; controlsOpen: boolean; windowHours: number; now: number
   shows: HShow[]; nowPlaying: NowPlaying | null; pending: { id: string; scheduleId: string }[]
 }
 
@@ -55,7 +61,9 @@ export default function HostPage() {
       )}
       {st && (st.staff || st.shows.length > 0) && (
         <>
-          <Controls st={st} reload={load} />
+          <Controls st={st} />
+          <LiveNote st={st} reload={load} />
+          <Insights st={st} />
           <SetList st={st} />
           <Shows st={st} />
           <ChangeRequest st={st} reload={load} />
@@ -65,42 +73,133 @@ export default function HostPage() {
   )
 }
 
-function Controls({ st, reload }: { st: Status; reload: () => void }) {
-  const [busy, setBusy] = useState(false)
-  const [msg, setMsg] = useState('')
-  const [err, setErr] = useState('')
-  const next = st.shows.find(s => s.startAt - st.windowHours * 3_600_000 > st.now)
+function useClock() {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [])
+  return now
+}
+const mmss = (ms: number) => {
+  const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60
+  return h ? `${h}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}` : `${m}:${String(r).padStart(2, '0')}`
+}
+
+// A read-only feed for the host: what is playing, how long until they start or must finish, and nothing to press.
+function Controls({ st }: { st: Status }) {
+  const now = useClock()
   const np = st.nowPlaying
   const pct = np && np.duration > 0 ? Math.min(100, (np.elapsed / np.duration) * 100) : 0
-
-  async function skip() {
-    setBusy(true); setErr(''); setMsg('')
-    try { await api('/api/host/skip', {}); setMsg('Skipped. The next song is starting.'); setTimeout(reload, 2500) }
-    catch (e) { setErr(e instanceof Error ? e.message : 'Could not skip.') }
-    setBusy(false)
-  }
+  const upcoming = st.shows.find(s => s.endAt > now)
+  const next = st.shows.find(s => s.startAt - st.windowHours * 3_600_000 > st.now)
+  const onNow = upcoming && upcoming.startAt <= now
+  const soon = upcoming && upcoming.open && !onNow
+  const remaining = upcoming ? (onNow ? upcoming.endAt - now : upcoming.startAt - now) : 0
+  const urgent = onNow ? remaining < 5 * 60_000 : remaining < 10 * 60_000
 
   return (
     <section className="sk-raised rounded-2xl p-5 space-y-4">
       <h2 className="font-display text-br-gold tracking-widest text-sm">ON AIR</h2>
       {st.controlsOpen ? (
         <>
+          {upcoming && (onNow || soon) && (
+            <div className="text-center py-2" role="timer" aria-live="off">
+              <p className="text-xs text-br-dk-sub">{upcoming.title} · {onNow ? 'time left' : 'starts in'}</p>
+              <p className={`font-display text-6xl tabular-nums tracking-wider ${urgent ? 'text-br-red' : 'text-br-dk-text'}`}>{mmss(remaining)}</p>
+              <p className="text-xs text-br-dk-sub mt-1">
+                {onNow ? (remaining < 5 * 60_000 ? 'Time to wrap up.' : `Ends at ${clock(upcoming.endAt)}`) : `On at ${clock(upcoming.startAt)}`}
+              </p>
+            </div>
+          )}
           <div className="space-y-2">
             <p className="text-xs text-br-dk-sub">{np?.isLive ? `LIVE${np.streamer ? ` · ${np.streamer}` : ''}` : 'NOW PLAYING'}{np ? ` · ${np.listeners} listening` : ''}</p>
             <p className="text-lg text-br-dk-text">{np?.song || 'Nothing reported right now'}</p>
             {np && np.duration > 0 && <div className="h-1.5 rounded-full bg-br-dk-border overflow-hidden"><div className="h-full bg-br-gold" style={{ width: `${pct}%` }} /></div>}
           </div>
-          <ErrorText>{err}</ErrorText>
-          {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}
-          <PrimaryButton type="button" busy={busy} onClick={skip}>SKIP THIS SONG</PrimaryButton>
-          <p className="text-xs text-br-dk-sub">Open from {st.windowHours} hours before your show until {st.windowHours} hours after. Every skip is logged.</p>
+          <p className="text-xs text-br-dk-sub">Open from {st.windowHours} hours before your show until {st.windowHours} hours after. Station controls are with the admins.</p>
         </>
       ) : (
         <p className="text-sm text-br-dk-sub">
           {next
-            ? `Controls open ${st.windowHours} hours before ${next.title}, which starts ${when(next.startAt)}.`
+            ? `Opens ${st.windowHours} hours before ${next.title}, which starts ${when(next.startAt)}.`
             : 'You have no upcoming shows this week.'}
         </p>
+      )}
+    </section>
+  )
+}
+
+// Pin a message for listeners while the show airs ("Taking requests until 9", "Guest: …", "We're running late").
+function LiveNote({ st, reload }: { st: Status; reload: () => void }) {
+  const choices = st.shows.filter(s => s.open)
+  const [pick, setPick] = useState('')
+  const sel = choices.find(s => s.id === pick) ?? choices.find(s => s.startAt <= st.now && s.endAt >= st.now) ?? choices[0]
+  const existing = sel ? st.insights[sel.id]?.note : null
+  const [headline, setHeadline] = useState('')
+  const [message, setMessage] = useState('')
+  const [loadedFor, setLoadedFor] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [err, setErr] = useState('')
+  const selId = sel?.id ?? ''
+  if (selId && loadedFor !== selId) { setLoadedFor(selId); setHeadline(existing?.headline ?? ''); setMessage(existing?.message ?? '') }
+  if (!sel) return null
+
+  async function save(clear = false) {
+    setBusy(true); setErr(''); setMsg('')
+    try {
+      await api('/api/live/note', { occId: sel!.id, headline: clear ? '' : headline, message: clear ? '' : message })
+      if (clear) { setHeadline(''); setMessage('') }
+      setMsg(clear ? 'Cleared.' : 'Live. Listeners see it within a few seconds.'); reload()
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Could not save.') }
+    setBusy(false)
+  }
+
+  return (
+    <section className="sk-raised rounded-2xl p-5 space-y-3">
+      <h2 className="font-display text-br-gold tracking-widest text-sm">MESSAGE TO LISTENERS</h2>
+      {choices.length > 1 && (
+        <select value={sel.id} onChange={e => setPick(e.target.value)} className="sk-field rounded-lg px-3 py-2 text-sm text-br-dk-text w-full">
+          {choices.map(s => <option key={s.id} value={s.id}>{s.title} · {when(s.startAt)}</option>)}
+        </select>
+      )}
+      <Field label="Headline" value={headline} onChange={e => setHeadline(e.target.value)} maxLength={80} placeholder="Guest in studio: Prof. Lee" />
+      <label className="block">
+        <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">DETAILS</span>
+        <textarea value={message} onChange={e => setMessage(e.target.value)} rows={3} maxLength={400}
+                  className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none" />
+      </label>
+      <ErrorText>{err}</ErrorText>
+      {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}
+      <div className="flex gap-3 items-center">
+        <PrimaryButton type="button" busy={busy} onClick={() => save(false)}>SHOW TO LISTENERS</PrimaryButton>
+        <button type="button" onClick={() => save(true)} className="text-sm text-br-dk-sub">Clear</button>
+      </div>
+      <p className="text-xs text-br-dk-sub">It shows under the player on the website and in the app, and disappears shortly after your show ends.</p>
+    </section>
+  )
+}
+
+// What listeners are doing, so the host can respond: reactions, ratings and the most upvoted songs.
+function Insights({ st }: { st: Status }) {
+  const open = st.shows.filter(s => s.open && st.insights[s.id])
+  if (!open.length) return null
+  const sel = open.find(s => s.startAt <= st.now && s.endAt >= st.now) ?? open[0]
+  const i = st.insights[sel.id]
+  const top = i.songs.filter(x => x.votes > 0).slice(0, 5)
+  return (
+    <section className="sk-raised rounded-2xl p-5 space-y-3">
+      <h2 className="font-display text-br-gold tracking-widest text-sm">LISTENERS · {sel.title.toUpperCase()}</h2>
+      <div className="flex flex-wrap gap-4 text-sm text-br-dk-text">
+        {Object.entries(i.reactions).map(([e, n]) => (
+          <span key={e}>{e} <span className="tabular-nums">{n}</span>{i.recentReactions[e] ? <span className="text-br-gold"> +{i.recentReactions[e]}</span> : null}</span>
+        ))}
+      </div>
+      <p className="text-sm text-br-dk-sub">
+        {i.ratingCount ? <>Rating: <span className="text-br-dk-text">{i.ratingAvg} ★</span> from {i.ratingCount} listener{i.ratingCount === 1 ? '' : 's'}</> : 'No ratings yet.'}
+      </p>
+      {top.length > 0 && (
+        <ul className="text-sm space-y-0.5">
+          {top.map(x => <li key={x.id} className="text-br-dk-text">▲ {x.votes} · {x.text}</li>)}
+        </ul>
       )}
     </section>
   )

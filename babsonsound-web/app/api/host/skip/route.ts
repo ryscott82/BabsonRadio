@@ -1,16 +1,17 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle } from '@/lib/server/http'
-import { requireOnAir } from '@/lib/server/host'
+import { hostContext } from '@/lib/server/host'
 import { azSkip, azuraConfigured } from '@/lib/server/azuracast'
 
 export const runtime = 'nodejs'
 
-// Skip to the next song. Only inside the 4-hour window around your show (staff any time). Every use is logged.
+// Skip to the next song. Admins and developers only (hosts get a read-only panel). Every use is logged.
 export async function POST(req: Request) {
   return handle(async () => {
     const db = adminDb()
-    const c = await requireOnAir(req, db)
+    const c = await hostContext(req, db)
+    if (!c.staff) throw new HttpError(403, 'Only admins can skip songs.', 'BR-HST-001')
     if (!azuraConfigured()) throw new HttpError(503, 'The radio controls are not connected yet.', 'BR-HST-003')
 
     // One skip every 8 seconds per person, so a double tap does not skip two songs.

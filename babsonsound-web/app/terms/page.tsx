@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { CONTACT_EMAIL, INSTAGRAM_URL, LINKS } from '@/lib/links'
+import ContactEmail from '@/components/ContactEmail'
+import { INSTAGRAM_URL, LINKS } from '@/lib/links'
 
 export const metadata: Metadata = { title: 'Terms of Use | Babson Radio', description: 'The rules for using Babson Radio.' }
 
@@ -22,7 +23,7 @@ function Loud({ children }: { children: React.ReactNode }) {
 
 export default function TermsPage() {
   const a = 'text-br-gold underline underline-offset-4'
-  const email = CONTACT_EMAIL ? <a className={a} href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> : null
+  const email = <ContactEmail className={a} />
   return (
     <div className="max-w-2xl mx-auto px-4 py-10 space-y-8">
       <div>

@@ -6,6 +6,7 @@ import { fetchPresence, friendsLine, sendHeartbeat } from '@/lib/presence'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNowPlaying } from '@/lib/nowplaying'
 import Visualizer from '@/components/Visualizer'
+import LiveExtras from '@/components/LiveExtras'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 
@@ -84,6 +85,7 @@ export default function LivePlayer() {
   }
 
   return (
+    <>
     <div className="relative overflow-hidden rounded-2xl sk-hero grain">
       {/* Animated background, tinted with the on-air event's color */}
       <Visualizer color={np?.color ?? ''} playing={isPlaying} />
@@ -219,5 +221,7 @@ export default function LivePlayer() {
         </div>
       )}
     </div>
+    <LiveExtras np={np} />
+    </>
   )
 }

@@ -100,6 +100,12 @@ export default function AdminPage() {
         {isAdmin && (
           <>
             <AdminCard
+              title="Station Controls"
+              description="Skip a song, pin a message on any show, or take the station off air in an emergency."
+              icon="🚨"
+              href="/admin/controls"
+            />
+            <AdminCard
               title="Auto-Scheduler"
               description="Fill empty airtime with lofi, jazz, acoustic and more. Edit the rules, preview the next 48 hours."
               icon="🤖"

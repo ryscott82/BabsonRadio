@@ -1,10 +1,11 @@
 import 'server-only'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 import {
-  DEFAULT_CONFIG, parseClock, planAutoBlocks, sanitizeConfig,
+  DEFAULT_CONFIG, clipInterval, parseClock, planAutoBlocks, sanitizeConfig,
   type AutoConfig, type Interval, type PlannedBlock, type WeeklyEntry,
 } from '../autoschedule'
 import { syncToAzuraCast, type SyncResult } from './azuracast'
+import { buildScheduleFeed } from './scheduleFeed'
 
 const CONFIG_DOC = ['config', 'autoScheduler'] as const
 
@@ -24,11 +25,11 @@ async function loadWeekly(db: Firestore): Promise<WeeklyEntry[]> {
   const snap = await db.collection('schedule').where('isActive', '==', true).get()
   return snap.docs.flatMap(d => {
     const start = parseClock(String(d.get('startTime') ?? ''))
-    if (start === null || typeof d.get('dayOfWeek') !== 'number') return []
+    if (start === null || (typeof d.get('dayOfWeek') !== 'number' && d.get('repeat') !== 'dates')) return []
     const end = parseClock(String(d.get('endTime') ?? ''))
     const dur = Number(d.get('durationMin'))
     const endMin = end !== null && end > start ? end : start + (Number.isFinite(dur) && dur > 0 ? dur : 60)
-    return [{ dow: d.get('dayOfWeek') as number, startMin: start, endMin }]
+    return [{ dow: (d.get('dayOfWeek') as number | undefined) ?? 0, startMin: start, endMin, rep: { repeat: d.get('repeat'), anchor: d.get('anchor'), weeks: d.get('weeks'), dates: d.get('dates') } }]
   })
 }
 
@@ -48,22 +49,29 @@ export async function rebuildAutoSchedule(db: Firestore, opts: { dryRun?: boolea
 
   // Existing generated blocks still in play
   const existing = await db.collection('autoBlocks').where('endAt', '>', Timestamp.fromMillis(now)).get()
+  // Real bookings (student slots, one-time events, weekly shows) as concrete times.
+  const real = (await buildScheduleFeed(db, { days: Math.ceil(cfg.horizonHours / 24) + 1, showStudentHosts: false, now, includeAuto: false }))
+    .map(i => ({ startMs: i.startAt, endMs: i.endAt }))
+
   const kept: (Interval & { label: string })[] = []
   const toDelete: string[] = []
+  const trimmed: { label: string; ruleId: string; startMs: number; endMs: number }[] = []
   for (const d of existing.docs) {
     const s = d.get('startAt').toMillis() as number
     const e = d.get('endAt').toMillis() as number
-    if (s < lockEdge) kept.push({ startMs: s, endMs: e, label: d.get('label') })
-    else toDelete.push(d.id)
+    if (s >= lockEdge) { toDelete.push(d.id); continue }
+    // A block that is about to start stays, but not where something is now scheduled on top of it.
+    const pieces = clipInterval({ startMs: s, endMs: e }, real)
+    if (pieces.length === 1 && pieces[0].startMs === s && pieces[0].endMs === e) {
+      kept.push({ startMs: s, endMs: e, label: d.get('label') })
+    } else {
+      toDelete.push(d.id)
+      for (const p of pieces) { kept.push({ ...p, label: d.get('label') }); trimmed.push({ ...p, label: d.get('label'), ruleId: d.get('ruleId') ?? '' }) }
+    }
   }
   kept.sort((a, b) => a.startMs - b.startMs)
 
-  // Real bookings
-  const slots = await db.collection('airSlots').where('endAt', '>', Timestamp.fromMillis(now)).get()
-  const busy: Interval[] = [
-    ...slots.docs.map(d => ({ startMs: d.get('startAt').toMillis() as number, endMs: d.get('endAt').toMillis() as number })),
-    ...kept,
-  ]
+  const busy: Interval[] = [...real, ...kept]
   const weekly = await loadWeekly(db)
 
   const fromMs = Math.max(now, kept.length ? kept[kept.length - 1].endMs : now)
@@ -75,6 +83,12 @@ export async function rebuildAutoSchedule(db: Firestore, opts: { dryRun?: boolea
     const batch = db.batch()
     toDelete.slice(i, i + 400).forEach(id => batch.delete(db.collection('autoBlocks').doc(id)))
     await batch.commit()
+  }
+  for (const b of trimmed) {
+    await db.collection('autoBlocks').doc(String(b.startMs)).set({
+      startAt: Timestamp.fromMillis(b.startMs), endAt: Timestamp.fromMillis(b.endMs),
+      label: b.label, ruleId: b.ruleId, generated: true, createdAt: Timestamp.fromMillis(now),
+    })
   }
   for (let i = 0; i < blocks.length; i += 400) {
     const batch = db.batch()

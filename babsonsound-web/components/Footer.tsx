@@ -20,6 +20,7 @@ export default function Footer() {
           <a href={LINKS.events} {...ext} className={link}>Events</a>
           <a href={LINKS.join} {...ext} className={link}>Join Babson Sound</a>
           <a href="/privacy" className={link}>Privacy</a>
+          <a href="/terms" className={link}>Terms</a>
           {INSTAGRAM_URL && <a href={INSTAGRAM_URL} {...ext} className={link}>Instagram</a>}
         </nav>
       </div>

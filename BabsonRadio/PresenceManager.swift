@@ -12,9 +12,16 @@ nonisolated struct PresenceFriend: Identifiable, Decodable {
     var id: String { uid }
 }
 
+/// "3 people in your MKT 3500 class are listening" (counts only; the server needs 3+ people to show one).
+nonisolated struct PresenceGroup: Identifiable, Decodable {
+    let text: String
+    var id: String { text }
+}
+
 nonisolated struct PresenceResponse: Decodable {
     let count: Int
     let friends: [PresenceFriend]
+    let groups: [PresenceGroup]?
 }
 
 class PresenceManager: ObservableObject {
@@ -22,6 +29,7 @@ class PresenceManager: ObservableObject {
 
     @Published var count = 0
     @Published var friends: [PresenceFriend] = []
+    @Published var groups: [PresenceGroup] = []
 
     private var pollTimer: Timer?
     private var heartbeatTimer: Timer?
@@ -56,6 +64,7 @@ class PresenceManager: ObservableObject {
             if let r: PresenceResponse = try? await BackendAPI.get("/api/presence") {
                 count = r.count
                 friends = r.friends
+                groups = r.groups ?? []
             }
         }
     }

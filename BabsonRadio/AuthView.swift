@@ -15,6 +15,8 @@ struct AuthView: View {
     @State private var displayName = ""
     @State private var lastName = ""
     @State private var phoneNumber = ""
+    @State private var gradYear = ""
+    @State private var agreed = false
     @State private var showGuest = false
     @FocusState private var focusedField: Field?
 
@@ -88,6 +90,24 @@ struct AuthView: View {
                         PhoneField(phoneNumber: $phoneNumber)
                             .focused($focusedField, equals: .phone)
                             .transition(.move(edge: .top).combined(with: .opacity))
+
+                        HStack(spacing: 10) {
+                            Image(systemName: "graduationcap")
+                                .font(.system(size: 14))
+                                .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                                .frame(width: 20)
+                            Picker("Graduation year", selection: $gradYear) {
+                                Text("Graduation year").tag("")
+                                ForEach(Terms.gradYearOptions(), id: \.value) { Text($0.label).tag($0.value) }
+                            }
+                            .pickerStyle(.menu)
+                            .tint(scheme == .dark ? .brDkText : .brLtText)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .transition(.move(edge: .top).combined(with: .opacity))
                     }
 
                     BRTextField(
@@ -113,6 +133,12 @@ struct AuthView: View {
                     .focused($focusedField, equals: .password)
                 }
                 .padding(.horizontal, 24)
+
+                if mode == .createAccount {
+                    AgreeToggle(agreed: $agreed)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 14)
+                }
 
                 // ── Error message ──────────────────────────────
                 if let err = auth.errorMessage {
@@ -207,7 +233,9 @@ struct AuthView: View {
                 password: password,
                 displayName: displayName,
                 lastName: lastName,
-                phoneNumber: phoneNumber
+                phoneNumber: phoneNumber,
+                gradYear: gradYear,
+                agreed: agreed
             )
         }
     }

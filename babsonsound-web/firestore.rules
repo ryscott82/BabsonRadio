@@ -15,7 +15,8 @@ service cloud.firestore {
         && (request.auth.token.email_verified == true
             || request.time.toMillis() < request.auth.token.get('graceUntil', 0))
         && (request.auth.token.email.matches('.*@(babson|olin|wellesley)\\.edu$')
-            || request.auth.token.get('tester', false) == true);
+            || request.auth.token.get('tester', false) == true
+            || request.auth.token.get('openMember', false) == true); // public mode, see PUBLIC_MODE.md
     }
 
     // Developer accounts: created with scripts/create-developer.mjs (custom claim, no babson.edu email).
@@ -35,6 +36,8 @@ service cloud.firestore {
       return isDeveloper() || (isBabson() && role() in ['superAdmin', 'showHost']);
     }
     function isAdmin() { return isDeveloper() || (isBabson() && role() == 'superAdmin'); }
+    // Directors run show times and slot requests only.
+    function isDirector() { return isAdmin() || (isBabson() && role() == 'director'); }
 
     // ── public ───────────────────────────────────────────────
     match /shows/{id} {
@@ -108,7 +111,7 @@ service cloud.firestore {
     }
     // Requests: the requester and staff can read; staff review them on /admin/slots.
     match /slotRequests/{id} {
-      allow read: if signedIn() && (resource.data.requesterUid == request.auth.uid || isStaff());
+      allow read: if signedIn() && (resource.data.requesterUid == request.auth.uid || isStaff() || isDirector());
       allow write: if false;
     }
 

@@ -74,6 +74,12 @@ private struct SignedInProfileView: View {
                     invisibleSection
                         .padding(.bottom, 20)
 
+                    if !user.isGuest {
+                        AboutYouSection()
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
+                    }
+
                     // Hosts (listed on a show) and staff get the radio controls and set list.
                     Color.clear.frame(height: 0)
                         .task {
@@ -1248,5 +1254,99 @@ struct HostPanelView: View {
         let key = sel.key.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? sel.key
         if let r: SetlistResponse = try? await BackendAPI.get("/api/host/setlist?key=\(key)&startAt=\(ms)") { songs = r.songs }
         setlistMessage = nil
+    }
+}
+
+
+// MARK: - About you (optional details for "people in your class are listening")
+
+struct AboutYouSection: View {
+    @Environment(\.colorScheme) var scheme
+    @State private var gradYear = ""
+    @State private var concentration = ""
+    @State private var message: String?
+    @State private var saving = false
+
+    private func field(_ title: String, _ placeholder: String, _ text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.system(size: 12, weight: .semibold))
+                .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+            TextField(placeholder, text: text)
+                .font(.system(size: 15))
+                .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                .textInputAutocapitalization(.words)
+                .padding(12)
+                .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("About you (optional)")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+            Text("Lets you see things like \"3 people in your concentration are listening.\" Others only see counts, never your name, and only when at least 3 people share it. Invisible mode keeps you out of those counts.")
+                .font(.system(size: 12))
+                .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Graduation year").font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                Picker("Graduation year", selection: $gradYear) {
+                    Text("Not set").tag("")
+                    ForEach(Terms.gradYearOptions(), id: \.value) { Text($0.label).tag($0.value) }
+                }
+                .pickerStyle(.menu)
+                .tint(scheme == .dark ? .brGold : .brGreen)
+            }
+            if Terms.concentrations.isEmpty {
+                field("Concentration", "Entrepreneurship", $concentration)
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Concentration").font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                    Picker("Concentration", selection: $concentration) {
+                        Text("Not set").tag("")
+                        ForEach(Terms.concentrations, id: \.self) { Text($0).tag($0) }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(scheme == .dark ? .brGold : .brGreen)
+                }
+            }
+
+            if let message {
+                Text(message).font(.system(size: 12)).foregroundColor(scheme == .dark ? .brGold : .brGreen)
+            }
+            Button {
+                saving = true; message = nil
+                Task {
+                    do {
+                        let _: EmptyResponse = try await BackendAPI.post("/api/me", [
+                            "gradYear": gradYear,
+                            "concentrations": concentration.isEmpty ? [String]() : [concentration],
+                        ])
+                        message = "Saved."
+                    } catch { message = error.localizedDescription }
+                    saving = false
+                }
+            } label: {
+                Text(saving ? "SAVING…" : "SAVE DETAILS")
+                    .font(BRFont.display(14)).kerning(2)
+                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                    .background(scheme == .dark ? Color.brGold : Color.brGreen)
+                    .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            .disabled(saving)
+        }
+        .padding(18)
+        .brCard()
+        .task {
+            if let me: MeResponse = try? await BackendAPI.get("/api/me") {
+                gradYear = me.gradYear ?? ""
+                concentration = me.concentrations?.first ?? ""
+            }
+        }
     }
 }

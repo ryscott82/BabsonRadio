@@ -143,9 +143,25 @@ export default function AutoSchedulePage() {
                         className="sk-key rounded-md px-2.5 py-1 text-xs font-display tracking-widest text-br-dk-text">{d}</button>
               ))}
             </div>
-            <label className="block"><span className={lab}>FILLERS (COMMA SEPARATED)</span>
-              <input className={`${box} w-full`} defaultValue={r.fillers.join(', ')}
-                     onBlur={e => setRule(i, { fillers: lines(e.target.value) })} /></label>
+            <label className="flex items-center gap-3 text-sm text-br-dk-text">
+              <input type="checkbox" checked={r.quiet === true} onChange={e => setRule(i, { quiet: e.target.checked })} />
+              Nothing scheduled (AzuraCast&apos;s default playlist plays, like overnight)
+            </label>
+            {!r.quiet && (
+              <>
+                <label className="flex items-center gap-3 text-sm text-br-dk-text">
+                  <input type="checkbox" checked={r.oneGenre === true} onChange={e => setRule(i, { oneGenre: e.target.checked })} />
+                  One genre for this whole window each day (good for studying); a different one the next day
+                </label>
+                <label className="block"><span className={lab}>FILLERS (COMMA SEPARATED)</span>
+                  <input className={`${box} w-full`} defaultValue={r.fillers.join(', ')}
+                         onBlur={e => setRule(i, { fillers: lines(e.target.value) })} /></label>
+                <label className="block"><span className={lab}>LONGEST BLOCK (MINUTES, LEAVE EMPTY FOR THE GLOBAL SETTING)</span>
+                  <input type="number" min={30} max={720} step={30} className={`${box} w-32`} value={r.blockMinutes ?? ''}
+                         placeholder={String(cfg.maxBlockMinutes)}
+                         onChange={e => setRule(i, { blockMinutes: e.target.value ? Number(e.target.value) : undefined })} /></label>
+              </>
+            )}
             <p className="text-xs text-br-dk-muted">A rule that ends before it starts (like 22:00 to 06:00) runs past midnight, on the days ticked for when it starts.</p>
           </div>
         ))}

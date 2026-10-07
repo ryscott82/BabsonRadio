@@ -4,6 +4,8 @@ import { api, apiGet } from '@/lib/auth'
 export interface PresenceInfo {
   count: number
   friends: { uid: string; firstName: string }[]
+  /** "3 people in your MKT 3500 class are listening" lines (counts only) */
+  groups: { kind: string; label: string; count: number; text: string }[]
 }
 
 /** Tell the server we're (still) listening. Safe to call when signed out — it just does nothing. */
@@ -14,7 +16,7 @@ export async function sendHeartbeat(listening: boolean) {
 
 /** Listener count for everyone; connected, visible friends' first names for verified students. */
 export async function fetchPresence(): Promise<PresenceInfo> {
-  return apiGet<PresenceInfo>('/api/presence').catch(() => ({ count: 0, friends: [] }))
+  return apiGet<PresenceInfo>('/api/presence').catch(() => ({ count: 0, friends: [], groups: [] }))
 }
 
 export function friendsLine(friends: { firstName: string }[]): string {

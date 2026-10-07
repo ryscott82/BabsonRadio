@@ -411,5 +411,19 @@
     "meaning": "Sign-up needs both a first and last name.",
     "userFix": "Enter your last name.",
     "staffCheck": "Client validation or /api/auth/signup rejected an empty lastName."
+  },
+  {
+    "code": "BR-ACC-018",
+    "title": "Graduation year missing",
+    "meaning": "Sign-up needs a graduation year (or Alumni / Faculty or staff).",
+    "userFix": "Pick your graduation year from the list and try again.",
+    "staffCheck": "None needed. The form blocks this before the server is called."
+  },
+  {
+    "code": "BR-ACC-019",
+    "title": "Terms not accepted",
+    "meaning": "Creating an account requires agreeing to the Terms of Use and Privacy Policy.",
+    "userFix": "Tick the box that says you agree to the Terms of Use and Privacy Policy, then try again.",
+    "staffCheck": "None needed. Acceptance time and version are saved on the user's profile (termsAcceptedAt, termsVersion)."
   }
 ]

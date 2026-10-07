@@ -3,9 +3,9 @@ import { BABSON_EMAIL, HttpError, handle, isDeveloperToken, readJson, requireSta
 
 export const runtime = 'nodejs'
 
-// listener < showHost < superAdmin ("Admin") < developer. Admins manage listeners and hosts; only a developer
+// listener < showHost / director < superAdmin ("Admin") < developer. Admins manage listeners and hosts; only a developer
 // can create or remove admins and developers.
-const ROLES = ['listener', 'showHost', 'superAdmin', 'developer'] as const
+const ROLES = ['listener', 'showHost', 'director', 'superAdmin', 'developer'] as const
 const PRIVILEGED = ['superAdmin', 'developer']
 
 // Everyone with an account (newest first), for the admin Users page.
@@ -28,7 +28,7 @@ export async function GET(req: Request) {
   })
 }
 
-// Change someone's role: { uid, role: 'listener' | 'showHost' | 'superAdmin' | 'developer' }
+// Change someone's role: { uid, role: 'listener' | 'showHost' | 'director' | 'superAdmin' | 'developer' }
 export async function POST(req: Request) {
   return handle(async () => {
     const me = await requireStaff(req)

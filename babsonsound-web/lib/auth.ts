@@ -1,3 +1,4 @@
+import { TERMS_VERSION } from '@/lib/terms'
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -62,9 +63,9 @@ export const apiGet = <T = Record<string, unknown>>(path: string) => request<T>(
 // ── Babson students ───────────────────────────────────────────
 
 /** Account creation happens server-side (enforces babson.edu); then we sign in and send the verify email. */
-export async function signUp(email: string, password: string, firstName: string, lastName: string, phone: string) {
+export async function signUp(email: string, password: string, firstName: string, lastName: string, phone: string, gradYear: string) {
   if (!/^\S+@\S+\.\S+$/.test(email.trim())) throw fail('Enter a valid email address.', 'BR-ACC-009')
-  await api('/api/auth/signup', { email, password, firstName, lastName, phone })
+  await api('/api/auth/signup', { email, password, firstName, lastName, phone, gradYear, agreed: true })
   try {
     const { user } = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password)
     await sendEmailVerification(user).catch(e => console.error('[verification email failed]', e))
@@ -120,6 +121,7 @@ export async function guestSignUp(email: string, password: string, name: string)
   await sendEmailVerification(user).catch(() => {})
   await user.getIdToken(true)
   await apiGet('/api/guest/status') // first call starts the one-time live trial
+  await api('/api/me', { acceptTerms: TERMS_VERSION }).catch(() => {}) // record that they agreed
   return user
 }
 

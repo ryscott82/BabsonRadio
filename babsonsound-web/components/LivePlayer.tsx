@@ -14,6 +14,7 @@ export default function LivePlayer() {
   const [isBuffering, setIsBuffering] = useState(false)
   const [listenerCount, setListenerCount] = useState(0)
   const [friends, setFriends] = useState<{ firstName: string }[]>([])
+  const [groups, setGroups] = useState<{ text: string }[]>([])
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const { loading, user, canListenLive: memberListen, isGuest } = useAuth()
   // Signed-out visitors can preview the live stream; they get a sign-up prompt every 5 minutes of listening.
@@ -40,7 +41,7 @@ export default function LivePlayer() {
   // Listener count + connected friends (names only for verified students, never invisible people).
   useEffect(() => {
     let alive = true
-    const load = () => fetchPresence().then(p => { if (alive) { setListenerCount(p.count); setFriends(p.friends) } })
+    const load = () => fetchPresence().then(p => { if (alive) { setListenerCount(p.count); setFriends(p.friends); setGroups(p.groups ?? []) } })
     load()
     const t = setInterval(load, 30_000)
     return () => { alive = false; clearInterval(t) }
@@ -199,6 +200,11 @@ export default function LivePlayer() {
               </span>
             )}
           </div>
+          {groups.length > 0 && (
+            <ul className="mt-3 space-y-0.5 text-xs text-br-gold">
+              {groups.slice(0, 3).map(g => <li key={g.text}>{g.text}</li>)}
+            </ul>
+          )}
         </div>
       </div>
       {prompt && (

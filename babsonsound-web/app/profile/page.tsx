@@ -1,5 +1,6 @@
 'use client'
 
+import { CONCENTRATIONS, MAX_CONCENTRATIONS, gradYearOptions } from '@/lib/terms'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -40,6 +41,61 @@ function ReportForm() {
       <ErrorText>{err}</ErrorText>
       {notice && <p className="text-sm text-br-gold">{notice}</p>}
       <PrimaryButton type="submit" busy={busy}>SEND</PrimaryButton>
+    </form>
+  )
+}
+
+function AboutYou() {
+  const [gradYear, setGradYear] = useState('')
+  const [conc, setConc] = useState<string[]>([])
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  useEffect(() => {
+    apiGet<{ gradYear: string; concentrations: string[] }>('/api/me').then(r => {
+      setGradYear(r.gradYear ?? ''); setConc(r.concentrations ?? [])
+    }).catch(() => {})
+  }, [])
+
+  const setAt = (i: number, v: string) => setConc(c => { const n = [...c]; n[i] = v; return n })
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); setBusy(true); setMsg('')
+    try {
+      await api('/api/me', { gradYear, concentrations: conc.filter(Boolean) })
+      setMsg('Saved.')
+    } catch (err) { setMsg(err instanceof Error ? err.message : 'Could not save.') }
+    setBusy(false)
+  }
+  const box = 'sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none'
+  const lab = 'block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest'
+
+  return (
+    <form onSubmit={save} className="bg-br-dk-surface border border-br-dk-border rounded-2xl p-5 space-y-4">
+      <div>
+        <p className="text-br-dk-text text-sm font-medium">About you (optional)</p>
+        <p className="text-br-dk-sub text-xs mt-1">
+          Lets you see things like &ldquo;3 people in your concentration are listening.&rdquo; Others only ever see counts, never your name,
+          and only when at least 3 people share it. Invisible mode keeps you out of those counts.
+        </p>
+      </div>
+      <label className="block"><span className={lab}>GRADUATION YEAR</span>
+        <select className={box} value={gradYear} onChange={e => setGradYear(e.target.value)}>
+          <option value="">Not set</option>
+          {gradYearOptions().map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select></label>
+      {CONCENTRATIONS.length ? (
+        Array.from({ length: MAX_CONCENTRATIONS }, (_, i) => (
+          <label key={i} className="block"><span className={lab}>{i ? 'SECOND CONCENTRATION' : 'CONCENTRATION'}</span>
+            <select className={box} value={conc[i] ?? ''} onChange={e => setAt(i, e.target.value)}>
+              <option value="">Not set</option>
+              {CONCENTRATIONS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select></label>
+        ))
+      ) : (
+        <Field label="Concentration" value={conc[0] ?? ''} maxLength={60} onChange={e => setConc([e.target.value])} placeholder="Entrepreneurship" />
+      )}
+      {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}
+      <PrimaryButton type="submit" busy={busy}>SAVE DETAILS</PrimaryButton>
     </form>
   )
 }
@@ -115,6 +171,8 @@ export default function ProfilePage() {
           </div>
         )}
         <ErrorText>{error}</ErrorText>
+
+        {(isBabson || isDeveloper) && <AboutYou />}
 
         <ReportForm />
 

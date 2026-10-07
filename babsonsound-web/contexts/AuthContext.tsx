@@ -15,8 +15,9 @@ interface UserDoc {
   displayName: string
   email: string
   phoneNumber?: string
-  role: 'developer' | 'superAdmin' | 'showHost' | 'listener' | 'guest'
-  accountType?: 'babson' | 'guest' | 'developer'
+  role: 'developer' | 'superAdmin' | 'director' | 'showHost' | 'listener' | 'guest'
+  accountType?: 'babson' | 'guest' | 'developer' | 'pending'
+  betaStatus?: 'pending' | 'approved' | 'denied'
   hostOfShows: string[]
   [key: string]: unknown
 }
@@ -32,6 +33,8 @@ interface AuthContextValue {
   userDoc: UserDoc | null
   loading: boolean
   isAdmin: boolean
+  isDirector: boolean
+  isPendingTester: boolean
   isHost: boolean
   /** babson.edu address, verified */
   isBabson: boolean
@@ -58,7 +61,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue>({
-  user: null, userDoc: null, loading: true, isAdmin: false, isHost: false,
+  user: null, userDoc: null, loading: true, isAdmin: false, isDirector: false, isPendingTester: false, isHost: false,
   isBabson: false, isDeveloper: false, isTester: false, isGuest: false, needsVerification: false, verifyDeadline: null,
   guestPass: null, guestTrialEndsAt: null, passActive: false, trialActive: false,
   canListenLive: false, hasMemberAccess: false,
@@ -74,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isDeveloper, setDev]   = useState(false)
   const [graceUntil, setGrace]  = useState(0)
   const [testerClaim, setTesterClaim] = useState(false)
+  const [openClaim, setOpenClaim] = useState(false)
   const [onTesterList, setOnTesterList] = useState(false)
   const [now, setNow]           = useState(() => Date.now())
 
@@ -151,26 +155,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setDev(claims?.developer === true)
     setGrace(typeof claims?.graceUntil === 'number' ? claims.graceUntil : 0)
     setTesterClaim(claims?.tester === true)
+    setOpenClaim(claims?.openMember === true)
     setNow(Date.now())
     if (u) setUserDoc((await getUserDoc(u.uid).catch(() => null)) as UserDoc | null)
   }, [])
 
-  const babsonEmail = !!user?.email && (isBabsonEmail(user.email) || testerClaim)
+  const babsonEmail = !!user?.email && (isBabsonEmail(user.email) || testerClaim || openClaim)
   const inGrace = graceUntil > now
   const isBabson = babsonEmail && (user!.emailVerified || inGrace)
   const needsVerification = babsonEmail && !user!.emailVerified && !inGrace
   const verifyDeadline = babsonEmail && !user!.emailVerified && inGrace ? graceUntil : null
   const isTester = !!user && (testerClaim || onTesterList)
-  const isGuest = !!user && !babsonEmail && !isDeveloper
+  const isPendingTester = !!user && userDoc?.betaStatus === 'pending' && !babsonEmail
+  const isGuest = !!user && !babsonEmail && !isDeveloper && !isPendingTester
   const passActive = !!guestPass && !guestPass.revoked && guestPass.expiresAt > now
   const trialActive = trialEndsAt !== null && trialEndsAt > now
   const isStudent = isBabson || isDeveloper
   const isAdmin = isDeveloper || (isBabson && userDoc?.role === 'superAdmin')
+  const isDirector = isAdmin || (isBabson && userDoc?.role === 'director')
   const isHost  = isAdmin || (isBabson && userDoc?.role === 'showHost')
 
   return (
     <AuthContext.Provider value={{
-      user, userDoc, loading, isAdmin, isHost, isBabson, isDeveloper, isTester, isGuest, needsVerification, verifyDeadline,
+      user, userDoc, loading, isAdmin, isDirector, isHost, isBabson, isDeveloper, isTester, isGuest, isPendingTester, needsVerification, verifyDeadline,
       guestPass, guestTrialEndsAt: trialEndsAt, passActive, trialActive,
       canListenLive: isStudent || (isGuest && (passActive || trialActive)),
       hasMemberAccess: isStudent,

@@ -37,6 +37,9 @@ export default function SlotsPage() {
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [location, setLocation] = useState('')
+  const [cancelling, setCancelling] = useState<string | null>(null)
+  const [reason, setReason] = useState('')
   const [type, setType] = useState<SlotType>('live')
   const [category, setCategory] = useState('podcast')
   const [start, setStart] = useState(() => localInput(Math.ceil((Date.now() + 25 * 3600_000) / 900_000) * 900_000))
@@ -55,8 +58,8 @@ export default function SlotsPage() {
     try {
       const startAt = new Date(start).getTime()
       if (!Number.isFinite(startAt)) throw new Error('Pick a start time.')
-      await api('/api/slots/request', { title, description, type, category, startAt, durationMin, audioURL, imageUrl: image?.url ?? '', imagePath: image?.path ?? '' })
-      setTitle(''); setDescription(''); setAudioURL(''); setImage(null)
+      await api('/api/slots/request', { title, description, location, type, category, startAt, durationMin, audioURL, imageUrl: image?.url ?? '', imagePath: image?.path ?? '' })
+      setTitle(''); setDescription(''); setLocation(''); setAudioURL(''); setImage(null)
       setNotice('Request sent. Staff review every request, and the answer shows up below.')
       await load()
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not send the request.') }
@@ -65,7 +68,7 @@ export default function SlotsPage() {
 
   async function cancel(id: string) {
     setError('')
-    try { await api('/api/slots/cancel', { requestId: id }); await load() }
+    try { await api('/api/slots/cancel', { requestId: id, reason }); setCancelling(null); setReason(''); await load() }
     catch (err) { setError(err instanceof Error ? err.message : 'Could not cancel.') }
   }
 
@@ -97,9 +100,10 @@ export default function SlotsPage() {
       <form onSubmit={submit} className="sk-raised rounded-2xl p-5 space-y-4">
         <Field label="Title" value={title} onChange={e => setTitle(e.target.value)} maxLength={80} required />
         <label className="block">
-          <span className={label}>WHAT&apos;S IT ABOUT? (OPTIONAL)</span>
-          <textarea className={box} rows={3} maxLength={500} value={description} onChange={e => setDescription(e.target.value)} />
+          <span className={label}>WHAT&apos;S IT ABOUT?</span>
+          <textarea className={box} rows={3} maxLength={500} required minLength={10} value={description} onChange={e => setDescription(e.target.value)} placeholder="A sentence or two so listeners and staff know what to expect." />
         </label>
+        <Field label="Special requests or location (optional)" value={location} onChange={e => setLocation(e.target.value)} maxLength={120} placeholder="Recording from the Mod Quad, need a second mic…" />
         <div className="grid sm:grid-cols-2 gap-4">
           <label className="block"><span className={label}>FORMAT</span>
             <select className={box} value={type} onChange={e => setType(e.target.value as SlotType)}>
@@ -141,7 +145,19 @@ export default function SlotsPage() {
               <pre className="sk-field rounded-lg p-3 text-xs text-br-dk-text whitespace-pre-wrap">{r.connectionInfo}</pre>
             )}
             {(r.status === 'pending' || r.status === 'approved') && r.startAt > now && (
-              <button onClick={() => cancel(r.id)} className="text-xs text-br-dk-sub hover:text-br-red">Cancel request</button>
+              cancelling === r.id ? (
+                <div className="space-y-2">
+                  <input className={box} value={reason} onChange={e => setReason(e.target.value)} maxLength={300} placeholder="Reason (optional), helps us plan" />
+                  <div className="flex gap-3">
+                    <button onClick={() => cancel(r.id)} className="rounded-lg bg-br-red text-white text-xs font-semibold px-3 py-1.5">Confirm cancel</button>
+                    <button onClick={() => { setCancelling(null); setReason('') }} className="text-xs text-br-dk-sub">Keep my show</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setCancelling(r.id)} className="rounded-lg border border-br-red text-br-red text-xs font-semibold px-3 py-1.5">
+                  {r.status === 'approved' ? 'Cancel this show' : 'Withdraw request'}
+                </button>
+              )
             )}
           </div>
         ))}

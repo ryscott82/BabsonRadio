@@ -34,6 +34,8 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | BR-ACC-008 | **Profile not found**: The sign-in exists but its profile record is missing. | Sign out and back in. If it repeats, contact the station. | Compare Authentication → Users with Firestore users/{uid}. A failed sign-up can leave Auth without a profile; delete the Auth user so they can re-register. |
 | BR-ACC-009 | **Invalid email address**: The email isn't formatted correctly. | Check for typos. | — |
 | BR-ACC-017 | **Last name missing**: Sign-up needs both a first and last name. | Enter your last name. | Client validation or /api/auth/signup rejected an empty lastName. |
+| BR-ACC-018 | **Graduation year missing**: Sign-up needs a graduation year (or Alumni / Faculty or staff). | Pick your graduation year from the list and try again. | None needed. The form blocks this before the server is called. |
+| BR-ACC-019 | **Terms not accepted**: Creating an account requires agreeing to the Terms of Use and Privacy Policy. | Tick the box that says you agree to the Terms of Use and Privacy Policy, then try again. | None needed. Acceptance time and version are saved on the user's profile (termsAcceptedAt, termsVersion). |
 
 ## Guest access
 

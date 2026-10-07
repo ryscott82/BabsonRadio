@@ -9,7 +9,9 @@ export const runtime = 'nodejs'
 export async function POST(req: Request) {
   return handle(async () => {
     const t = await requireMember(req)
-    const requestId = str((await readJson(req)).requestId, 100)
+    const body = await readJson(req)
+    const requestId = str(body.requestId, 100)
+    const reason = str(body.reason, 300) // optional, shown to staff
     if (!requestId) throw new HttpError(400, 'Invalid request.')
     const db = adminDb()
     const ref = db.collection('slotRequests').doc(requestId)
@@ -19,7 +21,7 @@ export async function POST(req: Request) {
       const status = r.get('status')
       if (status !== 'pending' && status !== 'approved') throw new HttpError(409, 'This request can no longer be cancelled.')
       if (r.get('startAt').toMillis() < Date.now()) throw new HttpError(400, 'That slot has already started.')
-      tx.update(ref, { status: 'cancelled', cancelledAt: Timestamp.now() })
+      tx.update(ref, { status: 'cancelled', cancelledAt: Timestamp.now(), cancelReason: reason, cancelledFrom: status })
       if (status === 'approved') tx.delete(db.collection('airSlots').doc(requestId))
       return { ok: true, imagePath: r.get('imagePath') as string | undefined }
     })

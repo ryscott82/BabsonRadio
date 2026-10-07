@@ -44,28 +44,28 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) { /* dark values, repeated below for the explicit toggle */
     color-scheme: dark;
-    --br-bg:#080808; --br-surface:#111111; --br-surface2:#1A1A1A;
-    --br-border:#252525; --br-border2:#303030;
-    --br-text:#E8E8E8; --br-sub:#888888; --br-muted:#444444;
-    --br-accent:#DDD055;
-    --br-hero-a:#0C1A13; --br-hero-b:#080808;
+    --br-bg:#07120D; --br-surface:#0E2019; --br-surface2:#153027;
+    --br-border:#1F4034; --br-border2:#2A5645;
+    --br-text:#EAF3EE; --br-sub:#93AFA2; --br-muted:#52705F;
+    --br-accent:#2FB67C;
+    --br-hero-a:#11553B; --br-hero-b:#07120D;
     --sk-rgb: 0,0,0; --sk-hi: rgba(255,255,255,.08);
-    --sk-face-top:#1D1D1D; --sk-face-bot:#121212; --sk-field:#0A0A0A;
-    --sk-btn-top:#EFE374; --sk-btn-bot:#CFC247; --sk-btn-edge:#857C24; --sk-btn-ink:#1A1710;
-    --sk-btn-text-shadow: 0 1px 0 rgba(255,255,255,.35);
+    --sk-face-top:#173528; --sk-face-bot:#0E2019; --sk-field:#08150F;
+    --sk-btn-top:#0E8F61; --sk-btn-bot:#00583A; --sk-btn-edge:#003b27; --sk-btn-ink:#F7F2E7;
+    --sk-btn-text-shadow: 0 -1px 0 rgba(0,0,0,.35);
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --br-bg:#080808; --br-surface:#111111; --br-surface2:#1A1A1A;
-  --br-border:#252525; --br-border2:#303030;
-  --br-text:#E8E8E8; --br-sub:#888888; --br-muted:#444444;
-  --br-accent:#DDD055;
-  --br-hero-a:#0C1A13; --br-hero-b:#080808;
+  --br-bg:#07120D; --br-surface:#0E2019; --br-surface2:#153027;
+  --br-border:#1F4034; --br-border2:#2A5645;
+  --br-text:#EAF3EE; --br-sub:#93AFA2; --br-muted:#52705F;
+  --br-accent:#2FB67C;
+  --br-hero-a:#11553B; --br-hero-b:#07120D;
   --sk-rgb: 0,0,0; --sk-hi: rgba(255,255,255,.08);
-  --sk-face-top:#1D1D1D; --sk-face-bot:#121212; --sk-field:#0A0A0A;
-  --sk-btn-top:#EFE374; --sk-btn-bot:#CFC247; --sk-btn-edge:#857C24; --sk-btn-ink:#1A1710;
-  --sk-btn-text-shadow: 0 1px 0 rgba(255,255,255,.35);
+  --sk-face-top:#173528; --sk-face-bot:#0E2019; --sk-field:#08150F;
+  --sk-btn-top:#0E8F61; --sk-btn-bot:#00583A; --sk-btn-edge:#003b27; --sk-btn-ink:#F7F2E7;
+  --sk-btn-text-shadow: 0 -1px 0 rgba(0,0,0,.35);
 }
 
 /* ── Base ────────────────────────────────────────────────────── */
@@ -205,8 +205,24 @@ html, body {
   background-size: 200px 200px;
   pointer-events: none;
   border-radius: inherit;
-  opacity: 0.35;
+  opacity: 0.6;
 }
+
+/* Page-wide film grain so surfaces feel printed, not flat. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  opacity: 0.09;
+  mix-blend-mode: multiply;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) body::before { opacity: .12; mix-blend-mode: screen; } }
+:root[data-theme="dark"] body::before { opacity: .12; mix-blend-mode: screen; }
+
 
 /* ── Scrollbar ───────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

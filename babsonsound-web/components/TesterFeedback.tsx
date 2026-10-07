@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { api } from '@/lib/auth'
 
-// Floating "Report bug / feature" button, shown on every page to beta testers.
+// "Report bug / feature" button in the top bar, shown on every page to beta testers.
 export default function TesterFeedback() {
   const { user, isTester } = useAuth()
   const path = usePathname()
@@ -30,10 +31,10 @@ export default function TesterFeedback() {
   return (
     <>
       <button type="button" onClick={() => setOpen(true)}
-              className="fixed bottom-4 right-4 z-40 rounded-full bg-br-gold text-black text-xs font-semibold px-4 py-2 shadow-lg">
-        Report bug / feature
+              className="sk-key rounded-lg h-9 px-3 text-xs font-semibold text-br-dk-text whitespace-nowrap">
+        <span className="hidden sm:inline">Report bug / feature</span><span className="sm:hidden">Report</span>
       </button>
-      {open && (
+      {open && createPortal(
         <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={close}>
           <form onSubmit={send} onClick={e => e.stopPropagation()} role="dialog" aria-label="Report a bug or suggest a feature"
                 className="sk-raised rounded-2xl p-5 w-full max-w-md space-y-3">
@@ -67,7 +68,8 @@ export default function TesterFeedback() {
               </>
             )}
           </form>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   )

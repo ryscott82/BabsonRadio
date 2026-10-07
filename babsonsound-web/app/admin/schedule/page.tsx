@@ -11,6 +11,7 @@ import ColorPicker from '@/components/ColorPicker'
 interface Show {
   id: string; showName: string; dayOfWeek: number; startTime: string; endTime: string; description: string
   hostNames: string[]; hostUsernames: string[]; category: string; color: string; imageUrl: string; imagePath: string; showSlug: string; isActive: boolean
+  repeat: 'weekly' | 'biweekly' | 'monthly' | 'dates'; anchor: string; weeks: number[]; dates: string[]
 }
 
 interface Ev {
@@ -21,13 +22,13 @@ interface Ev {
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const CATEGORIES = ['', 'music', 'talk', 'interview', 'news', 'podcast', 'other']
 const blank = (): Show => ({ id: '', showName: '', dayOfWeek: 1, startTime: '20:00', endTime: '21:00', description: '',
-  hostNames: [], hostUsernames: [], category: '', color: '', imageUrl: '', imagePath: '', showSlug: '', isActive: true })
+  hostNames: [], hostUsernames: [], category: '', color: '', imageUrl: '', imagePath: '', showSlug: '', isActive: true, repeat: 'weekly', anchor: '', weeks: [], dates: [] })
 const today = () => new Date().toLocaleDateString('en-CA')
 const blankEv = (): Ev => ({ id: '', title: '', date: today(), startTime: '20:00', endTime: '21:00', description: '',
   hostNames: [], category: '', color: '', imageUrl: '', imagePath: '', isActive: true })
 
 export default function AdminSchedulePage() {
-  const { user, isAdmin, loading } = useAuth()
+  const { user, isDirector, loading } = useAuth()
   const router = useRouter()
   const [shows, setShows] = useState<Show[]>([])
   const [edit, setEdit] = useState<Show | null>(null)
@@ -44,10 +45,10 @@ export default function AdminSchedulePage() {
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load events.') }
   }, [])
 
-  useEffect(() => { if (!loading && (!user || !isAdmin)) router.replace('/') }, [loading, user, isAdmin, router])
-  useEffect(() => { if (user && isAdmin) queueMicrotask(load) }, [user, isAdmin, load])
+  useEffect(() => { if (!loading && (!user || !isDirector)) router.replace('/') }, [loading, user, isDirector, router])
+  useEffect(() => { if (user && isDirector) queueMicrotask(load) }, [user, isDirector, load])
 
-  if (!user || !isAdmin) return null
+  if (!user || !isDirector) return null
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
@@ -103,11 +104,38 @@ export default function AdminSchedulePage() {
       {edit && (
         <form onSubmit={save} className="sk-raised rounded-2xl p-5 space-y-4">
           <Field label="Show name" value={edit.showName} onChange={e => setEdit({ ...edit, showName: e.target.value })} maxLength={80} required />
+          <label className="block"><span className={lab}>HOW OFTEN</span>
+            <select className={box} value={edit.repeat} onChange={e => setEdit({ ...edit, repeat: e.target.value as Show['repeat'] })}>
+              <option value="weekly">Every week</option>
+              <option value="biweekly">Every other week</option>
+              <option value="monthly">Certain weeks of the month</option>
+              <option value="dates">Specific dates only</option>
+            </select></label>
+          {edit.repeat === 'biweekly' && (
+            <label className="block"><span className={lab}>A DATE IT AIRS (WE COUNT EVERY OTHER WEEK FROM HERE)</span>
+              <input type="date" className={box} value={edit.anchor} onChange={e => setEdit({ ...edit, anchor: e.target.value })} required /></label>
+          )}
+          {edit.repeat === 'monthly' && (
+            <div className="flex flex-wrap gap-3 text-sm text-br-dk-text">
+              {[[1, '1st'], [2, '2nd'], [3, '3rd'], [4, '4th'], [5, 'Last']].map(([n, l]) => (
+                <label key={n} className="flex items-center gap-2">
+                  <input type="checkbox" checked={edit.weeks.includes(n as number)}
+                         onChange={e => setEdit({ ...edit, weeks: e.target.checked ? [...edit.weeks, n as number] : edit.weeks.filter(x => x !== n) })} />
+                  {l}
+                </label>
+              ))}
+            </div>
+          )}
+          {edit.repeat === 'dates' && (
+            <label className="block"><span className={lab}>DATES (ONE PER LINE, YYYY-MM-DD)</span>
+              <textarea className={box} rows={3} value={edit.dates.join('\n')}
+                        onChange={e => setEdit({ ...edit, dates: e.target.value.split(/[\s,]+/).map(x => x.trim()).filter(Boolean) })} /></label>
+          )}
           <div className="grid sm:grid-cols-3 gap-4">
-            <label><span className={lab}>DAY</span>
+            {edit.repeat !== 'dates' ? <label><span className={lab}>DAY</span>
               <select className={box} value={edit.dayOfWeek} onChange={e => setEdit({ ...edit, dayOfWeek: Number(e.target.value) })}>
                 {DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}
-              </select></label>
+              </select></label> : <div />}
             <label><span className={lab}>STARTS</span>
               <input type="time" className={box} value={edit.startTime} onChange={e => setEdit({ ...edit, startTime: e.target.value })} required /></label>
             <label><span className={lab}>ENDS</span>
@@ -144,8 +172,8 @@ export default function AdminSchedulePage() {
         </form>
       )}
 
-      {DAYS.map((d, i) => {
-        const list = shows.filter(s => s.dayOfWeek === i)
+      {[...DAYS, 'Specific dates'].map((d, i) => {
+        const list = shows.filter(s => i === 7 ? s.repeat === 'dates' : s.repeat !== 'dates' && s.dayOfWeek === i)
         if (!list.length) return null
         return (
           <section key={d} className="space-y-2">
@@ -158,7 +186,7 @@ export default function AdminSchedulePage() {
                   : <div className="w-12 h-12 rounded-lg sk-field shrink-0" style={s.color ? { background: s.color } : undefined} />}
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-br-dk-text truncate">{s.showName}{s.isActive ? '' : ' (hidden)'}</p>
-                  <p className="text-xs text-br-dk-sub truncate">{s.startTime} – {s.endTime}{s.hostNames.length ? ` · ${s.hostNames.join(', ')}` : ''}</p>
+                  <p className="text-xs text-br-dk-sub truncate">{s.startTime} – {s.endTime}{s.repeat === 'biweekly' ? ' · every other week' : s.repeat === 'monthly' ? ` · ${s.weeks.map(w => w === 5 ? 'last' : ['', '1st', '2nd', '3rd', '4th'][w]).join(', ')} of the month` : s.repeat === 'dates' ? ` · ${s.dates.slice(0, 3).join(', ')}${s.dates.length > 3 ? '…' : ''}` : ''}{s.hostNames.length ? ` · ${s.hostNames.join(', ')}` : ''}</p>
                 </div>
                 <button onClick={() => { setEdit({ ...s }); setNotice('') }} className="text-xs text-br-gold">Edit</button>
                 <button onClick={() => remove(s)} className="text-xs text-br-dk-sub hover:text-br-red">Delete</button>

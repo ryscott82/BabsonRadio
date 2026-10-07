@@ -229,7 +229,8 @@ class AuthManager: ObservableObject {
 
     // MARK: - Create Account
 
-    func createAccount(email: String, password: String, displayName: String, lastName: String, phoneNumber: String) {
+    func createAccount(email: String, password: String, displayName: String, lastName: String, phoneNumber: String,
+                       gradYear: String, agreed: Bool) {
         guard Self.isBabsonEmail(email) else {
             errorMessage = "Student accounts need your @babson.edu, @olin.edu or @wellesley.edu email. Not a student? Continue as a guest. (BR-ACC-001)"
             return
@@ -253,6 +254,14 @@ class AuthManager: ObservableObject {
             errorMessage = "Please enter a valid 10-digit US phone number. (BR-ACC-004)"
             return
         }
+        guard !gradYear.isEmpty else {
+            errorMessage = "Pick your graduation year. (BR-ACC-018)"
+            return
+        }
+        guard agreed else {
+            errorMessage = "Agree to the Terms of Use and Privacy Policy to create an account. (BR-ACC-019)"
+            return
+        }
         guard Self.firebaseReady else { errorMessage = Self.setupMessage; return }
 
         errorMessage = nil
@@ -267,6 +276,8 @@ class AuthManager: ObservableObject {
                     "firstName": name,
                     "lastName": last,
                     "phone": digits,
+                    "gradYear": gradYear,
+                    "agreed": agreed,
                 ])
                 let result = try await Auth.auth().signIn(withEmail: Self.cleaned(email), password: password)
                 try await result.user.sendEmailVerification()
@@ -279,7 +290,8 @@ class AuthManager: ObservableObject {
 
     // MARK: - Guests (free email + password; live radio only)
 
-    func guestSignUp(email: String, password: String, name: String) {
+    func guestSignUp(email: String, password: String, name: String, agreed: Bool) {
+        guard agreed else { errorMessage = "Agree to the Terms of Use and Privacy Policy to continue. (BR-ACC-019)"; return }
         guard !Self.isBabsonEmail(email) else {
             errorMessage = "You have a Babson email. Create a student account instead. (BR-ACC-001)"
             return
@@ -296,6 +308,7 @@ class AuthManager: ObservableObject {
                 try? await change.commitChanges()
                 try? await result.user.sendEmailVerification()
                 await apply(Auth.auth().currentUser)   // first status call starts the free trial
+                let _: EmptyResponse? = try? await BackendAPI.post("/api/me", ["acceptTerms": Terms.version])
             } catch {
                 errorMessage = Self.authMessage(error, signingUp: true)
             }
@@ -503,7 +516,8 @@ class AuthManager: ObservableObject {
 
     func signIn(email: String, password: String) { errorMessage = Self.setupMessage }
 
-    func createAccount(email: String, password: String, displayName: String, phoneNumber: String) {
+    func createAccount(email: String, password: String, displayName: String, lastName: String, phoneNumber: String,
+                       gradYear: String, agreed: Bool) {
         errorMessage = Self.setupMessage
     }
 
@@ -519,7 +533,7 @@ class AuthManager: ObservableObject {
     }
 
     func devPasswordSignIn(password: String) { errorMessage = Self.setupMessage }
-    func guestSignUp(email: String, password: String, name: String) { errorMessage = Self.setupMessage }
+    func guestSignUp(email: String, password: String, name: String, agreed: Bool) { errorMessage = Self.setupMessage }
     func guestSignIn(email: String, password: String) { errorMessage = Self.setupMessage }
     func sendPasswordReset(email: String) { errorMessage = Self.setupMessage }
     func refreshGuestStatus() {}

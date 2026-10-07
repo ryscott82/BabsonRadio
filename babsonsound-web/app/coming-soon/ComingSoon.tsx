@@ -100,7 +100,7 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
       <p className="text-sm text-br-dk-sub mb-3">
         Beta tester? <Link href="/auth" className="underline underline-offset-4 text-br-dk-text">Sign in or create your account</Link>
       </p>
-      <p className="text-xs text-br-dk-sub mb-3"><Link href="/privacy" className="underline underline-offset-4">Privacy policy</Link></p>
+      <p className="text-xs text-br-dk-sub mb-3"><Link href="/privacy" className="underline underline-offset-4">Privacy policy</Link> · <Link href="/terms" className="underline underline-offset-4">Terms</Link></p>
       {!open ? (
         <button onClick={() => setOpen(true)} className="text-xs text-br-dk-sub hover:text-br-dk-text underline underline-offset-4">
           Developer access

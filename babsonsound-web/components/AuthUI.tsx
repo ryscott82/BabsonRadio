@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import type { InputHTMLAttributes, ReactNode } from 'react'
 
 export function Field({ label, ...props }: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
@@ -78,4 +79,17 @@ export function formatPhone(raw: string): string {
   if (d.length <= 3) return `(${d}`
   if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`
   return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`
+}
+
+/** "I agree to the Terms of Use and Privacy Policy" (required to create an account). */
+export function AgreeBox({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-start gap-3 text-sm text-br-dk-sub">
+      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} className="mt-0.5" />
+      <span>
+        I agree to the <Link href="/terms" target="_blank" className="text-br-gold underline underline-offset-4">Terms of Use</Link> and{' '}
+        <Link href="/privacy" target="_blank" className="text-br-gold underline underline-offset-4">Privacy Policy</Link>.
+      </span>
+    </label>
+  )
 }

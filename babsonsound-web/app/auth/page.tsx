@@ -4,12 +4,13 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { gradYearOptions } from '@/lib/terms'
 import { signIn, signUp, signOut, resendVerification, sendPasswordReset } from '@/lib/auth'
 import { normalizeUS } from '@/lib/phone'
-import { Card, ErrorText, Field, GhostButton, PrimaryButton, formatPhone } from '@/components/AuthUI'
+import { AgreeBox, Card, ErrorText, Field, GhostButton, PrimaryButton, formatPhone } from '@/components/AuthUI'
 
 export default function AuthPage() {
-  const { user, loading, isBabson, needsVerification, hasMemberAccess, reload } = useAuth()
+  const { user, loading, isBabson, needsVerification, hasMemberAccess, isPendingTester, reload } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -18,6 +19,7 @@ export default function AuthPage() {
 
   if (loading) return <Spinner />
   if (user && needsVerification) return <VerifyPanel email={user.email!} onCheck={reload} />
+  if (user && isPendingTester) return <PendingPanel email={user.email!} onCheck={reload} />
   if (user && !isBabson) {
     // Signed in as a guest: send them to the guest page to see request status.
     router.replace('/auth/guest')
@@ -25,6 +27,21 @@ export default function AuthPage() {
   }
   if (user) return <Spinner />
   return <Forms />
+}
+
+function PendingPanel({ email, onCheck }: { email: string; onCheck: () => Promise<void> | void }) {
+  return (
+    <Card title="YOU'RE ON THE LIST" subtitle="Waiting for approval">
+      <p className="text-sm text-br-dk-sub">
+        Your account ({email}) is created. The station reviews beta tester requests by hand, and you can&apos;t use the site until you are approved.
+        Check back soon.
+      </p>
+      <div className="mt-5 space-y-3">
+        <PrimaryButton type="button" onClick={() => onCheck()}>CHECK AGAIN</PrimaryButton>
+        <GhostButton type="button" onClick={() => signOut()}>SIGN OUT</GhostButton>
+      </div>
+    </Card>
+  )
 }
 
 function Spinner() {
@@ -43,6 +60,8 @@ function Forms() {
   const [typed, setTyped] = useState('')
   const email = typed.trim().toLowerCase().replace(/\s/g, '')
   const [phone, setPhone] = useState('')
+  const [gradYear, setGradYear] = useState('')
+  const [agreed, setAgreed] = useState(false)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -55,11 +74,13 @@ function Forms() {
       if (!lastName.trim()) return setError('Enter your last name.')
       if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setError('Enter a valid email address.')
       if (!normalizeUS(phone)) return setError('Enter a valid 10-digit US phone number.')
+      if (!gradYear) return setError('Pick your graduation year.')
+      if (!agreed) return setError('Agree to the Terms of Use and Privacy Policy to create an account.')
       if (password.length < 8) return setError('Password must be at least 8 characters.')
     }
     setBusy(true)
     try {
-      if (mode === 'create') await signUp(email, password, firstName.trim(), lastName.trim(), phone)
+      if (mode === 'create') await signUp(email, password, firstName.trim(), lastName.trim(), phone, gradYear)
       else await signIn(email, password)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
@@ -93,6 +114,14 @@ function Forms() {
                    autoComplete="family-name" placeholder="Last name" />
             <Field label="Phone number" value={phone} onChange={e => setPhone(formatPhone(e.target.value))}
                    type="tel" autoComplete="tel-national" inputMode="tel" placeholder="(555) 555-5555" />
+            <label className="block">
+              <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">GRADUATION YEAR</span>
+              <select value={gradYear} onChange={e => setGradYear(e.target.value)}
+                      className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none">
+                <option value="">Select</option>
+                {gradYearOptions().map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </label>
           </>
         )}
         <Field label="School email" value={typed} onChange={e => setTyped(e.target.value)} type="email"
@@ -100,6 +129,7 @@ function Forms() {
         <Field label="Password" value={password} onChange={e => setPassword(e.target.value)}
                type="password" autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
                placeholder={mode === 'create' ? 'At least 8 characters' : 'Password'} />
+        {mode === 'create' && <AgreeBox checked={agreed} onChange={setAgreed} />}
         <ErrorText>{error}</ErrorText>
         <PrimaryButton type="submit" busy={busy}>{mode === 'create' ? 'CREATE ACCOUNT' : 'SIGN IN'}</PrimaryButton>
         {mode === 'signin' && (

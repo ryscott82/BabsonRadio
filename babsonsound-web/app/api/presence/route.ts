@@ -2,6 +2,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { handle, isBabsonToken, readJson, requireUser } from '@/lib/server/http'
 import { visibleFriends } from '@/lib/server/friends'
+import { listeningGroups, type ListeningGroup } from '@/lib/server/groups'
 
 export const runtime = 'nodejs'
 
@@ -32,13 +33,15 @@ export async function GET(req: Request) {
     const listening = new Set(live.docs.filter(d => d.get('isListening') === true).map(d => d.id))
 
     let friends: { uid: string; firstName: string }[] = []
+    let groups: ListeningGroup[] = []
     if (req.headers.get('authorization')) {
       const t = await requireUser(req).catch(() => null)
       if (t && isBabsonToken(t)) {
         const map = await visibleFriends(db, t.uid)
         friends = [...map].filter(([id]) => listening.has(id)).map(([uid, firstName]) => ({ uid, firstName }))
+        groups = await listeningGroups(db, t.uid, listening).catch(() => [])
       }
     }
-    return { count: listening.size, friends }
+    return { count: listening.size, friends, groups }
   })
 }

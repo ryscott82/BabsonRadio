@@ -1,6 +1,6 @@
 import 'server-only'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
-import { localParts, parseClock } from '../autoschedule'
+import { localParts, occursOn, parseClock, type Repeat } from '../autoschedule'
 import { loadConfig } from './autoschedule'
 import { localToUtc } from './tz'
 import { SLOT_TYPES, type SlotType } from '../slots'
@@ -56,7 +56,7 @@ export async function buildCalendar(db: Firestore, now = Date.now()): Promise<st
       .format(new Date(probe)).split('-').map(Number)
     const dow = localParts(probe, tz).dow
     for (const w of weekly.docs) {
-      if (w.get('dayOfWeek') !== dow) continue
+      if (!occursOn({ dayOfWeek: w.get('dayOfWeek'), repeat: w.get('repeat'), anchor: w.get('anchor'), weeks: w.get('weeks'), dates: w.get('dates') } as Repeat & { dayOfWeek?: number }, dow, day[0], day[1], day[2])) continue
       const s = parseClock(String(w.get('startTime') ?? ''))
       if (s === null) continue
       const e = parseClock(String(w.get('endTime') ?? ''))

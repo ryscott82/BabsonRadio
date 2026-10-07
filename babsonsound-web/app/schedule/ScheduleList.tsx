@@ -18,7 +18,7 @@ const FORMAT: Record<Item['format'], string> = { show: 'SHOW', live: 'LIVE', pre
 const DAY = 86_400_000
 const HOUR_PX = 56            // height of one hour on the calendar
 const DAYS_SHOWN = 3
-const DAYS_LOADED = 14
+const DAYS_LOADED = 28
 const startOfDay = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime() }
 const time = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
@@ -62,7 +62,7 @@ export default function ScheduleList() {
   const scroller = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const load = () => apiGet<{ items: Item[] }>('/api/schedule?days=14')
+    const load = () => apiGet<{ items: Item[] }>('/api/schedule?days=28')
       .then(r => { setItems(r.items); setNow(Date.now()) })
       .catch(e => setError(e instanceof Error ? e.message : 'Could not load the schedule.'))
     load()
@@ -132,6 +132,10 @@ export default function ScheduleList() {
                   className="sk-key rounded-lg w-9 h-9 text-br-dk-text disabled:opacity-40">‹</button>
           <button onClick={() => setFirst(f => f + DAY)} disabled={!canFwd} aria-label="Next day"
                   className="sk-key rounded-lg w-9 h-9 text-br-dk-text disabled:opacity-40">›</button>
+          <button onClick={() => setFirst(f => Math.max(today, f - 7 * DAY))} disabled={!canBack} aria-label="Previous week"
+                  className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-40">‹ WEEK</button>
+          <button onClick={() => setFirst(f => Math.min(today + (DAYS_LOADED - DAYS_SHOWN) * DAY, f + 7 * DAY))} disabled={!canFwd} aria-label="Next week"
+                  className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-40">WEEK ›</button>
           <button onClick={() => setFirst(today)} disabled={first === today}
                   className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-40">TODAY</button>
         </div>

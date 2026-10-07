@@ -7,17 +7,28 @@ import { api, apiGet } from '@/lib/auth'
 import { ErrorText, PrimaryButton } from '@/components/AuthUI'
 import { BABSON_DOMAIN, SCHOOL_DOMAINS } from '@/lib/auth'
 
+async function fetchPut(uid: string, decision: string) {
+  const { getAuth } = await import('firebase/auth')
+  const token = await getAuth().currentUser?.getIdToken()
+  const res = await fetch('/api/admin/testers', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ uid, decision }),
+  })
+  if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? 'Could not save.')
+}
+
 export default function AdminTestersPage() {
   const { user, isHost, loading } = useAuth()
   const router = useRouter()
   const [emails, setEmails] = useState<string[]>([])
+  const [requests, setRequests] = useState<{ uid: string; email: string; name: string; joinedAt: number }[]>([])
   const [text, setText] = useState('')
   const [domain, setDomain] = useState<string>(BABSON_DOMAIN)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
-    try { setEmails((await apiGet<{ emails: string[] }>('/api/admin/testers')).emails) }
+    try { const r = await apiGet<{ emails: string[]; requests: typeof requests }>('/api/admin/testers'); setEmails(r.emails); setRequests(r.requests) }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load the list.') }
   }, [])
 
@@ -27,6 +38,13 @@ export default function AdminTestersPage() {
   async function change(list: string[], on: boolean) {
     setBusy(true); setError('')
     try { setEmails((await api<{ emails: string[] }>('/api/admin/testers', { emails: list, on })).emails); if (on) setText('') }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not save.') }
+    setBusy(false)
+  }
+
+  async function decide(uid: string, decision: 'approve' | 'deny') {
+    setBusy(true); setError('')
+    try { await fetchPut(uid, decision); await load() }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not save.') }
     setBusy(false)
   }
@@ -43,9 +61,24 @@ export default function AdminTestersPage() {
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
       <p className="text-sm text-br-dk-sub">
-        Until launch, only these emails can create an account and open the site, with their own login. Testers can use any email domain and get a Report bug / feature button on every page.
+        Until launch, only these emails can open the site. Anyone else who makes an account lands in the waiting list below until you approve them. Testers can use any email domain and get a Report bug / feature button on every page.
         Paste full addresses, or type just the part before the @ to use the school picked below. Several at once is fine.
       </p>
+      {requests.length > 0 && (
+        <div className="sk-raised rounded-xl p-4 space-y-3">
+          <p className="font-display tracking-widest text-xs text-br-gold">{requests.length} WAITING FOR APPROVAL</p>
+          <p className="text-xs text-br-dk-sub">These people made an account without being on the list. They can&apos;t use anything until you approve them.</p>
+          {requests.map(r => (
+            <div key={r.uid} className="sk-field rounded-lg px-3 py-2 flex items-center justify-between gap-3">
+              <span className="text-sm text-br-dk-text truncate">{r.name || '(no name)'} · {r.email}</span>
+              <span className="flex gap-3 shrink-0">
+                <button className="text-xs text-br-gold" disabled={busy} onClick={() => decide(r.uid, 'approve')}>Approve</button>
+                <button className="text-xs text-br-red" disabled={busy} onClick={() => decide(r.uid, 'deny')}>Deny</button>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="sk-raised rounded-xl p-4 space-y-3">
         <textarea value={text} onChange={e => setText(e.target.value)} rows={3} placeholder="jsmith1, adoe2, friend@gmail.com"
                   className="sk-field w-full rounded-lg px-3 py-2 text-sm text-br-dk-text" />

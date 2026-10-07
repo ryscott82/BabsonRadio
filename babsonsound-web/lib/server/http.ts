@@ -34,7 +34,7 @@ export const isTesterToken = (t: DecodedIdToken) => t.tester === true
 
 export function isBabsonToken(t: DecodedIdToken): boolean {
   if (!(t.email_verified === true || graceActive(t)) || !t.email) return false
-  return BABSON_EMAIL.test(t.email.toLowerCase()) || isTesterToken(t)
+  return BABSON_EMAIL.test(t.email.toLowerCase()) || isTesterToken(t) || t.openMember === true
 }
 
 /** Developer accounts are created by script with a custom claim; they don't need a babson.edu email. */
@@ -68,6 +68,18 @@ export async function requireStaff(req: Request): Promise<DecodedIdToken> {
     if (u.get('role') === 'superAdmin') return t
   }
   throw new HttpError(403, 'Staff only.')
+}
+
+/** Directors (show times and slot requests only), plus admins and developers. */
+export async function requireDirector(req: Request): Promise<DecodedIdToken> {
+  const t = await requireUser(req)
+  if (isDeveloperToken(t)) return t
+  if (isBabsonToken(t)) {
+    const { adminDb } = await import('./admin')
+    const role = (await adminDb().collection('users').doc(t.uid).get()).get('role')
+    if (role === 'superAdmin' || role === 'director') return t
+  }
+  throw new HttpError(403, 'Directors and admins only.')
 }
 
 export async function readJson(req: Request): Promise<Record<string, unknown>> {

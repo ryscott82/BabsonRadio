@@ -10,7 +10,7 @@ import { SLOT_TYPES, type SlotType } from '@/lib/slots'
 import { ErrorText } from '@/components/AuthUI'
 
 interface Req {
-  id: string; requesterName: string; requesterEmail: string; title: string; description: string
+  id: string; requesterName: string; requesterEmail: string; title: string; description: string; location?: string
   type: SlotType; category: string; audioURL: string; startAt: number; endAt: number; durationMin: number
 }
 interface Slot { id: string; title: string; hostName: string; type: SlotType; startAt: number; endAt: number }
@@ -19,7 +19,7 @@ const fmt = (ms: number) =>
   new Date(ms).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 
 export default function AdminSlotsPage() {
-  const { user, isAdmin, loading } = useAuth()
+  const { user, isDirector, loading } = useAuth()
   const router = useRouter()
   const [pending, setPending] = useState<Req[]>([])
   const [upcoming, setUpcoming] = useState<Slot[]>([])
@@ -27,15 +27,15 @@ export default function AdminSlotsPage() {
   const [now] = useState(() => Date.now())
 
   useEffect(() => {
-    if (!loading && (!user || !isAdmin)) router.replace('/')
-  }, [loading, user, isAdmin, router])
+    if (!loading && (!user || !isDirector)) router.replace('/')
+  }, [loading, user, isDirector, router])
 
   useEffect(() => {
-    if (!user || !isAdmin) return
+    if (!user || !isDirector) return
     const u1 = onSnapshot(query(collection(db, 'slotRequests'), where('status', '==', 'pending')),
       s => setPending(s.docs.map(d => ({
         id: d.id, requesterName: d.get('requesterName'), requesterEmail: d.get('requesterEmail'),
-        title: d.get('title'), description: d.get('description'), type: d.get('type'),
+        title: d.get('title'), description: d.get('description'), location: d.get('location') ?? '', type: d.get('type'),
         category: d.get('category'), audioURL: d.get('audioURL') ?? '',
         startAt: d.get('startAt').toMillis(), endAt: d.get('endAt').toMillis(), durationMin: d.get('durationMin'),
       })).sort((a, b) => a.startAt - b.startAt)),
@@ -47,9 +47,9 @@ export default function AdminSlotsPage() {
       })).filter(x => x.endAt > now).sort((a, b) => a.startAt - b.startAt)),
       e => setError(e.message))
     return () => { u1(); u2() }
-  }, [user, isAdmin, now])
+  }, [user, isDirector, now])
 
-  if (!user || !isAdmin) return null
+  if (!user || !isDirector) return null
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-10">
@@ -105,6 +105,7 @@ function PendingCard({ r, onError }: { r: Req; onError: (m: string) => void }) {
         <p className="text-sm text-br-gold text-right">{fmt(r.startAt)}<br /><span className="text-xs text-br-dk-sub">{r.durationMin} min</span></p>
       </div>
       {r.description && <p className="text-sm text-br-dk-sub whitespace-pre-wrap">{r.description}</p>}
+      {r.location && <p className="text-sm text-br-dk-text">Special request / location: {r.location}</p>}
       {r.audioURL && (
         <a href={r.audioURL} target="_blank" rel="noopener noreferrer" className="text-sm text-br-gold hover:underline break-all">{r.audioURL}</a>
       )}

@@ -20,6 +20,10 @@ export async function GET(req: Request) {
     }
 
     const db = adminDb()
+    // Waiting for the station to approve them as a beta tester: can't use anything yet.
+    if ((await db.collection('users').doc(t.uid).get()).get('betaStatus') === 'pending') {
+      return { tier: 'pending', canListenLive: false, canAccessBacklog: false }
+    }
     const emailVerified = t.email_verified === true || (await adminAuth().getUser(t.uid)).emailVerified
     await ensureGuestUserDoc(db, t.uid, email, t.name ?? 'Guest')
     const trialEndsAt = await ensureTrial(db, t.uid)

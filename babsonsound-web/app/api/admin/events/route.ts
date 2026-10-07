@@ -1,8 +1,8 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
-import { HttpError, handle, readJson, requireStaff, str } from '@/lib/server/http'
+import { HttpError, handle, readJson, requireDirector, str } from '@/lib/server/http'
 import { parseClock } from '@/lib/autoschedule'
-import { loadConfig } from '@/lib/server/autoschedule'
+import { loadConfig, rebuildAutoSchedule } from '@/lib/server/autoschedule'
 import { localToUtc, localDate } from '@/lib/server/tz'
 import { checkImageRef, deleteImage } from '@/lib/server/images'
 import { cleanColor } from '@/lib/server/color'
@@ -12,7 +12,7 @@ export const runtime = 'nodejs'
 // One-time events on the schedule (the `events` collection). Staff only. Times are station time.
 export async function GET(req: Request) {
   return handle(async () => {
-    await requireStaff(req)
+    await requireDirector(req)
     const db = adminDb()
     const tz = (await loadConfig(db)).timezone
     const since = Timestamp.fromMillis(Date.now() - 86_400_000)
@@ -36,7 +36,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   return handle(async () => {
-    const t = await requireStaff(req)
+    const t = await requireDirector(req)
     const b = await readJson(req)
     const db = adminDb()
 
@@ -44,6 +44,7 @@ export async function POST(req: Request) {
       const ref = db.collection('events').doc(str(b.id, 100))
       const old = await ref.get()
       if (old.exists) { await deleteImage(old.get('imagePath')); await ref.delete() }
+      await rebuildAutoSchedule(db).catch(e => console.error('[autoschedule]', e))
       return { ok: true }
     }
 
@@ -68,6 +69,7 @@ export async function POST(req: Request) {
       imageUrl: img?.imageUrl ?? '', imagePath: img?.imagePath ?? '', isActive: b.isActive !== false,
       startAt: Timestamp.fromMillis(startAt), endAt: Timestamp.fromMillis(endAt), updatedBy: t.uid,
     })
+    await rebuildAutoSchedule(db).catch(e => console.error('[autoschedule]', e)) // auto blocks make room
     return { id: ref.id }
   })
 }

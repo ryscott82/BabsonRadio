@@ -1,6 +1,6 @@
 import 'server-only'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
-import { localParts, parseClock } from '../autoschedule'
+import { clipInterval, localParts, occursOn, parseClock, type Repeat } from '../autoschedule'
 import { loadConfig } from './autoschedule'
 import { localDate, localToUtc } from './tz'
 
@@ -24,7 +24,7 @@ export interface ScheduleItem {
   reminderKey: string
 }
 
-export async function buildScheduleFeed(db: Firestore, opts: { days: number; showStudentHosts: boolean; now?: number }): Promise<ScheduleItem[]> {
+export async function buildScheduleFeed(db: Firestore, opts: { days: number; showStudentHosts: boolean; now?: number; includeAuto?: boolean }): Promise<ScheduleItem[]> {
   const now = opts.now ?? Date.now()
   const until = now + opts.days * 86_400_000
   const cfg = await loadConfig(db)
@@ -44,11 +44,12 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
     })
   }
 
-  const autos = await db.collection('autoBlocks').where('endAt', '>', Timestamp.fromMillis(now)).get()
+  const autoPieces: ScheduleItem[] = []
+  const autos = opts.includeAuto === false ? { docs: [] } : await db.collection('autoBlocks').where('endAt', '>', Timestamp.fromMillis(now)).get()
   for (const d of autos.docs) {
     const startAt = d.get('startAt').toMillis() as number
     if (startAt >= until) continue
-    items.push({
+    autoPieces.push({
       id: `auto-${d.id}`, source: 'auto', title: d.get('label'), description: '', hosts: [], imageUrl: '', category: '',
       format: 'playlist', startAt, endAt: d.get('endAt').toMillis(), showSlug: '', color: '',
       reminderKey: `genre:${String(d.get('label') ?? '').toLowerCase()}`,
@@ -74,7 +75,7 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
     const [y, m, dd] = localDate(probe, tz)
     const dow = localParts(probe, tz).dow
     for (const w of weekly.docs) {
-      if (w.get('dayOfWeek') !== dow) continue
+      if (!occursOn({ dayOfWeek: w.get('dayOfWeek'), repeat: w.get('repeat'), anchor: w.get('anchor'), weeks: w.get('weeks'), dates: w.get('dates') } as Repeat & { dayOfWeek?: number }, dow, y, m, dd)) continue
       const s = parseClock(String(w.get('startTime') ?? ''))
       if (s === null) continue
       const e = parseClock(String(w.get('endTime') ?? ''))
@@ -83,13 +84,22 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
       const startAt = localToUtc(y, m, dd, s, tz), endAt = localToUtc(y, m, dd, endMin, tz)
       if (endAt <= now || startAt >= until) continue
       items.push({
-        id: `weekly-${w.id}-${y}${m}${dd}`, source: 'weekly', title: w.get('showName') ?? '', description: w.get('description') ?? '',
+        id: `weekly-${w.id}-${y}${m}${dd}`,
+        // Shows that don't air every week are marked as one-offs so the iPhone app doesn't set a repeating weekly alert for them.
+        source: (w.get('repeat') ?? 'weekly') === 'weekly' ? 'weekly' : 'event', title: w.get('showName') ?? '', description: w.get('description') ?? '',
         hosts: Array.isArray(w.get('hostNames')) ? w.get('hostNames') : [], imageUrl: w.get('imageUrl') ?? '',
         category: w.get('category') ?? '', format: 'show', startAt, endAt, showSlug: w.get('showSlug') ?? '',
         color: w.get('color') ?? '',
         reminderKey: `weekly:${w.id}`,
       })
     }
+  }
+
+  // Anything scheduled on top of an auto block takes its place: the auto block is shortened, split or dropped.
+  const real = items.map(i => ({ startMs: i.startAt, endMs: i.endAt }))
+  for (const a of autoPieces) {
+    clipInterval({ startMs: a.startAt, endMs: a.endAt }, real).forEach((c, n) =>
+      items.push({ ...a, id: n === 0 ? a.id : `${a.id}-${n}`, startAt: c.startMs, endAt: c.endMs }))
   }
   return items.sort((a, b) => a.startAt - b.startAt)
 }

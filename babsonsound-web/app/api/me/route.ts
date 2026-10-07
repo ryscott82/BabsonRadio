@@ -1,5 +1,7 @@
+import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { isTester } from '@/lib/server/testers'
+import { CONCENTRATIONS, MAX_CONCENTRATIONS, TERMS_VERSION, normText, validGradYear } from '@/lib/terms'
 import { HttpError, handle, isBabsonToken, isDeveloperToken, readJson, requireUser, str } from '@/lib/server/http'
 
 export const runtime = 'nodejs'
@@ -21,6 +23,8 @@ export async function GET(req: Request) {
       isBabson: isBabsonToken(t),
       isTester: t.tester === true || (await isTester(t.email)),
       invisible: u.get('invisible') === true,
+      gradYear: u.get('gradYear') ?? '',
+      concentrations: u.get('concentrations') ?? [],
     }
   })
 }
@@ -44,6 +48,19 @@ export async function POST(req: Request) {
       update.lastName = lastName
     }
     if (typeof b.invisible === 'boolean') update.invisible = b.invisible
+    // Optional "about you" details. They are only ever shown as counts ("3 people in your class are listening").
+    if ('gradYear' in b) {
+      const y = str(b.gradYear, 10)
+      if (y && !validGradYear(y)) throw new HttpError(400, 'Pick a graduation year from the list.')
+      update.gradYear = y
+    }
+    const list = (v: unknown, max: number, norm: (s: string) => string) =>
+      [...new Set((Array.isArray(v) ? v : []).map(x => norm(str(x, 60))).filter(Boolean))].slice(0, max)
+    if ('concentrations' in b) {
+      const picked = list(b.concentrations, MAX_CONCENTRATIONS, normText)
+      update.concentrations = CONCENTRATIONS.length ? picked.filter(c => CONCENTRATIONS.includes(c)) : picked
+    }
+    if (b.acceptTerms === TERMS_VERSION) { update.termsAcceptedAt = FieldValue.serverTimestamp(); update.termsVersion = TERMS_VERSION }
     if (!Object.keys(update).length) throw new HttpError(400, 'Nothing to update.')
     await adminDb().collection('users').doc(t.uid).update(update)
     return { ok: true }

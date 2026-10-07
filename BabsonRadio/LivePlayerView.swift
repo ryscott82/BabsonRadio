@@ -6,6 +6,7 @@ import MediaPlayer
 struct LivePlayerView: View {
     @StateObject private var audio = AudioPlayerManager.shared
     @StateObject private var auth = AuthManager.shared
+    @ObservedObject private var presence = PresenceManager.shared
     @Environment(\.colorScheme) var scheme
     @State private var showProfileSheet = false
 
@@ -37,6 +38,18 @@ struct LivePlayerView: View {
                 nowPlayingInfo
                     .padding(.horizontal, 24)
                     .padding(.top, 24)
+
+                // "3 people in your MKT 3500 class are listening"
+                if !presence.groups.isEmpty {
+                    VStack(spacing: 4) {
+                        ForEach(presence.groups.prefix(3)) { g in
+                            Text(g.text)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(accent)
+                        }
+                    }
+                    .padding(.top, 14)
+                }
 
                 // ── Play / Stop Control ─────────────────────────────
                 playControl

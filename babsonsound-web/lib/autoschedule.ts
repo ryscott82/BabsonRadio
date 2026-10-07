@@ -17,6 +17,12 @@ export interface AutoRule {
   end: string         // "HH:MM" or "24:00"; if end <= start the rule runs past midnight
   fillers: string[]   // what can play, e.g. ["Lofi beats", "Chill jazz"]
   priority: number    // higher wins when rules overlap
+  /** Nothing is scheduled in this window; AzuraCast's default playlist plays (e.g. overnight). */
+  quiet?: boolean
+  /** Longest single block in this window (e.g. 120 for two-hour night blocks). Default: the global maximum. */
+  blockMinutes?: number
+  /** One genre for the whole window each day (e.g. a whole evening of lofi), changing from day to day. */
+  oneGenre?: boolean
 }
 
 export interface AutoConfig {
@@ -33,7 +39,7 @@ export interface AutoConfig {
 }
 
 export interface Interval { startMs: number; endMs: number }
-export interface WeeklyEntry { dow: number; startMin: number; endMin: number }
+export interface WeeklyEntry { dow: number; startMin: number; endMin: number; rep?: Repeat }
 export interface PlannedBlock { startMs: number; endMs: number; label: string; ruleId: string }
 
 export const DEFAULT_CONFIG: AutoConfig = {
@@ -47,14 +53,15 @@ export const DEFAULT_CONFIG: AutoConfig = {
   playlistMap: {},
   defaultFillers: ['Indie & Alt', 'Throwback Hits', 'Pop Hits', 'Hip-Hop & R&B'],
   rules: [
-    { id: 'overnight', name: 'Overnight', days: [0, 1, 2, 3, 4, 5, 6], start: '00:00', end: '07:00',
-      fillers: ['Ambient & Sleep', 'Chill Jazz'], priority: 10 },
+    // Nothing scheduled overnight: AzuraCast's default autoDJ playlist plays.
+    { id: 'overnight', name: 'Overnight (default playlist)', days: [0, 1, 2, 3, 4, 5, 6], start: '00:00', end: '07:00',
+      fillers: [], priority: 10, quiet: true },
     { id: 'weekday-morning', name: 'Weekday mornings', days: [1, 2, 3, 4, 5], start: '07:00', end: '10:00',
       fillers: ['Acoustic Morning', 'Indie Folk'], priority: 10 },
     { id: 'weeknight', name: 'Weeknights', days: [0, 1, 2, 3, 4], start: '21:00', end: '24:00',
-      fillers: ['Lofi Beats', 'Chill Jazz', 'Acoustic'], priority: 20 },
+      fillers: ['Lofi Beats', 'Chill Jazz', 'Acoustic'], priority: 20, blockMinutes: 120, oneGenre: true },
     { id: 'weekend-night', name: 'Weekend nights', days: [5, 6], start: '21:00', end: '24:00',
-      fillers: ['Dance Mix', 'Throwback Hits'], priority: 20 },
+      fillers: ['Dance Mix', 'Throwback Hits'], priority: 20, blockMinutes: 120, oneGenre: true },
   ],
 }
 
@@ -62,12 +69,55 @@ export const DEFAULT_CONFIG: AutoConfig = {
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-export function localParts(ms: number, timeZone: string): { dow: number; minutes: number } {
+export function localParts(ms: number, timeZone: string): { dow: number; minutes: number; y: number; m: number; d: number } {
   const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    timeZone, weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
   }).formatToParts(new Date(ms))
   const get = (t: string) => parts.find(p => p.type === t)?.value ?? ''
-  return { dow: DOW.indexOf(get('weekday')), minutes: Number(get('hour')) * 60 + Number(get('minute')) }
+  return {
+    dow: DOW.indexOf(get('weekday')), minutes: Number(get('hour')) * 60 + Number(get('minute')),
+    y: Number(get('year')), m: Number(get('month')), d: Number(get('day')),
+  }
+}
+
+/** How a recurring show repeats. Default is every week on `dayOfWeek`. */
+export interface Repeat {
+  repeat?: 'weekly' | 'biweekly' | 'monthly' | 'dates'
+  anchor?: string      // biweekly: "YYYY-MM-DD" of any day the show airs; every other week from there
+  weeks?: number[]     // monthly: which occurrence of the weekday, 1-4, or 5 = the last one
+  dates?: string[]     // dates: exact "YYYY-MM-DD" days (one-offs and irregular shows)
+}
+
+const ymdStr = (y: number, m: number, d: number) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+
+/** Does a show with this repeat rule air on the station-local day y-m-d (which falls on weekday `dow`)? */
+export function occursOn(r: Repeat & { dayOfWeek?: number }, dow: number, y: number, m: number, d: number): boolean {
+  const mode = r.repeat ?? 'weekly'
+  if (mode === 'dates') return (r.dates ?? []).includes(ymdStr(y, m, d))
+  if (r.dayOfWeek !== undefined && r.dayOfWeek !== dow) return false
+  if (mode === 'biweekly' && r.anchor && /^\d{4}-\d{2}-\d{2}$/.test(r.anchor)) {
+    const [ay, am, ad] = r.anchor.split('-').map(Number)
+    const days = Math.round((Date.UTC(y, m - 1, d) - Date.UTC(ay, am - 1, ad)) / 86_400_000)
+    return Math.floor(days / 7) % 2 === 0
+  }
+  if (mode === 'monthly') {
+    const nth = Math.ceil(d / 7)
+    const last = d + 7 > new Date(Date.UTC(y, m, 0)).getUTCDate()
+    return (r.weeks ?? []).some(w => w === nth || (w === 5 && last))
+  }
+  return true
+}
+
+/** Clean repeat settings from untrusted input (admin form). */
+export function cleanRepeat(b: Record<string, unknown>): Required<Pick<Repeat, 'repeat'>> & Repeat {
+  const mode = ['weekly', 'biweekly', 'monthly', 'dates'].includes(String(b.repeat)) ? (b.repeat as NonNullable<Repeat['repeat']>) : 'weekly'
+  const isDate = (x: unknown) => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x)
+  return {
+    repeat: mode,
+    anchor: mode === 'biweekly' && isDate(b.anchor) ? String(b.anchor) : '',
+    weeks: mode === 'monthly' ? [...new Set((Array.isArray(b.weeks) ? b.weeks : []).map(Number).filter(n => n >= 1 && n <= 5))] : [],
+    dates: mode === 'dates' ? [...new Set((Array.isArray(b.dates) ? b.dates : []).filter(isDate).map(String))].sort().slice(0, 60) : [],
+  }
 }
 
 /** "HH:MM" (24h) or "h:mm AM/PM" → minutes since midnight, or null. "24:00" → 1440. */
@@ -102,6 +152,21 @@ function hash(n: number): number {
 
 // ── The planner ─────────────────────────────────────────────────
 
+/** The parts of `a` not covered by any interval in `busy` (pieces shorter than `minMs` are dropped). */
+export function clipInterval(a: Interval, busy: Interval[], minMs = 5 * 60_000): Interval[] {
+  let pieces: Interval[] = [{ ...a }]
+  for (const b of busy) {
+    const next: Interval[] = []
+    for (const p of pieces) {
+      if (b.endMs <= p.startMs || b.startMs >= p.endMs) { next.push(p); continue }
+      if (b.startMs > p.startMs) next.push({ startMs: p.startMs, endMs: b.startMs })
+      if (b.endMs < p.endMs) next.push({ startMs: b.endMs, endMs: p.endMs })
+    }
+    pieces = next
+  }
+  return pieces.filter(p => p.endMs - p.startMs >= minMs)
+}
+
 export function planAutoBlocks(opts: {
   cfg: AutoConfig
   fromMs: number            // plan from here (already rounded/locked by the caller)
@@ -121,11 +186,11 @@ export function planAutoBlocks(opts: {
     weekly.some(w => {
       // evaluate against the station-local day of this slice
       const p = localParts(a, cfg.timezone)
-      return p.dow === w.dow && p.minutes < w.endMin && p.minutes + cfg.stepMinutes > w.startMin
+      return occursOn({ ...w.rep, dayOfWeek: w.rep?.repeat === 'dates' ? undefined : w.dow }, p.dow, p.y, p.m, p.d) && p.minutes < w.endMin && p.minutes + cfg.stepMinutes > w.startMin
     })
 
   // 1–4: tag free slices by rule and merge neighbours
-  type Raw = { startMs: number; endMs: number; ruleId: string; pool: string[] }
+  type Raw = { startMs: number; endMs: number; ruleId: string; pool: string[]; oneGenre?: boolean; dayKey?: number }
   const raw: Raw[] = []
   for (let t = first; t + step <= opts.untilMs; t += step) {
     if (taken(t, t + step)) continue
@@ -133,18 +198,39 @@ export function planAutoBlocks(opts: {
     const rule = cfg.rules
       .filter(r => ruleMatches(r, p.dow, p.minutes))
       .sort((a, b) => b.priority - a.priority)[0]
+    if (rule?.quiet) continue // nothing scheduled here: the default playlist plays
     const ruleId = rule?.id ?? 'default'
     const pool = (rule?.fillers.length ? rule.fillers : cfg.defaultFillers)
     const last = raw[raw.length - 1]
-    const onBoundary = p.minutes % align === 0 // start a fresh block on the hour (or every maxBlock)
-    if (last && !onBoundary && last.endMs === t && last.ruleId === ruleId && t + step - last.startMs <= maxBlock) last.endMs = t + step
-    else raw.push({ startMs: t, endMs: t + step, ruleId, pool })
+    // Longest block here: the rule's own length (e.g. 2h at night) or the global maximum.
+    const blockMs = rule?.oneGenre ? 24 * 3600_000 : rule?.blockMinutes ? rule.blockMinutes * 60_000 : maxBlock
+    const ruleStart = rule ? parseClock(rule.start) : null
+    // With its own length, a rule's blocks line up from where the rule starts; otherwise on the hour.
+    const onBoundary = rule?.oneGenre && ruleStart !== null
+      ? p.minutes === ruleStart
+      : rule?.blockMinutes && ruleStart !== null
+      ? ((p.minutes - ruleStart + 1440) % 1440) % rule.blockMinutes === 0
+      : p.minutes % align === 0
+    if (last && !onBoundary && last.endMs === t && last.ruleId === ruleId && t + step - last.startMs <= blockMs) last.endMs = t + step
+    else {
+      // The day this window began (a window running past midnight still belongs to the evening it started).
+      const startedYesterday = ruleStart !== null && p.minutes < ruleStart
+      raw.push({ startMs: t, endMs: t + step, ruleId, pool, oneGenre: rule?.oneGenre,
+        dayKey: Math.floor(Date.UTC(p.y, p.m - 1, p.d) / 86_400_000) - (startedYesterday ? 1 : 0) })
+    }
   }
 
   // 5: choose fillers — least recently used first, never the same as the block before it
   const lastUsed = new Map<string, number>()
   let prev = opts.lastLabel
   return raw.map((b, i) => {
+    if (b.oneGenre && b.dayKey !== undefined && b.pool.length) {
+      // Same genre all window long (also after a show interrupts it); a different one tomorrow.
+      // Rotate through the pool one day at a time, starting point varies per rule.
+      const idx = (b.dayKey + b.ruleId.length * 3) % b.pool.length
+      prev = b.pool[idx]
+      return { startMs: b.startMs, endMs: b.endMs, label: b.pool[idx], ruleId: b.ruleId }
+    }
     const options = b.pool.length > 1 ? b.pool.filter(f => f !== prev) : b.pool
     const ranked = [...options].sort((x, y) =>
       (lastUsed.get(x) ?? -1) - (lastUsed.get(y) ?? -1) ||
@@ -176,12 +262,16 @@ export function sanitizeConfig(input: unknown): AutoConfig {
     const start = text(x.start, 5), end = text(x.end, 5)
     const days = (Array.isArray(x.days) ? x.days : []).map(Number).filter(n => Number.isInteger(n) && n >= 0 && n <= 6)
     const fillers = list(x.fillers)
-    if (parseClock(start) === null || parseClock(end) === null || !days.length || !fillers.length) return []
+    const quiet = x.quiet === true
+    if (parseClock(start) === null || parseClock(end) === null || !days.length || (!fillers.length && !quiet)) return []
     return [{
       id: text(x.id, 40).replace(/[^a-z0-9-]/gi, '') || `rule-${i + 1}`,
       name: text(x.name, 60) || `Rule ${i + 1}`,
       days: [...new Set(days)].sort(), start, end, fillers,
       priority: clamp(x.priority, 0, 100, 10),
+      ...(quiet ? { quiet: true } : {}),
+      ...(!quiet && x.oneGenre === true ? { oneGenre: true } : {}),
+      ...(!quiet && Number(x.blockMinutes) > 0 ? { blockMinutes: clamp(x.blockMinutes, 30, 720, 60) } : {}),
     }]
   })
 

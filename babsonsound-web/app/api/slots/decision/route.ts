@@ -1,6 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
-import { HttpError, handle, readJson, requireStaff, str } from '@/lib/server/http'
+import { HttpError, handle, readJson, requireDirector, str } from '@/lib/server/http'
 import { findConflict } from '@/lib/server/slots'
 import { rebuildAutoSchedule } from '@/lib/server/autoschedule'
 import { deleteImage } from '@/lib/server/images'
@@ -10,7 +10,7 @@ export const runtime = 'nodejs'
 // Staff approve or decline. Approving books the time on the public schedule (airSlots).
 export async function POST(req: Request) {
   return handle(async () => {
-    const t = await requireStaff(req)
+    const t = await requireDirector(req)
     const b = await readJson(req)
     const requestId = str(b.requestId, 100)
     const action = b.action

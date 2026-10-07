@@ -50,7 +50,7 @@ export default function PrivacyPage() {
 
       <Section title="Your choices">
         <p>You can edit your name, turn on invisible mode, and delete your account from your profile. Deleting removes your account and profile. Syncing contacts is always your choice, and you can turn off contacts access in your phone&apos;s settings.</p>
-        <p>Babson Radio is for people 13 and older.</p>
+        <p>Babson Radio is for people 13 and older. Our <a className={a} href="/terms">Terms of Use</a> explain the rules for using the service.</p>
       </Section>
 
       <Section title="Questions">

@@ -6,10 +6,11 @@ import { useAuth } from '@/contexts/AuthContext'
 import { signOut } from '@/lib/auth'
 import { useState } from 'react'
 import ThemeToggle from './ThemeToggle'
+import TesterFeedback from './TesterFeedback'
 import { INSTAGRAM_URL, LINKS } from '@/lib/links'
 
 export default function Nav() {
-  const { user, userDoc, isAdmin, isBabson, isGuest } = useAuth()
+  const { user, userDoc, isAdmin, isDirector, isBabson, isGuest } = useAuth()
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
   const initials = (() => {
@@ -68,7 +69,7 @@ export default function Nav() {
               {link.label}
             </a>
           ))}
-          {isAdmin && (
+          {(isAdmin || isDirector) && (
             <Link
               href="/admin"
               className={`font-display tracking-widest text-sm px-4 py-2 rounded-md transition-colors ${
@@ -96,6 +97,7 @@ export default function Nav() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.8" fill="currentColor"/></svg>
             </a>
           )}
+          <TesterFeedback />
           <ThemeToggle />
           {/* ON AIR badge */}
           <div className="hidden sm:flex items-center gap-1.5 bg-br-red px-2.5 py-1 rounded">
@@ -198,7 +200,7 @@ export default function Nav() {
             className="font-display tracking-widest text-sm text-br-dk-sub hover:text-br-dk-text py-2">
             Search
           </Link>
-          {isAdmin && (
+          {(isAdmin || isDirector) && (
             <Link href="/admin" onClick={() => setMenuOpen(false)}
               className="font-display tracking-widest text-sm text-br-dk-sub hover:text-br-dk-text py-2">
               Admin

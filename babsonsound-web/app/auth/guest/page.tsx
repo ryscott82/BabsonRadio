@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import {
   api, apiGet, deleteMyAccount, guestSignIn, guestSignUp, resendVerification, sendPasswordReset, signOut,
 } from '@/lib/auth'
-import { BabsonEmailField, Card, ErrorText, Field, GhostButton, PrimaryButton } from '@/components/AuthUI'
+import { AgreeBox, BabsonEmailField, Card, ErrorText, Field, GhostButton, PrimaryButton } from '@/components/AuthUI'
 
 function Spinner() {
   return <div className="flex justify-center py-24"><div className="w-6 h-6 border-2 border-br-gold border-t-transparent rounded-full animate-spin" /></div>
@@ -37,9 +37,12 @@ function GuestForms() {
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [busy, setBusy] = useState(false)
+  const [agreed, setAgreed] = useState(false)
 
   async function submit(e: React.FormEvent) {
-    e.preventDefault(); setError(''); setInfo(''); setBusy(true)
+    e.preventDefault(); setError(''); setInfo('')
+    if (mode === 'create' && !agreed) return setError('Agree to the Terms of Use and Privacy Policy to continue.')
+    setBusy(true)
     try {
       if (mode === 'create') await guestSignUp(email, password, name)
       else if (mode === 'signin') await guestSignIn(email, password)
@@ -62,6 +65,7 @@ function GuestForms() {
                  autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
                  placeholder={mode === 'create' ? 'At least 8 characters' : 'Password'} />
         )}
+        {mode === 'create' && <AgreeBox checked={agreed} onChange={setAgreed} />}
         <ErrorText>{error}</ErrorText>
         {info && <p className="text-sm text-br-dk-sub">{info}</p>}
         <PrimaryButton type="submit" busy={busy}>

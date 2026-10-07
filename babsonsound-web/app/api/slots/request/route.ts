@@ -15,6 +15,7 @@ export async function POST(req: Request) {
 
     const title = str(b.title, 80)
     const description = str(b.description, 500)
+    const location = str(b.location, 120) // special requests, e.g. where a live show is recorded
     const type = b.type as SlotType
     const category = b.category as SlotCategory
     const startMs = Number(b.startAt)
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
     if (b.imageUrl && !img) throw new HttpError(400, 'That picture could not be used. Upload it again.')
 
     if (!title) throw new HttpError(400, 'Give your show a title.')
+    if (description.length < 10) throw new HttpError(400, 'Tell us what your show is about (a sentence or two).')
     if (!(type in SLOT_TYPES)) throw new HttpError(400, 'Pick live or pre-recorded.')
     if (!SLOT_CATEGORIES.includes(category)) throw new HttpError(400, 'Pick a category.')
     if (!Number.isFinite(startMs) || !Number.isFinite(durationMin)) throw new HttpError(400, 'Pick a start time and length.')
@@ -60,7 +62,7 @@ export async function POST(req: Request) {
       requesterUid: t.uid,
       requesterName: user.get('firstName') ?? user.get('displayName') ?? 'Student',
       requesterEmail: t.email ?? '',
-      title, description, type, category, audioURL,
+      title, description, location, type, category, audioURL,
       imageUrl: img?.imageUrl ?? '', imagePath: img?.imagePath ?? '',
       startAt: Timestamp.fromDate(start), endAt: Timestamp.fromDate(end), durationMin,
       status: 'pending', createdAt: Timestamp.now(),

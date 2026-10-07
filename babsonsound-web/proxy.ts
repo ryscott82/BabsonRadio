@@ -8,7 +8,7 @@ export async function proxy(req: NextRequest) {
 
   const { pathname } = req.nextUrl
   // /api/cron/* authenticates itself with CRON_SECRET (Vercel Cron can't send our cookie).
-  if (pathname === '/coming-soon' || pathname === '/privacy' || pathname === '/api/prelaunch/unlock' ||
+  if (pathname === '/coming-soon' || pathname === '/privacy' || pathname === '/terms' || pathname === '/api/prelaunch/unlock' ||
       // beta testers: the sign-in page, sign-up (checks the tester list itself) and the pass endpoint
       pathname === '/auth' || pathname === '/api/auth/signup' || pathname === '/api/prelaunch/session' || pathname.startsWith('/api/cron/')) return NextResponse.next()
 

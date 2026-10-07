@@ -11,6 +11,7 @@ struct GuestAuthView: View {
     enum Mode { case create, signIn, reset }
     @State private var mode: Mode = .create
     @State private var name = ""
+    @State private var agreed = false
     @State private var email = ""
     @State private var password = ""
 
@@ -46,6 +47,9 @@ struct GuestAuthView: View {
                 }
                 .padding(.horizontal, 24)
 
+                if mode == .create {
+                    AgreeToggle(agreed: $agreed).padding(.horizontal, 24)
+                }
                 if let err = auth.errorMessage {
                     Text(err).font(.system(size: 13)).foregroundColor(.brRed).padding(.horizontal, 24)
                 }
@@ -94,7 +98,7 @@ struct GuestAuthView: View {
 
     private func submit() {
         switch mode {
-        case .create: auth.guestSignUp(email: email, password: password, name: name)
+        case .create: auth.guestSignUp(email: email, password: password, name: name, agreed: agreed)
         case .signIn: auth.guestSignIn(email: email, password: password)
         case .reset:  auth.sendPasswordReset(email: email)
         }

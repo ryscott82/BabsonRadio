@@ -240,3 +240,37 @@ extension View {
         toolbar { ToolbarItem(placement: .topBarTrailing) { ProfileCircleButton() } }
     }
 }
+
+
+// MARK: - Terms and sign-up details (mirrors lib/terms.ts on the website)
+
+enum Terms {
+    /// Bump when the terms or privacy policy change in a way people should re-accept.
+    static let version = "2026-10-07"
+
+    /// Graduation year choices: this year through six years out, then alumni and staff.
+    /// Paste the official list here (same as CONCENTRATIONS in lib/terms.ts). Empty = free-text box.
+    static let concentrations: [String] = []
+
+    static func gradYearOptions() -> [(value: String, label: String)] {
+        let y = Calendar.current.component(.year, from: Date())
+        return (0..<7).map { (String(y + $0), "Class of \(y + $0)") }
+            + [("alumni", "Alumni"), ("staff", "Faculty or staff")]
+    }
+}
+
+/// "I agree to the Terms of Use and Privacy Policy" (required to create an account).
+struct AgreeToggle: View {
+    @Binding var agreed: Bool
+    @Environment(\.colorScheme) var scheme
+
+    var body: some View {
+        Toggle(isOn: $agreed) {
+            Text("I agree to the [Terms of Use](https://babsonradio.com/terms) and [Privacy Policy](https://babsonradio.com/privacy).")
+                .font(.system(size: 13))
+                .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+        }
+        .toggleStyle(.switch)
+        .tint(scheme == .dark ? .brGold : .brGreen)
+    }
+}

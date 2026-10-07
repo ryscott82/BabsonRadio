@@ -8,7 +8,7 @@ import { ErrorText } from '@/components/AuthUI'
 
 interface Row { id: string; name: string; username: string; email: string; role: string; accountType: string; betaTester?: boolean }
 
-const ROLE_LABEL: Record<string, string> = { listener: 'Listener', showHost: 'Show host', superAdmin: 'Admin', developer: 'Developer' }
+const ROLE_LABEL: Record<string, string> = { listener: 'Listener', showHost: 'Show host', director: 'Director', superAdmin: 'Admin', developer: 'Developer' }
 const PRIVILEGED = ['superAdmin', 'developer']
 
 export default function AdminUsersPage() {
@@ -48,7 +48,7 @@ export default function AdminUsersPage() {
         <span className="text-xs text-br-dk-sub shrink-0">{rows.length} accounts</span>
       </div>
       <p className="text-sm text-br-dk-sub">
-        Listener: normal student access. Show host: manages shows and uploads. Admin: runs the station and manages listeners and hosts. Developer: everything, and the only role that can make or remove admins and developers. Only students with a school email can hold these roles.
+        Listener: normal student access. Show host: manages shows and uploads. Director: sets show times and approves slot requests. Admin: runs the station and manages listeners and hosts. Developer: everything, and the only role that can make or remove admins and developers. Only students with a school email can hold these roles.
       </p>
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search name, email or username"
              className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text" />

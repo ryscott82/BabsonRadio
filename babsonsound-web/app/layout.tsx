@@ -3,6 +3,7 @@ import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import Nav from '@/components/Nav'
 import Footer from '@/components/Footer'
+import PreviewLock from '@/components/PreviewLock'
 
 export const metadata: Metadata = {
   title: 'Babson Radio',
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: "try{var t=localStorage.getItem('br-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}" }} />
       </head>
       <body className="min-h-screen bg-br-dk-bg text-br-dk-text">
+        <PreviewLock />
         <AuthProvider>
           <Nav />
           <main className="pt-16">

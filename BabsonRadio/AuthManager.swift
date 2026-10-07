@@ -92,22 +92,25 @@ class AuthManager: ObservableObject {
         if let e = error as? BackendError { return e.message }
         let ns = error as NSError
         if ns.domain == NSURLErrorDomain { return "Can't reach Babson Radio. Check your connection. (BR-CLI-001)" }
+        // Firebase Auth error numbers (stable across SDK versions): 17007 email in use, 17008 invalid email, 17026 weak
+        // password, 17009 wrong password, 17004 bad credential, 17011 no such user, 17010 too many tries, 17020 network,
+        // 17006 not allowed, 17005 disabled.
         switch ns.code {
-        case AuthErrorCode.Code.emailAlreadyInUse.rawValue:
+        case 17007:
             return "An account with that email already exists. Try signing in. (BR-ACC-002)"
-        case AuthErrorCode.Code.invalidEmail.rawValue:
+        case 17008:
             return "Enter a valid email address. (BR-ACC-009)"
-        case AuthErrorCode.Code.weakPassword.rawValue:
+        case 17026:
             return "That password is too weak. (BR-ACC-005)"
-        case AuthErrorCode.Code.wrongPassword.rawValue, AuthErrorCode.Code.invalidCredential.rawValue, AuthErrorCode.Code.userNotFound.rawValue:
+        case 17009, 17004, 17011:
             return "Incorrect email or password. (BR-AUTH-001)"
-        case AuthErrorCode.Code.tooManyRequests.rawValue:
+        case 17010:
             return "Too many attempts. Wait a few minutes and try again. (BR-AUTH-006)"
-        case AuthErrorCode.Code.networkError.rawValue:
+        case 17020:
             return "Can't reach Babson Radio. Check your connection. (BR-CLI-001)"
-        case AuthErrorCode.Code.operationNotAllowed.rawValue:
+        case 17006:
             return "Sign-in is not available right now. (BR-AUTH-008)"
-        case AuthErrorCode.Code.userDisabled.rawValue:
+        case 17005:
             return "This account has been disabled. (BR-AUTH-010)"
         default:
             return (signingUp ? "Could not create the account. " : "Sign-in failed. ") + "(BR-AUTH-007)"
@@ -383,6 +386,27 @@ class AuthManager: ObservableObject {
         }
     }
 
+    /// Developer password sign-in (same password as the website's "Developer access"): signs in as the shared
+    /// Preview developer account. No separate Firebase account needed.
+    private struct UnlockResponse: Decodable { let gate: String; let customToken: String }
+
+    func devPasswordSignIn(password: String) {
+        guard Self.firebaseReady else { errorMessage = Self.setupMessage; return }
+        errorMessage = nil
+        infoMessage = nil
+        isLoading = true
+        Task {
+            do {
+                let r: UnlockResponse = try await BackendAPI.post("/api/prelaunch/unlock", ["password": password, "email": ""])
+                BackendConfig.setPreviewKey(r.gate)
+                _ = try await Auth.auth().signIn(withCustomToken: r.customToken)
+            } catch {
+                errorMessage = Self.authMessage(error)
+            }
+            isLoading = false
+        }
+    }
+
     // MARK: - Email verification
 
     func resendVerification() {
@@ -421,6 +445,7 @@ class AuthManager: ObservableObject {
     // MARK: - Sign Out
 
     func signOut() {
+        BackendConfig.setPreviewKey(nil)
         try? Auth.auth().signOut()
         currentUser = nil
         isSignedIn = false
@@ -453,6 +478,7 @@ class AuthManager: ObservableObject {
 #endif
     }
 
+    func devPasswordSignIn(password: String) { errorMessage = Self.setupMessage }
     func guestSignUp(email: String, password: String, name: String) { errorMessage = Self.setupMessage }
     func guestSignIn(email: String, password: String) { errorMessage = Self.setupMessage }
     func sendPasswordReset(email: String) { errorMessage = Self.setupMessage }

@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireStaff, str } from '@/lib/server/http'
 import { findConflict } from '@/lib/server/slots'
 import { rebuildAutoSchedule } from '@/lib/server/autoschedule'
+import { deleteImage } from '@/lib/server/images'
 
 export const runtime = 'nodejs'
 
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
 
       if (action === 'decline') {
         tx.update(reqRef, { status: 'declined', staffNote: note, decidedAt: Timestamp.now(), decidedBy: t.uid })
-        return { ok: true }
+        return { ok: true, declinedImage: r.get('imagePath') as string | undefined }
       }
 
       const start: Timestamp = r.get('startAt')
@@ -40,6 +41,7 @@ export async function POST(req: Request) {
       tx.set(db.collection('airSlots').doc(requestId), {
         requestId, requesterUid: r.get('requesterUid'), hostName: r.get('requesterName'),
         title: r.get('title'), type: r.get('type'), category: r.get('category'),
+        description: r.get('description') ?? '', imageUrl: r.get('imageUrl') ?? '', imagePath: r.get('imagePath') ?? '',
         startAt: start, endAt: end,
       })
       tx.update(reqRef, {
@@ -49,6 +51,7 @@ export async function POST(req: Request) {
       return { ok: true }
     })
     // Refit the auto-scheduled filler around the new booking. Never blocks the approval.
+    if ('declinedImage' in result) await deleteImage(result.declinedImage) // a declined request's picture is no longer needed
     if (action === 'approve') await rebuildAutoSchedule(db).catch(e => console.error('[autoschedule]', e))
     return result
   })

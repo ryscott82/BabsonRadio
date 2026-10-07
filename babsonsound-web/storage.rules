@@ -1,0 +1,9 @@
+rules_version = '2';
+// All uploads go through our server (/api/images). Pictures are read through their private download links.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

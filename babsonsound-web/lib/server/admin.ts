@@ -2,6 +2,7 @@ import 'server-only'
 import { initializeApp, getApps, cert, type App } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
+import { getStorage } from 'firebase-admin/storage'
 
 // Set FIREBASE_SERVICE_ACCOUNT_JSON to the (single-line) service account key JSON.
 // Firebase console → Project settings → Service accounts → Generate new private key.
@@ -15,3 +16,10 @@ function app(): App {
 
 export const adminAuth = () => getAuth(app())
 export const adminDb = () => getFirestore(app())
+
+/** Firebase Storage bucket (images). Uses FIREBASE_STORAGE_BUCKET, else the public web config value. */
+export const adminBucket = () => {
+  const name = process.env.FIREBASE_STORAGE_BUCKET ?? process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+  if (!name) throw new Error('FIREBASE_STORAGE_BUCKET is not set')
+  return getStorage(app()).bucket(name)
+}

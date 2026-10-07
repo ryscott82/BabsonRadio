@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { PRELAUNCH_COOKIE, cookieValid, passwordMatches, prelaunchOn } from '@/lib/prelaunch'
+import { PRELAUNCH_COOKIE, calendarKey, cookieValid, safeEqual, passwordMatches, prelaunchOn } from '@/lib/prelaunch'
 
 // Pre-launch lock: until PRELAUNCH_OFF=1, only /coming-soon is public. Everything else needs the
 // developer password (cookie from the unlock form, or an X-Preview-Key header for the iOS app).
@@ -10,9 +10,16 @@ export async function proxy(req: NextRequest) {
   // /api/cron/* authenticates itself with CRON_SECRET (Vercel Cron can't send our cookie).
   if (pathname === '/coming-soon' || pathname === '/api/prelaunch/unlock' || pathname.startsWith('/api/cron/')) return NextResponse.next()
 
+  if (pathname === '/api/calendar.ics') {
+    const k = req.nextUrl.searchParams.get('k') ?? '', want = await calendarKey()
+    if (want && safeEqual(k, want)) return NextResponse.next()
+  }
+
   const unlocked =
     (await cookieValid(req.cookies.get(PRELAUNCH_COOKIE)?.value)) ||
-    (await passwordMatches(req.headers.get('x-preview-key') ?? ''))
+    (await passwordMatches(req.headers.get('x-preview-key') ?? '')) ||
+    // the app stores the unlock token (not the password) after a developer sign-in
+    (await cookieValid(req.headers.get('x-preview-key') ?? undefined))
   if (unlocked) return NextResponse.next()
 
   if (pathname.startsWith('/api/')) {

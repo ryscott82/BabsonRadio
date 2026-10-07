@@ -39,6 +39,34 @@ nonisolated struct AutoBlock: Identifiable, Decodable {
 }
 nonisolated struct AutoBlocksResponse: Decodable { let blocks: [AutoBlock] }
 
+/// One thing on the schedule (weekly show, approved student slot or genre block). Server: /api/schedule.
+nonisolated struct ScheduleEntry: Identifiable, Decodable {
+    let id: String
+    let source: String      // "weekly" | "slot" | "auto"
+    let title: String
+    let description: String
+    let hosts: [String]
+    let imageUrl: String
+    let category: String
+    let format: String      // "show" | "live" | "prerecorded" | "playlist"
+    let startAt: Date
+    let endAt: Date
+    let showSlug: String
+
+    var formatLabel: String {
+        switch format {
+        case "live": return "LIVE"
+        case "prerecorded": return "PRE-RECORDED"
+        case "playlist": return "PLAYLIST"
+        default: return "SHOW"
+        }
+    }
+}
+nonisolated struct ScheduleFeedResponse: Decodable { let items: [ScheduleEntry] }
+
+/// A picture already uploaded to Firebase Storage (server: /api/images).
+nonisolated struct UploadedImage: Decodable { let url: String; let path: String }
+
 nonisolated struct SlotScheduleResponse: Decodable { let slots: [AirSlot] }
 nonisolated struct MySlotRequestsResponse: Decodable { let requests: [SlotRequest] }
 

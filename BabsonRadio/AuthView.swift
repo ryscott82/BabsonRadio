@@ -244,7 +244,7 @@ struct AuthView: View {
                             .font(.system(size: 13))
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                             .frame(width: 18)
-                        TextField("Developer email", text: $devEmail)
+                        TextField("Email (leave empty for the developer password)", text: $devEmail)
                             .font(.system(size: 14))
                             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                             .autocorrectionDisabled()
@@ -287,6 +287,17 @@ struct AuthView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                     .buttonStyle(.plain)
+                    .disabled(auth.isLoading)
+
+                    // Show progress and errors right here, so the button never seems to do nothing.
+                    if auth.isLoading {
+                        ProgressView().controlSize(.small)
+                    } else if let err = auth.errorMessage {
+                        Text(err)
+                            .font(.system(size: 12))
+                            .foregroundColor(.brRed)
+                            .multilineTextAlignment(.center)
+                    }
                 }
                 .padding(.horizontal, 24)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
@@ -295,9 +306,15 @@ struct AuthView: View {
     }
 
     private func tryDevBypass() {
-        guard !devEmail.trimmingCharacters(in: .whitespaces).isEmpty, !devPassword.isEmpty else { return }
+        guard !devPassword.isEmpty else { return }
         devFieldFocused = false
-        auth.devSignIn(email: devEmail, password: devPassword)
+        let email = devEmail.trimmingCharacters(in: .whitespaces)
+        if email.isEmpty {
+            // Same developer password as the website: no separate account needed.
+            auth.devPasswordSignIn(password: devPassword)
+        } else {
+            auth.devSignIn(email: email, password: devPassword)   // a real developer account
+        }
         devPassword = ""
     }
 

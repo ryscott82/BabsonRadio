@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
 import { SLOT_CATEGORIES, SLOT_RULES, SLOT_TYPES, type SlotType } from '@/lib/slots'
 import { ErrorText, Field, PrimaryButton } from '@/components/AuthUI'
+import ImagePicker from '@/components/ImagePicker'
 
 interface Mine {
   id: string; title: string; type: SlotType; startAt: number; durationMin: number
@@ -41,6 +42,7 @@ export default function SlotsPage() {
   const [start, setStart] = useState(() => localInput(Math.ceil((Date.now() + 25 * 3600_000) / 900_000) * 900_000))
   const [durationMin, setDurationMin] = useState(60)
   const [audioURL, setAudioURL] = useState('')
+  const [image, setImage] = useState<{ url: string; path: string } | null>(null)
 
   const load = useCallback(async () => {
     try { setMine((await apiGet<{ requests: Mine[] }>('/api/slots/mine')).requests) }
@@ -53,8 +55,8 @@ export default function SlotsPage() {
     try {
       const startAt = new Date(start).getTime()
       if (!Number.isFinite(startAt)) throw new Error('Pick a start time.')
-      await api('/api/slots/request', { title, description, type, category, startAt, durationMin, audioURL })
-      setTitle(''); setDescription(''); setAudioURL('')
+      await api('/api/slots/request', { title, description, type, category, startAt, durationMin, audioURL, imageUrl: image?.url ?? '', imagePath: image?.path ?? '' })
+      setTitle(''); setDescription(''); setAudioURL(''); setImage(null)
       setNotice('Request sent. Staff review every request, and the answer shows up below.')
       await load()
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not send the request.') }
@@ -117,6 +119,8 @@ export default function SlotsPage() {
         {type === 'prerecorded' && (
           <Field label="Link to your audio" type="url" value={audioURL} onChange={e => setAudioURL(e.target.value)} placeholder="https://…" />
         )}
+        <ImagePicker scope="slot" value={image} onChange={setImage} />
+        <p className="text-xs text-br-dk-muted">The title, description and picture are shown to listeners only if your request is approved.</p>
         <ErrorText>{error}</ErrorText>
         {notice && <p className="text-sm text-br-gold">{notice}</p>}
         <PrimaryButton type="submit" busy={busy}>REQUEST A SLOT</PrimaryButton>

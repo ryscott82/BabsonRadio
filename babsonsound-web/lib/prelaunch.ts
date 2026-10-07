@@ -6,7 +6,9 @@
 // The gate is ON unless PRELAUNCH_OFF=1. If it's on and no password is set, nobody can unlock it
 // (it fails closed rather than exposing the site).
 
-export const PRELAUNCH_COOKIE = 'br_pre'
+// Session cookie set by the browser itself and deleted on every refresh/close (components/PreviewLock.tsx).
+// Renamed from 'br_pre' so older 30-day cookies from the first version stop working.
+export const PRELAUNCH_COOKIE = 'br_pre_s'
 export const LAUNCH_ISO = '2026-10-22T00:00:00-04:00' // Oct 22 at midnight Eastern (EDT)
 
 export const prelaunchOn = () => process.env.PRELAUNCH_OFF !== '1'
@@ -32,6 +34,12 @@ export async function passwordMatches(candidate: string): Promise<boolean> {
   const pw = process.env.PRELAUNCH_PASSWORD
   if (!pw || !candidate) return false
   return safeEqual(await prelaunchToken(candidate), await prelaunchToken(pw))
+}
+
+/** Key for the calendar feed URL before launch (calendar apps can't send our cookie). Grants the feed only. */
+export async function calendarKey(): Promise<string | null> {
+  const pw = process.env.PRELAUNCH_PASSWORD
+  return pw ? (await prelaunchToken(`${pw}|calendar`)).slice(0, 24) : null
 }
 
 /** True if this cookie value is the valid token for the current password. */

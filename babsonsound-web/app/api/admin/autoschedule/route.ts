@@ -1,13 +1,16 @@
 import { adminDb } from '@/lib/server/admin'
 import { handle, readJson, requireStaff } from '@/lib/server/http'
 import { loadConfig, saveConfig } from '@/lib/server/autoschedule'
+import { calendarKey, prelaunchOn } from '@/lib/prelaunch'
 
 export const runtime = 'nodejs'
 
 export async function GET(req: Request) {
   return handle(async () => {
     await requireStaff(req)
-    return { config: await loadConfig(adminDb()) }
+    const origin = new URL(req.url).origin
+    const k = prelaunchOn() ? await calendarKey() : null
+    return { config: await loadConfig(adminDb()), calendarUrl: `${origin}/api/calendar.ics${k ? `?k=${k}` : ''}` }
   })
 }
 

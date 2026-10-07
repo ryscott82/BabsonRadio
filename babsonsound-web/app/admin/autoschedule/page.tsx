@@ -20,6 +20,7 @@ export default function AutoSchedulePage() {
   const { user, isAdmin, loading } = useAuth()
   const router = useRouter()
   const [cfg, setCfg] = useState<AutoConfig | null>(null)
+  const [calendarUrl, setCalendarUrl] = useState('')
   const [preview, setPreview] = useState<RunResult | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -30,8 +31,8 @@ export default function AutoSchedulePage() {
   useEffect(() => { if (!loading && (!user || !isAdmin)) router.replace('/') }, [loading, user, isAdmin, router])
   useEffect(() => {
     if (!user || !isAdmin) return
-    apiGet<{ config: AutoConfig }>('/api/admin/autoschedule')
-      .then(r => setCfg(r.config))
+    apiGet<{ config: AutoConfig; calendarUrl: string }>('/api/admin/autoschedule')
+      .then(r => { setCfg(r.config); setCalendarUrl(r.calendarUrl) })
       .catch(e => setError(e instanceof Error ? e.message : 'Could not load settings.'))
   }, [user, isAdmin])
 
@@ -188,6 +189,23 @@ export default function AutoSchedulePage() {
             {sync.missing.length > 0 && <span className="text-br-red"> Missing in AzuraCast: {sync.missing.join(', ')}.</span>}
           </div>
         )}
+      </section>
+
+      <section className="sk-raised rounded-2xl p-5 space-y-3">
+        <h2 className="font-display text-br-gold tracking-widest text-sm">CALENDAR FEED</h2>
+        <p className="text-sm text-br-dk-sub">
+          Weekly shows, approved student slots and the genre blocks above, as a calendar people can subscribe to.
+          Add the link as &ldquo;from URL&rdquo; in Google Calendar, Apple Calendar or Outlook. It updates itself.
+        </p>
+        <input readOnly value={calendarUrl} onFocus={e => e.currentTarget.select()}
+               className="sk-field w-full rounded-lg px-3 py-2 text-xs text-br-dk-text" />
+        <div className="flex flex-wrap gap-3">
+          <button className="sk-key rounded-lg px-4 py-2 text-xs font-display tracking-widest text-br-dk-text"
+                  onClick={() => navigator.clipboard?.writeText(calendarUrl).then(() => setNotice('Calendar link copied.'))}>COPY LINK</button>
+          <a className="sk-key rounded-lg px-4 py-2 text-xs font-display tracking-widest text-br-dk-text"
+             href={calendarUrl.replace(/^https?:/, 'webcal:')}>OPEN IN CALENDAR APP</a>
+        </div>
+        <p className="text-xs text-br-dk-muted">Before launch this link includes a private key so calendar apps can read it. After launch the plain link works.</p>
       </section>
 
       <ErrorText>{error}</ErrorText>

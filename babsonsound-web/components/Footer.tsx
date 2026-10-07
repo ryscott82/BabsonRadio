@@ -15,6 +15,7 @@ export default function Footer() {
           <span className="text-br-gold">BABSON</span> RADIO
         </p>
         <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+          <a href={LINKS.interest} {...ext} className={link}>Interest form</a>
           <a href={LINKS.about} {...ext} className={link}>About us</a>
           <a href={LINKS.events} {...ext} className={link}>Events</a>
           <a href={LINKS.join} {...ext} className={link}>Join Babson Sound</a>

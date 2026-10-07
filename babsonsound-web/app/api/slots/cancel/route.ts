@@ -2,6 +2,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/http'
 import { rebuildAutoSchedule } from '@/lib/server/autoschedule'
+import { deleteImage } from '@/lib/server/images'
 
 export const runtime = 'nodejs'
 
@@ -20,8 +21,9 @@ export async function POST(req: Request) {
       if (r.get('startAt').toMillis() < Date.now()) throw new HttpError(400, 'That slot has already started.')
       tx.update(ref, { status: 'cancelled', cancelledAt: Timestamp.now() })
       if (status === 'approved') tx.delete(db.collection('airSlots').doc(requestId))
-      return { ok: true }
+      return { ok: true, imagePath: r.get('imagePath') as string | undefined }
     })
+    await deleteImage(result.imagePath)
     // A freed slot gets filler again.
     await rebuildAutoSchedule(db).catch(e => console.error('[autoschedule]', e))
     return result

@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { inMemoryPersistence, setPersistence, signInWithCustomToken } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
+import { PRELAUNCH_COOKIE } from '@/lib/prelaunch-client'
+import { LINKS } from '@/lib/links'
 import { ErrorText, Field, PrimaryButton } from '@/components/AuthUI'
 
 function parts(ms: number) {
@@ -51,6 +55,11 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
         const d = await res.json().catch(() => ({}))
         setError(`${d.error ?? 'Could not unlock.'}${d.code ? ` (${d.code})` : ''}`)
       } else {
+        const d = await res.json()
+        // Session cookie (no expiry) that PreviewLock removes on refresh; sign-in kept in memory only.
+        document.cookie = `${PRELAUNCH_COOKIE}=${d.gate}; path=/; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`
+        await setPersistence(auth, inMemoryPersistence)
+        await signInWithCustomToken(auth, d.customToken)
         router.replace('/')
         router.refresh()
       }
@@ -77,6 +86,14 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
         <Tile value={t.secs} label="SECONDS" />
       </div>
 
+      <div className="mb-12 space-y-3 max-w-sm w-full">
+        <p className="text-sm text-br-dk-sub">Tell us what you want to hear. It takes under a minute.</p>
+        <a href={LINKS.interest} target="_blank" rel="noopener noreferrer"
+           className="sk-btn block w-full font-display tracking-[0.2em] text-base py-4 rounded-xl">
+          FILL OUT THE INTEREST FORM
+        </a>
+      </div>
+
       {!open ? (
         <button onClick={() => setOpen(true)} className="text-xs text-br-dk-sub hover:text-br-dk-text underline underline-offset-4">
           Developer access
@@ -84,7 +101,7 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
       ) : (
         <form onSubmit={unlock} className="w-full max-w-xs space-y-4 text-left sk-raised rounded-2xl p-5">
           <Field label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)}
-                 autoComplete="off" placeholder="Leave blank" />
+                 autoComplete="off" placeholder="you@example.com" />
           <Field label="Developer password" type="password" value={pw} onChange={e => setPw(e.target.value)}
                  autoComplete="current-password" autoFocus />
           <ErrorText>{error}</ErrorText>

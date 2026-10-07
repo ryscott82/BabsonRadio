@@ -2,6 +2,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/http'
 import { findConflict } from '@/lib/server/slots'
+import { checkImageRef } from '@/lib/server/images'
 import { SLOT_CATEGORIES, SLOT_RULES, SLOT_TYPES, type SlotCategory, type SlotType } from '@/lib/slots'
 
 export const runtime = 'nodejs'
@@ -19,6 +20,8 @@ export async function POST(req: Request) {
     const startMs = Number(b.startAt)
     const durationMin = Number(b.durationMin)
     const audioURL = str(b.audioURL, 500)
+    const img = b.imageUrl ? checkImageRef(t.uid, b.imageUrl, b.imagePath) : null // optional picture
+    if (b.imageUrl && !img) throw new HttpError(400, 'That picture could not be used. Upload it again.')
 
     if (!title) throw new HttpError(400, 'Give your show a title.')
     if (!(type in SLOT_TYPES)) throw new HttpError(400, 'Pick live or pre-recorded.')
@@ -58,6 +61,7 @@ export async function POST(req: Request) {
       requesterName: user.get('firstName') ?? user.get('displayName') ?? 'Student',
       requesterEmail: t.email ?? '',
       title, description, type, category, audioURL,
+      imageUrl: img?.imageUrl ?? '', imagePath: img?.imagePath ?? '',
       startAt: Timestamp.fromDate(start), endAt: Timestamp.fromDate(end), durationMin,
       status: 'pending', createdAt: Timestamp.now(),
     })

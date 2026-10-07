@@ -9,12 +9,18 @@ class SlotsManager: ObservableObject {
     @Published var schedule: [AirSlot] = []
     @Published var myRequests: [SlotRequest] = []
     @Published var autoBlocks: [AutoBlock] = []
+    @Published var feed: [ScheduleEntry] = []
     @Published var isLoading = false
     @Published var errorMessage: String? = nil
 
     /// Public (no sign-in needed): what the auto-scheduler has planned.
     func loadAuto() async {
         if let r: AutoBlocksResponse = try? await BackendAPI.get("/api/schedule/auto") { autoBlocks = r.blocks }
+    }
+
+    /// The whole schedule for the next week (public; students also see host names on student shows).
+    func loadFeed() async {
+        if let r: ScheduleFeedResponse = try? await BackendAPI.get("/api/schedule?days=7") { feed = r.items }
     }
 
     func refresh() async {
@@ -33,7 +39,7 @@ class SlotsManager: ObservableObject {
 
     /// Throws a BackendError with a user-readable message if the server rejects the request.
     func submit(title: String, details: String, type: String, category: String,
-                start: Date, durationMin: Int, audioURL: String) async throws {
+                start: Date, durationMin: Int, audioURL: String, image: UploadedImage? = nil) async throws {
         let body: [String: Any] = [
             "title": title,
             "description": details,
@@ -42,6 +48,8 @@ class SlotsManager: ObservableObject {
             "startAt": Int(start.timeIntervalSince1970 * 1000),
             "durationMin": durationMin,
             "audioURL": audioURL,
+            "imageUrl": image?.url ?? "",
+            "imagePath": image?.path ?? "",
         ]
         let _: EmptyResponse = try await BackendAPI.post("/api/slots/request", body)
         await refresh()

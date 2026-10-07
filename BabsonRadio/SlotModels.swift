@@ -52,6 +52,8 @@ nonisolated struct ScheduleEntry: Identifiable, Decodable {
     let startAt: Date
     let endAt: Date
     let showSlug: String
+    /// What a bell attaches to: weekly:<show>, slot:<id> or genre:<name> (every block of that genre).
+    let reminderKey: String
 
     var formatLabel: String {
         switch format {
@@ -62,7 +64,7 @@ nonisolated struct ScheduleEntry: Identifiable, Decodable {
         }
     }
 }
-nonisolated struct ScheduleFeedResponse: Decodable { let items: [ScheduleEntry] }
+nonisolated struct ScheduleFeedResponse: Decodable { let items: [ScheduleEntry]; let timezone: String? }
 
 /// A picture already uploaded to Firebase Storage (server: /api/images).
 nonisolated struct UploadedImage: Decodable { let url: String; let path: String }

@@ -16,6 +16,7 @@ import FirebaseCore
         // Boot audio session immediately so the system knows this is a playback app
         _ = AudioPlayerManager.shared
         PresenceManager.shared.start()
+        Task { @MainActor in ReminderManager.shared.start() }
     }
 
     var body: some Scene {

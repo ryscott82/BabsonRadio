@@ -533,6 +533,7 @@ struct ScheduleView: View {
     @StateObject private var slots = SlotsManager()
     @Environment(\.colorScheme) var scheme
     @State private var selected: ScheduleEntry?
+    @ObservedObject private var reminders = ReminderManager.shared
 
     private var textColor: Color { scheme == .dark ? .brDkText : .brLtText }
     private var subColor: Color { scheme == .dark ? .brDkSub : .brLtSub }
@@ -562,8 +563,7 @@ struct ScheduleView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             BRSectionHeader(title: dayTitle(group.day)).padding(.horizontal, 20)
                             ForEach(group.items) { entry in
-                                Button { selected = entry } label: { ScheduleEntryRow(entry: entry) }
-                                    .buttonStyle(.plain)
+                                ScheduleEntryRow(entry: entry, onOpen: { selected = entry })
                                     .padding(.horizontal, 20)
                             }
                         }
@@ -588,17 +588,22 @@ struct ScheduleView: View {
             }
         }
         .sheet(item: $selected) { ScheduleDetailView(entry: $0) }
+        .alert("Reminders", isPresented: Binding(get: { reminders.notice != nil }, set: { if !$0 { reminders.notice = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: { Text(reminders.notice ?? "") }
         .task(id: auth.currentUser?.id) { await slots.loadFeed() }
     }
 }
 
 private struct ScheduleEntryRow: View {
     let entry: ScheduleEntry
+    let onOpen: () -> Void
     @Environment(\.colorScheme) var scheme
 
     private var onNow: Bool { entry.startAt <= Date() && entry.endAt > Date() }
 
     var body: some View {
+        HStack(spacing: 6) {
         HStack(spacing: 14) {
             ScheduleArt(entry: entry)
                 .frame(width: 56, height: 56)
@@ -622,6 +627,10 @@ private struct ScheduleEntryRow: View {
                     .font(.system(size: 12))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onOpen)
+            BellButton(entry: entry)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -657,6 +666,7 @@ struct ScheduleDetailView: View {
                         Text("\(entry.startAt.formatted(.dateTime.weekday(.wide).month(.wide).day()))\n\(entry.startAt.formatted(date: .omitted, time: .shortened)) – \(entry.endAt.formatted(date: .omitted, time: .shortened))")
                             .font(.system(size: 14))
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                        DetailBellRow(entry: entry)
                         if !entry.description.isEmpty {
                             Text(entry.description)
                                 .font(.system(size: 15))
@@ -671,5 +681,26 @@ struct ScheduleDetailView: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
         .presentationDetents([.large])
+    }
+}
+
+private struct DetailBellRow: View {
+    let entry: ScheduleEntry
+    @ObservedObject private var reminders = ReminderManager.shared
+    @Environment(\.colorScheme) var scheme
+
+    var body: some View {
+        let on = reminders.isOn(entry)
+        Button { Task { await reminders.toggle(entry) } } label: {
+            HStack(spacing: 8) {
+                Image(systemName: on ? "bell.fill" : "bell")
+                Text(on ? "Reminder on" : "Remind me 5 minutes before")
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .foregroundColor(on ? .brGold : (scheme == .dark ? .brDkText : .brLtText))
+            .padding(.vertical, 10).padding(.horizontal, 16)
+            .brCard()
+        }
+        .buttonStyle(.plain)
     }
 }

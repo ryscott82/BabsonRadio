@@ -18,6 +18,8 @@ export interface ScheduleItem {
   startAt: number
   endAt: number
   showSlug: string
+  /** What a bell is attached to: weekly:<show>, slot:<id> or genre:<name> (every block of that genre). */
+  reminderKey: string
 }
 
 export async function buildScheduleFeed(db: Firestore, opts: { days: number; showStudentHosts: boolean; now?: number }): Promise<ScheduleItem[]> {
@@ -36,7 +38,7 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
       hosts: opts.showStudentHosts && d.get('hostName') ? [d.get('hostName')] : [],
       imageUrl: d.get('imageUrl') ?? '', category: d.get('category') ?? '',
       format: d.get('type') === 'prerecorded' ? 'prerecorded' : 'live',
-      startAt, endAt: d.get('endAt').toMillis(), showSlug: '',
+      startAt, endAt: d.get('endAt').toMillis(), showSlug: '', reminderKey: `slot:${d.id}`,
     })
   }
 
@@ -47,6 +49,7 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
     items.push({
       id: `auto-${d.id}`, source: 'auto', title: d.get('label'), description: '', hosts: [], imageUrl: '', category: '',
       format: 'playlist', startAt, endAt: d.get('endAt').toMillis(), showSlug: '',
+      reminderKey: `genre:${String(d.get('label') ?? '').toLowerCase()}`,
     })
   }
 
@@ -68,6 +71,7 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
         id: `weekly-${w.id}-${y}${m}${dd}`, source: 'weekly', title: w.get('showName') ?? '', description: w.get('description') ?? '',
         hosts: Array.isArray(w.get('hostNames')) ? w.get('hostNames') : [], imageUrl: w.get('imageUrl') ?? '',
         category: w.get('category') ?? '', format: 'show', startAt, endAt, showSlug: w.get('showSlug') ?? '',
+        reminderKey: `weekly:${w.id}`,
       })
     }
   }

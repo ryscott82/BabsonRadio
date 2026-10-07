@@ -1,6 +1,7 @@
 import { adminDb } from '@/lib/server/admin'
 import { handle, requireMember } from '@/lib/server/http'
 import { buildScheduleFeed } from '@/lib/server/scheduleFeed'
+import { loadConfig } from '@/lib/server/autoschedule'
 
 export const runtime = 'nodejs'
 
@@ -10,6 +11,10 @@ export async function GET(req: Request) {
   return handle(async () => {
     const days = Math.min(30, Math.max(1, Number(new URL(req.url).searchParams.get('days')) || 7))
     const member = await requireMember(req).then(() => true, () => false)
-    return { items: await buildScheduleFeed(adminDb(), { days, showStudentHosts: member }) }
+    const db = adminDb()
+    return {
+      items: await buildScheduleFeed(db, { days, showStudentHosts: member }),
+      timezone: (await loadConfig(db)).timezone, // station time zone (the app uses it for weekly reminders)
+    }
   })
 }

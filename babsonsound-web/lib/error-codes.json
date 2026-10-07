@@ -70,6 +70,20 @@
     "staffCheck": "Firebase Console → Authentication → Users → re-enable."
   },
   {
+    "code": "BR-AUTH-011",
+    "title": "Signed in, profile did not load",
+    "meaning": "The app signed in with Firebase but could not load the account from the server.",
+    "userFix": "Close and reopen the app, then try again.",
+    "staffCheck": "Check /api/health and the Vercel logs for /api/me. The app must send X-Preview-Key while the site is locked."
+  },
+  {
+    "code": "BR-AUTH-012",
+    "title": "Firebase rejected the developer sign-in",
+    "meaning": "The server accepted the password but Firebase would not sign the app in with the token.",
+    "userFix": "Try again in a minute.",
+    "staffCheck": "The iOS GoogleService-Info.plist and the web/server Firebase project must be the same project (babson-radio). Check Authentication is enabled."
+  },
+  {
     "code": "BR-ACC-001",
     "title": "Babson email required",
     "meaning": "Student sign-up/sign-in needs a @babson.edu address (or a guest used a Babson address).",
@@ -362,6 +376,13 @@
     "meaning": "The website is in pre-launch mode and this request didn't include the preview password.",
     "userFix": "Babson Radio opens on October 22. Check back then.",
     "staffCheck": "Unlock in a browser at /coming-soon (Developer access), or send the X-Preview-Key header. iOS: set BackendConfig.previewKey. To open the site for everyone, set PRELAUNCH_OFF=1 in Vercel and redeploy."
+  },
+  {
+    "code": "BR-PRE-002",
+    "title": "Invite-only until launch",
+    "meaning": "Before launch, only emails on the beta tester list can create an account or open the site.",
+    "userFix": "Ask the station to add your Babson email, then try again.",
+    "staffCheck": "Add the email at /admin/testers (Admin → Beta Testers). Remove the restriction on launch day by setting PRELAUNCH_OFF=1."
   },
   {
     "code": "BR-ACC-017",

@@ -17,6 +17,8 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | BR-AUTH-008 | **Email sign-in is turned off**: Email/Password is not enabled in Firebase (auth/operation-not-allowed). | Nothing you can do; contact the station. | Firebase Console → Authentication → Sign-in method → enable Email/Password. |
 | BR-AUTH-009 | **This website address isn't authorized**: The domain isn't in Firebase's authorized list (auth/unauthorized-domain). | Nothing you can do; contact the station. | Firebase Console → Authentication → Settings → Authorized domains → add the domain (babsonradio.com, www., and any .vercel.app). |
 | BR-AUTH-010 | **Account disabled**: The account was disabled in Firebase. | Contact the station. | Firebase Console → Authentication → Users → re-enable. |
+| BR-AUTH-011 | **Signed in, profile did not load**: The app signed in with Firebase but could not load the account from the server. | Close and reopen the app, then try again. | Check /api/health and the Vercel logs for /api/me. The app must send X-Preview-Key while the site is locked. |
+| BR-AUTH-012 | **Firebase rejected the developer sign-in**: The server accepted the password but Firebase would not sign the app in with the token. | Try again in a minute. | The iOS GoogleService-Info.plist and the web/server Firebase project must be the same project (babson-radio). Check Authentication is enabled. |
 
 ## Accounts
 
@@ -73,6 +75,7 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | Code | What it is | What the user should do | What staff check |
 |---|---|---|---|
 | BR-PRE-001 | **Site isn't open yet**: The website is in pre-launch mode and this request didn't include the preview password. | Babson Radio opens on October 22. Check back then. | Unlock in a browser at /coming-soon (Developer access), or send the X-Preview-Key header. iOS: set BackendConfig.previewKey. To open the site for everyone, set PRELAUNCH_OFF=1 in Vercel and redeploy. |
+| BR-PRE-002 | **Invite-only until launch**: Before launch, only emails on the beta tester list can create an account or open the site. | Ask the station to add your Babson email, then try again. | Add the email at /admin/testers (Admin → Beta Testers). Remove the restriction on launch day by setting PRELAUNCH_OFF=1. |
 
 ## Requests
 

@@ -3,6 +3,8 @@ import { adminAuth, adminDb } from '@/lib/server/admin'
 import { BABSON_EMAIL, HttpError, handle, readJson, str } from '@/lib/server/http'
 import { indexKeyFromE164 } from '@/lib/server/phone'
 import { normalizeUS } from '@/lib/phone'
+import { prelaunchOn } from '@/lib/prelaunch'
+import { isTester } from '@/lib/server/testers'
 
 export const runtime = 'nodejs'
 
@@ -20,6 +22,9 @@ export async function POST(req: Request) {
     if (!firstName) throw new HttpError(400, 'Enter your first name.')
     if (!lastName) throw new HttpError(400, 'Enter your last name.')
     if (!BABSON_EMAIL.test(email)) throw new HttpError(400, 'Babson Radio requires a @babson.edu email address.')
+    if (prelaunchOn() && !(await isTester(email))) {
+      throw new HttpError(403, 'Babson Radio is invite-only until launch. Ask the station to add your email.', 'BR-PRE-002')
+    }
     if (!phone) throw new HttpError(400, 'Enter a valid 10-digit US phone number.')
     if (password.length < 8 || password.length > 128) throw new HttpError(400, 'Password must be 8–128 characters.')
 

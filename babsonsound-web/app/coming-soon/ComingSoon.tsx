@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { inMemoryPersistence, setPersistence, signInWithCustomToken } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
@@ -94,6 +95,9 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
         <Tile value={t.secs} label="SECONDS" />
       </div>
 
+      <p className="text-sm text-br-dk-sub mb-3">
+        Beta tester? <Link href="/auth" className="underline underline-offset-4 text-br-dk-text">Sign in or create your account</Link>
+      </p>
       {!open ? (
         <button onClick={() => setOpen(true)} className="text-xs text-br-dk-sub hover:text-br-dk-text underline underline-offset-4">
           Developer access

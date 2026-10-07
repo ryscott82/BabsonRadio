@@ -170,6 +170,13 @@ class AuthManager: ObservableObject {
         }
         needsEmailVerification = false
 
+        // Pre-launch: a beta tester (email on the station's list) gets the site pass from their own sign-in,
+        // so no shared password is needed in the app.
+        if !isDev && BackendConfig.previewKey.isEmpty,
+           let pass: GatePass = try? await BackendAPI.post("/api/prelaunch/session", [:]) {
+            BackendConfig.setPreviewKey(pass.gate)
+        }
+
         let me: MeResponse? = try? await BackendAPI.get("/api/me")
         isInvisible = me?.invisible ?? false
         let apiName = me?.firstName ?? ""
@@ -389,7 +396,8 @@ class AuthManager: ObservableObject {
 
     /// Developer password sign-in (same password as the website's "Developer access"): signs in as the shared
     /// Preview developer account. No separate Firebase account needed.
-    private struct UnlockResponse: Decodable { let gate: String; let customToken: String }
+    private struct GatePass: Decodable { let gate: String }
+    private struct UnlockResponse: Decodable { let gate: String; let customToken: String?; let warning: String? }
 
     func devPasswordSignIn(password: String) {
         guard Self.firebaseReady else { errorMessage = Self.setupMessage; return }
@@ -397,14 +405,33 @@ class AuthManager: ObservableObject {
         infoMessage = nil
         isLoading = true
         Task {
+            defer { isLoading = false }
+            // Step 1: the server checks the developer password.
+            let r: UnlockResponse
             do {
-                let r: UnlockResponse = try await BackendAPI.post("/api/prelaunch/unlock", ["password": password, "email": ""])
-                BackendConfig.setPreviewKey(r.gate)
-                _ = try await Auth.auth().signIn(withCustomToken: r.customToken)
+                r = try await BackendAPI.post("/api/prelaunch/unlock", ["password": password, "email": ""])
             } catch {
                 errorMessage = Self.authMessage(error)
+                print("[dev sign-in] unlock failed: \(error)")
+                return
             }
-            isLoading = false
+            BackendConfig.setPreviewKey(r.gate)
+            guard let token = r.customToken else {
+                errorMessage = "Password accepted, but the server could not sign you in. (\(r.warning ?? "BR-SRV-000"))"
+                print("[dev sign-in] no custom token, warning \(r.warning ?? "none")")
+                return
+            }
+            // Step 2: Firebase signs the app in with the token.
+            do {
+                let result = try await Auth.auth().signIn(withCustomToken: token)
+                print("[dev sign-in] signed in as \(result.user.uid)")
+                await apply(result.user)   // don't wait for the listener
+                if !isSignedIn { errorMessage = "Signed in, but the profile could not load. (BR-AUTH-011)" }
+            } catch {
+                let ns = error as NSError
+                errorMessage = "Sign-in failed at Firebase (code \(ns.code)). (BR-AUTH-012)"
+                print("[dev sign-in] firebase failed: \(error)")
+            }
         }
     }
 

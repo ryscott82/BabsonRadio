@@ -66,6 +66,12 @@ export default function AdminPage() {
               href="/admin/autoschedule"
             />
             <AdminCard
+              title="Beta Testers"
+              description="Who can sign up and get in before launch. Add Babson emails here."
+              icon="🔑"
+              href="/admin/testers"
+            />
+            <AdminCard
               title="Bugs & Ideas"
               description="Reports and feature ideas sent from the website and the app. Mark them done as you go."
               icon="🐞"

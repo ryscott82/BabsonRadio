@@ -4,7 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { type User } from 'firebase/auth'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { onAuthChange, getUserDoc, isBabsonEmail, refreshUser } from '@/lib/auth'
+import { api, onAuthChange, getUserDoc, isBabsonEmail, refreshUser } from '@/lib/auth'
+import { hasUnlockCookie, rememberUnlock } from '@/lib/prelaunch-client'
 
 interface UserDoc {
   id: string
@@ -68,6 +69,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading]   = useState(true)
   const [isDeveloper, setDev]   = useState(false)
   const [now, setNow]           = useState(() => Date.now())
+
+  // Pre-launch: a signed-in beta tester gets the pass for the site (no developer password needed).
+  useEffect(() => {
+    if (!user || user.uid === 'preview-developer' || hasUnlockCookie()) return
+    api<{ gate: string }>('/api/prelaunch/session', {})
+      .then(r => {
+        rememberUnlock(r.gate, null, true)
+        if (location.pathname === '/coming-soon') location.replace('/')
+      })
+      .catch(() => {}) // not on the tester list (or the site is already open)
+  }, [user])
 
   useEffect(() => {
     const unsub = onAuthChange(async (firebaseUser) => {

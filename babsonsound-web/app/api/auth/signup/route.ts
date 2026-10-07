@@ -1,6 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from '@/lib/server/admin'
-import { BABSON_EMAIL, HttpError, handle, readJson, str } from '@/lib/server/http'
+import { ANY_EMAIL, BABSON_EMAIL, HttpError, handle, readJson, str } from '@/lib/server/http'
 import { indexKeyFromE164 } from '@/lib/server/phone'
 import { normalizeUS } from '@/lib/phone'
 import { prelaunchOn } from '@/lib/prelaunch'
@@ -22,8 +22,12 @@ export async function POST(req: Request) {
 
     if (!firstName) throw new HttpError(400, 'Enter your first name.')
     if (!lastName) throw new HttpError(400, 'Enter your last name.')
-    if (!BABSON_EMAIL.test(email)) throw new HttpError(400, 'Use your @babson.edu, @olin.edu or @wellesley.edu email address.')
-    if (prelaunchOn() && !(await isTester(email))) {
+    if (!ANY_EMAIL.test(email)) throw new HttpError(400, 'Enter a valid email address.')
+    const school = BABSON_EMAIL.test(email)
+    const tester = await isTester(email)
+    // Other domains can only sign up here if the station added them as a beta tester.
+    if (!school && !tester) throw new HttpError(400, 'Use your @babson.edu, @olin.edu or @wellesley.edu email address.')
+    if (prelaunchOn() && !tester) {
       throw new HttpError(403, 'Babson Radio is invite-only until launch. Ask the station to add your email.', 'BR-PRE-002')
     }
     if (!phone) throw new HttpError(400, 'Enter a valid 10-digit US phone number.')
@@ -32,8 +36,8 @@ export async function POST(req: Request) {
     // The Babson username (part before @babson.edu) is the account's username. Email is unique, so it is too.
     // Olin and Wellesley usernames get a suffix so they can't collide with a Babson one.
     const at = email.indexOf('@')
-    const school = email.slice(at + 1, email.indexOf('.', at))
-    const username = school === 'babson' ? email.slice(0, at) : `${email.slice(0, at)}-${school}`
+    const domainName = email.slice(at + 1, email.indexOf('.', at))
+    const username = domainName === 'babson' ? email.slice(0, at) : `${email.slice(0, at)}-${domainName}`
     const db = adminDb()
     const phoneRef = db.collection('phoneIndex').doc(await indexKeyFromE164(phone))
     if ((await phoneRef.get()).exists) throw new HttpError(409, 'That phone number is already registered.')
@@ -42,7 +46,7 @@ export async function POST(req: Request) {
     try {
       uid = (await adminAuth().createUser({ email, password, displayName: firstName, emailVerified: false })).uid
       // 3 days of full use before the email link is required (rules and the server check this claim).
-      await adminAuth().setCustomUserClaims(uid, { graceUntil: Date.now() + VERIFY_GRACE_MS })
+      await adminAuth().setCustomUserClaims(uid, { graceUntil: Date.now() + VERIFY_GRACE_MS, ...(tester ? { tester: true } : {}) })
     } catch (e) {
       const code = (e as { code?: string }).code
       if (code === 'auth/email-already-exists') throw new HttpError(409, 'An account with that email already exists. Try signing in.')
@@ -57,6 +61,7 @@ export async function POST(req: Request) {
         tx.set(db.collection('users').doc(uid), {
           firstName, lastName, username, displayName: firstName, email, phoneNumber: phone,
           role: 'listener', accountType: 'babson',
+          ...(tester ? { betaTester: true } : {}),
           hostOfShows: [], notifyNewEpisode: [], notifyGoesLive: [],
           joinedAt: Timestamp.now(),
         })

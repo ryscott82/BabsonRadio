@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { type User } from 'firebase/auth'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { api, onAuthChange, getUserDoc, isBabsonEmail, refreshUser } from '@/lib/auth'
+import { api, apiGet, onAuthChange, getUserDoc, isBabsonEmail, refreshUser } from '@/lib/auth'
 import { hasUnlockCookie, rememberUnlock } from '@/lib/prelaunch-client'
 
 interface UserDoc {
@@ -37,6 +37,8 @@ interface AuthContextValue {
   isBabson: boolean
   /** developer account (custom claim; no babson.edu email needed) */
   isDeveloper: boolean
+  /** on the beta tester list (shows the report bug / feature button) */
+  isTester: boolean
   /** signed in with a non-Babson email (guest account) */
   isGuest: boolean
   /** signed in with a babson.edu address that still needs verifying */
@@ -57,7 +59,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue>({
   user: null, userDoc: null, loading: true, isAdmin: false, isHost: false,
-  isBabson: false, isDeveloper: false, isGuest: false, needsVerification: false, verifyDeadline: null,
+  isBabson: false, isDeveloper: false, isTester: false, isGuest: false, needsVerification: false, verifyDeadline: null,
   guestPass: null, guestTrialEndsAt: null, passActive: false, trialActive: false,
   canListenLive: false, hasMemberAccess: false,
   reload: async () => {},
@@ -71,6 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading]   = useState(true)
   const [isDeveloper, setDev]   = useState(false)
   const [graceUntil, setGrace]  = useState(0)
+  const [testerClaim, setTesterClaim] = useState(false)
+  const [onTesterList, setOnTesterList] = useState(false)
   const [now, setNow]           = useState(() => Date.now())
 
   // Pre-launch: a signed-in beta tester gets the pass for the site (no developer password needed).
@@ -91,6 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const tokenResult = await firebaseUser.getIdTokenResult().catch(() => null)
         setDev(tokenResult?.claims.developer === true)
         setGrace(typeof tokenResult?.claims.graceUntil === 'number' ? tokenResult.claims.graceUntil : 0)
+        setTesterClaim(tokenResult?.claims.tester === true)
+        apiGet<{ isTester?: boolean }>('/api/me').then(m => setOnTesterList(m.isTester === true)).catch(() => {})
         setUserDoc((await getUserDoc(firebaseUser.uid).catch(() => null)) as UserDoc | null)
       } else {
         setUserDoc(null)
@@ -98,6 +104,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setTrial(null)
         setDev(false)
         setGrace(0)
+        setTesterClaim(false)
+        setOnTesterList(false)
       }
       setLoading(false)
     })
@@ -142,15 +150,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const claims = (await u?.getIdTokenResult(true))?.claims
     setDev(claims?.developer === true)
     setGrace(typeof claims?.graceUntil === 'number' ? claims.graceUntil : 0)
+    setTesterClaim(claims?.tester === true)
     setNow(Date.now())
     if (u) setUserDoc((await getUserDoc(u.uid).catch(() => null)) as UserDoc | null)
   }, [])
 
-  const babsonEmail = !!user?.email && isBabsonEmail(user.email)
+  const babsonEmail = !!user?.email && (isBabsonEmail(user.email) || testerClaim)
   const inGrace = graceUntil > now
   const isBabson = babsonEmail && (user!.emailVerified || inGrace)
   const needsVerification = babsonEmail && !user!.emailVerified && !inGrace
   const verifyDeadline = babsonEmail && !user!.emailVerified && inGrace ? graceUntil : null
+  const isTester = !!user && (testerClaim || onTesterList)
   const isGuest = !!user && !babsonEmail && !isDeveloper
   const passActive = !!guestPass && !guestPass.revoked && guestPass.expiresAt > now
   const trialActive = trialEndsAt !== null && trialEndsAt > now
@@ -160,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, userDoc, loading, isAdmin, isHost, isBabson, isDeveloper, isGuest, needsVerification, verifyDeadline,
+      user, userDoc, loading, isAdmin, isHost, isBabson, isDeveloper, isTester, isGuest, needsVerification, verifyDeadline,
       guestPass, guestTrialEndsAt: trialEndsAt, passActive, trialActive,
       canListenLive: isStudent || (isGuest && (passActive || trialActive)),
       hasMemberAccess: isStudent,

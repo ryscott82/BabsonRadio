@@ -72,6 +72,18 @@ export default function AdminPage() {
               href="/admin/testers"
             />
             <AdminCard
+              title="Set Lists"
+              description="Songs hosts reported playing on air. Download them as a spreadsheet."
+              icon="🎵"
+              href="/admin/setlists"
+            />
+            <AdminCard
+              title="Show Updates"
+              description="Changes hosts asked for on their shows. Approve to put them live."
+              icon="✏️"
+              href="/admin/show-updates"
+            />
+            <AdminCard
               title="Bugs & Ideas"
               description="Reports and feature ideas sent from the website and the app. Mark them done as you go."
               icon="🐞"

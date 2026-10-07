@@ -119,3 +119,32 @@ export async function syncToAzuraCast(db: Firestore, cfg: AutoConfig, now = Date
     return { updated: [], missing: [], error: e instanceof Error ? e.message : String(e) }
   }
 }
+
+// ── Live controls for the host panel ─────────────────────────────────────────
+
+export interface NowPlaying {
+  song: string; artist: string; title: string; elapsed: number; duration: number
+  isLive: boolean; streamer: string; listeners: number
+}
+
+/** What is on air right now (public AzuraCast endpoint). */
+export async function azNowPlaying(): Promise<NowPlaying | null> {
+  if (!azuraConfigured()) return null
+  type Raw = {
+    now_playing?: { song?: { text?: string; artist?: string; title?: string }; elapsed?: number; duration?: number }
+    live?: { is_live?: boolean; streamer_name?: string }
+    listeners?: { current?: number }
+  }
+  const r = await az<Raw>(`/nowplaying/${station()}`)
+  return {
+    song: r.now_playing?.song?.text ?? '', artist: r.now_playing?.song?.artist ?? '', title: r.now_playing?.song?.title ?? '',
+    elapsed: r.now_playing?.elapsed ?? 0, duration: r.now_playing?.duration ?? 0,
+    isLive: r.live?.is_live === true, streamer: r.live?.streamer_name ?? '', listeners: r.listeners?.current ?? 0,
+  }
+}
+
+/** Skip to the next song. The API key needs the "Manage station broadcasting" permission. */
+export async function azSkip(): Promise<void> {
+  if (!azuraConfigured()) throw new Error('AzuraCast is not configured')
+  await az(`/station/${station()}/backend/skip`, { method: 'POST' })
+}

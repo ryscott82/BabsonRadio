@@ -1,6 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
-import { BABSON_EMAIL, HttpError, handle, readJson, requireStaff, str } from '@/lib/server/http'
+import { ANY_EMAIL, HttpError, handle, readJson, requireStaff, str } from '@/lib/server/http'
 import { normEmail, testerEmails } from '@/lib/server/testers'
 
 export const runtime = 'nodejs'
@@ -20,8 +20,8 @@ export async function POST(req: Request) {
     const raw = Array.isArray(b.emails) ? b.emails : []
     const emails = [...new Set(raw.map(e => normEmail(str(e, 200))).filter(Boolean))]
     if (!emails.length || emails.length > 200 || typeof b.on !== 'boolean') throw new HttpError(400, 'Invalid request.')
-    const bad = emails.find(e => !BABSON_EMAIL.test(e))
-    if (bad) throw new HttpError(400, `${bad} is not a @babson.edu, @olin.edu or @wellesley.edu address.`)
+    const bad = emails.find(e => !ANY_EMAIL.test(e))
+    if (bad) throw new HttpError(400, `${bad} is not a valid email address.`)
     await adminDb().collection('config').doc('betaTesters').set(
       { emails: b.on ? FieldValue.arrayUnion(...emails) : FieldValue.arrayRemove(...emails) }, { merge: true })
     return { emails: await testerEmails() }

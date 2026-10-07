@@ -9,13 +9,13 @@ import ImagePicker from '@/components/ImagePicker'
 
 interface Show {
   id: string; showName: string; dayOfWeek: number; startTime: string; endTime: string; description: string
-  hostNames: string[]; category: string; imageUrl: string; imagePath: string; showSlug: string; isActive: boolean
+  hostNames: string[]; hostUsernames: string[]; category: string; imageUrl: string; imagePath: string; showSlug: string; isActive: boolean
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const CATEGORIES = ['', 'music', 'talk', 'interview', 'news', 'podcast', 'other']
 const blank = (): Show => ({ id: '', showName: '', dayOfWeek: 1, startTime: '20:00', endTime: '21:00', description: '',
-  hostNames: [], category: '', imageUrl: '', imagePath: '', showSlug: '', isActive: true })
+  hostNames: [], hostUsernames: [], category: '', imageUrl: '', imagePath: '', showSlug: '', isActive: true })
 
 export default function AdminSchedulePage() {
   const { user, isAdmin, loading } = useAuth()
@@ -86,6 +86,9 @@ export default function AdminSchedulePage() {
           </div>
           <Field label="Hosts (comma separated)" value={edit.hostNames.join(', ')}
                  onChange={e => setEdit({ ...edit, hostNames: e.target.value.split(',').map(x => x.trimStart()) })} />
+          <Field label="Host accounts (usernames, comma separated)" value={edit.hostUsernames.join(', ')} placeholder="jsmith1, adoe2"
+                 onChange={e => setEdit({ ...edit, hostUsernames: e.target.value.split(',').map(x => x.trimStart()) })} />
+          <p className="text-xs text-br-dk-sub -mt-2">These people get the host panel (radio controls and set list) from 4 hours before this show until 4 hours after, and can request changes to it any time.</p>
           <div className="grid sm:grid-cols-2 gap-4">
             <label><span className={lab}>CATEGORY</span>
               <select className={box} value={edit.category} onChange={e => setEdit({ ...edit, category: e.target.value })}>

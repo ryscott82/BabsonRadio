@@ -14,7 +14,8 @@ service cloud.firestore {
       return signedIn()
         && (request.auth.token.email_verified == true
             || request.time.toMillis() < request.auth.token.get('graceUntil', 0))
-        && request.auth.token.email.matches('.*@(babson|olin|wellesley)\\.edu$');
+        && (request.auth.token.email.matches('.*@(babson|olin|wellesley)\\.edu$')
+            || request.auth.token.get('tester', false) == true);
     }
 
     // Developer accounts: created with scripts/create-developer.mjs (custom claim, no babson.edu email).

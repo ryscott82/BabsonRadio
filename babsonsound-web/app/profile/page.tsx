@@ -48,11 +48,17 @@ export default function ProfilePage() {
   const { user, userDoc, loading, isBabson, isDeveloper, isGuest } = useAuth()
   const router = useRouter()
   const [invisible, setInvisible] = useState(false)
+  const [hosts, setHosts] = useState(false) // listed as a show host (or staff)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [showDelete, setShowDelete] = useState(false)
   const [pw, setPw] = useState('')
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (!user || !(isBabson || isDeveloper)) return
+    apiGet<{ staff: boolean; shows: unknown[] }>('/api/host/status').then(r => setHosts(r.staff || r.shows.length > 0)).catch(() => {})
+  }, [user, isBabson, isDeveloper])
 
   useEffect(() => {
     if (loading) return
@@ -84,6 +90,13 @@ export default function ProfilePage() {
           {userDoc?.username && <p className="text-br-gold text-sm font-display tracking-widest">@{userDoc.username}</p>}
           <p className="text-br-dk-sub text-sm">{user.email}{isDeveloper ? ' · Developer' : ''}</p>
         </div>
+
+        {hosts && (
+          <Link href="/host" className="block sk-raised rounded-2xl p-5">
+            <p className="text-br-dk-text text-sm font-medium">Host panel</p>
+            <p className="text-br-dk-sub text-xs mt-1">Radio controls and your set list (open around your show), plus changes to your show page.</p>
+          </Link>
+        )}
 
         {(isBabson || isDeveloper) && (
           <div className="bg-br-dk-surface border border-br-dk-border rounded-2xl p-5">

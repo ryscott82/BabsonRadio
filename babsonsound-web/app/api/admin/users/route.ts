@@ -22,6 +22,7 @@ export async function GET(req: Request) {
         email: d.get('email') ?? '',
         role: d.get('role') ?? 'listener',
         accountType: d.get('accountType') ?? '',
+        betaTester: d.get('betaTester') === true,
       })),
     }
   })

@@ -26,8 +26,15 @@ export const BABSON_EMAIL = /^[a-z0-9._%+-]+@(babson|olin|wellesley)\.edu$/
 /** New accounts get a `graceUntil` claim (ms) at sign-up: they can use the platform until then without verifying. */
 export const graceActive = (t: DecodedIdToken) => typeof t.graceUntil === 'number' && Date.now() < t.graceUntil
 
+/** Any well-formed email address (beta testers can come from any domain). */
+export const ANY_EMAIL = /^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/
+
+/** Beta testers carry a `tester` claim (set at sign-up from the allowlist) that gives them member access. */
+export const isTesterToken = (t: DecodedIdToken) => t.tester === true
+
 export function isBabsonToken(t: DecodedIdToken): boolean {
-  return (t.email_verified === true || graceActive(t)) && !!t.email && BABSON_EMAIL.test(t.email.toLowerCase())
+  if (!(t.email_verified === true || graceActive(t)) || !t.email) return false
+  return BABSON_EMAIL.test(t.email.toLowerCase()) || isTesterToken(t)
 }
 
 /** Developer accounts are created by script with a custom claim; they don't need a babson.edu email. */

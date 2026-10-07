@@ -63,7 +63,7 @@ export const apiGet = <T = Record<string, unknown>>(path: string) => request<T>(
 
 /** Account creation happens server-side (enforces babson.edu); then we sign in and send the verify email. */
 export async function signUp(email: string, password: string, firstName: string, lastName: string, phone: string) {
-  if (!isBabsonEmail(email)) throw fail('Use your @babson.edu, @olin.edu or @wellesley.edu email address.', 'BR-ACC-001')
+  if (!/^\S+@\S+\.\S+$/.test(email.trim())) throw fail('Enter a valid email address.', 'BR-ACC-009')
   await api('/api/auth/signup', { email, password, firstName, lastName, phone })
   try {
     const { user } = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password)
@@ -75,7 +75,6 @@ export async function signUp(email: string, password: string, firstName: string,
 }
 
 export async function signIn(email: string, password: string) {
-  if (!isBabsonEmail(email)) throw fail('Sign in with your school email. Not a student? Use guest access.', 'BR-ACC-001')
   try {
     const { user } = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password)
     return user

@@ -25,6 +25,7 @@ private struct SignedInProfileView: View {
     let user: BRUser
     @Environment(\.dismiss) private var dismiss
     @State private var showReport = false
+    @State private var hostAvailable = false
     @StateObject private var auth = AuthManager.shared
     @StateObject private var contacts = ContactsManager()
     @StateObject private var presence = PresenceManager.shared
@@ -72,6 +73,17 @@ private struct SignedInProfileView: View {
 
                     invisibleSection
                         .padding(.bottom, 20)
+
+                    // Hosts (listed on a show) and staff get the radio controls and set list.
+                    Color.clear.frame(height: 0)
+                        .task {
+                            if let s: HostStatus = try? await BackendAPI.get("/api/host/status") { hostAvailable = s.staff || !s.shows.isEmpty }
+                        }
+                    if hostAvailable {
+                        hostRow
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
+                    }
 
                     // Students request a spot on the radio from here.
                     if !user.isGuest {
@@ -254,6 +266,36 @@ private struct SignedInProfileView: View {
         }
         .buttonStyle(.plain)
         .sheet(isPresented: $showReport) { FeedbackView() }
+    }
+
+    private var hostRow: some View {
+        NavigationLink {
+            HostPanelView()
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .font(.system(size: 18))
+                    .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Host panel")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                    Text("Radio controls and your set list, open around your show.")
+                        .font(.system(size: 13))
+                        .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .brCard()
+        }
+        .buttonStyle(.plain)
     }
 
     private var goOnAirRow: some View {
@@ -963,5 +1005,248 @@ struct FeedbackView: View {
             }
             isSending = false
         }
+    }
+}
+
+
+// MARK: - Host panel
+// Radio controls and the set list. The server opens these 4 hours before a host's show and closes them
+// 4 hours after (staff are always allowed). Hosts can ask for changes to their show at any time.
+
+nonisolated struct HostShowItem: Decodable, Identifiable {
+    let id: String; let key: String; let kind: String; let refId: String
+    let title: String; let startAt: Date; let endAt: Date; let open: Bool
+}
+nonisolated struct HostNowPlaying: Decodable {
+    let song: String; let elapsed: Double; let duration: Double; let isLive: Bool; let streamer: String; let listeners: Int
+}
+nonisolated struct HostStatus: Decodable {
+    let staff: Bool; let controlsOpen: Bool; let windowHours: Int
+    let shows: [HostShowItem]; let nowPlaying: HostNowPlaying?
+}
+nonisolated struct SetlistResponse: Decodable { let songs: String }
+
+@MainActor
+final class HostManager: ObservableObject {
+    @Published var status: HostStatus?
+    @Published var error: String?
+
+    func load() async {
+        do { status = try await BackendAPI.get("/api/host/status"); error = nil }
+        catch { self.error = (error as? BackendError)?.message ?? error.localizedDescription }
+    }
+}
+
+struct HostPanelView: View {
+    @StateObject private var host = HostManager()
+    @Environment(\.colorScheme) var scheme
+
+    @State private var skipBusy = false
+    @State private var skipMessage: String?
+    @State private var pick: String = ""
+    @State private var songs = ""
+    @State private var setlistMessage: String?
+    @State private var saving = false
+    @State private var changeShow = ""
+    @State private var newName = ""
+    @State private var newDescription = ""
+    @State private var changeMessage: String?
+
+    private var text: Color { scheme == .dark ? .brDkText : .brLtText }
+    private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
+    private var accent: Color { scheme == .dark ? .brGold : .brGreen }
+
+    private var openShows: [HostShowItem] { host.status?.shows.filter { $0.open } ?? [] }
+    private var selected: HostShowItem? {
+        openShows.first { $0.id == pick } ?? openShows.first { $0.startAt <= Date() && $0.endAt >= Date() } ?? openShows.first
+    }
+    private var weeklyShows: [HostShowItem] {
+        var seen = Set<String>()
+        return (host.status?.shows ?? []).filter { $0.kind == "weekly" && seen.insert($0.refId).inserted }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                if let err = host.error { Text(err).font(.system(size: 13)).foregroundColor(.brRed) }
+                if let s = host.status {
+                    controls(s)
+                    setList(s)
+                    yourShows(s)
+                    changeRequest
+                } else if host.error == nil {
+                    ProgressView()
+                }
+            }
+            .padding(20)
+        }
+        .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+        .navigationTitle("Host panel")
+        .navigationBarTitleDisplayMode(.inline)
+        .refreshable { await host.load() }
+        .task {
+            await host.load()
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(20))
+                await host.load()
+            }
+        }
+        .task(id: selected?.id) { await loadSetlist() }
+    }
+
+    // MARK: sections
+
+    @ViewBuilder private func controls(_ s: HostStatus) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            BRSectionHeader(title: "ON AIR")
+            if s.controlsOpen {
+                let np = s.nowPlaying
+                Text((np?.isLive ?? false) ? "LIVE" + ((np?.streamer ?? "").isEmpty ? "" : " · \(np!.streamer)") : "NOW PLAYING")
+                    .font(.system(size: 11, weight: .semibold)).foregroundColor(sub)
+                Text((np?.song ?? "").isEmpty ? "Nothing reported right now" : np!.song)
+                    .font(.system(size: 18, weight: .semibold)).foregroundColor(text)
+                if let np { Text("\(np.listeners) listening").font(.system(size: 12)).foregroundColor(sub) }
+                Button {
+                    Task {
+                        skipBusy = true; skipMessage = nil
+                        do { let _: EmptyResponse = try await BackendAPI.post("/api/host/skip", [:]); skipMessage = "Skipped. The next song is starting." }
+                        catch { skipMessage = (error as? BackendError)?.message ?? error.localizedDescription }
+                        skipBusy = false
+                        try? await Task.sleep(for: .seconds(2)); await host.load()
+                    }
+                } label: {
+                    HStack { if skipBusy { ProgressView().tint(.white) } else { Text("SKIP THIS SONG").font(BRFont.display(14)).kerning(2) } }
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(accent).foregroundColor(scheme == .dark ? .brDkBg : .white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(skipBusy)
+                if let m = skipMessage { Text(m).font(.system(size: 12)).foregroundColor(sub) }
+                Text("Open from \(s.windowHours) hours before your show until \(s.windowHours) hours after. Every skip is logged.")
+                    .font(.system(size: 11)).foregroundColor(sub)
+            } else if let next = s.shows.first(where: { $0.startAt.timeIntervalSinceNow > Double(s.windowHours) * 3600 }) {
+                Text("Controls open \(s.windowHours) hours before \(next.title), which starts \(next.startAt.formatted(.dateTime.weekday(.wide).hour().minute())).")
+                    .font(.system(size: 14)).foregroundColor(sub)
+            } else {
+                Text("You have no upcoming shows this week.").font(.system(size: 14)).foregroundColor(sub)
+            }
+        }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
+    }
+
+    @ViewBuilder private func setList(_ s: HostStatus) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            BRSectionHeader(title: "SET LIST")
+            if let sel = selected {
+                if openShows.count > 1 {
+                    Picker("Show", selection: Binding(get: { sel.id }, set: { pick = $0 })) {
+                        ForEach(openShows) { Text("\($0.title) · \($0.startAt.formatted(.dateTime.weekday(.abbreviated).hour().minute()))").tag($0.id) }
+                    }
+                    .pickerStyle(.menu)
+                }
+                Text("\(sel.title) · \(sel.startAt.formatted(.dateTime.weekday(.wide).hour().minute()))")
+                    .font(.system(size: 12)).foregroundColor(sub)
+                TextEditor(text: $songs)
+                    .frame(minHeight: 200)
+                    .scrollContentBackground(.hidden)
+                    .padding(8)
+                    .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(alignment: .topLeading) {
+                        if songs.isEmpty {
+                            Text("One song per line:\nArtist – Song title").font(.system(size: 14)).foregroundColor(sub.opacity(0.7))
+                                .padding(.horizontal, 14).padding(.vertical, 16).allowsHitTesting(false)
+                        }
+                    }
+                Button {
+                    Task {
+                        saving = true; setlistMessage = nil
+                        do {
+                            let _: EmptyResponse = try await BackendAPI.post("/api/host/setlist",
+                                ["key": sel.key, "startAt": Int(sel.startAt.timeIntervalSince1970 * 1000), "songs": songs])
+                            setlistMessage = "Saved."
+                        } catch { setlistMessage = (error as? BackendError)?.message ?? error.localizedDescription }
+                        saving = false
+                    }
+                } label: {
+                    HStack { if saving { ProgressView().tint(.white) } else { Text("SAVE SET LIST").font(BRFont.display(14)).kerning(2) } }
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(accent).foregroundColor(scheme == .dark ? .brDkBg : .white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(saving)
+                if let m = setlistMessage { Text(m).font(.system(size: 12)).foregroundColor(sub) }
+                Text("Type it as you go or paste the whole list at the end. You can edit it until \(s.windowHours) hours after your show.")
+                    .font(.system(size: 11)).foregroundColor(sub)
+            } else {
+                Text("The set list opens \(s.windowHours) hours before your show.").font(.system(size: 14)).foregroundColor(sub)
+            }
+        }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
+    }
+
+    @ViewBuilder private func yourShows(_ s: HostStatus) -> some View {
+        if !s.shows.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                BRSectionHeader(title: "YOUR SHOWS")
+                ForEach(s.shows) { show in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(show.title).font(.system(size: 15, weight: .semibold)).foregroundColor(text)
+                            Text("\(show.startAt.formatted(.dateTime.weekday(.abbreviated).month().day().hour().minute()))")
+                                .font(.system(size: 12)).foregroundColor(sub)
+                        }
+                        Spacer()
+                        Text(show.open ? "PANEL OPEN" : "UPCOMING").font(BRFont.display(10)).kerning(1.5)
+                            .foregroundColor(show.open ? accent : sub)
+                    }
+                    .padding(12).frame(maxWidth: .infinity, alignment: .leading).brCard()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var changeRequest: some View {
+        if !weeklyShows.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                BRSectionHeader(title: "REQUEST A CHANGE TO YOUR SHOW")
+                if weeklyShows.count > 1 {
+                    Picker("Show", selection: $changeShow) {
+                        ForEach(weeklyShows) { Text($0.title).tag($0.refId) }
+                    }.pickerStyle(.menu)
+                }
+                BRTextField(placeholder: "New name (optional)", text: $newName, icon: "textformat")
+                BRTextField(placeholder: "New description (optional)", text: $newDescription, icon: "text.alignleft")
+                Button {
+                    Task {
+                        changeMessage = nil
+                        let id = changeShow.isEmpty ? (weeklyShows.first?.refId ?? "") : changeShow
+                        do {
+                            let _: EmptyResponse = try await BackendAPI.post("/api/host/update-request",
+                                ["scheduleId": id, "showName": newName, "description": newDescription])
+                            newName = ""; newDescription = ""
+                            changeMessage = "Sent. Staff will review it and it goes live when approved."
+                        } catch { changeMessage = (error as? BackendError)?.message ?? error.localizedDescription }
+                    }
+                } label: {
+                    Text("SEND REQUEST").font(BRFont.display(14)).kerning(2)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(accent).foregroundColor(scheme == .dark ? .brDkBg : .white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty && newDescription.trimmingCharacters(in: .whitespaces).isEmpty)
+                if let m = changeMessage { Text(m).font(.system(size: 12)).foregroundColor(sub) }
+                Text("To change your show's picture, use the website.").font(.system(size: 11)).foregroundColor(sub)
+            }
+            .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
+        }
+    }
+
+    private func loadSetlist() async {
+        guard let sel = selected else { songs = ""; return }
+        let ms = Int(sel.startAt.timeIntervalSince1970 * 1000)
+        let key = sel.key.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? sel.key
+        if let r: SetlistResponse = try? await BackendAPI.get("/api/host/setlist?key=\(key)&startAt=\(ms)") { songs = r.songs }
+        setlistMessage = nil
     }
 }

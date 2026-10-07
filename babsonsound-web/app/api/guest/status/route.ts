@@ -1,5 +1,5 @@
 import { adminAuth, adminDb } from '@/lib/server/admin'
-import { BABSON_EMAIL, handle, isBabsonToken, isDeveloperToken, requireUser } from '@/lib/server/http'
+import { BABSON_EMAIL, handle, isBabsonToken, isDeveloperToken, isTesterToken, requireUser } from '@/lib/server/http'
 import { ensureGuestUserDoc, ensureTrial } from '@/lib/server/guests'
 
 export const runtime = 'nodejs'
@@ -14,7 +14,7 @@ export async function GET(req: Request) {
     if (isDeveloperToken(t)) return { tier: 'developer', canListenLive: true, canAccessBacklog: true }
 
     const email = (t.email ?? '').toLowerCase()
-    if (BABSON_EMAIL.test(email)) {
+    if (BABSON_EMAIL.test(email) || isTesterToken(t)) {
       const ok = isBabsonToken(t)
       return { tier: 'student', needsVerification: !ok, canListenLive: ok, canAccessBacklog: ok }
     }

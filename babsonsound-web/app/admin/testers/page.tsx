@@ -43,11 +43,11 @@ export default function AdminTestersPage() {
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
       <p className="text-sm text-br-dk-sub">
-        Until launch, only these Babson emails can create an account and open the site, with their own login.
-        Type the part before the @ and pick the school (or paste full addresses). Several at once is fine.
+        Until launch, only these emails can create an account and open the site, with their own login. Testers can use any email domain and get a Report bug / feature button on every page.
+        Paste full addresses, or type just the part before the @ to use the school picked below. Several at once is fine.
       </p>
       <div className="sk-raised rounded-xl p-4 space-y-3">
-        <textarea value={text} onChange={e => setText(e.target.value)} rows={3} placeholder="jsmith1, adoe2, mlee3"
+        <textarea value={text} onChange={e => setText(e.target.value)} rows={3} placeholder="jsmith1, adoe2, friend@gmail.com"
                   className="sk-field w-full rounded-lg px-3 py-2 text-sm text-br-dk-text" />
         <label className="flex items-center gap-2 text-xs text-br-dk-sub">
           School for names without an @

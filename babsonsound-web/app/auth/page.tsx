@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { signIn, signUp, signOut, resendVerification, isBabsonEmail, sendPasswordReset } from '@/lib/auth'
+import { signIn, signUp, signOut, resendVerification, sendPasswordReset } from '@/lib/auth'
 import { normalizeUS } from '@/lib/phone'
 import { Card, ErrorText, Field, GhostButton, PrimaryButton, formatPhone } from '@/components/AuthUI'
 
@@ -53,7 +53,7 @@ function Forms() {
     if (mode === 'create') {
       if (!firstName.trim()) return setError('Enter your first name.')
       if (!lastName.trim()) return setError('Enter your last name.')
-      if (!isBabsonEmail(email)) return setError('Use your @babson.edu, @olin.edu or @wellesley.edu email address.')
+      if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setError('Enter a valid email address.')
       if (!normalizeUS(phone)) return setError('Enter a valid 10-digit US phone number.')
       if (password.length < 8) return setError('Password must be at least 8 characters.')
     }

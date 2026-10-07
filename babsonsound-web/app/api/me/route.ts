@@ -1,4 +1,5 @@
 import { adminDb } from '@/lib/server/admin'
+import { isTester } from '@/lib/server/testers'
 import { HttpError, handle, isBabsonToken, isDeveloperToken, readJson, requireUser, str } from '@/lib/server/http'
 
 export const runtime = 'nodejs'
@@ -18,6 +19,7 @@ export async function GET(req: Request) {
       role: u.get('role') ?? 'listener',
       isDeveloper: isDeveloperToken(t),
       isBabson: isBabsonToken(t),
+      isTester: t.tester === true || (await isTester(t.email)),
       invisible: u.get('invisible') === true,
     }
   })

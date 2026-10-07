@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
 import { ErrorText } from '@/components/AuthUI'
 
-interface Row { id: string; name: string; username: string; email: string; role: string; accountType: string }
+interface Row { id: string; name: string; username: string; email: string; role: string; accountType: string; betaTester?: boolean }
 
 const ROLE_LABEL: Record<string, string> = { listener: 'Listener', showHost: 'Show host', superAdmin: 'Admin', developer: 'Developer' }
 const PRIVILEGED = ['superAdmin', 'developer']
@@ -65,7 +65,7 @@ export default function AdminUsersPage() {
             <div key={r.id} className="sk-raised rounded-xl px-4 py-3 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm text-br-dk-text truncate">{r.name || '(no name)'}{r.username ? ` · @${r.username}` : ''}</p>
-                <p className="text-xs text-br-dk-sub truncate">{r.email}{r.accountType === 'guest' ? ' · guest' : ''}</p>
+                <p className="text-xs text-br-dk-sub truncate">{r.email}{r.accountType === 'guest' ? ' · guest' : ''}{r.betaTester ? ' · beta tester' : ''}</p>
               </div>
               {student && r.id !== user.uid && !locked ? (
                 <select value={r.role} onChange={e => setRole(r, e.target.value)} aria-label={`Role for ${r.name || r.email}`}

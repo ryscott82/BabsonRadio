@@ -385,6 +385,27 @@
     "staffCheck": "Add the email at /admin/testers (Admin → Beta Testers). Remove the restriction on launch day by setting PRELAUNCH_OFF=1."
   },
   {
+    "code": "BR-HST-001",
+    "title": "Host controls are closed",
+    "meaning": "Radio controls and the set list are open from 4 hours before a host's show until 4 hours after it.",
+    "userFix": "Come back closer to your show time.",
+    "staffCheck": "Check the show's day and times in Admin → Schedule, and the time zone in Auto-Scheduler. Developers and admins are never blocked."
+  },
+  {
+    "code": "BR-HST-002",
+    "title": "Not a host of that show",
+    "meaning": "The account is not listed as a host of that show.",
+    "userFix": "Ask a station admin to add you as a host.",
+    "staffCheck": "Admin → Schedule → edit the show → Host accounts (usernames). Approved student slots are linked to the student automatically."
+  },
+  {
+    "code": "BR-HST-003",
+    "title": "Radio did not accept the command",
+    "meaning": "The station software (AzuraCast) refused or did not answer the skip command.",
+    "userFix": "Try again in a moment.",
+    "staffCheck": "Check AZURACAST_URL / AZURACAST_API_KEY in Vercel, and that the API key's role has Manage Station Broadcasting."
+  },
+  {
     "code": "BR-ACC-017",
     "title": "Last name missing",
     "meaning": "Sign-up needs both a first and last name.",

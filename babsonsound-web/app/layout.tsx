@@ -5,6 +5,7 @@ import Nav from '@/components/Nav'
 import Footer from '@/components/Footer'
 import PreviewLock from '@/components/PreviewLock'
 import VerifyBanner from '@/components/VerifyBanner'
+import TesterFeedback from '@/components/TesterFeedback'
 
 export const metadata: Metadata = {
   title: 'Babson Radio',
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </main>
           <Footer />
+          <TesterFeedback />
         </AuthProvider>
       </body>
     </html>

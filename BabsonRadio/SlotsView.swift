@@ -533,46 +533,57 @@ struct ScheduleView: View {
     @StateObject private var slots = SlotsManager()
     @Environment(\.colorScheme) var scheme
     @State private var selected: ScheduleEntry?
+    @State private var first = Calendar.current.startOfDay(for: Date())   // first of the three days shown
     @ObservedObject private var reminders = ReminderManager.shared
+
+    private let hourH: CGFloat = 56
+    private let gutter: CGFloat = 40
+    private let daysShown = 3
+    private let daysLoaded = 14
 
     private var textColor: Color { scheme == .dark ? .brDkText : .brLtText }
     private var subColor: Color { scheme == .dark ? .brDkSub : .brLtSub }
-
-    private var days: [(day: Date, items: [ScheduleEntry])] {
-        let cal = Calendar.current
-        let groups = Dictionary(grouping: slots.feed) { cal.startOfDay(for: $0.startAt) }
-        return groups.keys.sorted().map { ($0, groups[$0]!.sorted { $0.startAt < $1.startAt }) }
+    private var lineColor: Color { scheme == .dark ? .brDkBorder : .brLtBorder }
+    private var cal: Calendar { Calendar.current }
+    private var today: Date { cal.startOfDay(for: Date()) }
+    private var shown: [Date] { (0..<daysShown).compactMap { cal.date(byAdding: .day, value: $0, to: first) } }
+    private var canBack: Bool { first > today }
+    private var canForward: Bool {
+        guard let end = cal.date(byAdding: .day, value: daysShown, to: first),
+              let limit = cal.date(byAdding: .day, value: daysLoaded, to: today) else { return false }
+        return end < limit
     }
 
-    private func dayTitle(_ d: Date) -> String {
-        let cal = Calendar.current
-        if cal.isDateInToday(d) { return "TODAY" }
-        if cal.isDateInTomorrow(d) { return "TOMORROW" }
-        return d.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()).uppercased()
+    private func move(_ days: Int) {
+        if let d = cal.date(byAdding: .day, value: days, to: first) { first = max(d, today) }
+    }
+
+    private var rangeText: String {
+        guard let a = shown.first, let b = shown.last else { return "" }
+        return "\(a.formatted(.dateTime.month(.abbreviated).day())) – \(b.formatted(.dateTime.month(.abbreviated).day()))".uppercased()
     }
 
     var body: some View {
         NavigationStack {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 28) {
-                    if days.isEmpty {
-                        Text(slots.isLoading ? "Loading…" : "Nothing is scheduled yet.")
-                            .font(.system(size: 13)).foregroundColor(subColor).padding(.horizontal, 20)
-                    }
-                    ForEach(days, id: \.day) { group in
-                        VStack(alignment: .leading, spacing: 12) {
-                            BRSectionHeader(title: dayTitle(group.day)).padding(.horizontal, 20)
-                            ForEach(group.items) { entry in
-                                ScheduleEntryRow(entry: entry, onOpen: { selected = entry })
-                                    .padding(.horizontal, 20)
-                            }
+            VStack(spacing: 0) {
+                controls
+                dayHeader
+                Divider().overlay(lineColor)
+                ScrollViewReader { proxy in
+                    ScrollView(showsIndicators: false) {
+                        if slots.feed.isEmpty {
+                            Text(slots.isLoading ? "Loading…" : "Nothing is scheduled yet.")
+                                .font(.system(size: 13)).foregroundColor(subColor).padding(20)
+                        } else {
+                            grid
                         }
                     }
+                    .refreshable { await slots.loadFeed() }
+                    .onAppear { scrollToNow(proxy) }
+                    .onChange(of: first) { _, _ in scrollToNow(proxy) }
+                    .onChange(of: slots.feed.count) { _, _ in scrollToNow(proxy) }
                 }
-                .padding(.top, 16)
-                .padding(.bottom, 40)
             }
-            .refreshable { await slots.loadFeed() }
             .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
             .navigationTitle("")
             .profileButton()
@@ -592,6 +603,143 @@ struct ScheduleView: View {
             Button("OK", role: .cancel) {}
         } message: { Text(reminders.notice ?? "") }
         .task(id: auth.currentUser?.id) { await slots.loadFeed() }
+    }
+
+    private func scrollToNow(_ proxy: ScrollViewProxy) {
+        let hour = first == today ? max(0, cal.component(.hour, from: Date()) - 1) : 7
+        DispatchQueue.main.async { proxy.scrollTo(hour, anchor: .top) }
+    }
+
+    // MARK: pieces
+
+    private var controls: some View {
+        HStack(spacing: 10) {
+            Button { move(-1) } label: { Image(systemName: "chevron.left").frame(width: 34, height: 34) }
+                .disabled(!canBack)
+            Button { move(1) } label: { Image(systemName: "chevron.right").frame(width: 34, height: 34) }
+                .disabled(!canForward)
+            Button("Today") { first = today }
+                .font(.system(size: 13, weight: .semibold))
+                .disabled(first == today)
+            Spacer()
+            Text(rangeText).font(BRFont.display(13)).kerning(2)
+                .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+        }
+        .font(.system(size: 15, weight: .semibold))
+        .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
+
+    private var dayHeader: some View {
+        HStack(spacing: 0) {
+            Spacer().frame(width: gutter)
+            ForEach(shown, id: \.self) { day in
+                let isToday = cal.isDate(day, inSameDayAs: Date())
+                VStack(spacing: 1) {
+                    Text(isToday ? "TODAY" : day.formatted(.dateTime.weekday(.abbreviated)).uppercased())
+                        .font(BRFont.display(11)).kerning(1.5)
+                        .foregroundColor(isToday ? (scheme == .dark ? .brGold : .brGreen) : subColor)
+                    Text(day.formatted(.dateTime.month(.abbreviated).day()))
+                        .font(.system(size: 13, weight: .medium)).foregroundColor(textColor)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+            }
+        }
+    }
+
+    private var grid: some View {
+        HStack(alignment: .top, spacing: 0) {
+            // Hour labels (also the scroll anchors)
+            VStack(spacing: 0) {
+                ForEach(0..<24, id: \.self) { h in
+                    Text(h == 0 ? "" : Calendar.current.date(from: DateComponents(hour: h))!.formatted(.dateTime.hour()))
+                        .font(.system(size: 10)).foregroundColor(subColor)
+                        .frame(width: gutter - 4, height: hourH, alignment: .topTrailing)
+                        .offset(y: -6)
+                        .id(h)
+                }
+            }
+            .frame(width: gutter)
+            ForEach(shown, id: \.self) { day in
+                dayColumn(day)
+            }
+        }
+        .frame(height: hourH * 24)
+        .padding(.bottom, 24)
+    }
+
+    private func dayColumn(_ day: Date) -> some View {
+        let start = day
+        let end = cal.date(byAdding: .day, value: 1, to: day) ?? day.addingTimeInterval(86_400)
+        let items = slots.feed.filter { $0.startAt < end && $0.endAt > start }
+        return GeometryReader { geo in
+            ZStack(alignment: .topLeading) {
+                ForEach(0..<24, id: \.self) { h in
+                    Rectangle().fill(lineColor.opacity(0.6)).frame(height: 0.5).offset(y: CGFloat(h) * hourH)
+                }
+                ForEach(items) { e in
+                    let top = max(e.startAt, start).timeIntervalSince(start) / 3600 * hourH
+                    let height = max(min(e.endAt, end).timeIntervalSince(max(e.startAt, start)) / 3600 * hourH - 2, 22)
+                    CalendarBlock(entry: e, height: height, onOpen: { selected = e })
+                        .frame(width: geo.size.width - 4, height: height)
+                        .offset(x: 2, y: top + 1)
+                }
+                if cal.isDate(day, inSameDayAs: Date()) {
+                    Rectangle().fill(Color.brRed).frame(height: 1.5)
+                        .offset(y: Date().timeIntervalSince(start) / 3600 * hourH)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .overlay(alignment: .leading) { Rectangle().fill(lineColor).frame(width: 0.5) }
+    }
+}
+
+/// One show on the calendar. Tap to open details; the small bell sets a reminder.
+private struct CalendarBlock: View {
+    let entry: ScheduleEntry
+    let height: CGFloat
+    let onOpen: () -> Void
+    @Environment(\.colorScheme) var scheme
+
+    private var onNow: Bool { entry.startAt <= Date() && entry.endAt > Date() }
+    private var isAuto: Bool { entry.source == "auto" }
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(entry.title)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                if height >= 44 {
+                    Text(entry.startAt.formatted(date: .omitted, time: .shortened))
+                        .font(.system(size: 9))
+                        .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.leading, 6).padding(.trailing, 22).padding(.vertical, 4)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onOpen)
+            if height >= 34 {
+                BellButton(entry: entry, compact: true)
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isAuto ? (scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
+                             : (scheme == .dark ? Color.brGold.opacity(0.18) : Color.brGreen.opacity(0.14)))
+        )
+        .overlay(alignment: .leading) {
+            if !isAuto { RoundedRectangle(cornerRadius: 1).fill(scheme == .dark ? Color.brGold : Color.brGreen).frame(width: 3) }
+        }
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(onNow ? Color.brRed : .clear, lineWidth: 1.5))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 

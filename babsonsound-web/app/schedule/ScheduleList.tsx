@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -15,13 +15,11 @@ interface Item {
 }
 
 const FORMAT: Record<Item['format'], string> = { show: 'SHOW', live: 'LIVE', prerecorded: 'PRE-RECORDED', playlist: 'PLAYLIST' }
-const dayKey = (ms: number) => new Date(ms).toDateString()
-const dayLabel = (ms: number, now: number) => {
-  const d = new Date(ms)
-  if (dayKey(ms) === dayKey(now)) return 'TODAY'
-  if (dayKey(ms) === dayKey(now + 86_400_000)) return 'TOMORROW'
-  return d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase()
-}
+const DAY = 86_400_000
+const HOUR_PX = 56            // height of one hour on the calendar
+const DAYS_SHOWN = 3
+const DAYS_LOADED = 14
+const startOfDay = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime() }
 const time = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
 function Art({ item, className }: { item: Item; className: string }) {
@@ -37,11 +35,11 @@ function Art({ item, className }: { item: Item; className: string }) {
   )
 }
 
-function Bell({ on, onClick, label }: { on: boolean; onClick: (e: React.MouseEvent) => void; label: string }) {
+function Bell({ on, onClick, label, small }: { on: boolean; onClick: (e: React.MouseEvent) => void; label: string; small?: boolean }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={on} aria-label={label}
-            className="sk-key rounded-full w-9 h-9 flex items-center justify-center shrink-0 text-br-dk-text">
-      <svg className="w-4 h-4" viewBox="0 0 24 24" fill={on ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2}
+            className={`sk-key rounded-full flex items-center justify-center shrink-0 text-br-dk-text ${small ? 'w-6 h-6' : 'w-9 h-9'}`}>
+      <svg className={small ? 'w-3 h-3' : 'w-4 h-4'} viewBox="0 0 24 24" fill={on ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2}
            strokeLinecap="round" strokeLinejoin="round">
         <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 01-3.4 0" />
       </svg>
@@ -58,9 +56,11 @@ export default function ScheduleList() {
   const [error, setError] = useState('')
   const [open, setOpen] = useState<Item | null>(null)
   const [now, setNow] = useState(() => Date.now())
+  const [first, setFirst] = useState(() => startOfDay(Date.now())) // first of the three days shown
+  const scroller = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const load = () => apiGet<{ items: Item[] }>('/api/schedule?days=7')
+    const load = () => apiGet<{ items: Item[] }>('/api/schedule?days=14')
       .then(r => { setItems(r.items); setNow(Date.now()) })
       .catch(e => setError(e instanceof Error ? e.message : 'Could not load the schedule.'))
     load()
@@ -98,50 +98,103 @@ export default function ScheduleList() {
     return () => window.removeEventListener('keydown', esc)
   }, [open])
 
+  const ready = !!items?.length
+  useEffect(() => {
+    if (!ready || !scroller.current) return
+    const today = startOfDay(Date.now())
+    const hour = first === today ? Math.max(0, new Date().getHours() - 1) : 7
+    scroller.current.scrollTop = hour * HOUR_PX
+  }, [ready, first])
+
   if (error && !items) return <ErrorText>{error}</ErrorText>
   if (!items) return <p className="text-sm text-br-dk-sub">Loading…</p>
   if (!items.length) return <p className="text-sm text-br-dk-sub">Nothing is scheduled yet.</p>
 
-  const days: { key: string; at: number; list: Item[] }[] = []
-  for (const it of items) {
-    const k = dayKey(it.startAt)
-    const g = days.find(d => d.key === k)
-    if (g) g.list.push(it); else days.push({ key: k, at: it.startAt, list: [it] })
-  }
+  const today = startOfDay(now)
+  const shown = Array.from({ length: DAYS_SHOWN }, (_, i) => first + i * DAY)
+  const canBack = first > today
+  const canFwd = first + DAYS_SHOWN * DAY < today + DAYS_LOADED * DAY
+  const hours = Array.from({ length: 24 }, (_, h) => h)
+  const hourLabel = (h: number) => new Date(2000, 0, 1, h).toLocaleTimeString([], { hour: 'numeric' })
+  const range = `${new Date(shown[0]).toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${new Date(shown[DAYS_SHOWN - 1]).toLocaleDateString([], { month: 'short', day: 'numeric' })}`
 
   return (
     <>
       <p className="text-sm text-br-dk-sub">Tap the bell on any show to get a reminder 5 minutes before it starts. Reminders arrive in the Babson Radio iPhone app.</p>
       <ErrorText>{error}</ErrorText>
       {note && <p role="status" className="text-sm text-br-gold">{note}</p>}
-      <div className="space-y-10">
-        {days.map(d => (
-          <section key={d.key} className="space-y-3">
-            <h2 className="font-display text-br-gold tracking-widest text-sm">{dayLabel(d.at, now)}</h2>
-            {d.list.map(it => {
-              const live = it.startAt <= now && it.endAt > now
+
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <button onClick={() => setFirst(f => f - DAY)} disabled={!canBack} aria-label="Previous day"
+                  className="sk-key rounded-lg w-9 h-9 text-br-dk-text disabled:opacity-40">‹</button>
+          <button onClick={() => setFirst(f => f + DAY)} disabled={!canFwd} aria-label="Next day"
+                  className="sk-key rounded-lg w-9 h-9 text-br-dk-text disabled:opacity-40">›</button>
+          <button onClick={() => setFirst(today)} disabled={first === today}
+                  className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-40">TODAY</button>
+        </div>
+        <p className="font-display text-br-gold text-sm tracking-widest">{range.toUpperCase()}</p>
+      </div>
+
+      <div className="sk-raised rounded-xl overflow-hidden">
+        <div className="grid grid-cols-[2.75rem_repeat(3,minmax(0,1fr))] border-b border-br-dk-border">
+          <div />
+          {shown.map(d => (
+            <div key={d} className="py-2 text-center border-l border-br-dk-border">
+              <p className={`font-display text-xs tracking-widest ${d === today ? 'text-br-gold' : 'text-br-dk-sub'}`}>
+                {d === today ? 'TODAY' : new Date(d).toLocaleDateString([], { weekday: 'short' }).toUpperCase()}
+              </p>
+              <p className="text-sm text-br-dk-text">{new Date(d).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
+            </div>
+          ))}
+        </div>
+
+        <div ref={scroller} className="overflow-y-auto" style={{ maxHeight: '68vh' }}>
+          <div className="grid grid-cols-[2.75rem_repeat(3,minmax(0,1fr))]" style={{ height: 24 * HOUR_PX }}>
+            <div className="relative">
+              {hours.map(h => (
+                <span key={h} className="absolute right-1 text-[10px] text-br-dk-sub -translate-y-1/2"
+                      style={{ top: h * HOUR_PX, display: h === 0 ? 'none' : undefined }}>{hourLabel(h)}</span>
+              ))}
+            </div>
+            {shown.map(d => {
+              const dayEnd = d + DAY
+              const list = items.filter(it => it.startAt < dayEnd && it.endAt > d)
               return (
-                <div key={it.id} role="button" tabIndex={0} onClick={() => setOpen(it)}
-                     onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setOpen(it)}
-                     className={`w-full text-left flex items-center gap-3 p-3 rounded-xl cursor-pointer ${it.source === 'auto' ? 'sk-field' : 'sk-raised'}`}>
-                  <Art item={it} className="w-14 h-14 rounded-lg shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm text-br-dk-text truncate">{it.title}</p>
-                    <p className="text-xs text-br-dk-sub truncate">
-                      {it.hosts.length ? `with ${it.hosts.join(', ')} · ` : ''}{FORMAT[it.format]}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    {live && <p className="font-display text-br-red text-[10px] tracking-widest">ON NOW</p>}
-                    <p className="text-xs text-br-dk-sub">{time(it.startAt)} – {time(it.endAt)}</p>
-                  </div>
-                  <Bell on={bells.has(it.reminderKey)} label={`Remind me before ${it.title}`}
-                        onClick={e => { e.stopPropagation(); toggleBell(it) }} />
+                <div key={d} className="relative border-l border-br-dk-border">
+                  {hours.map(h => (
+                    <div key={h} className="absolute inset-x-0 border-t border-br-dk-border/60" style={{ top: h * HOUR_PX }} />
+                  ))}
+                  {d === today && (
+                    <div className="absolute inset-x-0 z-10 h-0.5 bg-br-red" style={{ top: ((now - d) / 3_600_000) * HOUR_PX }} />
+                  )}
+                  {list.map(it => {
+                    const top = ((Math.max(it.startAt, d) - d) / 3_600_000) * HOUR_PX
+                    const height = Math.max(((Math.min(it.endAt, dayEnd) - Math.max(it.startAt, d)) / 3_600_000) * HOUR_PX - 2, 22)
+                    const live = it.startAt <= now && it.endAt > now
+                    const tall = height >= 44
+                    return (
+                      <div key={it.id} role="button" tabIndex={0} onClick={() => setOpen(it)}
+                           onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setOpen(it)}
+                           className={`absolute inset-x-0.5 rounded-md px-1.5 py-1 overflow-hidden cursor-pointer text-left ${
+                             it.source === 'auto' ? 'sk-field' : 'sk-raised border-l-2 border-br-gold'} ${live ? 'ring-1 ring-br-red' : ''}`}
+                           style={{ top: top + 1, height }}>
+                        <p className="text-xs leading-tight text-br-dk-text pr-6 line-clamp-2">{it.title}</p>
+                        {tall && <p className="text-[10px] text-br-dk-sub truncate">{time(it.startAt)}{it.hosts.length ? ` · ${it.hosts[0]}` : ''}</p>}
+                        {height >= 34 && (
+                          <span className="absolute top-1 right-1">
+                            <Bell small on={bells.has(it.reminderKey)} label={`Remind me before ${it.title}`}
+                                  onClick={e => { e.stopPropagation(); toggleBell(it) }} />
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )
             })}
-          </section>
-        ))}
+          </div>
+        </div>
       </div>
 
       {open && (

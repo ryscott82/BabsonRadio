@@ -3,7 +3,7 @@ import { CALENDAR_URL } from '@/lib/links'
 
 export default function SchedulePage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
       <div className="flex items-center gap-4">
         <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">SCHEDULE</h1>
         <div className="flex-1 h-px bg-br-dk-border" />

@@ -22,7 +22,7 @@ class SlotsManager: ObservableObject {
 
     /// The whole schedule for the next week (public; students also see host names on student shows).
     func loadFeed() async {
-        if let r: ScheduleFeedResponse = try? await BackendAPI.get("/api/schedule?days=7") {
+        if let r: ScheduleFeedResponse = try? await BackendAPI.get("/api/schedule?days=14") {
             feed = r.items
             await ReminderManager.shared.update(feed: r.items, timezone: r.timezone)
         }
@@ -179,6 +179,7 @@ nonisolated struct ReminderKeysResponse: Decodable { let keys: [String] }
 
 struct BellButton: View {
     let entry: ScheduleEntry
+    var compact = false
     @ObservedObject private var reminders = ReminderManager.shared
     @Environment(\.colorScheme) var scheme
 
@@ -186,9 +187,9 @@ struct BellButton: View {
         let on = reminders.isOn(entry)
         Button { Task { await reminders.toggle(entry) } } label: {
             Image(systemName: on ? "bell.fill" : "bell")
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: compact ? 11 : 16, weight: .semibold))
                 .foregroundColor(on ? .brGold : (scheme == .dark ? .brDkSub : .brLtSub))
-                .frame(width: 40, height: 40)
+                .frame(width: compact ? 24 : 40, height: compact ? 24 : 40)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { inMemoryPersistence, setPersistence, signInWithCustomToken } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
-import { PRELAUNCH_COOKIE } from '@/lib/prelaunch-client'
+import { rememberUnlock } from '@/lib/prelaunch-client'
 import { LINKS } from '@/lib/links'
 import { ErrorText, Field, PrimaryButton } from '@/components/AuthUI'
 
@@ -57,7 +57,7 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
       } else {
         const d = await res.json()
         // Session cookie (no expiry) that PreviewLock removes on refresh; sign-in kept in memory only.
-        document.cookie = `${PRELAUNCH_COOKIE}=${d.gate}; path=/; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`
+        rememberUnlock(d.gate, d.customToken ?? null)
         if (d.customToken) {
           await setPersistence(auth, inMemoryPersistence)
           await signInWithCustomToken(auth, d.customToken)

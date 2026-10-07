@@ -6,8 +6,6 @@ import Contacts
 // Shows AuthView if signed out, signed-in profile otherwise.
 
 struct ProfileView: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var showReport = false
     @StateObject private var auth = AuthManager.shared
 
     var body: some View {
@@ -25,6 +23,8 @@ struct ProfileView: View {
 
 private struct SignedInProfileView: View {
     let user: BRUser
+    @Environment(\.dismiss) private var dismiss
+    @State private var showReport = false
     @StateObject private var auth = AuthManager.shared
     @StateObject private var contacts = ContactsManager()
     @StateObject private var presence = PresenceManager.shared

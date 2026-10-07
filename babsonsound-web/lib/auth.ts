@@ -8,10 +8,14 @@ import {
   updateProfile,
   reauthenticateWithCredential,
   EmailAuthProvider,
+  inMemoryPersistence,
+  setPersistence,
+  signInWithCustomToken,
   type User,
 } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from './firebase'
+import { TAB_TOKEN, hasUnlockCookie, isReload, tabUnlocked } from './prelaunch-client'
 import { withCode, firebaseAuthCode, messageForCode } from './errors'
 
 const fail = (message: string, code: string) => new Error(withCode(message, code))
@@ -162,6 +166,27 @@ export async function getUserDoc(uid: string) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null
 }
 
+// The developer sign-in lives in memory only, so a full page load in the same tab (typed URL) would drop it.
+// Restore it from the tab's stored token, before anything decides the visitor is signed out.
+let restoring: Promise<void> | null = null
+function restorePreviewSignIn(): Promise<void> {
+  restoring ??= (async () => {
+    try {
+      if (isReload() || !hasUnlockCookie() || !tabUnlocked()) return
+      const token = sessionStorage.getItem(TAB_TOKEN)
+      if (!token) return
+      await auth.authStateReady()
+      if (auth.currentUser) return
+      await setPersistence(auth, inMemoryPersistence)
+      await signInWithCustomToken(auth, token)
+    } catch { /* not signed in; the visitor can unlock again */ }
+  })()
+  return restoring
+}
+
 export function onAuthChange(callback: (user: User | null) => void) {
-  return onAuthStateChanged(auth, callback)
+  let unsub = () => {}
+  let stopped = false
+  restorePreviewSignIn().then(() => { if (!stopped) unsub = onAuthStateChanged(auth, callback) })
+  return () => { stopped = true; unsub() }
 }

@@ -8,9 +8,11 @@ struct AuthView: View {
     @Environment(\.colorScheme) var scheme
 
     @State private var mode: Mode = .signIn
-    @State private var email = ""
+    @State private var email = ""   // just the part before @babson.edu
+    private var fullEmail: String { email.trimmingCharacters(in: .whitespaces).lowercased() + "@babson.edu" }
     @State private var password = ""
     @State private var displayName = ""
+    @State private var lastName = ""
     @State private var phoneNumber = ""
     @State private var showGuest = false
     @FocusState private var focusedField: Field?
@@ -68,11 +70,18 @@ struct AuthView: View {
                 VStack(spacing: 14) {
                     if mode == .createAccount {
                         BRTextField(
-                            placeholder: "Your name",
+                            placeholder: "First name",
                             text: $displayName,
                             icon: "person"
                         )
                         .focused($focusedField, equals: .name)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+
+                        BRTextField(
+                            placeholder: "Last name",
+                            text: $lastName,
+                            icon: "person"
+                        )
                         .transition(.move(edge: .top).combined(with: .opacity))
 
                         PhoneField(phoneNumber: $phoneNumber)
@@ -81,12 +90,13 @@ struct AuthView: View {
                     }
 
                     BRTextField(
-                        placeholder: "babson.edu email",
+                        placeholder: "Babson username",
                         text: $email,
                         icon: "envelope",
                         keyboardType: .emailAddress,
-                        textContentType: .emailAddress,
-                        autocapitalization: .never
+                        textContentType: .username,
+                        autocapitalization: .never,
+                        suffix: "@babson.edu"
                     )
                     .focused($focusedField, equals: .email)
 
@@ -141,7 +151,7 @@ struct AuthView: View {
                 .disabled(auth.isLoading)
 
                 if mode == .signIn {
-                    Button("Forgot password?") { auth.sendPasswordReset(email: email) }
+                    Button("Forgot password?") { auth.sendPasswordReset(email: fullEmail) }
                         .font(.system(size: 13))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .padding(.top, 14)
@@ -187,12 +197,13 @@ struct AuthView: View {
     private func submit() {
         focusedField = nil
         if mode == .signIn {
-            auth.signIn(email: email, password: password)
+            auth.signIn(email: fullEmail, password: password)
         } else {
             auth.createAccount(
-                email: email,
+                email: fullEmail,
                 password: password,
                 displayName: displayName,
+                lastName: lastName,
                 phoneNumber: phoneNumber
             )
         }
@@ -327,6 +338,8 @@ struct BRTextField: View {
     var textContentType: UITextContentType? = nil
     var autocapitalization: TextInputAutocapitalization = .sentences
     var isSecure: Bool = false
+    /// Fixed text shown after the field (e.g. "@babson.edu"). People type only the part before it.
+    var suffix: String? = nil
     @Environment(\.colorScheme) var scheme
 
     var body: some View {
@@ -350,6 +363,17 @@ struct BRTextField: View {
             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
             .if(textContentType != nil) { v in
                 v.textContentType(textContentType!)
+            }
+            .onChange(of: text) { _, new in
+                // If someone pastes a whole address, keep only the part before the @.
+                if suffix != nil, let at = new.firstIndex(of: "@") { text = String(new[..<at]) }
+            }
+
+            if let suffix {
+                Text(suffix)
+                    .font(.system(size: 15))
+                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                    .fixedSize()
             }
         }
         .padding(.horizontal, 16)

@@ -181,3 +181,19 @@ struct BRTagChip: View {
         }
     }
 }
+
+// MARK: - Babson Sound links (keep in sync with babsonsound-web/lib/links.ts)
+
+enum BabsonLinks {
+    /// Babson Sound on Belong (the campus groups site).
+    static let about  = URL(string: "https://belong.babson.edu/BCR")!
+    static let events = URL(string: "https://belong.babson.edu/bcr/events/")!
+    /// Same page the "Join Now" button on our Belong page opens.
+    static let join   = URL(string: "https://belong.babson.edu/bcr/club_signup")!
+
+    /// Instagram handle without the @ (e.g. "babsonsound"). Leave "" to hide the Instagram links.
+    static let instagramHandle = "babson.sound"
+    static var instagram: URL? {
+        instagramHandle.isEmpty ? nil : URL(string: "https://www.instagram.com/\(instagramHandle)/")
+    }
+}

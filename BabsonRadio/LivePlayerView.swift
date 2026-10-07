@@ -47,8 +47,7 @@ struct LivePlayerView: View {
                     .padding(.horizontal, 32)
                     .padding(.top, 24)
 
-                // ── Schedule ────────────────────────────────────────
-                scheduleSection
+                communitySection
                     .padding(.top, 36)
                     .padding(.bottom, 40)
                 }
@@ -90,11 +89,11 @@ struct LivePlayerView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 BRTagChip(text: "LIVE", style: .gold)
-                BRTagChip(text: ScheduleItem.sampleSchedule.first(where: { $0.isLive })?.showName.uppercased() ?? "AUTO DJ", style: .subtle)
+                BRTagChip(text: ScheduleItem.sampleSchedule.first(where: { $0.isLive })?.showName.uppercased() ?? "BABSON RADIO", style: .subtle)
                 Spacer()
             }
 
-            Text(ScheduleItem.sampleSchedule.first(where: { $0.isLive })?.showName ?? "Auto DJ")
+            Text(ScheduleItem.sampleSchedule.first(where: { $0.isLive })?.showName ?? "Babson Radio")
                 .font(BRFont.display(34))
                 .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                 .kerning(1)
@@ -159,6 +158,39 @@ struct LivePlayerView: View {
                 .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
                 .font(.system(size: 13))
         }
+    }
+
+    // ── Join / community links ──────────────────────────────
+    private var communitySection: some View {
+        VStack(spacing: 14) {
+            Link(destination: BabsonLinks.join) {
+                HStack(spacing: 8) {
+                    Spacer()
+                    Image(systemName: "person.badge.plus")
+                    Text("JOIN BABSON SOUND")
+                        .font(BRFont.display(15))
+                        .kerning(2)
+                    Spacer()
+                }
+                .padding(.vertical, 14)
+                .background(scheme == .dark ? Color.brGold : Color.brGreen)
+                .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+
+            HStack(spacing: 22) {
+                Link("About us", destination: BabsonLinks.about)
+                Link("Events", destination: BabsonLinks.events)
+                if let ig = BabsonLinks.instagram {
+                    Link(destination: ig) {
+                        HStack(spacing: 5) { Image(systemName: "camera"); Text("Instagram") }
+                    }
+                }
+            }
+            .font(.system(size: 14, weight: .medium))
+            .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+        }
+        .padding(.horizontal, 24)
     }
 
     private var scheduleSection: some View {

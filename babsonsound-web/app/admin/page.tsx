@@ -60,6 +60,12 @@ export default function AdminPage() {
               href="/admin/schedule"
             />
             <AdminCard
+              title="Auto-Scheduler"
+              description="Fill empty airtime with lofi, jazz, acoustic and more. Edit the rules, preview the next 48 hours."
+              icon="🤖"
+              href="/admin/autoschedule"
+            />
+            <AdminCard
               title="Users"
               description="View all users, manage roles, and review guest access invites."
               icon="👥"

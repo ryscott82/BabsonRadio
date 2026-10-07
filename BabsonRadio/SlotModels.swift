@@ -30,6 +30,15 @@ nonisolated struct SlotRequest: Identifiable, Decodable {
     let createdAt: Date
 }
 
+/// Filler programming the auto-scheduler put in the gaps (lofi, jazz, ...). Public.
+nonisolated struct AutoBlock: Identifiable, Decodable {
+    let id: String
+    let label: String
+    let startAt: Date
+    let endAt: Date
+}
+nonisolated struct AutoBlocksResponse: Decodable { let blocks: [AutoBlock] }
+
 nonisolated struct SlotScheduleResponse: Decodable { let slots: [AirSlot] }
 nonisolated struct MySlotRequestsResponse: Decodable { let requests: [SlotRequest] }
 

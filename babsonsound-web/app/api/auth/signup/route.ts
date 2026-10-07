@@ -12,15 +12,19 @@ export async function POST(req: Request) {
   return handle(async () => {
     const b = await readJson(req)
     const firstName = str(b.firstName, 40)
+    const lastName = str(b.lastName, 60)
     const email = str(b.email, 200).toLowerCase()
     const password = typeof b.password === 'string' ? b.password : ''
     const phone = normalizeUS(str(b.phone, 30))
 
     if (!firstName) throw new HttpError(400, 'Enter your first name.')
+    if (!lastName) throw new HttpError(400, 'Enter your last name.')
     if (!BABSON_EMAIL.test(email)) throw new HttpError(400, 'Babson Radio requires a @babson.edu email address.')
     if (!phone) throw new HttpError(400, 'Enter a valid 10-digit US phone number.')
     if (password.length < 8 || password.length > 128) throw new HttpError(400, 'Password must be 8–128 characters.')
 
+    // The Babson username (part before @babson.edu) is the account's username. Email is unique, so it is too.
+    const username = email.slice(0, email.indexOf('@'))
     const db = adminDb()
     const phoneRef = db.collection('phoneIndex').doc(await indexKeyFromE164(phone))
     if ((await phoneRef.get()).exists) throw new HttpError(409, 'That phone number is already registered.')
@@ -40,7 +44,7 @@ export async function POST(req: Request) {
         if ((await tx.get(phoneRef)).exists) throw new HttpError(409, 'That phone number is already registered.')
         tx.set(phoneRef, { uid })
         tx.set(db.collection('users').doc(uid), {
-          firstName, displayName: firstName, email, phoneNumber: phone,
+          firstName, lastName, username, displayName: firstName, email, phoneNumber: phone,
           role: 'listener', accountType: 'babson',
           hostOfShows: [], notifyNewEpisode: [], notifyGoesLive: [],
           joinedAt: Timestamp.now(),

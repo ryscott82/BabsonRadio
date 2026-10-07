@@ -8,9 +8,28 @@ export function Field({ label, ...props }: { label: string } & InputHTMLAttribut
       <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">{label.toUpperCase()}</span>
       <input
         {...props}
-        className="w-full bg-br-dk-surface border border-br-dk-border rounded-xl px-4 py-3 text-sm text-br-dk-text
-                   placeholder:text-br-dk-muted focus:outline-none focus:border-br-gold transition-colors"
+        className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text placeholder:text-br-dk-muted focus:outline-none"
       />
+    </label>
+  )
+}
+
+/** Babson address entry: people type only the part before @babson.edu, which is shown after the box. */
+export function BabsonEmailField({ label, value, onChange, placeholder = 'username' }: {
+  label: string; value: string; onChange: (prefix: string) => void; placeholder?: string
+}) {
+  return (
+    <label className="block">
+      <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">{label.toUpperCase()}</span>
+      <div className="sk-field flex items-center rounded-xl pr-4 focus-within:ring-2 focus-within:ring-br-gold/40">
+        <input
+          type="text" inputMode="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+          value={value} placeholder={placeholder}
+          onChange={e => onChange(e.target.value.split('@')[0].replace(/\s/g, ''))}
+          className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-br-dk-text placeholder:text-br-dk-muted focus:outline-none"
+        />
+        <span className="text-sm text-br-dk-sub shrink-0">@babson.edu</span>
+      </div>
     </label>
   )
 }
@@ -20,8 +39,7 @@ export function PrimaryButton({ busy, children, ...p }: { busy?: boolean; childr
     <button
       {...p}
       disabled={busy || p.disabled}
-      className="w-full font-display tracking-[0.2em] text-sm bg-br-gold text-br-dk-bg py-3.5 rounded-xl
-                 hover:bg-br-gold/90 transition-colors disabled:opacity-50"
+      className="sk-btn w-full font-display tracking-[0.2em] text-sm py-3.5 rounded-xl disabled:opacity-50"
     >
       {busy ? 'ONE MOMENT…' : children}
     </button>

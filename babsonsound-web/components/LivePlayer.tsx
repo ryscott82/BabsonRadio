@@ -61,7 +61,7 @@ export default function LivePlayer() {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0C1A13] to-[#080808] grain">
+    <div className="relative overflow-hidden rounded-2xl sk-hero grain">
       {/* Green glow */}
       <div className="absolute -top-16 -right-16 w-64 h-64 bg-br-green/20 rounded-full blur-3xl pointer-events-none" />
 
@@ -70,11 +70,11 @@ export default function LivePlayer() {
         {/* Art block */}
         <div className="relative shrink-0 w-44 h-44 md:w-56 md:h-56 rounded-xl overflow-hidden bg-gradient-to-br from-[#003D27] to-[#006644] grain flex items-center justify-center">
           <div className="text-center">
-            <p className="font-display text-br-gold/80 text-sm tracking-[0.4em]">BABSON</p>
+            <p className="font-display text-br-brass/80 text-sm tracking-[0.4em]">BABSON</p>
             <p className="font-display text-white text-4xl tracking-[0.2em]">RADIO</p>
           </div>
           {/* Gold stripe */}
-          <div className="absolute bottom-8 inset-x-0 h-px bg-br-gold/50" />
+          <div className="absolute bottom-8 inset-x-0 h-px bg-br-brass/50" />
           {/* LED */}
           <div className="absolute bottom-3 left-3 flex items-center gap-1.5">
             <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-br-green shadow-[0_0_6px_#006644]' : 'bg-br-dk-muted'}`} />
@@ -110,20 +110,20 @@ export default function LivePlayer() {
             <button
               onClick={togglePlay}
               disabled={!canListenLive}
-              className="disabled:opacity-40 w-16 h-16 rounded-full bg-br-gold hover:bg-br-gold/90 transition-all flex items-center justify-center shadow-[0_4px_24px_rgba(221,208,85,0.35)] active:scale-95"
+              aria-pressed={isPlaying} className="sk-btn disabled:opacity-40 w-16 h-16 rounded-full flex items-center justify-center"
             >
               {isBuffering ? (
-                <svg className="w-6 h-6 animate-spin text-br-dk-bg" fill="none" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 animate-spin text-current" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
                 </svg>
               ) : isPlaying ? (
-                <svg className="w-6 h-6 text-br-dk-bg" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-current" fill="currentColor" viewBox="0 0 24 24">
                   <rect x="6" y="4" width="4" height="16" rx="1"/>
                   <rect x="14" y="4" width="4" height="16" rx="1"/>
                 </svg>
               ) : (
-                <svg className="w-6 h-6 text-br-dk-bg translate-x-0.5" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-current translate-x-0.5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z"/>
                 </svg>
               )}

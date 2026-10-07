@@ -31,6 +31,7 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | BR-ACC-007 | **Delete confirmation missing**: The delete request didn't include the confirmation. | Use the Delete my account button and enter your password. | — |
 | BR-ACC-008 | **Profile not found**: The sign-in exists but its profile record is missing. | Sign out and back in. If it repeats, contact the station. | Compare Authentication → Users with Firestore users/{uid}. A failed sign-up can leave Auth without a profile; delete the Auth user so they can re-register. |
 | BR-ACC-009 | **Invalid email address**: The email isn't formatted correctly. | Check for typos. | — |
+| BR-ACC-017 | **Last name missing**: Sign-up needs both a first and last name. | Enter your last name. | Client validation or /api/auth/signup rejected an empty lastName. |
 
 ## Guest access
 
@@ -66,6 +67,12 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 |---|---|---|---|
 | BR-PERM-001 | **Verification or permission needed**: The action requires a verified Babson account. | Verify your @babson.edu email. | — |
 | BR-PERM-002 | **Staff only**: The action is limited to staff or the owner. | Ask a staff member. | — |
+
+## Pre-launch
+
+| Code | What it is | What the user should do | What staff check |
+|---|---|---|---|
+| BR-PRE-001 | **Site isn't open yet**: The website is in pre-launch mode and this request didn't include the preview password. | Babson Radio opens on October 22. Check back then. | Unlock in a browser at /coming-soon (Developer access), or send the X-Preview-Key header. iOS: set BackendConfig.previewKey. To open the site for everyone, set PRELAUNCH_OFF=1 in Vercel and redeploy. |
 
 ## Requests
 

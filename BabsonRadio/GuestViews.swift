@@ -151,9 +151,10 @@ struct GuestProfileView: View {
                             if auth.guestStatus?.requestStatus == "denied" {
                                 Text("That request wasn't approved.").font(.system(size: 13)).foregroundColor(.brRed)
                             }
-                            BRTextField(placeholder: "Babson student's email", text: $sponsorEmail, icon: "person.badge.plus",
-                                        keyboardType: .emailAddress, autocapitalization: .never)
-                            Button("SEND REQUEST") { auth.requestSponsor(email: sponsorEmail); sponsorEmail = "" }
+                            BRTextField(placeholder: "Student's Babson username", text: $sponsorEmail, icon: "person.badge.plus",
+                                        keyboardType: .emailAddress, autocapitalization: .never,
+                                        suffix: "@babson.edu")
+                            Button("SEND REQUEST") { auth.requestSponsor(email: sponsorEmail.trimmingCharacters(in: .whitespaces) + "@babson.edu"); sponsorEmail = "" }
                                 .font(BRFont.display(14)).kerning(2).foregroundColor(accent)
                                 .disabled(sponsorEmail.trimmingCharacters(in: .whitespaces).isEmpty)
                         }

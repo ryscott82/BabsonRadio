@@ -69,7 +69,14 @@ private struct SignedInProfileView: View {
                         .padding(.bottom, 20)
 
                     invisibleSection
-                        .padding(.bottom, 32)
+                        .padding(.bottom, 20)
+
+                    // Students request a spot on the radio from here.
+                    if !user.isGuest {
+                        goOnAirRow
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 32)
+                    }
 
                     // Students only: developers have no babson.edu identity to sponsor guests with.
                     if !user.isDeveloper {
@@ -82,6 +89,16 @@ private struct SignedInProfileView: View {
                             .padding(.bottom, 40)
                     } else {
                         Color.clear.frame(height: 40)
+                    }
+
+                    if let ig = BabsonLinks.instagram {
+                        Link(destination: ig) {
+                            Label("Follow Babson Sound on Instagram", systemImage: "camera")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, 24)
                     }
 
                     DeleteAccountButton()
@@ -165,6 +182,11 @@ private struct SignedInProfileView: View {
                 Text(user.displayName)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                if !user.isDeveloper, user.email.lowercased().hasSuffix("@babson.edu") {
+                    Text("@" + String(user.email.prefix(while: { $0 != "@" })))
+                        .font(BRFont.display(13)).kerning(1.5)
+                        .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                }
                 if user.isDeveloper {
                     BRTagChip(text: "DEVELOPER", style: .gold)
                 }
@@ -188,6 +210,36 @@ private struct SignedInProfileView: View {
     }
 
     // MARK: - Listeners section
+
+    private var goOnAirRow: some View {
+        NavigationLink {
+            SlotsView(embedded: true)
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 18))
+                    .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Go on air")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                    Text("Request a spot on the radio and track your requests.")
+                        .font(.system(size: 13))
+                        .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .brCard()
+        }
+        .buttonStyle(.plain)
+    }
 
     private var listenersSection: some View {
         VStack(alignment: .leading, spacing: 14) {

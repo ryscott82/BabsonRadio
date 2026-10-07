@@ -2,42 +2,76 @@
 @import "tailwindcss";
 
 /* ── Brand tokens ───────────────────────────────────────────── */
+/* The existing br-dk-* class names now resolve to whichever theme is active, so every page
+   themes without edits. "Accent" matches the app: gold in dark, green in light. */
 @theme inline {
   --color-br-green:      #006644;
   --color-br-green-mid:  #007A50;
-  --color-br-gold:       #DDD055;
+  --color-br-gold:       var(--br-accent);
+  --color-br-brass:      #DDD055;           /* always gold: for use on the dark-green art blocks */
   --color-br-red:        #C8302A;
 
-  /* Dark surfaces */
-  --color-br-dk-bg:       #080808;
-  --color-br-dk-surface:  #111111;
-  --color-br-dk-surface2: #1A1A1A;
-  --color-br-dk-border:   #252525;
-  --color-br-dk-border2:  #303030;
-  --color-br-dk-text:     #E8E8E8;
-  --color-br-dk-sub:      #888888;
-  --color-br-dk-muted:    #444444;
-
-  /* Light surfaces */
-  --color-br-lt-bg:       #F5F0E8;
-  --color-br-lt-surface:  #FDFAF4;
-  --color-br-lt-surface2: #EDE8DC;
-  --color-br-lt-border:   #D8D0BE;
-  --color-br-lt-text:     #1A1710;
-  --color-br-lt-sub:      #6A6258;
-  --color-br-lt-muted:    #A09888;
+  --color-br-dk-bg:       var(--br-bg);
+  --color-br-dk-surface:  var(--br-surface);
+  --color-br-dk-surface2: var(--br-surface2);
+  --color-br-dk-border:   var(--br-border);
+  --color-br-dk-border2:  var(--br-border2);
+  --color-br-dk-text:     var(--br-text);
+  --color-br-dk-sub:      var(--br-sub);
+  --color-br-dk-muted:    var(--br-muted);
 
   --font-display: 'Bebas Neue', sans-serif;
 }
 
-/* ── Base ────────────────────────────────────────────────────── */
+/* ── Themes ──────────────────────────────────────────────────── */
+/* Light is the app's cream "paper" palette. Dark is the original. Default follows the device;
+   the nav toggle sets data-theme="light" | "dark" to override. */
 :root {
+  color-scheme: light;
+  --br-bg:#F5F0E8; --br-surface:#FDFAF4; --br-surface2:#EDE8DC;
+  --br-border:#D8D0BE; --br-border2:#C6BCA6;
+  --br-text:#1A1710; --br-sub:#6A6258; --br-muted:#A09888;
+  --br-accent:#006644;
+  --br-hero-a:#FDFAF4; --br-hero-b:#EBE4D3;
+
+  --sk-rgb: 70,52,22;                 /* shadow colour (warm brown on paper) */
+  --sk-hi: rgba(255,255,255,.95);     /* top-edge highlight */
+  --sk-face-top:#FFFDF8; --sk-face-bot:#F3ECDD;
+  --sk-field:#EFE8D8;
+  --sk-btn-top:#0E8F61; --sk-btn-bot:#00583A; --sk-btn-edge:#003b27; --sk-btn-ink:#F7F2E7;
+  --sk-btn-text-shadow: 0 -1px 0 rgba(0,0,0,.35);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { /* dark values, repeated below for the explicit toggle */
+    color-scheme: dark;
+    --br-bg:#080808; --br-surface:#111111; --br-surface2:#1A1A1A;
+    --br-border:#252525; --br-border2:#303030;
+    --br-text:#E8E8E8; --br-sub:#888888; --br-muted:#444444;
+    --br-accent:#DDD055;
+    --br-hero-a:#0C1A13; --br-hero-b:#080808;
+    --sk-rgb: 0,0,0; --sk-hi: rgba(255,255,255,.08);
+    --sk-face-top:#1D1D1D; --sk-face-bot:#121212; --sk-field:#0A0A0A;
+    --sk-btn-top:#EFE374; --sk-btn-bot:#CFC247; --sk-btn-edge:#857C24; --sk-btn-ink:#1A1710;
+    --sk-btn-text-shadow: 0 1px 0 rgba(255,255,255,.35);
+  }
+}
+:root[data-theme="dark"] {
   color-scheme: dark;
+  --br-bg:#080808; --br-surface:#111111; --br-surface2:#1A1A1A;
+  --br-border:#252525; --br-border2:#303030;
+  --br-text:#E8E8E8; --br-sub:#888888; --br-muted:#444444;
+  --br-accent:#DDD055;
+  --br-hero-a:#0C1A13; --br-hero-b:#080808;
+  --sk-rgb: 0,0,0; --sk-hi: rgba(255,255,255,.08);
+  --sk-face-top:#1D1D1D; --sk-face-bot:#121212; --sk-field:#0A0A0A;
+  --sk-btn-top:#EFE374; --sk-btn-bot:#CFC247; --sk-btn-edge:#857C24; --sk-btn-ink:#1A1710;
+  --sk-btn-text-shadow: 0 1px 0 rgba(255,255,255,.35);
 }
 
+/* ── Base ────────────────────────────────────────────────────── */
 html, body {
-  background-color: #080808;
-  color: #E8E8E8;
+  background-color: var(--br-bg);
+  color: var(--br-text);
   font-family: system-ui, -apple-system, sans-serif;
   min-height: 100%;
 }
@@ -45,6 +79,121 @@ html, body {
 .font-display {
   font-family: var(--font-display);
   letter-spacing: 0.05em;
+}
+
+/* ── Skeuomorphic parts ──────────────────────────────────────── */
+/* Raised panel: a lit top edge, a soft contact shadow and a longer ambient one. */
+.sk-raised {
+  background: linear-gradient(180deg, var(--sk-face-top), var(--sk-face-bot));
+  border: 1px solid var(--br-border);
+  box-shadow:
+    inset 0 1px 0 var(--sk-hi),
+    0 1px 2px rgba(var(--sk-rgb), .18),
+    0 8px 16px -8px rgba(var(--sk-rgb), .30);
+}
+
+/* Hero faceplate for the live player. */
+.sk-hero {
+  background: linear-gradient(135deg, var(--br-hero-a), var(--br-hero-b));
+  border: 1px solid var(--br-border);
+  box-shadow:
+    inset 0 1px 0 var(--sk-hi),
+    0 2px 3px rgba(var(--sk-rgb), .20),
+    0 14px 30px -12px rgba(var(--sk-rgb), .38);
+}
+
+/* Recessed input, like a slot cut into the panel. */
+.sk-field {
+  background: var(--sk-field);
+  border: 1px solid var(--br-border);
+  box-shadow:
+    inset 0 2px 4px rgba(var(--sk-rgb), .22),
+    0 1px 0 var(--sk-hi);
+  transition: border-color .15s, box-shadow .15s;
+}
+.sk-field:focus {
+  outline: none;
+  border-color: var(--br-accent);
+  box-shadow: inset 0 2px 4px rgba(var(--sk-rgb), .22), 0 0 0 3px color-mix(in srgb, var(--br-accent) 25%, transparent);
+}
+
+/* Main action key: the thick lower edge is its height; pressing drops it flush. */
+.sk-btn {
+  background: linear-gradient(180deg, var(--sk-btn-top), var(--sk-btn-bot));
+  color: var(--sk-btn-ink);
+  text-shadow: var(--sk-btn-text-shadow);
+  border: 1px solid var(--sk-btn-edge);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.40),
+    0 3px 0 var(--sk-btn-edge),
+    0 7px 10px -3px rgba(var(--sk-rgb), .38);
+  transform: translateY(0);
+  transition: transform .06s ease-out, box-shadow .06s ease-out, filter .15s;
+  cursor: pointer;
+}
+.sk-btn:hover:not(:disabled) { filter: brightness(1.07); }
+.sk-btn:active:not(:disabled),
+.sk-btn[aria-pressed="true"] {
+  transform: translateY(3px);
+  filter: brightness(.95);
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,.42),
+    0 0 0 var(--sk-btn-edge),
+    0 1px 1px rgba(var(--sk-rgb), .25);
+}
+.sk-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Secondary key: same behaviour on a paper-coloured face. */
+.sk-key {
+  background: linear-gradient(180deg, var(--sk-face-top), var(--sk-face-bot));
+  color: var(--br-text);
+  border: 1px solid var(--br-border2);
+  box-shadow:
+    inset 0 1px 0 var(--sk-hi),
+    0 2px 0 var(--br-border2),
+    0 5px 8px -3px rgba(var(--sk-rgb), .28);
+  transform: translateY(0);
+  transition: transform .06s ease-out, box-shadow .06s ease-out;
+  cursor: pointer;
+}
+.sk-key:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: inset 0 2px 4px rgba(var(--sk-rgb), .30), 0 0 0 var(--br-border2);
+}
+.sk-key:disabled { opacity: .5; cursor: not-allowed; }
+
+.sk-btn:focus-visible, .sk-key:focus-visible {
+  outline: 2px solid var(--br-accent);
+  outline-offset: 3px;
+}
+
+/* Slide switch: recessed track, raised knob. */
+.sk-switch {
+  background: var(--sk-field);
+  border: 1px solid var(--br-border2);
+  box-shadow: inset 0 2px 4px rgba(var(--sk-rgb), .30);
+  transition: background-color .15s;
+}
+.sk-switch[aria-checked="true"] { background: var(--br-accent); }
+.sk-knob {
+  background: linear-gradient(180deg, #ffffff, #E4DDCB);
+  box-shadow: 0 1px 2px rgba(0,0,0,.45), inset 0 1px 0 #fff;
+  transition: left .12s ease-out;
+}
+
+/* Indicator lamp. */
+.sk-led {
+  width: .6rem; height: .6rem; border-radius: 999px;
+  background: var(--br-muted);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.45);
+}
+.sk-led[data-on="true"] {
+  background: radial-gradient(circle at 35% 30%, #8dffc2, #00b26f 55%, #006644);
+  box-shadow: 0 0 8px #00c07a, inset 0 -1px 2px rgba(0,0,0,.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-btn, .sk-key, .sk-knob, .sk-field { transition: none; }
 }
 
 /* ── Grain texture ───────────────────────────────────────────── */
@@ -61,9 +210,9 @@ html, body {
 
 /* ── Scrollbar ───────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #111111; }
-::-webkit-scrollbar-thumb { background: #303030; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #444444; }
+::-webkit-scrollbar-track { background: var(--br-surface); }
+::-webkit-scrollbar-thumb { background: var(--br-border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--br-muted); }
 
 /* ── Player waveform animation ───────────────────────────────── */
 @keyframes eq-bar {

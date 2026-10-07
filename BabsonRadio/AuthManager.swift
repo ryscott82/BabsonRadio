@@ -207,7 +207,7 @@ class AuthManager: ObservableObject {
 
     // MARK: - Create Account
 
-    func createAccount(email: String, password: String, displayName: String, phoneNumber: String) {
+    func createAccount(email: String, password: String, displayName: String, lastName: String, phoneNumber: String) {
         guard Self.isBabsonEmail(email) else {
             errorMessage = "Student accounts need your @babson.edu email. Not a student? Continue as a guest. (BR-ACC-001)"
             return
@@ -215,6 +215,11 @@ class AuthManager: ObservableObject {
         let name = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else {
             errorMessage = "Enter your first name. (BR-ACC-006)"
+            return
+        }
+        let last = lastName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !last.isEmpty else {
+            errorMessage = "Enter your last name. (BR-ACC-017)"
             return
         }
         guard password.count >= 8 else {
@@ -238,6 +243,7 @@ class AuthManager: ObservableObject {
                     "email": Self.cleaned(email),
                     "password": password,
                     "firstName": name,
+                    "lastName": last,
                     "phone": digits,
                 ])
                 let result = try await Auth.auth().signIn(withEmail: Self.cleaned(email), password: password)

@@ -70,7 +70,7 @@ export default function GuestAccessPage() {
       <Section title={`Active guests (${active.length})`}>
         {active.length === 0 && <Empty>You aren&apos;t sponsoring anyone right now.</Empty>}
         {active.map(p => (
-          <div key={p.guestUid} className="flex items-center justify-between bg-br-dk-surface border border-br-dk-border rounded-xl px-4 py-3">
+          <div key={p.guestUid} className="flex items-center justify-between sk-raised rounded-xl px-4 py-3">
             <div>
               <p className="text-sm text-br-dk-text">{p.guestEmail}</p>
               <p className="text-xs text-br-dk-sub">Until {new Date(p.expiresAt).toLocaleString()}</p>
@@ -87,14 +87,14 @@ export default function GuestAccessPage() {
 function RequestRow({ r, run }: { r: Req; run: (f: () => Promise<unknown>, ok?: string) => Promise<void> }) {
   const [duration, setDuration] = useState<GuestDuration>('7d')
   return (
-    <div className="bg-br-dk-surface border border-br-dk-border rounded-xl p-4 flex flex-wrap items-center gap-3">
+    <div className="sk-raised rounded-xl p-4 flex flex-wrap items-center gap-3">
       <div className="flex-1 min-w-48">
         <p className="text-sm text-br-dk-text">{r.guestName}</p>
         <p className="text-xs text-br-dk-sub">{r.guestEmail}</p>
       </div>
       <DurationSelect value={duration} onChange={setDuration} />
       <button onClick={() => run(() => api('/api/guest/decision', { requestId: r.id, action: 'approve', duration }), 'Approved.')}
-              className="font-display tracking-widest text-xs bg-br-gold text-br-dk-bg px-4 py-2 rounded-lg">APPROVE</button>
+              className="font-display tracking-widest text-xs sk-btn px-4 py-2 rounded-lg">APPROVE</button>
       <button onClick={() => run(() => api('/api/guest/decision', { requestId: r.id, action: 'deny' }))}
               className="font-display tracking-widest text-xs text-br-dk-sub hover:text-br-dk-text">DENY</button>
     </div>
@@ -117,7 +117,7 @@ function InviteForm({ run }: { run: (f: () => Promise<unknown>, ok?: string) => 
         <Field label="Guest's email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="friend@example.com" required />
       </div>
       <DurationSelect value={duration} onChange={setDuration} />
-      <button className="font-display tracking-widest text-xs bg-br-gold text-br-dk-bg px-4 py-3 rounded-lg">INVITE</button>
+      <button className="font-display tracking-widest text-xs sk-btn px-4 py-3 rounded-lg">INVITE</button>
     </form>
   )
 }

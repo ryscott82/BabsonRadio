@@ -8,8 +8,14 @@ class SlotsManager: ObservableObject {
 
     @Published var schedule: [AirSlot] = []
     @Published var myRequests: [SlotRequest] = []
+    @Published var autoBlocks: [AutoBlock] = []
     @Published var isLoading = false
     @Published var errorMessage: String? = nil
+
+    /// Public (no sign-in needed): what the auto-scheduler has planned.
+    func loadAuto() async {
+        if let r: AutoBlocksResponse = try? await BackendAPI.get("/api/schedule/auto") { autoBlocks = r.blocks }
+    }
 
     func refresh() async {
         isLoading = true

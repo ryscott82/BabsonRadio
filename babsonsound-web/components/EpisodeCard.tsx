@@ -59,11 +59,11 @@ export default function EpisodeCard({ episode, layout = 'card' }: EpisodeCardPro
     <div className={`absolute inset-0 bg-gradient-to-br ${gradient} flex items-center justify-center`}>
       {episode.episodeNumber && (
         <div className="text-center">
-          <p className="font-display text-br-gold/60 text-[10px] tracking-[0.3em]">EP</p>
-          <p className="font-display text-br-gold text-3xl">{episode.episodeNumber}</p>
+          <p className="font-display text-br-brass/60 text-[10px] tracking-[0.3em]">EP</p>
+          <p className="font-display text-br-brass text-3xl">{episode.episodeNumber}</p>
         </div>
       )}
-      <div className="absolute bottom-0 inset-x-0 h-px bg-br-gold/40" />
+      <div className="absolute bottom-0 inset-x-0 h-px bg-br-brass/40" />
     </div>
   )
 
@@ -71,7 +71,7 @@ export default function EpisodeCard({ episode, layout = 'card' }: EpisodeCardPro
     return (
       <Link
         href={`/shows/${episode.showSlug}#${episode.id}`}
-        className="flex items-center gap-4 p-4 rounded-xl bg-br-dk-surface border border-br-dk-border hover:border-br-dk-border2 transition-colors group"
+        className="flex items-center gap-4 p-4 rounded-xl sk-raised group"
       >
         <div className="relative shrink-0 w-16 h-16 rounded-lg overflow-hidden">
           {thumbnail}
@@ -79,7 +79,7 @@ export default function EpisodeCard({ episode, layout = 'card' }: EpisodeCardPro
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             {episode.isNew && (
-              <span className="font-display text-[9px] tracking-widest bg-br-gold text-br-dk-bg px-2 py-0.5 rounded">NEW</span>
+              <span className="font-display text-[9px] tracking-widest bg-br-red text-white px-2 py-0.5 rounded">NEW</span>
             )}
             {episode.category && (
               <span className="font-display text-[9px] tracking-widest text-br-dk-muted">{episode.category.toUpperCase()}</span>
@@ -108,7 +108,7 @@ export default function EpisodeCard({ episode, layout = 'card' }: EpisodeCardPro
       </div>
       <div>
         {episode.isNew && (
-          <span className="font-display text-[9px] tracking-widest bg-br-gold text-br-dk-bg px-2 py-0.5 rounded mr-2">NEW</span>
+          <span className="font-display text-[9px] tracking-widest bg-br-red text-white px-2 py-0.5 rounded mr-2">NEW</span>
         )}
         <p className="text-br-dk-text text-sm font-medium mt-2 line-clamp-2 group-hover:text-br-gold transition-colors">
           {episode.title}

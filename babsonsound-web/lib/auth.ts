@@ -55,9 +55,9 @@ export const apiGet = <T = Record<string, unknown>>(path: string) => request<T>(
 // ── Babson students ───────────────────────────────────────────
 
 /** Account creation happens server-side (enforces babson.edu); then we sign in and send the verify email. */
-export async function signUp(email: string, password: string, firstName: string, phone: string) {
+export async function signUp(email: string, password: string, firstName: string, lastName: string, phone: string) {
   if (!isBabsonEmail(email)) throw fail('Babson Radio requires a @babson.edu email address.', 'BR-ACC-001')
-  await api('/api/auth/signup', { email, password, firstName, phone })
+  await api('/api/auth/signup', { email, password, firstName, lastName, phone })
   try {
     const { user } = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password)
     await sendEmailVerification(user).catch(() => {})

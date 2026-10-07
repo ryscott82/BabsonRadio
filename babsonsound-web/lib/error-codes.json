@@ -355,5 +355,19 @@
     "meaning": "The stream didn't load.",
     "userFix": "Check your connection and try again.",
     "staffCheck": "Open the stream URL directly; check the Asura panel (source connected? bitrate/listener limit?)."
+  },
+  {
+    "code": "BR-PRE-001",
+    "title": "Site isn't open yet",
+    "meaning": "The website is in pre-launch mode and this request didn't include the preview password.",
+    "userFix": "Babson Radio opens on October 22. Check back then.",
+    "staffCheck": "Unlock in a browser at /coming-soon (Developer access), or send the X-Preview-Key header. iOS: set BackendConfig.previewKey. To open the site for everyone, set PRELAUNCH_OFF=1 in Vercel and redeploy."
+  },
+  {
+    "code": "BR-ACC-017",
+    "title": "Last name missing",
+    "meaning": "Sign-up needs both a first and last name.",
+    "userFix": "Enter your last name.",
+    "staffCheck": "Client validation or /api/auth/signup rejected an empty lastName."
   }
 ]

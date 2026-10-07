@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { signIn, signUp, signOut, resendVerification, isBabsonEmail, sendPasswordReset } from '@/lib/auth'
+import { signIn, signUp, signOut, resendVerification, isBabsonEmail, BABSON_DOMAIN, sendPasswordReset } from '@/lib/auth'
 import { normalizeUS } from '@/lib/phone'
-import { Card, ErrorText, Field, GhostButton, PrimaryButton, formatPhone } from '@/components/AuthUI'
+import { BabsonEmailField, Card, ErrorText, Field, GhostButton, PrimaryButton, formatPhone } from '@/components/AuthUI'
 
 export default function AuthPage() {
   const { user, loading, isBabson, needsVerification, hasMemberAccess, reload } = useAuth()
@@ -38,7 +38,9 @@ function Spinner() {
 function Forms() {
   const [mode, setMode] = useState<'signin' | 'create'>('signin')
   const [firstName, setFirstName] = useState('')
-  const [email, setEmail] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [prefix, setEmail] = useState('') // part before @babson.edu
+  const email = prefix ? `${prefix.toLowerCase()}${BABSON_DOMAIN}` : ''
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -49,13 +51,14 @@ function Forms() {
     setError('')
     if (mode === 'create') {
       if (!firstName.trim()) return setError('Enter your first name.')
+      if (!lastName.trim()) return setError('Enter your last name.')
       if (!isBabsonEmail(email)) return setError('Babson Radio requires a @babson.edu email address.')
       if (!normalizeUS(phone)) return setError('Enter a valid 10-digit US phone number.')
       if (password.length < 8) return setError('Password must be at least 8 characters.')
     }
     setBusy(true)
     try {
-      if (mode === 'create') await signUp(email, password, firstName.trim(), phone)
+      if (mode === 'create') await signUp(email, password, firstName.trim(), lastName.trim(), phone)
       else await signIn(email, password)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
@@ -85,12 +88,13 @@ function Forms() {
           <>
             <Field label="First name" value={firstName} onChange={e => setFirstName(e.target.value)}
                    autoComplete="given-name" placeholder="First name" />
+            <Field label="Last name" value={lastName} onChange={e => setLastName(e.target.value)}
+                   autoComplete="family-name" placeholder="Last name" />
             <Field label="Phone number" value={phone} onChange={e => setPhone(formatPhone(e.target.value))}
                    type="tel" autoComplete="tel-national" inputMode="tel" placeholder="(555) 555-5555" />
           </>
         )}
-        <Field label="Babson email" value={email} onChange={e => setEmail(e.target.value)}
-               type="email" autoComplete="email" placeholder="you@babson.edu" />
+        <BabsonEmailField label="Babson email" value={email} onChange={setEmail} />
         <Field label="Password" value={password} onChange={e => setPassword(e.target.value)}
                type="password" autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
                placeholder={mode === 'create' ? 'At least 8 characters' : 'Password'} />
@@ -99,7 +103,7 @@ function Forms() {
         {mode === 'signin' && (
           <button type="button" className="block mx-auto text-sm text-br-dk-sub hover:text-br-dk-text"
             onClick={async () => {
-              if (!email) return setError('Enter your email above first.')
+              if (!email) return setError('Enter your Babson username above first.')
               await sendPasswordReset(email).catch(() => {})
               setError('If that account exists, a reset link is on its way.')
             }}>Forgot password?</button>

@@ -1,0 +1,147 @@
+'use client'
+
+import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
+import { api, apiGet } from '@/lib/auth'
+import { SLOT_CATEGORIES, SLOT_RULES, SLOT_TYPES, type SlotType } from '@/lib/slots'
+import { ErrorText, Field, PrimaryButton } from '@/components/AuthUI'
+
+interface Mine {
+  id: string; title: string; type: SlotType; startAt: number; durationMin: number
+  status: 'pending' | 'approved' | 'declined' | 'cancelled'; staffNote: string; connectionInfo: string
+}
+
+const LENGTHS = [15, 30, 45, 60, 90, 120, 180, 240]
+const STATUS: Record<Mine['status'], string> = {
+  pending: 'PENDING REVIEW', approved: 'APPROVED', declined: 'DECLINED', cancelled: 'CANCELLED',
+}
+const fmt = (ms: number) =>
+  new Date(ms).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+
+/** yyyy-MM-ddTHH:mm in local time, for <input type="datetime-local"> */
+function localInput(ms: number) {
+  const d = new Date(ms - new Date(ms).getTimezoneOffset() * 60_000)
+  return d.toISOString().slice(0, 16)
+}
+
+export default function SlotsPage() {
+  const { user, isBabson, isDeveloper, loading } = useAuth()
+  const member = !!user && (isBabson || isDeveloper)
+  const [mine, setMine] = useState<Mine[]>([])
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [now] = useState(() => Date.now())
+
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [type, setType] = useState<SlotType>('live')
+  const [category, setCategory] = useState('podcast')
+  const [start, setStart] = useState(() => localInput(Math.ceil((Date.now() + 25 * 3600_000) / 900_000) * 900_000))
+  const [durationMin, setDurationMin] = useState(60)
+  const [audioURL, setAudioURL] = useState('')
+
+  const load = useCallback(async () => {
+    try { setMine((await apiGet<{ requests: Mine[] }>('/api/slots/mine')).requests) }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not load your requests.') }
+  }, [])
+  useEffect(() => { if (member) queueMicrotask(load) }, [member, load])
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault(); setError(''); setNotice(''); setBusy(true)
+    try {
+      const startAt = new Date(start).getTime()
+      if (!Number.isFinite(startAt)) throw new Error('Pick a start time.')
+      await api('/api/slots/request', { title, description, type, category, startAt, durationMin, audioURL })
+      setTitle(''); setDescription(''); setAudioURL('')
+      setNotice('Request sent. Staff review every request, and the answer shows up below.')
+      await load()
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not send the request.') }
+    setBusy(false)
+  }
+
+  async function cancel(id: string) {
+    setError('')
+    try { await api('/api/slots/cancel', { requestId: id }); await load() }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not cancel.') }
+  }
+
+  if (loading) return null
+  if (!member) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-16 text-center space-y-3">
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">GO ON AIR</h1>
+        <p className="text-sm text-br-dk-sub">
+          Requesting a spot on the radio is for verified Babson students.{' '}
+          <Link href="/auth" className="text-br-gold">Sign in</Link> with your Babson email.
+        </p>
+      </div>
+    )
+  }
+
+  const box = 'sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none'
+  const label = 'block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest'
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-8 space-y-10">
+      <div>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">GO ON AIR</h1>
+        <p className="text-sm text-br-dk-sub mt-2">
+          Have a podcast, a mix or a show idea? Request a time on the radio. Ask at least {SLOT_RULES.minLeadHours} hours ahead.
+        </p>
+      </div>
+
+      <form onSubmit={submit} className="sk-raised rounded-2xl p-5 space-y-4">
+        <Field label="Title" value={title} onChange={e => setTitle(e.target.value)} maxLength={80} required />
+        <label className="block">
+          <span className={label}>WHAT&apos;S IT ABOUT? (OPTIONAL)</span>
+          <textarea className={box} rows={3} maxLength={500} value={description} onChange={e => setDescription(e.target.value)} />
+        </label>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <label className="block"><span className={label}>FORMAT</span>
+            <select className={box} value={type} onChange={e => setType(e.target.value as SlotType)}>
+              {(Object.keys(SLOT_TYPES) as SlotType[]).map(k => <option key={k} value={k}>{SLOT_TYPES[k]}</option>)}
+            </select></label>
+          <label className="block"><span className={label}>CATEGORY</span>
+            <select className={box} value={category} onChange={e => setCategory(e.target.value)}>
+              {SLOT_CATEGORIES.map(c => <option key={c} value={c}>{c[0].toUpperCase() + c.slice(1)}</option>)}
+            </select></label>
+          <label className="block"><span className={label}>START</span>
+            <input type="datetime-local" step={900} className={box} value={start} onChange={e => setStart(e.target.value)} required /></label>
+          <label className="block"><span className={label}>LENGTH</span>
+            <select className={box} value={durationMin} onChange={e => setDurationMin(Number(e.target.value))}>
+              {LENGTHS.map(m => <option key={m} value={m}>{m} minutes</option>)}
+            </select></label>
+        </div>
+        {type === 'prerecorded' && (
+          <Field label="Link to your audio" type="url" value={audioURL} onChange={e => setAudioURL(e.target.value)} placeholder="https://…" />
+        )}
+        <ErrorText>{error}</ErrorText>
+        {notice && <p className="text-sm text-br-gold">{notice}</p>}
+        <PrimaryButton type="submit" busy={busy}>REQUEST A SLOT</PrimaryButton>
+      </form>
+
+      <section className="space-y-3">
+        <h2 className="font-display text-br-gold tracking-widest text-sm">MY REQUESTS</h2>
+        {mine.length === 0 && <p className="text-sm text-br-dk-sub">You haven&apos;t requested a slot yet.</p>}
+        {mine.map(r => (
+          <div key={r.id} className="sk-raised rounded-xl p-4 space-y-2">
+            <div className="flex justify-between gap-4">
+              <p className="text-sm text-br-dk-text">{r.title}</p>
+              <span className={`font-display text-[11px] tracking-widest ${r.status === 'declined' ? 'text-br-red' : r.status === 'approved' ? 'text-br-green' : 'text-br-dk-sub'}`}>{STATUS[r.status]}</span>
+            </div>
+            <p className="text-xs text-br-dk-sub">{fmt(r.startAt)} · {r.durationMin} min · {SLOT_TYPES[r.type]}</p>
+            {r.staffNote && <p className="text-xs text-br-dk-text">Staff note: {r.staffNote}</p>}
+            {r.status === 'approved' && r.connectionInfo && (
+              <pre className="sk-field rounded-lg p-3 text-xs text-br-dk-text whitespace-pre-wrap">{r.connectionInfo}</pre>
+            )}
+            {(r.status === 'pending' || r.status === 'approved') && r.startAt > now && (
+              <button onClick={() => cancel(r.id)} className="text-xs text-br-dk-sub hover:text-br-red">Cancel request</button>
+            )}
+          </div>
+        ))}
+      </section>
+    </div>
+  )
+}

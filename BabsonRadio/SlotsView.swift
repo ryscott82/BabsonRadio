@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - "Go On Air" tab
+// MARK: - "Go on air" (reached from Profile)
 // Members request a time on the radio; staff approve in the web admin. This screen shows
 // the user's requests, what's already booked, and a form to ask for a new slot.
 
@@ -9,43 +9,21 @@ struct SlotsView: View {
     @StateObject private var slots = SlotsManager()
     @Environment(\.colorScheme) var scheme
     @State private var showForm = false
+    /// True when pushed from Profile (the Profile tab already provides the navigation stack).
+    var embedded = false
 
     private var textColor: Color { scheme == .dark ? .brDkText : .brLtText }
     private var subColor: Color { scheme == .dark ? .brDkSub : .brLtSub }
     private var accent: Color { scheme == .dark ? .brGold : .brGreen }
 
     var body: some View {
-        NavigationStack {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 0) {
-                    if auth.currentUser?.isGuest == true {
-                        GuestLockedNote(text: "Requesting air time is for Babson students. Ask a student to feature your show.")
-                    } else if auth.isSignedIn {
-                        signedInContent
-                    } else {
-                        signedOutPrompt
-                    }
-                }
-            }
-            .refreshable {
-                if auth.isSignedIn { await slots.refresh() }
-            }
-            .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    HStack(spacing: 0) {
-                        Text("BABSON ")
-                            .font(BRFont.display(18))
-                            .foregroundColor(scheme == .dark ? .brGold : .brGreen)
-                            .kerning(3)
-                        Text("RADIO")
-                            .font(BRFont.display(18))
-                            .foregroundColor(textColor)
-                            .kerning(3)
-                    }
-                }
+        Group {
+            if embedded {
+                scroll
+                    .navigationTitle("Go on air")
+                    .navigationBarTitleDisplayMode(.inline)
+            } else {
+                NavigationStack { scroll }
             }
         }
         .sheet(isPresented: $showForm) {
@@ -54,6 +32,24 @@ struct SlotsView: View {
         .task(id: auth.currentUser?.id) {
             if auth.isSignedIn { await slots.refresh() }
         }
+    }
+
+    private var scroll: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 0) {
+                if auth.currentUser?.isGuest == true {
+                    GuestLockedNote(text: "Requesting air time is for Babson students. Ask a student to feature your show.")
+                } else if auth.isSignedIn {
+                    signedInContent
+                } else {
+                    signedOutPrompt
+                }
+            }
+        }
+        .refreshable {
+            if auth.isSignedIn { await slots.refresh() }
+        }
+        .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
     }
 
     // MARK: - Signed in
@@ -108,19 +104,6 @@ struct SlotsView: View {
                             Task { await slots.cancel(request.id) }
                         }
                         .padding(.horizontal, 20)
-                    }
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 14) {
-                BRSectionHeader(title: "UPCOMING ON AIR")
-                    .padding(.horizontal, 20)
-                if slots.schedule.isEmpty {
-                    emptyText(slots.isLoading ? "Loading…" : "Nothing is booked yet. Be the first!")
-                } else {
-                    ForEach(slots.schedule) { slot in
-                        AirSlotRow(slot: slot)
-                            .padding(.horizontal, 20)
                     }
                 }
             }
@@ -237,6 +220,38 @@ private struct SlotRequestRow: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .brCard()
+    }
+}
+
+private struct AutoBlockRow: View {
+    let block: AutoBlock
+    @Environment(\.colorScheme) var scheme
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(block.label)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                Text("On the radio")
+                    .font(.system(size: 12))
+                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(block.startAt.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+                    .font(.system(size: 12, weight: .medium))
+                Text("\(block.startAt.formatted(date: .omitted, time: .shortened)) – \(block.endAt.formatted(date: .omitted, time: .shortened))")
+                    .font(.system(size: 12))
+            }
+            .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12)
+            .stroke(scheme == .dark ? Color.brDkBorder : Color.brLtBorder, lineWidth: 1))
     }
 }
 
@@ -398,6 +413,91 @@ struct RequestSlotForm: View {
                 errorText = (error as? BackendError)?.message ?? error.localizedDescription
             }
             isSubmitting = false
+        }
+    }
+}
+
+
+// MARK: - Schedule tab
+// What's on the radio: today's lineup, then every approved slot coming up.
+
+struct ScheduleView: View {
+    @StateObject private var auth = AuthManager.shared
+    @StateObject private var slots = SlotsManager()
+    @Environment(\.colorScheme) var scheme
+
+    private var textColor: Color { scheme == .dark ? .brDkText : .brLtText }
+    private var subColor: Color { scheme == .dark ? .brDkSub : .brLtSub }
+
+    private struct Entry: Identifiable {
+        enum Kind { case slot(AirSlot), auto(AutoBlock) }
+        let id: String; let start: Date; let kind: Kind
+    }
+    /// Student shows and auto-scheduled filler, in time order.
+    private var timeline: [Entry] {
+        (slots.schedule.map { Entry(id: "s" + $0.id, start: $0.startAt, kind: .slot($0)) }
+         + slots.autoBlocks.map { Entry(id: "a" + $0.id, start: $0.startAt, kind: .auto($0)) })
+            .sorted { $0.start < $1.start }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 28) {
+                    VStack(spacing: 0) {
+                        BRSectionHeader(title: "TODAY'S SCHEDULE")
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 16)
+                        VStack(spacing: 1) {
+                            ForEach(ScheduleItem.sampleSchedule) { ScheduleRow(item: $0) }
+                        }
+                        .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14)
+                            .stroke(scheme == .dark ? Color.brDkBorder : Color.brLtBorder, lineWidth: 1))
+                        .padding(.horizontal, 20)
+                    }
+
+                    VStack(alignment: .leading, spacing: 14) {
+                        BRSectionHeader(title: "UPCOMING ON AIR")
+                            .padding(.horizontal, 20)
+                        if auth.currentUser?.isGuest == true || !auth.isSignedIn {
+                            Text("Sign in with your Babson email to see student shows that are booked.")
+                                .font(.system(size: 13)).foregroundColor(subColor).padding(.horizontal, 20)
+                        }
+                        if slots.schedule.isEmpty && slots.autoBlocks.isEmpty {
+                            Text(slots.isLoading ? "Loading…" : "Nothing is scheduled yet.")
+                                .font(.system(size: 13)).foregroundColor(subColor).padding(.horizontal, 20)
+                        }
+                        ForEach(timeline) { entry in
+                            switch entry.kind {
+                            case .slot(let slot): AirSlotRow(slot: slot).padding(.horizontal, 20)
+                            case .auto(let block): AutoBlockRow(block: block).padding(.horizontal, 20)
+                            }
+                        }
+                    }
+                }
+                .padding(.top, 16)
+                .padding(.bottom, 40)
+            }
+            .refreshable { await slots.loadAuto(); if auth.isSignedIn { await slots.refresh() } }
+            .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 0) {
+                        Text("BABSON ").font(BRFont.display(18))
+                            .foregroundColor(scheme == .dark ? .brGold : .brGreen).kerning(3)
+                        Text("RADIO").font(BRFont.display(18)).foregroundColor(textColor).kerning(3)
+                    }
+                }
+            }
+        }
+        .task(id: auth.currentUser?.id) {
+            await slots.loadAuto()
+            let member = auth.isSignedIn && auth.currentUser?.isGuest != true
+            if member { await slots.refresh() }
         }
     }
 }

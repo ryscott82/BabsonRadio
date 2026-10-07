@@ -2,6 +2,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireStaff, str } from '@/lib/server/http'
 import { findConflict } from '@/lib/server/slots'
+import { rebuildAutoSchedule } from '@/lib/server/autoschedule'
 
 export const runtime = 'nodejs'
 
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
     const db = adminDb()
     const reqRef = db.collection('slotRequests').doc(requestId)
 
-    return db.runTransaction(async tx => {
+    const result = await db.runTransaction(async tx => {
       const r = await tx.get(reqRef)
       if (!r.exists) throw new HttpError(404, 'Request not found.')
       if (r.get('status') !== 'pending') throw new HttpError(409, 'This request was already handled.')
@@ -47,5 +48,8 @@ export async function POST(req: Request) {
       })
       return { ok: true }
     })
+    // Refit the auto-scheduled filler around the new booking. Never blocks the approval.
+    if (action === 'approve') await rebuildAutoSchedule(db).catch(e => console.error('[autoschedule]', e))
+    return result
   })
 }

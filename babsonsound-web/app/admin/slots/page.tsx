@@ -69,7 +69,7 @@ export default function AdminSlotsPage() {
         <h2 className="font-display text-br-gold tracking-widest text-sm">BOOKED ({upcoming.length})</h2>
         {upcoming.length === 0 && <p className="text-sm text-br-dk-sub">Nothing booked yet.</p>}
         {upcoming.map(s => (
-          <div key={s.id} className="bg-br-dk-surface border border-br-dk-border rounded-xl px-4 py-3 flex justify-between gap-4">
+          <div key={s.id} className="sk-raised rounded-xl px-4 py-3 flex justify-between gap-4">
             <div>
               <p className="text-sm text-br-dk-text">{s.title} <span className="text-br-dk-sub">· {s.hostName}</span></p>
               <p className="text-xs text-br-dk-sub">{SLOT_TYPES[s.type]}</p>
@@ -96,7 +96,7 @@ function PendingCard({ r, onError }: { r: Req; onError: (m: string) => void }) {
 
   const box = 'w-full bg-br-dk-surface2 border border-br-dk-border rounded-lg px-3 py-2 text-sm text-br-dk-text placeholder:text-br-dk-muted'
   return (
-    <div className="bg-br-dk-surface border border-br-dk-border rounded-2xl p-5 space-y-3">
+    <div className="sk-raised rounded-2xl p-5 space-y-3">
       <div className="flex flex-wrap justify-between gap-2">
         <div>
           <p className="text-br-dk-text">{r.title}</p>
@@ -113,7 +113,7 @@ function PendingCard({ r, onError }: { r: Req; onError: (m: string) => void }) {
         placeholder={r.type === 'live' ? 'Live-stream details to send them on approval (server, port, login, arrive-by time)…' : 'Instructions for them (optional)…'} />
       <div className="flex gap-3">
         <button disabled={busy} onClick={() => decide('approve')}
-          className="font-display tracking-widest text-xs bg-br-gold text-br-dk-bg px-5 py-2.5 rounded-lg disabled:opacity-50">APPROVE</button>
+          className="font-display tracking-widest text-xs sk-btn px-5 py-2.5 rounded-lg disabled:opacity-50">APPROVE</button>
         <button disabled={busy} onClick={() => decide('decline')}
           className="font-display tracking-widest text-xs text-br-red px-3 py-2.5 disabled:opacity-50">DECLINE</button>
       </div>

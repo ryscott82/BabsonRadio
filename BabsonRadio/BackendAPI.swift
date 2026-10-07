@@ -42,6 +42,9 @@ enum BackendAPI {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
         }
+        if !BackendConfig.previewKey.isEmpty {
+            request.setValue(BackendConfig.previewKey, forHTTPHeaderField: "X-Preview-Key")
+        }
         if let token = await AuthManager.shared.idToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }

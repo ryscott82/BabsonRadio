@@ -25,7 +25,7 @@ export default async function ShowsPage() {
             <Link
               key={show.id}
               href={`/shows/${show.slug}`}
-              className="group bg-br-dk-surface border border-br-dk-border rounded-2xl overflow-hidden hover:border-br-dk-border2 transition-colors"
+              className="group sk-raised rounded-2xl overflow-hidden"
             >
               {/* Artwork */}
               <div className="relative w-full aspect-square bg-gradient-to-br from-[#003D27] to-br-green overflow-hidden">
@@ -33,11 +33,11 @@ export default async function ShowsPage() {
                   <img src={show.artworkURL} alt={show.name} className="w-full h-full object-cover" />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="font-display text-br-gold text-6xl tracking-wider">{show.name[0]}</span>
+                    <span className="font-display text-br-brass text-6xl tracking-wider">{show.name[0]}</span>
                   </div>
                 )}
                 {show.isFeatured && (
-                  <div className="absolute top-3 left-3 font-display text-[9px] tracking-widest bg-br-gold text-br-dk-bg px-2 py-0.5 rounded">
+                  <div className="absolute top-3 left-3 font-display text-[9px] tracking-widest bg-br-red text-white px-2 py-0.5 rounded">
                     FEATURED
                   </div>
                 )}

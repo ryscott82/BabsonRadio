@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import {
   api, apiGet, deleteMyAccount, guestSignIn, guestSignUp, resendVerification, sendPasswordReset, signOut,
 } from '@/lib/auth'
-import { Card, ErrorText, Field, GhostButton, PrimaryButton } from '@/components/AuthUI'
+import { BabsonEmailField, Card, ErrorText, Field, GhostButton, PrimaryButton } from '@/components/AuthUI'
 
 function Spinner() {
   return <div className="flex justify-center py-24"><div className="w-6 h-6 border-2 border-br-gold border-t-transparent rounded-full animate-spin" /></div>
@@ -158,11 +158,11 @@ function GuestHome() {
           <p className="text-sm text-br-dk-sub">Waiting for your Babson contact to approve. This updates automatically.</p>
         ) : (
           <form onSubmit={e => { e.preventDefault(); run(async () => {
-            await api('/api/guest/request', { sponsorEmail, name: user?.displayName ?? 'Guest' }); setSponsorEmail('')
+            await api('/api/guest/request', { sponsorEmail: `${sponsorEmail.toLowerCase()}@babson.edu`, name: user?.displayName ?? 'Guest' }); setSponsorEmail('')
           }, 'Request sent.') }} className="space-y-3">
             {latest?.status === 'denied' && <p className="text-br-red text-sm">That request wasn&apos;t approved.</p>}
-            <Field label="Ask a Babson student to sponsor you" type="email" value={sponsorEmail}
-                   onChange={e => setSponsorEmail(e.target.value)} placeholder="friend@babson.edu" />
+            <BabsonEmailField label="Ask a Babson student to sponsor you" value={sponsorEmail}
+                   onChange={setSponsorEmail} placeholder="their username" />
             <PrimaryButton type="submit" busy={busy}>SEND REQUEST</PrimaryButton>
           </form>
         )}

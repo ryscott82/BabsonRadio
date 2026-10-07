@@ -9,6 +9,8 @@ import { onAuthChange, getUserDoc, isBabsonEmail, refreshUser } from '@/lib/auth
 interface UserDoc {
   id: string
   firstName?: string
+  lastName?: string
+  username?: string
   displayName: string
   email: string
   phoneNumber?: string

@@ -43,7 +43,8 @@ export default function ProfilePage() {
     <Card title="YOUR PROFILE">
       <div className="space-y-6">
         <div className="text-center">
-          <p className="text-br-dk-text text-lg">{userDoc?.firstName ?? userDoc?.displayName ?? user.displayName}</p>
+          <p className="text-br-dk-text text-lg">{[userDoc?.firstName ?? userDoc?.displayName ?? user.displayName, userDoc?.lastName].filter(Boolean).join(' ')}</p>
+          {userDoc?.username && <p className="text-br-gold text-sm font-display tracking-widest">@{userDoc.username}</p>}
           <p className="text-br-dk-sub text-sm">{user.email}{isDeveloper ? ' · Developer' : ''}</p>
         </div>
 
@@ -57,8 +58,8 @@ export default function ProfilePage() {
                 </p>
               </div>
               <button role="switch" aria-checked={invisible} disabled={saving} onClick={toggle}
-                      className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${invisible ? 'bg-br-gold' : 'bg-br-dk-border'}`}>
-                <span className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${invisible ? 'left-6' : 'left-1'}`} />
+                      className="sk-switch shrink-0">
+                <span className="sk-knob" />
               </button>
             </div>
           </div>

@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+@import "tailwindcss";
+
+/* ── Brand tokens ───────────────────────────────────────────── */
+@theme inline {
+  --color-br-green:      #006644;
+  --color-br-green-mid:  #007A50;
+  --color-br-gold:       #DDD055;
+  --color-br-red:        #C8302A;
+
+  /* Dark surfaces */
+  --color-br-dk-bg:       #080808;
+  --color-br-dk-surface:  #111111;
+  --color-br-dk-surface2: #1A1A1A;
+  --color-br-dk-border:   #252525;
+  --color-br-dk-border2:  #303030;
+  --color-br-dk-text:     #E8E8E8;
+  --color-br-dk-sub:      #888888;
+  --color-br-dk-muted:    #444444;
+
+  /* Light surfaces */
+  --color-br-lt-bg:       #F5F0E8;
+  --color-br-lt-surface:  #FDFAF4;
+  --color-br-lt-surface2: #EDE8DC;
+  --color-br-lt-border:   #D8D0BE;
+  --color-br-lt-text:     #1A1710;
+  --color-br-lt-sub:      #6A6258;
+  --color-br-lt-muted:    #A09888;
+
+  --font-display: 'Bebas Neue', sans-serif;
+}
+
+/* ── Base ────────────────────────────────────────────────────── */
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  background-color: #080808;
+  color: #E8E8E8;
+  font-family: system-ui, -apple-system, sans-serif;
+  min-height: 100%;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: 0.05em;
+}
+
+/* ── Grain texture ───────────────────────────────────────────── */
+.grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.35;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #111111; }
+::-webkit-scrollbar-thumb { background: #303030; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #444444; }
+
+/* ── Player waveform animation ───────────────────────────────── */
+@keyframes eq-bar {
+  0%, 100% { transform: scaleY(0.3); }
+  50%       { transform: scaleY(1); }
+}
+.eq-bar { animation: eq-bar 0.8s ease-in-out infinite; transform-origin: bottom; }
+.eq-bar:nth-child(2) { animation-delay: 0.15s; }
+.eq-bar:nth-child(3) { animation-delay: 0.3s; }
+.eq-bar:nth-child(4) { animation-delay: 0.1s; }

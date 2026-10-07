@@ -25,7 +25,7 @@ export default async function HomePage() {
       {schedule.length > 0 && (
         <section>
           <SectionHeader title="TODAY'S SCHEDULE" />
-          <div className="rounded-xl overflow-hidden border border-br-dk-border divide-y divide-br-dk-border">
+          <div className="rounded-xl overflow-hidden sk-raised divide-y divide-br-dk-border">
             {schedule.map((slot: any) => (
               <div key={slot.id} className={`flex items-center gap-4 px-5 py-4 ${slot.isLive ? 'bg-br-green/5' : 'bg-br-dk-surface'}`}>
                 <span className={`font-display text-sm tracking-wider w-20 shrink-0 ${slot.isLive ? 'text-br-gold' : 'text-br-dk-sub'}`}>
@@ -78,12 +78,12 @@ export default async function HomePage() {
               <Link
                 key={show.id}
                 href={`/shows/${show.slug}`}
-                className="group flex items-center gap-4 p-4 rounded-xl bg-br-dk-surface border border-br-dk-border hover:border-br-dk-border2 transition-colors"
+                className="group flex items-center gap-4 p-4 rounded-xl sk-raised"
               >
                 <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-[#003D27] to-br-green flex items-center justify-center shrink-0 overflow-hidden">
                   {show.artworkURL
                     ? <img src={show.artworkURL} alt={show.name} className="w-full h-full object-cover" />
-                    : <span className="font-display text-br-gold text-xl">{show.name[0]}</span>
+                    : <span className="font-display text-br-brass text-xl">{show.name[0]}</span>
                   }
                 </div>
                 <div className="min-w-0">

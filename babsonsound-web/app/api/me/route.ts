@@ -11,6 +11,8 @@ export async function GET(req: Request) {
     return {
       uid: t.uid,
       firstName: u.get('firstName') ?? u.get('displayName') ?? '',
+      lastName: u.get('lastName') ?? '',
+      username: u.get('username') ?? '',
       email: u.get('email') ?? t.email ?? '',
       phoneNumber: u.get('phoneNumber') ?? '',
       role: u.get('role') ?? 'listener',
@@ -33,6 +35,11 @@ export async function POST(req: Request) {
       if (!firstName) throw new HttpError(400, 'Enter a first name.')
       update.firstName = firstName
       update.displayName = firstName
+    }
+    if ('lastName' in b) {
+      const lastName = str(b.lastName, 60)
+      if (!lastName) throw new HttpError(400, 'Enter a last name.')
+      update.lastName = lastName
     }
     if (typeof b.invisible === 'boolean') update.invisible = b.invisible
     if (!Object.keys(update).length) throw new HttpError(400, 'Nothing to update.')

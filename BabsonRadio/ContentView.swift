@@ -10,6 +10,11 @@ struct ContentView: View {
                     BRTabIcon(systemName: "radio", label: "Live")
                 }
 
+            ScheduleView()
+                .tabItem {
+                    BRTabIcon(systemName: "calendar", label: "Schedule")
+                }
+
             FeedView()
                 .tabItem {
                     BRTabIcon(systemName: "rectangle.stack", label: "Shows")
@@ -18,11 +23,6 @@ struct ContentView: View {
             SearchView()
                 .tabItem {
                     BRTabIcon(systemName: "magnifyingglass", label: "Browse")
-                }
-
-            SlotsView()
-                .tabItem {
-                    BRTabIcon(systemName: "mic", label: "Go On Air")
                 }
 
             ProfileView()

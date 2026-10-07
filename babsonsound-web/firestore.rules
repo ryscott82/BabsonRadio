@@ -114,5 +114,8 @@ service cloud.firestore {
     match /phoneIndex/{id}    { allow read, write: if false; }
     match /guestInvites/{id}  { allow read, write: if false; }
     match /contactSyncs/{id}  { allow read, write: if false; }
+    // Auto-scheduler settings and generated filler blocks: server only (served via /api routes).
+    match /config/{id}        { allow read, write: if false; }
+    match /autoBlocks/{id}    { allow read, write: if false; }
   }
 }

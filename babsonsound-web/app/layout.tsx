@@ -4,6 +4,7 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import Nav from '@/components/Nav'
 import Footer from '@/components/Footer'
 import PreviewLock from '@/components/PreviewLock'
+import VerifyBanner from '@/components/VerifyBanner'
 
 export const metadata: Metadata = {
   title: 'Babson Radio',
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <PreviewLock />
         <AuthProvider>
           <Nav />
+          <VerifyBanner />
           <main className="pt-16">
             {children}
           </main>

@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
 import { ErrorText, PrimaryButton } from '@/components/AuthUI'
+import { BABSON_DOMAIN, SCHOOL_DOMAINS } from '@/lib/auth'
 
 export default function AdminTestersPage() {
   const { user, isHost, loading } = useAuth()
   const router = useRouter()
   const [emails, setEmails] = useState<string[]>([])
   const [text, setText] = useState('')
+  const [domain, setDomain] = useState<string>(BABSON_DOMAIN)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -30,9 +32,9 @@ export default function AdminTestersPage() {
   }
 
   if (!user || !isHost) return null
-  // Accept "ryan", "ryan@babson.edu", commas, spaces or one per line.
+  // Accept "ryan" (uses the school picked below), "ryan@olin.edu", commas, spaces or one per line.
   const parsed = text.split(/[\s,;]+/).map(s => s.trim().toLowerCase()).filter(Boolean)
-    .map(s => (s.includes('@') ? s : `${s}@babson.edu`))
+    .map(s => (s.includes('@') ? s : `${s}${domain}`))
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
@@ -42,11 +44,17 @@ export default function AdminTestersPage() {
       </div>
       <p className="text-sm text-br-dk-sub">
         Until launch, only these Babson emails can create an account and open the site, with their own login.
-        Add the part before @babson.edu (or the full address). Several at once is fine.
+        Type the part before the @ and pick the school (or paste full addresses). Several at once is fine.
       </p>
       <div className="sk-raised rounded-xl p-4 space-y-3">
         <textarea value={text} onChange={e => setText(e.target.value)} rows={3} placeholder="jsmith1, adoe2, mlee3"
                   className="sk-field w-full rounded-lg px-3 py-2 text-sm text-br-dk-text" />
+        <label className="flex items-center gap-2 text-xs text-br-dk-sub">
+          School for names without an @
+          <select value={domain} onChange={e => setDomain(e.target.value)} className="sk-field rounded-lg px-2 py-1 text-sm text-br-dk-text">
+            {SCHOOL_DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </label>
         <ErrorText>{error}</ErrorText>
         <PrimaryButton type="button" busy={busy} onClick={() => parsed.length && change(parsed, true)}>
           {parsed.length > 1 ? `ADD ${parsed.length} TESTERS` : 'ADD TESTER'}

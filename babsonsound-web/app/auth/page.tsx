@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { signIn, signUp, signOut, resendVerification, isBabsonEmail, BABSON_DOMAIN, sendPasswordReset } from '@/lib/auth'
+import { signIn, signUp, signOut, resendVerification, isBabsonEmail, sendPasswordReset } from '@/lib/auth'
 import { normalizeUS } from '@/lib/phone'
-import { BabsonEmailField, Card, ErrorText, Field, GhostButton, PrimaryButton, formatPhone } from '@/components/AuthUI'
+import { Card, ErrorText, Field, GhostButton, PrimaryButton, formatPhone } from '@/components/AuthUI'
 
 export default function AuthPage() {
   const { user, loading, isBabson, needsVerification, hasMemberAccess, reload } = useAuth()
@@ -39,8 +39,9 @@ function Forms() {
   const [mode, setMode] = useState<'signin' | 'create'>('signin')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
-  const [prefix, setEmail] = useState('') // part before @babson.edu
-  const email = prefix ? `${prefix.toLowerCase()}${BABSON_DOMAIN}` : ''
+  // The full address, exactly as typed or autofilled (Babson, Olin or Wellesley).
+  const [typed, setTyped] = useState('')
+  const email = typed.trim().toLowerCase().replace(/\s/g, '')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -52,7 +53,7 @@ function Forms() {
     if (mode === 'create') {
       if (!firstName.trim()) return setError('Enter your first name.')
       if (!lastName.trim()) return setError('Enter your last name.')
-      if (!isBabsonEmail(email)) return setError('Babson Radio requires a @babson.edu email address.')
+      if (!isBabsonEmail(email)) return setError('Use your @babson.edu, @olin.edu or @wellesley.edu email address.')
       if (!normalizeUS(phone)) return setError('Enter a valid 10-digit US phone number.')
       if (password.length < 8) return setError('Password must be at least 8 characters.')
     }
@@ -94,7 +95,8 @@ function Forms() {
                    type="tel" autoComplete="tel-national" inputMode="tel" placeholder="(555) 555-5555" />
           </>
         )}
-        <BabsonEmailField label="Babson email" value={email} onChange={setEmail} />
+        <Field label="School email" value={typed} onChange={e => setTyped(e.target.value)} type="email"
+               autoComplete="username" autoCapitalize="none" placeholder="you@babson.edu" />
         <Field label="Password" value={password} onChange={e => setPassword(e.target.value)}
                type="password" autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
                placeholder={mode === 'create' ? 'At least 8 characters' : 'Password'} />

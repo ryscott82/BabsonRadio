@@ -8,8 +8,9 @@ struct AuthView: View {
     @Environment(\.colorScheme) var scheme
 
     @State private var mode: Mode = .signIn
-    @State private var email = ""   // just the part before @babson.edu
-    private var fullEmail: String { email.trimmingCharacters(in: .whitespaces).lowercased() + "@babson.edu" }
+    @State private var email = ""   // just the part before the @
+    @State private var domain = AuthManager.schoolDomains[0]   // default @babson.edu
+    private var fullEmail: String { email.trimmingCharacters(in: .whitespaces).lowercased() + domain }
     @State private var password = ""
     @State private var displayName = ""
     @State private var lastName = ""
@@ -90,13 +91,15 @@ struct AuthView: View {
                     }
 
                     BRTextField(
-                        placeholder: "Babson username",
+                        placeholder: "School username",
                         text: $email,
                         icon: "envelope",
                         keyboardType: .emailAddress,
                         textContentType: .username,
                         autocapitalization: .never,
-                        suffix: "@babson.edu"
+                        suffix: domain,
+                        domainChoice: $domain,
+                        domainOptions: AuthManager.schoolDomains
                     )
                     .focused($focusedField, equals: .email)
 
@@ -357,6 +360,9 @@ struct BRTextField: View {
     var isSecure: Bool = false
     /// Fixed text shown after the field (e.g. "@babson.edu"). People type only the part before it.
     var suffix: String? = nil
+    /// When set, the suffix becomes a small menu so people can pick their school.
+    var domainChoice: Binding<String>? = nil
+    var domainOptions: [String] = []
     @Environment(\.colorScheme) var scheme
 
     var body: some View {
@@ -383,10 +389,28 @@ struct BRTextField: View {
             }
             .onChange(of: text) { _, new in
                 // If someone pastes a whole address, keep only the part before the @.
-                if suffix != nil, let at = new.firstIndex(of: "@") { text = String(new[..<at]) }
+                if suffix != nil, let at = new.firstIndex(of: "@") {
+                    // A pasted or autofilled address: keep the school if it's one we support.
+                    let domain = String(new[at...]).lowercased()
+                    if let choice = domainChoice, domainOptions.contains(domain) { choice.wrappedValue = domain }
+                    text = String(new[..<at])
+                }
             }
 
-            if let suffix {
+            if let choice = domainChoice, !domainOptions.isEmpty {
+                Menu {
+                    ForEach(domainOptions, id: \.self) { d in
+                        Button(d) { choice.wrappedValue = d }
+                    }
+                } label: {
+                    HStack(spacing: 3) {
+                        Text(choice.wrappedValue).font(.system(size: 15))
+                        Image(systemName: "chevron.up.chevron.down").font(.system(size: 10))
+                    }
+                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                    .fixedSize()
+                }
+            } else if let suffix {
                 Text(suffix)
                     .font(.system(size: 15))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)

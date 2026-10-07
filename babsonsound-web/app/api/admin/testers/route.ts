@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     const emails = [...new Set(raw.map(e => normEmail(str(e, 200))).filter(Boolean))]
     if (!emails.length || emails.length > 200 || typeof b.on !== 'boolean') throw new HttpError(400, 'Invalid request.')
     const bad = emails.find(e => !BABSON_EMAIL.test(e))
-    if (bad) throw new HttpError(400, `${bad} is not a @babson.edu address.`)
+    if (bad) throw new HttpError(400, `${bad} is not a @babson.edu, @olin.edu or @wellesley.edu address.`)
     await adminDb().collection('config').doc('betaTesters').set(
       { emails: b.on ? FieldValue.arrayUnion(...emails) : FieldValue.arrayRemove(...emails) }, { merge: true })
     return { emails: await testerEmails() }

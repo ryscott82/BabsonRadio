@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     const b = await readJson(req)
     const sponsorEmail = str(b.sponsorEmail, 200).toLowerCase()
     const name = str(b.name, 40) || 'Guest'
-    if (!BABSON_EMAIL.test(sponsorEmail)) throw new HttpError(400, "Enter the Babson student's @babson.edu email.")
+    if (!BABSON_EMAIL.test(sponsorEmail)) throw new HttpError(400, "Enter the student's school email (@babson.edu, @olin.edu or @wellesley.edu).")
 
     const db = adminDb()
     const sponsorSnap = await db.collection('users').where('email', '==', sponsorEmail).limit(1).get()

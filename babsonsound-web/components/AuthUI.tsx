@@ -14,7 +14,7 @@ export function Field({ label, ...props }: { label: string } & InputHTMLAttribut
   )
 }
 
-/** Babson address entry: people type only the part before @babson.edu, which is shown after the box. */
+/** Sponsor entry: people type only the part before @babson.edu, which is shown after the box. */
 export function BabsonEmailField({ label, value, onChange, placeholder = 'username' }: {
   label: string; value: string; onChange: (prefix: string) => void; placeholder?: string
 }) {
@@ -23,7 +23,7 @@ export function BabsonEmailField({ label, value, onChange, placeholder = 'userna
       <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">{label.toUpperCase()}</span>
       <div className="sk-field flex items-center rounded-xl pr-4 focus-within:ring-2 focus-within:ring-br-gold/40">
         <input
-          type="text" inputMode="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+          type="text" inputMode="email" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false}
           value={value} placeholder={placeholder}
           onChange={e => onChange(e.target.value.split('@')[0].replace(/\s/g, ''))}
           className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-br-dk-text placeholder:text-br-dk-muted focus:outline-none"

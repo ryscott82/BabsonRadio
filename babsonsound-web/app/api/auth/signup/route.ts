@@ -4,12 +4,13 @@ import { BABSON_EMAIL, HttpError, handle, readJson, str } from '@/lib/server/htt
 import { indexKeyFromE164 } from '@/lib/server/phone'
 import { normalizeUS } from '@/lib/phone'
 import { prelaunchOn } from '@/lib/prelaunch'
+import { VERIFY_GRACE_MS } from '@/lib/verify-grace'
 import { isTester } from '@/lib/server/testers'
 
 export const runtime = 'nodejs'
 
-// Creates a Babson account. Email verification is sent by the client afterwards;
-// Firestore rules refuse member access until the babson.edu address is verified.
+// Creates a student account. Email verification is sent by the client afterwards; members must verify
+// within 3 days (Firestore rules and the server accept the `graceUntil` claim until then).
 export async function POST(req: Request) {
   return handle(async () => {
     const b = await readJson(req)
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
 
     if (!firstName) throw new HttpError(400, 'Enter your first name.')
     if (!lastName) throw new HttpError(400, 'Enter your last name.')
-    if (!BABSON_EMAIL.test(email)) throw new HttpError(400, 'Babson Radio requires a @babson.edu email address.')
+    if (!BABSON_EMAIL.test(email)) throw new HttpError(400, 'Use your @babson.edu, @olin.edu or @wellesley.edu email address.')
     if (prelaunchOn() && !(await isTester(email))) {
       throw new HttpError(403, 'Babson Radio is invite-only until launch. Ask the station to add your email.', 'BR-PRE-002')
     }
@@ -29,7 +30,10 @@ export async function POST(req: Request) {
     if (password.length < 8 || password.length > 128) throw new HttpError(400, 'Password must be 8–128 characters.')
 
     // The Babson username (part before @babson.edu) is the account's username. Email is unique, so it is too.
-    const username = email.slice(0, email.indexOf('@'))
+    // Olin and Wellesley usernames get a suffix so they can't collide with a Babson one.
+    const at = email.indexOf('@')
+    const school = email.slice(at + 1, email.indexOf('.', at))
+    const username = school === 'babson' ? email.slice(0, at) : `${email.slice(0, at)}-${school}`
     const db = adminDb()
     const phoneRef = db.collection('phoneIndex').doc(await indexKeyFromE164(phone))
     if ((await phoneRef.get()).exists) throw new HttpError(409, 'That phone number is already registered.')
@@ -37,6 +41,8 @@ export async function POST(req: Request) {
     let uid: string
     try {
       uid = (await adminAuth().createUser({ email, password, displayName: firstName, emailVerified: false })).uid
+      // 3 days of full use before the email link is required (rules and the server check this claim).
+      await adminAuth().setCustomUserClaims(uid, { graceUntil: Date.now() + VERIFY_GRACE_MS })
     } catch (e) {
       const code = (e as { code?: string }).code
       if (code === 'auth/email-already-exists') throw new HttpError(409, 'An account with that email already exists. Try signing in.')

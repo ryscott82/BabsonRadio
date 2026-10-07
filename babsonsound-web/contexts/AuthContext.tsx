@@ -41,6 +41,8 @@ interface AuthContextValue {
   isGuest: boolean
   /** signed in with a babson.edu address that still needs verifying */
   needsVerification: boolean
+  /** ms deadline to verify the email (only while the 3-day grace period is running), else null */
+  verifyDeadline: number | null
   guestPass: GuestPass | null
   /** ms timestamp the guest's one-time trial ends, if they have one */
   guestTrialEndsAt: number | null
@@ -55,7 +57,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue>({
   user: null, userDoc: null, loading: true, isAdmin: false, isHost: false,
-  isBabson: false, isDeveloper: false, isGuest: false, needsVerification: false,
+  isBabson: false, isDeveloper: false, isGuest: false, needsVerification: false, verifyDeadline: null,
   guestPass: null, guestTrialEndsAt: null, passActive: false, trialActive: false,
   canListenLive: false, hasMemberAccess: false,
   reload: async () => {},
@@ -68,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [trialEndsAt, setTrial] = useState<number | null>(null)
   const [loading, setLoading]   = useState(true)
   const [isDeveloper, setDev]   = useState(false)
+  const [graceUntil, setGrace]  = useState(0)
   const [now, setNow]           = useState(() => Date.now())
 
   // Pre-launch: a signed-in beta tester gets the pass for the site (no developer password needed).
@@ -87,12 +90,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (firebaseUser) {
         const tokenResult = await firebaseUser.getIdTokenResult().catch(() => null)
         setDev(tokenResult?.claims.developer === true)
+        setGrace(typeof tokenResult?.claims.graceUntil === 'number' ? tokenResult.claims.graceUntil : 0)
         setUserDoc((await getUserDoc(firebaseUser.uid).catch(() => null)) as UserDoc | null)
       } else {
         setUserDoc(null)
         setPass(null)
         setTrial(null)
         setDev(false)
+        setGrace(0)
       }
       setLoading(false)
     })
@@ -123,25 +128,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Re-evaluate at the moment the next trial/pass expires.
   useEffect(() => {
-    const ends = [trialEndsAt, guestPass && !guestPass.revoked ? guestPass.expiresAt : null]
+    const ends = [trialEndsAt, graceUntil || null, guestPass && !guestPass.revoked ? guestPass.expiresAt : null]
       .filter((t): t is number => t !== null && t > Date.now())
     if (!ends.length) return
     const ms = Math.min(...ends) - Date.now()
     const t = setTimeout(() => setNow(Date.now()), Math.min(ms + 500, 2 ** 31 - 1))
     return () => clearTimeout(t)
-  }, [guestPass, trialEndsAt])
+  }, [guestPass, trialEndsAt, graceUntil])
 
   const reload = useCallback(async () => {
     const u = await refreshUser()
     setUser(u)
-    setDev((await u?.getIdTokenResult())?.claims.developer === true)
+    const claims = (await u?.getIdTokenResult(true))?.claims
+    setDev(claims?.developer === true)
+    setGrace(typeof claims?.graceUntil === 'number' ? claims.graceUntil : 0)
     setNow(Date.now())
     if (u) setUserDoc((await getUserDoc(u.uid).catch(() => null)) as UserDoc | null)
   }, [])
 
   const babsonEmail = !!user?.email && isBabsonEmail(user.email)
-  const isBabson = babsonEmail && user!.emailVerified
-  const needsVerification = babsonEmail && !user!.emailVerified
+  const inGrace = graceUntil > now
+  const isBabson = babsonEmail && (user!.emailVerified || inGrace)
+  const needsVerification = babsonEmail && !user!.emailVerified && !inGrace
+  const verifyDeadline = babsonEmail && !user!.emailVerified && inGrace ? graceUntil : null
   const isGuest = !!user && !babsonEmail && !isDeveloper
   const passActive = !!guestPass && !guestPass.revoked && guestPass.expiresAt > now
   const trialActive = trialEndsAt !== null && trialEndsAt > now
@@ -151,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, userDoc, loading, isAdmin, isHost, isBabson, isDeveloper, isGuest, needsVerification,
+      user, userDoc, loading, isAdmin, isHost, isBabson, isDeveloper, isGuest, needsVerification, verifyDeadline,
       guestPass, guestTrialEndsAt: trialEndsAt, passActive, trialActive,
       canListenLive: isStudent || (isGuest && (passActive || trialActive)),
       hasMemberAccess: isStudent,

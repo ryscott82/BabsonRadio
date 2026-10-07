@@ -26,9 +26,12 @@ const fbFail = (e: unknown, fallback: string) => {
 }
 
 export const BABSON_DOMAIN = '@babson.edu'
+/** Schools whose students can use Babson Radio. The first is the default in the email dropdown. */
+export const SCHOOL_DOMAINS = ['@babson.edu', '@olin.edu', '@wellesley.edu'] as const
 
+/** True for a Babson, Olin or Wellesley address. */
 export function isBabsonEmail(email: string): boolean {
-  return /^[^\s@]+@babson\.edu$/i.test(email.trim())
+  return /^[^\s@]+@(babson|olin|wellesley)\.edu$/i.test(email.trim())
 }
 
 async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
@@ -60,11 +63,11 @@ export const apiGet = <T = Record<string, unknown>>(path: string) => request<T>(
 
 /** Account creation happens server-side (enforces babson.edu); then we sign in and send the verify email. */
 export async function signUp(email: string, password: string, firstName: string, lastName: string, phone: string) {
-  if (!isBabsonEmail(email)) throw fail('Babson Radio requires a @babson.edu email address.', 'BR-ACC-001')
+  if (!isBabsonEmail(email)) throw fail('Use your @babson.edu, @olin.edu or @wellesley.edu email address.', 'BR-ACC-001')
   await api('/api/auth/signup', { email, password, firstName, lastName, phone })
   try {
     const { user } = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password)
-    await sendEmailVerification(user).catch(() => {})
+    await sendEmailVerification(user).catch(e => console.error('[verification email failed]', e))
     return user
   } catch (e) {
     throw fbFail(e, 'Account created, but sign-in failed. Try signing in.')
@@ -72,7 +75,7 @@ export async function signUp(email: string, password: string, firstName: string,
 }
 
 export async function signIn(email: string, password: string) {
-  if (!isBabsonEmail(email)) throw fail('Sign in with your @babson.edu email. Not a student? Use guest access.', 'BR-ACC-001')
+  if (!isBabsonEmail(email)) throw fail('Sign in with your school email. Not a student? Use guest access.', 'BR-ACC-001')
   try {
     const { user } = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password)
     return user
@@ -83,7 +86,8 @@ export async function signIn(email: string, password: string) {
 
 export async function resendVerification() {
   if (!auth.currentUser) throw fail('Sign in first.', 'BR-AUTH-002')
-  await sendEmailVerification(auth.currentUser)
+  try { await sendEmailVerification(auth.currentUser) }
+  catch (e) { throw fbFail(e, 'Could not send the email. Try again in a minute.') }
 }
 
 /** Pick up emailVerified after the user clicks the link; forces a fresh ID token. */
@@ -99,7 +103,7 @@ export async function refreshUser(): Promise<User | null> {
 // Guests get LIVE radio only: an automatic trial, then a student-sponsored pass. Never the backlog.
 
 export async function guestSignUp(email: string, password: string, name: string) {
-  if (isBabsonEmail(email)) throw fail('You have a Babson email. Create a student account instead.', 'BR-ACC-001')
+  if (isBabsonEmail(email)) throw fail('You have a school email. Create a student account instead.', 'BR-ACC-001')
   if (password.length < 8) throw fail('Password must be at least 8 characters.', 'BR-ACC-005')
   let user: User
   try {
@@ -121,7 +125,7 @@ export async function guestSignUp(email: string, password: string, name: string)
 }
 
 export async function guestSignIn(email: string, password: string) {
-  if (isBabsonEmail(email)) throw fail('Use the student sign-in with your @babson.edu email.', 'BR-ACC-001')
+  if (isBabsonEmail(email)) throw fail('Use the student sign-in with your school email.', 'BR-ACC-001')
   let user: User
   try {
     ;({ user } = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password))

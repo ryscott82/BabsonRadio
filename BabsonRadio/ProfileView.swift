@@ -193,13 +193,18 @@ private struct SignedInProfileView: View {
                 Text(user.displayName)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                if !user.isDeveloper, user.email.lowercased().hasSuffix("@babson.edu") {
+                if !user.isDeveloper, AuthManager.isBabsonEmail(user.email) {
                     Text("@" + String(user.email.prefix(while: { $0 != "@" })))
                         .font(BRFont.display(13)).kerning(1.5)
                         .foregroundColor(scheme == .dark ? .brGold : .brGreen)
                 }
                 if user.isDeveloper {
                     BRTagChip(text: "DEVELOPER", style: .gold)
+                }
+                if let by = auth.verifyDeadline {
+                    Text("Verify your email by \(by.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())). Check your inbox and spam.")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.brRed)
                 }
                 Text(user.email)
                     .font(.system(size: 13))

@@ -28,6 +28,8 @@ class AuthManager: ObservableObject {
     @Published var infoMessage: String? = nil
     /// Signed in with a babson.edu address that hasn't been verified yet.
     @Published var needsEmailVerification = false
+    /// While the 3-day window is running and the email link hasn't been clicked: the day the link is needed by.
+    @Published var verifyDeadline: Date? = nil
     @Published var pendingEmail = ""
     /// Guest-only: trial / sponsor pass details from /api/guest/status.
     @Published var guestStatus: GuestStatus? = nil
@@ -73,9 +75,13 @@ class AuthManager: ObservableObject {
 
     // MARK: - Validation
 
-    /// Returns true only for @babson.edu addresses.
+    /// Schools whose students can use Babson Radio. The first one is the default in the email picker.
+    static let schoolDomains = ["@babson.edu", "@olin.edu", "@wellesley.edu"]
+
+    /// True for a Babson, Olin or Wellesley address.
     static func isBabsonEmail(_ email: String) -> Bool {
-        email.trimmingCharacters(in: .whitespaces).lowercased().hasSuffix("@babson.edu")
+        let e = email.trimmingCharacters(in: .whitespaces).lowercased()
+        return schoolDomains.contains { e.hasSuffix($0) }
     }
 
     private static func cleaned(_ email: String) -> String {
@@ -161,14 +167,19 @@ class AuthManager: ObservableObject {
             enforceAccess()
             return
         }
-        if !isDev && !user.isEmailVerified {
+        // New accounts can use the app for 3 days before the email link is required (the server and rules agree).
+        let graceMs = (claims?.claims["graceUntil"] as? NSNumber)?.doubleValue ?? 0
+        let inGrace = graceMs > Date().timeIntervalSince1970 * 1000
+        if !isDev && !user.isEmailVerified && !inGrace {
             pendingEmail = email
             needsEmailVerification = true
+            verifyDeadline = nil
             isSignedIn = false
             currentUser = nil
             return
         }
         needsEmailVerification = false
+        verifyDeadline = (!isDev && !user.isEmailVerified && inGrace) ? Date(timeIntervalSince1970: graceMs / 1000) : nil
 
         // Pre-launch: a beta tester (email on the station's list) gets the site pass from their own sign-in,
         // so no shared password is needed in the app.
@@ -199,7 +210,7 @@ class AuthManager: ObservableObject {
 
     func signIn(email: String, password: String) {
         guard Self.isBabsonEmail(email) else {
-            errorMessage = "Student accounts need your @babson.edu email. Not a student? Continue as a guest. (BR-ACC-001)"
+            errorMessage = "Student accounts need your @babson.edu, @olin.edu or @wellesley.edu email. Not a student? Continue as a guest. (BR-ACC-001)"
             return
         }
         guard Self.firebaseReady else { errorMessage = Self.setupMessage; return }
@@ -220,7 +231,7 @@ class AuthManager: ObservableObject {
 
     func createAccount(email: String, password: String, displayName: String, lastName: String, phoneNumber: String) {
         guard Self.isBabsonEmail(email) else {
-            errorMessage = "Student accounts need your @babson.edu email. Not a student? Continue as a guest. (BR-ACC-001)"
+            errorMessage = "Student accounts need your @babson.edu, @olin.edu or @wellesley.edu email. Not a student? Continue as a guest. (BR-ACC-001)"
             return
         }
         let name = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -294,7 +305,7 @@ class AuthManager: ObservableObject {
 
     func guestSignIn(email: String, password: String) {
         guard !Self.isBabsonEmail(email) else {
-            errorMessage = "Use the student sign-in with your @babson.edu email. (BR-ACC-001)"
+            errorMessage = "Use the student sign-in with your school email. (BR-ACC-001)"
             return
         }
         guard Self.firebaseReady else { errorMessage = Self.setupMessage; return }
@@ -478,6 +489,7 @@ class AuthManager: ObservableObject {
         currentUser = nil
         isSignedIn = false
         needsEmailVerification = false
+        verifyDeadline = nil
         guestStatus = nil
         enforceAccess()
     }

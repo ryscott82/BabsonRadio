@@ -20,10 +20,14 @@ export async function requireUser(req: Request): Promise<DecodedIdToken> {
   }
 }
 
-export const BABSON_EMAIL = /^[a-z0-9._%+-]+@babson\.edu$/
+// Babson Radio is open to Babson, Olin and Wellesley students. (The name is historical.)
+export const BABSON_EMAIL = /^[a-z0-9._%+-]+@(babson|olin|wellesley)\.edu$/
+
+/** New accounts get a `graceUntil` claim (ms) at sign-up: they can use the platform until then without verifying. */
+export const graceActive = (t: DecodedIdToken) => typeof t.graceUntil === 'number' && Date.now() < t.graceUntil
 
 export function isBabsonToken(t: DecodedIdToken): boolean {
-  return t.email_verified === true && !!t.email && BABSON_EMAIL.test(t.email.toLowerCase())
+  return (t.email_verified === true || graceActive(t)) && !!t.email && BABSON_EMAIL.test(t.email.toLowerCase())
 }
 
 /** Developer accounts are created by script with a custom claim; they don't need a babson.edu email. */
@@ -33,7 +37,7 @@ export const isDeveloperToken = (t: DecodedIdToken) => t.developer === true
 export async function requireBabson(req: Request): Promise<DecodedIdToken> {
   const t = await requireUser(req)
   if (!isBabsonToken(t)) {
-    throw new HttpError(403, 'Verify your babson.edu email to do this.')
+    throw new HttpError(403, 'Verify your school email to do this.')
   }
   return t
 }
@@ -42,7 +46,7 @@ export async function requireBabson(req: Request): Promise<DecodedIdToken> {
 export async function requireMember(req: Request): Promise<DecodedIdToken> {
   const t = await requireUser(req)
   if (!isBabsonToken(t) && !isDeveloperToken(t)) {
-    throw new HttpError(403, 'Verify your babson.edu email to do this.')
+    throw new HttpError(403, 'Verify your school email to do this.')
   }
   return t
 }

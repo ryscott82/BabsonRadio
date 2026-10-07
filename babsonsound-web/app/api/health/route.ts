@@ -7,6 +7,14 @@ export const dynamic = 'force-dynamic'
 // Setup checker: open /api/health to see which server pieces work. Reveals only yes/no and an error
 // code, never a secret. Safe to leave on; delete the folder if you'd rather not expose it.
 export async function GET() {
+  try { return await check() }
+  catch (e) {
+    console.error('[health] crashed', e)
+    return Response.json({ crashed: true, message: e instanceof Error ? e.message.slice(0, 200) : String(e) }, { status: 200 })
+  }
+}
+
+async function check() {
   const out: Record<string, unknown> = {}
   const problems: string[] = []
 

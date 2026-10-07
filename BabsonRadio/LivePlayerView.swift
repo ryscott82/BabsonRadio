@@ -8,6 +8,12 @@ struct LivePlayerView: View {
     @StateObject private var auth = AuthManager.shared
     @Environment(\.colorScheme) var scheme
 
+    /// The on-air event's color, or the station gold/green.
+    private var accent: Color {
+        if let hex = audio.nowPlaying?.color, !hex.isEmpty { return Color(hex: hex) }
+        return scheme == .dark ? .brGold : .brGreen
+    }
+
     var body: some View {
         GeometryReader { geo in
             ScrollView(showsIndicators: false) {
@@ -52,7 +58,13 @@ struct LivePlayerView: View {
                     .padding(.bottom, 40)
                 }
             }
-            .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+            .background {
+                ZStack {
+                    (scheme == .dark ? Color.brDkBg : Color.brLtBg)
+                    LiveVisualizer(color: accent, playing: audio.isPlaying)
+                }
+                .ignoresSafeArea()
+            }
             .ignoresSafeArea(edges: .top)
         }
         .onAppear { audio.startPolling() }
@@ -107,6 +119,12 @@ struct LivePlayerView: View {
             Text(song.map { $0.artist.isEmpty ? "Babson Radio" : $0.artist } ?? "Live Stream")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+
+            if let title = audio.nowPlaying?.showTitle, !title.isEmpty {
+                Text("On air: \(title)")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(accent)
+            }
 
             if let song, song.isLive, !song.streamer.isEmpty {
                 Text("Live with \(song.streamer)")
@@ -250,6 +268,11 @@ struct PlayerArtCard: View {
     @Environment(\.colorScheme) var scheme
     @ObservedObject private var audio = AudioPlayerManager.shared
 
+    private var tint: Color? {
+        if let hex = audio.nowPlaying?.color, !hex.isEmpty { return Color(hex: hex) }
+        return nil
+    }
+
     var body: some View {
         ZStack(alignment: .bottomLeading) {
 
@@ -257,9 +280,10 @@ struct PlayerArtCard: View {
             RoundedRectangle(cornerRadius: 20)
                 .fill(
                     LinearGradient(
-                        colors: scheme == .dark
-                            ? [Color(hex: "0C1A13"), Color(hex: "080808")]
-                            : [Color(hex: "1A2E22"), Color(hex: "0A1A10")],
+                        colors: tint.map { [$0.opacity(0.7), Color(hex: "080808")] }
+                            ?? (scheme == .dark
+                                ? [Color(hex: "0C1A13"), Color(hex: "080808")]
+                                : [Color(hex: "1A2E22"), Color(hex: "0A1A10")]),
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -276,7 +300,7 @@ struct PlayerArtCard: View {
 
             // Green glow orb (top-right)
             Circle()
-                .fill(Color.brGreen.opacity(0.18))
+                .fill((tint ?? Color.brGreen).opacity(0.25))
                 .frame(width: 220, height: 220)
                 .blur(radius: 60)
                 .offset(x: 60, y: -60)
@@ -474,3 +498,89 @@ struct SystemVolumeSlider: UIViewRepresentable {
     }
 }
 #endif
+
+
+// MARK: - Animated background
+
+/// Soft ribbons and glowing orbs that swell with a steady beat, tinted with `color`.
+/// Decorative (not driven by the audio). Switches to a still gradient in Low Power Mode,
+/// with Reduce Motion on, or while the app is in the background.
+struct LiveVisualizer: View {
+    let color: Color
+    let playing: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+    @State private var changedAt = Date.distantPast
+    @State private var wasPlaying = false
+
+    private var animated: Bool { !lowPower && !reduceMotion && scenePhase == .active }
+
+    var body: some View {
+        Group {
+            if animated {
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { tl in
+                    let c = color, p = playing, was = wasPlaying, at = changedAt
+                    Canvas { ctx, size in LiveVisualizer.draw(&ctx, size, tl.date, c, p, was, at) }
+                }
+            } else {
+                LinearGradient(colors: [color.opacity(0.28), color.opacity(0.05), .clear],
+                               startPoint: .top, endPoint: .bottom)
+            }
+        }
+        .allowsHitTesting(false)
+        .onAppear { wasPlaying = playing }
+        .onChange(of: playing) { _, now in wasPlaying = !now; changedAt = Date() }
+        .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
+            lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+        }
+    }
+
+    nonisolated private static func draw(_ ctx: inout GraphicsContext, _ size: CGSize, _ date: Date,
+                                         _ color: Color, _ playing: Bool, _ wasPlaying: Bool, _ changedAt: Date) {
+        let t = date.timeIntervalSinceReferenceDate
+        // Ease between calm (paused) and lively (playing) over about a second.
+        let k = min(max(date.timeIntervalSince(changedAt) / 1.2, 0), 1)
+        let from = wasPlaying ? 1.0 : 0.25, to = playing ? 1.0 : 0.25
+        let energy = from + (to - from) * k
+        let beat = pow(max(0, sin(t * 2 * .pi * 118 / 60)), 5)
+        let w = size.width, h = size.height
+
+        ctx.blendMode = .plusLighter
+
+        for i in 0..<4 {
+            let fi = Double(i)
+            let x = w * (0.5 + 0.42 * sin(t * (0.13 + fi * 0.05) + fi * 2))
+            let y = h * (0.5 + 0.35 * cos(t * (0.11 + fi * 0.04) + fi * 1.3))
+            let r = min(w, h) * (0.35 + 0.1 * sin(t * 0.4 + fi)) * (1 + beat * 0.12 * energy)
+            let rect = CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)
+            ctx.fill(Path(ellipseIn: rect),
+                     with: .radialGradient(
+                        Gradient(colors: [(i % 2 == 0 ? color : Color.white).opacity(0.20 * (0.5 + energy * 0.5)), color.opacity(0)]),
+                        center: CGPoint(x: x, y: y), startRadius: 0, endRadius: r))
+        }
+
+        let bands = 5
+        for b in 0..<bands {
+            let fb = Double(b)
+            let base = h * (0.3 + fb / Double(bands) * 0.5)
+            let amp = h * (0.05 + 0.1 * energy) * (1 + beat * 0.5 * energy) * (0.6 + fb * 0.18)
+            let speed = 0.5 + fb * 0.17
+            var path = Path()
+            path.move(to: CGPoint(x: 0, y: h))
+            var x: CGFloat = 0
+            while x <= w {
+                let u = Double(x / w)
+                let y = base + sin(u * 5 + t * speed + fb) * amp + sin(u * 11 - t * speed * 1.4 + fb * 2) * amp * 0.35
+                path.addLine(to: CGPoint(x: x, y: y))
+                x += 8
+            }
+            path.addLine(to: CGPoint(x: w, y: h))
+            path.closeSubpath()
+            ctx.fill(path, with: .linearGradient(
+                Gradient(colors: [(b % 2 == 0 ? color : Color.white).opacity(0.14), color.opacity(0)]),
+                startPoint: CGPoint(x: 0, y: base - amp), endPoint: CGPoint(x: 0, y: h)))
+        }
+    }
+}

@@ -19,6 +19,9 @@ nonisolated struct NowPlayingInfo: Decodable, Equatable {
     let streamer: String
     let listeners: Int
     let next: Next?
+    /// Scheduled show/event on air now, and its color (#RRGGBB, empty = default).
+    let showTitle: String?
+    let color: String?
 }
 
 class AudioPlayerManager: ObservableObject {

@@ -8,7 +8,7 @@ import { localDate, localToUtc } from './tz'
 
 export interface ScheduleItem {
   id: string
-  source: 'weekly' | 'slot' | 'auto'
+  source: 'weekly' | 'slot' | 'auto' | 'event'
   title: string
   description: string
   hosts: string[]
@@ -18,6 +18,8 @@ export interface ScheduleItem {
   startAt: number
   endAt: number
   showSlug: string
+  /** Color the scheduler picked (#RRGGBB), or '' for the default. */
+  color: string
   /** What a bell is attached to: weekly:<show>, slot:<id> or genre:<name> (every block of that genre). */
   reminderKey: string
 }
@@ -38,7 +40,7 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
       hosts: opts.showStudentHosts && d.get('hostName') ? [d.get('hostName')] : [],
       imageUrl: d.get('imageUrl') ?? '', category: d.get('category') ?? '',
       format: d.get('type') === 'prerecorded' ? 'prerecorded' : 'live',
-      startAt, endAt: d.get('endAt').toMillis(), showSlug: '', reminderKey: `slot:${d.id}`,
+      startAt, endAt: d.get('endAt').toMillis(), showSlug: '', color: '', reminderKey: `slot:${d.id}`,
     })
   }
 
@@ -48,8 +50,21 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
     if (startAt >= until) continue
     items.push({
       id: `auto-${d.id}`, source: 'auto', title: d.get('label'), description: '', hosts: [], imageUrl: '', category: '',
-      format: 'playlist', startAt, endAt: d.get('endAt').toMillis(), showSlug: '',
+      format: 'playlist', startAt, endAt: d.get('endAt').toMillis(), showSlug: '', color: '',
       reminderKey: `genre:${String(d.get('label') ?? '').toLowerCase()}`,
+    })
+  }
+
+  // One-time events the station scheduled by hand.
+  const evs = await db.collection('events').where('endAt', '>', Timestamp.fromMillis(now)).get()
+  for (const d of evs.docs) {
+    const startAt = d.get('startAt').toMillis() as number
+    if (startAt >= until || d.get('isActive') === false) continue
+    items.push({
+      id: `event-${d.id}`, source: 'event', title: d.get('title') ?? '', description: d.get('description') ?? '',
+      hosts: Array.isArray(d.get('hostNames')) ? d.get('hostNames') : [], imageUrl: d.get('imageUrl') ?? '',
+      category: d.get('category') ?? '', format: 'show', startAt, endAt: d.get('endAt').toMillis(), showSlug: '',
+      color: d.get('color') ?? '', reminderKey: `event:${d.id}`,
     })
   }
 
@@ -71,6 +86,7 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
         id: `weekly-${w.id}-${y}${m}${dd}`, source: 'weekly', title: w.get('showName') ?? '', description: w.get('description') ?? '',
         hosts: Array.isArray(w.get('hostNames')) ? w.get('hostNames') : [], imageUrl: w.get('imageUrl') ?? '',
         category: w.get('category') ?? '', format: 'show', startAt, endAt, showSlug: w.get('showSlug') ?? '',
+        color: w.get('color') ?? '',
         reminderKey: `weekly:${w.id}`,
       })
     }

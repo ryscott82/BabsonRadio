@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { fetchPresence, friendsLine, sendHeartbeat } from '@/lib/presence'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNowPlaying } from '@/lib/nowplaying'
+import Visualizer from '@/components/Visualizer'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 
@@ -70,13 +71,14 @@ export default function LivePlayer() {
 
   return (
     <div className="relative overflow-hidden rounded-2xl sk-hero grain">
-      {/* Green glow */}
-      <div className="absolute -top-16 -right-16 w-64 h-64 bg-br-green/20 rounded-full blur-3xl pointer-events-none" />
+      {/* Animated background, tinted with the on-air event's color */}
+      <Visualizer color={np?.color ?? ''} playing={isPlaying} />
 
       <div className="relative p-8 md:p-12 flex flex-col md:flex-row items-center gap-8">
 
         {/* Art block */}
-        <div className="relative shrink-0 w-44 h-44 md:w-56 md:h-56 rounded-xl overflow-hidden bg-gradient-to-br from-[#003D27] to-[#006644] grain flex items-center justify-center">
+        <div className={`relative shrink-0 w-44 h-44 md:w-56 md:h-56 rounded-xl overflow-hidden grain flex items-center justify-center ${np?.color ? '' : 'bg-gradient-to-br from-[#003D27] to-[#006644]'}`}
+             style={np?.color ? { background: `linear-gradient(135deg, ${np.color}, ${np.color}66 70%, #000000aa)`, boxShadow: `0 0 40px ${np.color}55` } : undefined}>
           {np?.art ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={np.art} alt={hasSong ? `Cover for ${np.title}` : ''} className="absolute inset-0 w-full h-full object-cover" />
@@ -109,6 +111,7 @@ export default function LivePlayer() {
           <p className="text-br-dk-sub text-sm mb-1">
             {hasSong ? (np!.artist || 'Babson Radio') : 'Babson College — Internet Radio'}
           </p>
+          {np?.showTitle && <p className="text-xs mb-1" style={{ color: np.color || undefined }}>On air: {np.showTitle}</p>}
           {hasSong && np!.isLive && np!.streamer && (
             <p className="text-br-gold text-xs mb-1">Live with {np!.streamer}</p>
           )}

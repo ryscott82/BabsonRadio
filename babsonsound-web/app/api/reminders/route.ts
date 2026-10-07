@@ -6,7 +6,7 @@ export const runtime = 'nodejs'
 
 // Bells on the schedule. Saved on the account so the website and the app agree; the iOS app turns them
 // into on-device notifications 5 minutes before each show.
-const KEY = /^(weekly|slot|genre):[A-Za-z0-9 &'._-]{1,80}$/
+const KEY = /^(weekly|slot|genre|event):[A-Za-z0-9 &'._-]{1,80}$/
 const MAX = 100
 
 export async function GET(req: Request) {

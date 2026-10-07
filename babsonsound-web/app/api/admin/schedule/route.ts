@@ -2,8 +2,10 @@ import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireStaff, str } from '@/lib/server/http'
 import { parseClock } from '@/lib/autoschedule'
 import { checkImageRef, deleteImage } from '@/lib/server/images'
+import { cleanColor } from '@/lib/server/color'
 
 export const runtime = 'nodejs'
+
 
 // Weekly recurring shows (the `schedule` collection). Staff only.
 export async function GET(req: Request) {
@@ -18,7 +20,7 @@ export async function GET(req: Request) {
       id: d.id, showName: d.get('showName') ?? '', dayOfWeek: d.get('dayOfWeek') ?? 0,
       startTime: d.get('startTime') ?? '', endTime: d.get('endTime') ?? '',
       description: d.get('description') ?? '', hostNames: d.get('hostNames') ?? [], category: d.get('category') ?? '',
-      imageUrl: d.get('imageUrl') ?? '', imagePath: d.get('imagePath') ?? '', showSlug: d.get('showSlug') ?? '',
+      color: d.get('color') ?? '', imageUrl: d.get('imageUrl') ?? '', imagePath: d.get('imagePath') ?? '', showSlug: d.get('showSlug') ?? '',
       isActive: d.get('isActive') !== false,
       hostUsernames: ((d.get('hostUids') as string[] | undefined) ?? []).map(u => names.get(u) ?? '').filter(Boolean),
     })).sort((a, b) => a.dayOfWeek - b.dayOfWeek || String(a.startTime).localeCompare(String(b.startTime)))
@@ -65,7 +67,7 @@ export async function POST(req: Request) {
       // 24h "HH:MM" so it sorts correctly and the scheduler can read it.
       startTime: `${String(Math.floor(start / 60)).padStart(2, '0')}:${String(start % 60).padStart(2, '0')}`,
       endTime: `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`,
-      description: str(b.description, 600), hostNames, hostUids, category: str(b.category, 30),
+      description: str(b.description, 600), hostNames, hostUids, category: str(b.category, 30), color: cleanColor(b.color),
       imageUrl: img?.imageUrl ?? '', imagePath: img?.imagePath ?? '', showSlug: str(b.showSlug, 80),
       isActive: b.isActive !== false, updatedBy: t.uid,
     }, { merge: true })

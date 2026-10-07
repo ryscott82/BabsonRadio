@@ -8,6 +8,8 @@ export interface NowPlaying {
   elapsed: number; duration: number
   isLive: boolean; streamer: string; listeners: number
   next: { title: string; artist: string } | null
+  showTitle: string
+  color: string
   updatedAt: number
   /** client clock (ms) when this was fetched, for the progress bar */
   receivedAt: number

@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // MARK: - Air-time slots (server: /api/slots/*)
 
@@ -52,8 +53,16 @@ nonisolated struct ScheduleEntry: Identifiable, Decodable {
     let startAt: Date
     let endAt: Date
     let showSlug: String
+    /// Color the scheduler picked (#RRGGBB); nil or empty = default.
+    let color: String?
     /// What a bell attaches to: weekly:<show>, slot:<id> or genre:<name> (every block of that genre).
     let reminderKey: String
+
+    /// The scheduler's color, if one was picked.
+    @MainActor var tint: Color? {
+        guard let hex = color, !hex.isEmpty else { return nil }
+        return Color(hex: hex)
+    }
 
     var formatLabel: String {
         switch format {

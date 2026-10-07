@@ -9,9 +9,9 @@ import { genreArt } from '@/lib/genreArt'
 import { ErrorText } from '@/components/AuthUI'
 
 interface Item {
-  id: string; source: 'weekly' | 'slot' | 'auto'; title: string; description: string; hosts: string[]
+  id: string; source: 'weekly' | 'slot' | 'auto' | 'event'; title: string; description: string; hosts: string[]
   imageUrl: string; category: string; format: 'show' | 'live' | 'prerecorded' | 'playlist'
-  startAt: number; endAt: number; showSlug: string; reminderKey: string
+  startAt: number; endAt: number; showSlug: string; reminderKey: string; color?: string
 }
 
 const FORMAT: Record<Item['format'], string> = { show: 'SHOW', live: 'LIVE', prerecorded: 'PRE-RECORDED', playlist: 'PLAYLIST' }
@@ -28,8 +28,10 @@ function Art({ item, className }: { item: Item; className: string }) {
     return <img src={item.imageUrl} alt="" className={`${className} object-cover`} />
   }
   const a = genreArt(item.title)
+  // A scheduler-picked color wins over the generic art.
+  const background = item.color ? `linear-gradient(135deg, ${item.color}, ${item.color}88)` : a.background
   return (
-    <div className={`${className} flex items-center justify-center`} style={{ background: a.background }}>
+    <div className={`${className} flex items-center justify-center`} style={{ background }}>
       <span className="font-display text-br-brass text-2xl">{a.initial}</span>
     </div>
   )
@@ -177,8 +179,11 @@ export default function ScheduleList() {
                       <div key={it.id} role="button" tabIndex={0} onClick={() => setOpen(it)}
                            onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setOpen(it)}
                            className={`absolute inset-x-0.5 rounded-md px-1.5 py-1 overflow-hidden cursor-pointer text-left ${
-                             it.source === 'auto' ? 'sk-field' : 'sk-raised border-l-2 border-br-gold'} ${live ? 'ring-1 ring-br-red' : ''}`}
-                           style={{ top: top + 1, height }}>
+                             it.source === 'auto' ? 'sk-field' : `sk-raised border-l-2 ${it.color ? '' : 'border-br-gold'}`} ${live ? 'ring-1 ring-br-red' : ''}`}
+                           style={{
+                             top: top + 1, height,
+                             ...(it.color && it.source !== 'auto' ? { borderLeftColor: it.color, backgroundImage: `linear-gradient(${it.color}38, ${it.color}38)` } : {}),
+                           }}>
                         <p className="text-xs leading-tight text-br-dk-text pr-6 line-clamp-2">{it.title}</p>
                         {tall && <p className="text-[10px] text-br-dk-sub truncate">{time(it.startAt)}{it.hosts.length ? ` · ${it.hosts[0]}` : ''}</p>}
                         {height >= 34 && (

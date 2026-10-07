@@ -519,6 +519,12 @@ struct ScheduleArt: View {
             AsyncImage(url: url) { phase in
                 if let image = phase.image { image.resizable().scaledToFill() } else { GenreArt(title: entry.title) }
             }
+        } else if let tint = entry.tint {
+            ZStack {
+                LinearGradient(colors: [tint, tint.opacity(0.45)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                Text(String(entry.title.prefix(1)).uppercased())
+                    .font(BRFont.display(22)).foregroundColor(.white.opacity(0.9))
+            }
         } else {
             GenreArt(title: entry.title)
         }
@@ -706,6 +712,7 @@ private struct CalendarBlock: View {
 
     private var onNow: Bool { entry.startAt <= Date() && entry.endAt > Date() }
     private var isAuto: Bool { entry.source == "auto" }
+    private var accent: Color { entry.tint ?? (scheme == .dark ? Color.brGold : Color.brGreen) }
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -733,10 +740,10 @@ private struct CalendarBlock: View {
         .background(
             RoundedRectangle(cornerRadius: 6)
                 .fill(isAuto ? (scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
-                             : (scheme == .dark ? Color.brGold.opacity(0.18) : Color.brGreen.opacity(0.14)))
+                             : accent.opacity(entry.tint != nil ? 0.30 : (scheme == .dark ? 0.18 : 0.14)))
         )
         .overlay(alignment: .leading) {
-            if !isAuto { RoundedRectangle(cornerRadius: 1).fill(scheme == .dark ? Color.brGold : Color.brGreen).frame(width: 3) }
+            if !isAuto { RoundedRectangle(cornerRadius: 1).fill(accent).frame(width: 3) }
         }
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(onNow ? Color.brRed : .clear, lineWidth: 1.5))
         .clipShape(RoundedRectangle(cornerRadius: 6))

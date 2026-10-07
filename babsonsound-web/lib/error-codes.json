@@ -1,0 +1,359 @@
+[
+  {
+    "code": "BR-AUTH-001",
+    "title": "Wrong email or password",
+    "meaning": "Firebase rejected the email/password pair (or no such account).",
+    "userFix": "Re-type both carefully, or use Forgot password. Students use the student sign-in; non-Babson emails use Guest access.",
+    "staffCheck": "Confirm which sign-in they used. Check Firebase Console → Authentication → Users for the email."
+  },
+  {
+    "code": "BR-AUTH-002",
+    "title": "Sign-in required",
+    "meaning": "The request reached the server without a valid sign-in.",
+    "userFix": "Sign in and try again.",
+    "staffCheck": "If they ARE signed in, have them sign out and in again; check the device clock."
+  },
+  {
+    "code": "BR-AUTH-003",
+    "title": "Session expired",
+    "meaning": "Their sign-in token was rejected as expired or invalid.",
+    "userFix": "Sign out, sign back in.",
+    "staffCheck": "If it repeats for everyone, check FIREBASE_SERVICE_ACCOUNT_JSON belongs to the same Firebase project as the app/site config (BR-SRV-002)."
+  },
+  {
+    "code": "BR-AUTH-004",
+    "title": "Recent sign-in needed",
+    "meaning": "Deleting an account requires a sign-in from the last 5 minutes.",
+    "userFix": "Enter your password when asked, then try deleting again right away.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-AUTH-005",
+    "title": "Email not verified",
+    "meaning": "The action needs a verified email address.",
+    "userFix": "Open the verification email, click the link, then tap 'I've verified'. Check spam.",
+    "staffCheck": "Firebase Console → Authentication → Users shows verified status. Resend from the app or website."
+  },
+  {
+    "code": "BR-AUTH-006",
+    "title": "Too many attempts",
+    "meaning": "Firebase temporarily blocked this device after repeated failures.",
+    "userFix": "Wait about 15 minutes, or reset the password.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-AUTH-007",
+    "title": "Sign-in failed (other reason)",
+    "meaning": "Firebase returned an error we don't have a specific code for.",
+    "userFix": "Try again; if it repeats, send us the code and what you were doing.",
+    "staffCheck": "Check the browser console / Xcode log for the raw Firebase error code."
+  },
+  {
+    "code": "BR-AUTH-008",
+    "title": "Email sign-in is turned off",
+    "meaning": "Email/Password is not enabled in Firebase (auth/operation-not-allowed).",
+    "userFix": "Nothing you can do; contact the station.",
+    "staffCheck": "Firebase Console → Authentication → Sign-in method → enable Email/Password."
+  },
+  {
+    "code": "BR-AUTH-009",
+    "title": "This website address isn't authorized",
+    "meaning": "The domain isn't in Firebase's authorized list (auth/unauthorized-domain).",
+    "userFix": "Nothing you can do; contact the station.",
+    "staffCheck": "Firebase Console → Authentication → Settings → Authorized domains → add the domain (babsonradio.com, www., and any .vercel.app)."
+  },
+  {
+    "code": "BR-AUTH-010",
+    "title": "Account disabled",
+    "meaning": "The account was disabled in Firebase.",
+    "userFix": "Contact the station.",
+    "staffCheck": "Firebase Console → Authentication → Users → re-enable."
+  },
+  {
+    "code": "BR-ACC-001",
+    "title": "Babson email required",
+    "meaning": "Student sign-up/sign-in needs a @babson.edu address (or a guest used a Babson address).",
+    "userFix": "Use your @babson.edu email for student accounts; use Guest access with any other email.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-ACC-002",
+    "title": "Email already has an account",
+    "meaning": "An account with this email already exists.",
+    "userFix": "Sign in instead, or use Forgot password.",
+    "staffCheck": "Firebase Console → Authentication → Users."
+  },
+  {
+    "code": "BR-ACC-003",
+    "title": "Phone number already registered",
+    "meaning": "Another account already uses this phone number.",
+    "userFix": "Sign in to the existing account. If it isn't yours, contact the station.",
+    "staffCheck": "Look up the number's owner via the users collection (phoneNumber). Never share it with the requester."
+  },
+  {
+    "code": "BR-ACC-004",
+    "title": "Invalid phone number",
+    "meaning": "Not a valid 10-digit US number.",
+    "userFix": "Enter 10 digits, e.g. (617) 555-0123.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-ACC-005",
+    "title": "Password problem",
+    "meaning": "Password too short/long (8–128 characters) or too weak.",
+    "userFix": "Use at least 8 characters.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-ACC-006",
+    "title": "Name missing",
+    "meaning": "First name is required.",
+    "userFix": "Enter your first name.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-ACC-007",
+    "title": "Delete confirmation missing",
+    "meaning": "The delete request didn't include the confirmation.",
+    "userFix": "Use the Delete my account button and enter your password.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-ACC-008",
+    "title": "Profile not found",
+    "meaning": "The sign-in exists but its profile record is missing.",
+    "userFix": "Sign out and back in. If it repeats, contact the station.",
+    "staffCheck": "Compare Authentication → Users with Firestore users/{uid}. A failed sign-up can leave Auth without a profile; delete the Auth user so they can re-register."
+  },
+  {
+    "code": "BR-ACC-009",
+    "title": "Invalid email address",
+    "meaning": "The email isn't formatted correctly.",
+    "userFix": "Check for typos.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-GST-001",
+    "title": "Sponsor not found",
+    "meaning": "No verified Babson student with that email is registered.",
+    "userFix": "Check the spelling; the student must have created and verified an account.",
+    "staffCheck": "Look up users where email == sponsor email and check emailVerified in Authentication."
+  },
+  {
+    "code": "BR-GST-002",
+    "title": "Sponsor is at the guest limit",
+    "meaning": "A student can sponsor up to 10 guests at once.",
+    "userFix": "Ask the student to revoke an old pass.",
+    "staffCheck": "Limit is MAX_ACTIVE_GUESTS_PER_STUDENT in lib/guest.ts."
+  },
+  {
+    "code": "BR-GST-003",
+    "title": "Too many guest requests today",
+    "meaning": "Guests can send 5 sponsor requests per 24 hours.",
+    "userFix": "Try again tomorrow.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-GST-004",
+    "title": "End-of-semester not configured",
+    "meaning": "No upcoming semester-end date.",
+    "userFix": "Pick 24 hours, 7 days or 30 days.",
+    "staffCheck": "SEMESTER_END_DATES in Vercel (MM-DD,MM-DD). Defaults to 12-18,05-14 if unset."
+  },
+  {
+    "code": "BR-GST-005",
+    "title": "Guest access not needed",
+    "meaning": "Students already have full access.",
+    "userFix": "Sign in with your Babson account.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-GST-006",
+    "title": "Guest trial or pass ended",
+    "meaning": "Live access has run out.",
+    "userFix": "Ask a Babson student to sponsor you.",
+    "staffCheck": "Check guestTrials/{uid} and guestPasses/{uid}."
+  },
+  {
+    "code": "BR-NET-001",
+    "title": "Contact sync limit reached",
+    "meaning": "Contact matching is limited to 5 times per day.",
+    "userFix": "Try again tomorrow.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-NET-002",
+    "title": "Contact data problem",
+    "meaning": "The contact list sent was empty or too large.",
+    "userFix": "Update the app and try again.",
+    "staffCheck": "Max 5000 hashes per sync."
+  },
+  {
+    "code": "BR-SLT-001",
+    "title": "Time not allowed",
+    "meaning": "Air-time requests must start 24h–60 days ahead, 15–240 minutes long, on a 15-minute mark.",
+    "userFix": "Pick a time that fits those rules.",
+    "staffCheck": "Rules live in lib/slots.ts."
+  },
+  {
+    "code": "BR-SLT-002",
+    "title": "Time already booked",
+    "meaning": "Another approved slot overlaps.",
+    "userFix": "Pick a different time.",
+    "staffCheck": "Check airSlots for the time range."
+  },
+  {
+    "code": "BR-SLT-003",
+    "title": "Too many pending requests",
+    "meaning": "Limit of 3 pending requests per person.",
+    "userFix": "Wait for a decision or cancel one.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-SLT-004",
+    "title": "Request can't be changed",
+    "meaning": "It was already decided, cancelled or started.",
+    "userFix": "Refresh the list.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-SLT-005",
+    "title": "Request details missing or invalid",
+    "meaning": "Title, category, type or audio link is missing or invalid (audio links must be https and only for pre-recorded shows).",
+    "userFix": "Fix the highlighted fields.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-PERM-001",
+    "title": "Verification or permission needed",
+    "meaning": "The action requires a verified Babson account.",
+    "userFix": "Verify your @babson.edu email.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-PERM-002",
+    "title": "Staff only",
+    "meaning": "The action is limited to staff or the owner.",
+    "userFix": "Ask a staff member.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-REQ-001",
+    "title": "Invalid request",
+    "meaning": "The server couldn't use what was sent.",
+    "userFix": "Check the form and try again; update the app if it repeats.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-REQ-002",
+    "title": "Not found or already handled",
+    "meaning": "The item doesn't exist or was already dealt with.",
+    "userFix": "Refresh and try again.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-REQ-003",
+    "title": "Rate limit",
+    "meaning": "Too many requests too quickly.",
+    "userFix": "Wait a minute and retry.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-SRV-000",
+    "title": "Unexpected server error",
+    "meaning": "Something failed that we haven't classified.",
+    "userFix": "Try again. If it repeats, send the code AND the 'ref' number.",
+    "staffCheck": "Search Vercel → Logs for the ref value; the full error is printed next to it."
+  },
+  {
+    "code": "BR-SRV-001",
+    "title": "Server key missing",
+    "meaning": "FIREBASE_SERVICE_ACCOUNT_JSON isn't set on the server.",
+    "userFix": "Contact the station.",
+    "staffCheck": "Vercel → Settings → Environment Variables → add it, then redeploy. Check /api/health."
+  },
+  {
+    "code": "BR-SRV-002",
+    "title": "Server key malformed",
+    "meaning": "FIREBASE_SERVICE_ACCOUNT_JSON isn't valid one-line JSON or the key is wrong.",
+    "userFix": "Contact the station.",
+    "staffCheck": "Regenerate the key, convert to ONE line (json.dumps), paste with no extra quotes, redeploy."
+  },
+  {
+    "code": "BR-SRV-003",
+    "title": "Server secret missing",
+    "meaning": "PHONE_HASH_PEPPER is missing or under 16 characters.",
+    "userFix": "Contact the station.",
+    "staffCheck": "Set a random 32+ character value (openssl rand -hex 32) in Vercel and redeploy. Never change it later."
+  },
+  {
+    "code": "BR-SRV-004",
+    "title": "Database not created",
+    "meaning": "Firestore has no database in this Firebase project.",
+    "userFix": "Contact the station.",
+    "staffCheck": "Firebase Console → Firestore Database → Create database."
+  },
+  {
+    "code": "BR-SRV-005",
+    "title": "Database index missing",
+    "meaning": "A query needs a Firestore index.",
+    "userFix": "Contact the station.",
+    "staffCheck": "firebase deploy --only firestore:indexes (or open the link in the error log). Wait until the index shows Enabled."
+  },
+  {
+    "code": "BR-SRV-006",
+    "title": "Authentication not set up",
+    "meaning": "Firebase Authentication isn't initialized for the project.",
+    "userFix": "Contact the station.",
+    "staffCheck": "Firebase Console → Authentication → Get started → enable Email/Password."
+  },
+  {
+    "code": "BR-SRV-007",
+    "title": "Server not allowed to use the database",
+    "meaning": "The service account lacks permission or belongs to a different project.",
+    "userFix": "Contact the station.",
+    "staffCheck": "Regenerate the key from the SAME project (babson-radio); check IAM roles (Firebase Admin SDK / Editor)."
+  },
+  {
+    "code": "BR-SRV-008",
+    "title": "Server couldn't reach Firebase",
+    "meaning": "Network timeout or connection failure to Google services.",
+    "userFix": "Wait a minute and retry.",
+    "staffCheck": "Check status.firebase.google.com; usually transient."
+  },
+  {
+    "code": "BR-CLI-001",
+    "title": "Can't reach Babson Radio",
+    "meaning": "The device is offline or the server didn't answer.",
+    "userFix": "Check your internet connection and try again.",
+    "staffCheck": "Open https://babsonradio.com/api/health from the same device."
+  },
+  {
+    "code": "BR-CLI-002",
+    "title": "App not connected to server",
+    "meaning": "The iOS app's server address isn't set.",
+    "userFix": "Update the app.",
+    "staffCheck": "BackendConfig.baseURLString must be the live site URL, no trailing slash."
+  },
+  {
+    "code": "BR-CLI-003",
+    "title": "Sign-in not set up in this app build",
+    "meaning": "The iOS build is missing Firebase or GoogleService-Info.plist.",
+    "userFix": "Update the app.",
+    "staffCheck": "Add the Firebase package and a correctly named GoogleService-Info.plist to the BabsonRadio target; clean build."
+  },
+  {
+    "code": "BR-CLI-004",
+    "title": "Unreadable server reply",
+    "meaning": "The server answered with something the app couldn't understand.",
+    "userFix": "Update the app and retry.",
+    "staffCheck": "Compare app and website versions; check /api/health."
+  },
+  {
+    "code": "BR-CLI-005",
+    "title": "Playback couldn't start",
+    "meaning": "The stream didn't load.",
+    "userFix": "Check your connection and try again.",
+    "staffCheck": "Open the stream URL directly; check the Asura panel (source connected? bitrate/listener limit?)."
+  }
+]

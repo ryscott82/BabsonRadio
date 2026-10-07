@@ -69,7 +69,7 @@ class AuthManager: ObservableObject {
         if !canListenLive { AudioPlayerManager.shared.stop() }
     }
 
-    static let setupMessage = "Sign-in isn't set up in this build yet. Add the Firebase package and GoogleService-Info.plist (see SETUP_IOS.md)."
+    static let setupMessage = "Sign-in isn't set up in this build yet. (BR-CLI-003)"
 
     // MARK: - Validation
 
@@ -85,6 +85,34 @@ class AuthManager: ObservableObject {
 #if canImport(FirebaseAuth)
 
     private var listener: AuthStateDidChangeListenerHandle?
+
+    /// Maps a Firebase sign-in/sign-up error to a friendly message with a support code.
+    /// Codes are listed at https://babsonradio.com/support/errors
+    static func authMessage(_ error: Error, signingUp: Bool = false) -> String {
+        if let e = error as? BackendError { return e.message }
+        let ns = error as NSError
+        if ns.domain == NSURLErrorDomain { return "Can't reach Babson Radio. Check your connection. (BR-CLI-001)" }
+        switch ns.code {
+        case AuthErrorCode.Code.emailAlreadyInUse.rawValue:
+            return "An account with that email already exists. Try signing in. (BR-ACC-002)"
+        case AuthErrorCode.Code.invalidEmail.rawValue:
+            return "Enter a valid email address. (BR-ACC-009)"
+        case AuthErrorCode.Code.weakPassword.rawValue:
+            return "That password is too weak. (BR-ACC-005)"
+        case AuthErrorCode.Code.wrongPassword.rawValue, AuthErrorCode.Code.invalidCredential.rawValue, AuthErrorCode.Code.userNotFound.rawValue:
+            return "Incorrect email or password. (BR-AUTH-001)"
+        case AuthErrorCode.Code.tooManyRequests.rawValue:
+            return "Too many attempts. Wait a few minutes and try again. (BR-AUTH-006)"
+        case AuthErrorCode.Code.networkError.rawValue:
+            return "Can't reach Babson Radio. Check your connection. (BR-CLI-001)"
+        case AuthErrorCode.Code.operationNotAllowed.rawValue:
+            return "Sign-in is not available right now. (BR-AUTH-008)"
+        case AuthErrorCode.Code.userDisabled.rawValue:
+            return "This account has been disabled. (BR-AUTH-010)"
+        default:
+            return (signingUp ? "Could not create the account. " : "Sign-in failed. ") + "(BR-AUTH-007)"
+        }
+    }
 
     static var firebaseReady: Bool { FirebaseApp.app() != nil }
 
@@ -160,7 +188,7 @@ class AuthManager: ObservableObject {
 
     func signIn(email: String, password: String) {
         guard Self.isBabsonEmail(email) else {
-            errorMessage = "Babson Radio is only available to Babson students. Use your @babson.edu email."
+            errorMessage = "Student accounts need your @babson.edu email. Not a student? Continue as a guest. (BR-ACC-001)"
             return
         }
         guard Self.firebaseReady else { errorMessage = Self.setupMessage; return }
@@ -171,7 +199,7 @@ class AuthManager: ObservableObject {
             do {
                 _ = try await Auth.auth().signIn(withEmail: Self.cleaned(email), password: password)
             } catch {
-                errorMessage = "Incorrect email or password."
+                errorMessage = Self.authMessage(error)
             }
             isLoading = false
         }
@@ -181,21 +209,21 @@ class AuthManager: ObservableObject {
 
     func createAccount(email: String, password: String, displayName: String, phoneNumber: String) {
         guard Self.isBabsonEmail(email) else {
-            errorMessage = "Babson Radio is only available to Babson students. Use your @babson.edu email."
+            errorMessage = "Student accounts need your @babson.edu email. Not a student? Continue as a guest. (BR-ACC-001)"
             return
         }
         let name = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else {
-            errorMessage = "Enter your first name."
+            errorMessage = "Enter your first name. (BR-ACC-006)"
             return
         }
         guard password.count >= 8 else {
-            errorMessage = "Password must be at least 8 characters."
+            errorMessage = "Password must be at least 8 characters. (BR-ACC-005)"
             return
         }
         let digits = phoneNumber.filter(\.isNumber)
         guard digits.count == 10 else {
-            errorMessage = "Please enter a valid 10-digit US phone number."
+            errorMessage = "Please enter a valid 10-digit US phone number. (BR-ACC-004)"
             return
         }
         guard Self.firebaseReady else { errorMessage = Self.setupMessage; return }
@@ -215,7 +243,7 @@ class AuthManager: ObservableObject {
                 let result = try await Auth.auth().signIn(withEmail: Self.cleaned(email), password: password)
                 try await result.user.sendEmailVerification()
             } catch {
-                errorMessage = (error as? BackendError)?.message ?? error.localizedDescription
+                errorMessage = Self.authMessage(error, signingUp: true)
             }
             isLoading = false
         }
@@ -225,10 +253,10 @@ class AuthManager: ObservableObject {
 
     func guestSignUp(email: String, password: String, name: String) {
         guard !Self.isBabsonEmail(email) else {
-            errorMessage = "You have a Babson email. Create a student account instead."
+            errorMessage = "You have a Babson email. Create a student account instead. (BR-ACC-001)"
             return
         }
-        guard password.count >= 8 else { errorMessage = "Password must be at least 8 characters."; return }
+        guard password.count >= 8 else { errorMessage = "Password must be at least 8 characters. (BR-ACC-005)"; return }
         guard Self.firebaseReady else { errorMessage = Self.setupMessage; return }
         errorMessage = nil; infoMessage = nil; isLoading = true
         Task {
@@ -241,16 +269,7 @@ class AuthManager: ObservableObject {
                 try? await result.user.sendEmailVerification()
                 await apply(Auth.auth().currentUser)   // first status call starts the free trial
             } catch {
-                let code = (error as NSError).code
-                if code == AuthErrorCode.emailAlreadyInUse.rawValue {
-                    errorMessage = "An account with that email already exists. Try signing in."
-                } else if code == AuthErrorCode.invalidEmail.rawValue {
-                    errorMessage = "Enter a valid email address."
-                } else if code == AuthErrorCode.weakPassword.rawValue {
-                    errorMessage = "That password is too weak."
-                } else {
-                    errorMessage = "Could not create the account. Please try again."
-                }
+                errorMessage = Self.authMessage(error, signingUp: true)
             }
             isLoading = false
         }
@@ -258,14 +277,14 @@ class AuthManager: ObservableObject {
 
     func guestSignIn(email: String, password: String) {
         guard !Self.isBabsonEmail(email) else {
-            errorMessage = "Use the student sign-in with your @babson.edu email."
+            errorMessage = "Use the student sign-in with your @babson.edu email. (BR-ACC-001)"
             return
         }
         guard Self.firebaseReady else { errorMessage = Self.setupMessage; return }
         errorMessage = nil; infoMessage = nil; isLoading = true
         Task {
             do { _ = try await Auth.auth().signIn(withEmail: Self.cleaned(email), password: password) }
-            catch { errorMessage = "Incorrect email or password." }
+            catch { errorMessage = Self.authMessage(error) }
             isLoading = false
         }
     }
@@ -273,7 +292,7 @@ class AuthManager: ObservableObject {
     func sendPasswordReset(email: String) {
         guard Self.firebaseReady else { errorMessage = Self.setupMessage; return }
         let e = Self.cleaned(email)
-        guard !e.isEmpty else { errorMessage = "Enter your email first."; return }
+        guard !e.isEmpty else { errorMessage = "Enter your email first. (BR-ACC-009)"; return }
         errorMessage = nil; infoMessage = nil
         Task {
             try? await Auth.auth().sendPasswordReset(withEmail: e)
@@ -302,7 +321,7 @@ class AuthManager: ObservableObject {
                 infoMessage = "Request sent."
                 await apply(Auth.auth().currentUser)
             } catch {
-                errorMessage = (error as? BackendError)?.message ?? error.localizedDescription
+                errorMessage = Self.authMessage(error, signingUp: true)
             }
         }
     }
@@ -315,7 +334,7 @@ class AuthManager: ObservableObject {
             do {
                 try await user.reauthenticate(with: EmailAuthProvider.credential(withEmail: email, password: password))
             } catch {
-                errorMessage = "Incorrect password."
+                errorMessage = "Incorrect password. (BR-AUTH-001)"
                 isLoading = false
                 return
             }
@@ -328,7 +347,7 @@ class AuthManager: ObservableObject {
                 guestStatus = nil
                 enforceAccess()
             } catch {
-                errorMessage = (error as? BackendError)?.message ?? "Couldn't delete the account. Try again."
+                errorMessage = (error as? BackendError)?.message ?? Self.authMessage(error)
             }
             isLoading = false
         }
@@ -349,10 +368,10 @@ class AuthManager: ObservableObject {
                 let token = try await result.user.getIDTokenResult(forcingRefresh: true)
                 if (token.claims["developer"] as? Bool) != true {
                     try? Auth.auth().signOut()
-                    errorMessage = "That isn't a developer account."
+                    errorMessage = "That isn't a developer account. (BR-PERM-002)"
                 }
             } catch {
-                errorMessage = "Incorrect email or password."
+                errorMessage = Self.authMessage(error)
             }
             isLoading = false
         }
@@ -368,7 +387,7 @@ class AuthManager: ObservableObject {
                 try await Auth.auth().currentUser?.sendEmailVerification()
                 infoMessage = "Sent again. Check your inbox and spam folder."
             } catch {
-                errorMessage = "Please wait a minute and try again."
+                errorMessage = "Please wait a minute and try again. (BR-AUTH-006)"
             }
         }
     }

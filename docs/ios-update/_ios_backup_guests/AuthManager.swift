@@ -32,6 +32,21 @@ class AuthManager: ObservableObject {
     /// Guest-only: trial / sponsor pass details from /api/guest/status.
     @Published var guestStatus: GuestStatus? = nil
     private var expiryTimer: Timer?
+    /// Invisible mode: hides you from "tuned in" lists and from friends' "liked this" hints.
+    @Published var isInvisible = false
+
+    func setInvisible(_ value: Bool) {
+        let previous = isInvisible
+        isInvisible = value
+        Task {
+            do {
+                let _: EmptyResponse = try await BackendAPI.post("/api/me", ["invisible": value])
+            } catch {
+                isInvisible = previous
+                errorMessage = (error as? BackendError)?.message ?? "Couldn't save that setting."
+            }
+        }
+    }
 
     /// LIVE radio: students and developers, plus guests with an active trial or sponsored pass.
     /// (Stored episodes are separate and are NEVER available to guests.)
@@ -125,6 +140,7 @@ class AuthManager: ObservableObject {
         needsEmailVerification = false
 
         let me: MeResponse? = try? await BackendAPI.get("/api/me")
+        isInvisible = me?.invisible ?? false
         let apiName = me?.firstName ?? ""
         let fallbackName = user.displayName ?? String(email.prefix(while: { $0 != "@" })).capitalized
         currentUser = BRUser(

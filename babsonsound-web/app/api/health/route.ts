@@ -1,4 +1,5 @@
 import { adminAuth, adminDb } from '@/lib/server/admin'
+import { classifyServerError } from '@/lib/errors'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -7,6 +8,7 @@ export const dynamic = 'force-dynamic'
 // code, never a secret. Safe to leave on; delete the folder if you'd rather not expose it.
 export async function GET() {
   const out: Record<string, unknown> = {}
+  const problems: string[] = []
 
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
   out.serviceAccountSet = !!raw
@@ -16,10 +18,18 @@ export async function GET() {
   out.pepperSet = (process.env.PHONE_HASH_PEPPER ?? '').length >= 16
 
   const code = (e: unknown) => String((e as { code?: unknown }).code ?? (e instanceof Error ? e.message.slice(0, 80) : 'error'))
+  let firestoreErr: unknown, authErr: unknown
   try { await adminDb().collection('phoneIndex').limit(1).get(); out.firestore = 'ok' }
-  catch (e) { out.firestore = `FAILED: ${code(e)}` }
+  catch (e) { firestoreErr = e; out.firestore = `FAILED: ${code(e)}` }
   try { await adminAuth().listUsers(1); out.auth = 'ok' }
-  catch (e) { out.auth = `FAILED: ${code(e)}` }
+  catch (e) { authErr = e; out.auth = `FAILED: ${code(e)}` }
 
+  if (!raw) problems.push('BR-SRV-001')
+  else if (out.serviceAccountParses === false) problems.push('BR-SRV-002')
+  if (!out.pepperSet) problems.push('BR-SRV-003')
+  if (firestoreErr) problems.push(classifyServerError(firestoreErr))
+  if (authErr) problems.push(classifyServerError(authErr))
+  out.problems = [...new Set(problems)]
+  out.keyPage = '/support/errors'
   return Response.json(out)
 }

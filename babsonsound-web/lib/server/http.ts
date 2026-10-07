@@ -2,9 +2,10 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import type { DecodedIdToken } from 'firebase-admin/auth'
 import { adminAuth } from './admin'
+import { classifyServerError, codeForMessage } from '../errors'
 
 export class HttpError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(public status: number, message: string, public code?: string) {
     super(message)
   }
 }
@@ -75,9 +76,13 @@ export async function handle(fn: () => Promise<unknown>): Promise<Response> {
     return NextResponse.json(await fn())
   } catch (e) {
     if (e instanceof HttpError) {
-      return NextResponse.json({ error: e.message }, { status: e.status })
+      const code = e.code ?? codeForMessage(e.status, e.message)
+      return NextResponse.json({ error: e.message, code }, { status: e.status })
     }
-    console.error(e)
-    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 })
+    // Unexpected: classify for setup problems and tag with a short reference that also appears in the logs.
+    const code = classifyServerError(e)
+    const ref = Math.random().toString(16).slice(2, 8)
+    console.error(`[${code}] ref=${ref}`, e)
+    return NextResponse.json({ error: 'Something went wrong on our end.', code, ref }, { status: 500 })
   }
 }

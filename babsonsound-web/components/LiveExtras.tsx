@@ -61,7 +61,7 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
           if (!first) fresh.forEach(x => rain(x.e, 1, 2_500))
           since.current = Math.max(since.current, r.events.length ? r.events[r.events.length - 1].at : 0, r.now - 4_000)
         }).catch(() => {})
-    }, 3_000)
+    }, 2_000)
   }, [occId, cid, invisible])
   async function react(e: string) {
     if (!can) { setMsg('Sign in with your school email to react.'); return }

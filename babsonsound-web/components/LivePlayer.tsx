@@ -58,6 +58,12 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
     window.addEventListener('keydown', onKey)
     return () => { document.removeEventListener('fullscreenchange', onFs); window.removeEventListener('keydown', onKey) }
   }, [board, closeBoard])
+  // Tell the emoji rain the board is up, so reactions from phones fall big over it (even if the browser refuses full screen).
+  useEffect(() => {
+    if (!board) return
+    document.body.dataset.board = '1'
+    return () => { delete document.body.dataset.board }
+  }, [board])
   // Controls fade away a few seconds after the mouse stops, so the board stays clean.
   useEffect(() => {
     if (!board || !awake) return

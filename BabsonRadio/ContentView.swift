@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct ContentView: View {
     @Environment(\.colorScheme) var scheme
@@ -92,14 +95,27 @@ private struct BRTabIcon: View {
 }
 
 
-/// A soft blur over the very top of every tab, so the clock and battery stay readable when content scrolls under them.
+/// Frosted glass over the status bar, like Messages: content scrolls behind it and the clock and battery stay readable.
 struct StatusBarBlur: View {
+    #if canImport(UIKit)
+    private static var inset: CGFloat {
+        UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows).first(where: \.isKeyWindow)?.safeAreaInsets.top ?? 0
+    }
+    #endif
+
     var body: some View {
         GeometryReader { geo in
-            Rectangle()
-                .fill(.ultraThinMaterial.opacity(0.55))
-                .frame(height: geo.safeAreaInsets.top)
-                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(0.6), location: 0.55), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+            // Read from the window: a GeometryReader that ignores the safe area always reports 0 for it.
+            let top = Self.inset
+            let _ = geo.size // redraw on rotation
+            if top > 0 {
+                Rectangle()
+                    .fill(.regularMaterial)
+                    .frame(height: top + 10)
+                    .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.8), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+                    .overlay(alignment: .bottom) { Rectangle().fill(Color.primary.opacity(0.05)).frame(height: 0.5) }
+            }
         }
         .ignoresSafeArea(edges: .top)
         .allowsHitTesting(false)

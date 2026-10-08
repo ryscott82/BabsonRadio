@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useNowPlaying } from '@/lib/nowplaying'
 import { ART_THEME, BABSON_GREEN, useArtPalette } from '@/lib/artColor'
+import { useParty } from '@/lib/party'
 
 // Wraps the home page body (not the top bar). Everyone starts on the station green; a few seconds in, the page
 // fades to the three main colors of the current cover, one per kind of element (see .art-ui in globals.css).
@@ -15,37 +16,14 @@ const Ctx = createContext<Theme>({ on: false, main: '', full: false, badge: '' }
 export const useArtMain = () => useContext(Ctx)
 
 /**
- * Light mode is plain cream and green, and dark mode in the daytime is a darker cream with the same green.
- * Only dark mode at night (7pm to 6am) follows the cover's colors everywhere; the On Air badge follows them always.
+ * The cover colors follow only in party mode (see lib/party.ts); the On Air badge follows them always.
  */
-export function isNightNow() { const h = new Date().getHours(); return h >= 19 || h < 6 }
-function useFullColor(): boolean {
-  const [full, setFull] = useState(false)
-  useEffect(() => {
-    const root = document.documentElement
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const check = () => {
-      const t = root.dataset.theme
-      const dark = t === 'dark' || (t !== 'light' && mq.matches)
-      const night = isNightNow()
-      root.dataset.night = night ? '1' : '0'
-      setFull(dark && night)
-    }
-    check()
-    const mo = new MutationObserver(check)
-    mo.observe(root, { attributes: true, attributeFilter: ['data-theme'] })
-    mq.addEventListener('change', check)
-    const iv = setInterval(check, 60_000)
-    return () => { mo.disconnect(); mq.removeEventListener('change', check); clearInterval(iv) }
-  }, [])
-  return full
-}
 
 export default function ArtTheme({ className, children }: { className?: string; children: React.ReactNode }) {
   const np = useNowPlaying()
   const palette = useArtPalette(np?.art || undefined)
   const [ready, setReady] = useState(false)
-  const night = useFullColor()
+  const night = useParty().party
   useEffect(() => {
     if (!ART_THEME) return
     const t = setTimeout(() => setReady(true), FADE_DELAY_MS)

@@ -57,11 +57,16 @@ struct SkipControl: View {
                 }
             }
         }
-        .task(id: key) {
-            guard auth.isSignedIn, autoPlay else { model.skip = nil; return }
-            // Check the count every 10 seconds while the station's own music plays.
-            while !Task.isCancelled { await model.load(); try? await Task.sleep(nanoseconds: 10_000_000_000) }
-        }
+        // The polling lives on an always-present empty view: modifiers on a Group with nothing in it never run,
+        // which is why the button never appeared.
+        .background(
+            Color.clear.frame(width: 1, height: 1)
+                .task(id: key) {
+                    guard auth.isSignedIn, autoPlay else { model.skip = nil; return }
+                    // Check the count every 10 seconds while the station's own music plays.
+                    while !Task.isCancelled { await model.load(); try? await Task.sleep(nanoseconds: 10_000_000_000) }
+                }
+        )
     }
 }
 

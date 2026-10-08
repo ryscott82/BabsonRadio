@@ -26,14 +26,14 @@ extension Color {
     // Dark Mode. At night (7pm to 6am) it's near black so the cover colors pop; in the daytime it's a
     // darker version of the cream, with the same green highlight as light mode.
     private static var dkNight: Bool { ArtTheme.isNight }
-    static var brDkBg: Color       { Color(hex: dkNight ? "080808" : "1C1913") }
-    static var brDkSurface: Color  { Color(hex: dkNight ? "111111" : "26221A") }
-    static var brDkSurface2: Color { Color(hex: dkNight ? "1A1A1A" : "302B21") }
-    static var brDkBorder: Color   { Color(hex: dkNight ? "252525" : "3A3428") }
-    static var brDkBorder2: Color  { Color(hex: dkNight ? "303030" : "473F31") }
-    static var brDkText: Color     { Color(hex: dkNight ? "E8E8E8" : "F1EBDC") }
-    static var brDkSub: Color      { Color(hex: dkNight ? "888888" : "A89F8A") }
-    static var brDkMuted: Color    { Color(hex: dkNight ? "444444" : "6B6454") }
+    static var brDkBg: Color       { Color(hex: dkNight ? "080808" : "2B261F") }
+    static var brDkSurface: Color  { Color(hex: dkNight ? "111111" : "36302A") }
+    static var brDkSurface2: Color { Color(hex: dkNight ? "1A1A1A" : "423B33") }
+    static var brDkBorder: Color   { Color(hex: dkNight ? "252525" : "524A3E") }
+    static var brDkBorder2: Color  { Color(hex: dkNight ? "303030" : "5F5648") }
+    static var brDkText: Color     { Color(hex: dkNight ? "E8E8E8" : "F4ECDA") }
+    static var brDkSub: Color      { Color(hex: dkNight ? "888888" : "BBB09A") }
+    static var brDkMuted: Color    { Color(hex: dkNight ? "444444" : "8C8271") }
 
     // Light Mode
     static let brLtBg       = Color(hex: "F5F0E8")

@@ -107,11 +107,6 @@ struct LivePlayerView: View {
                     .padding(.top, 20)
                 }
 
-                // ── Volume row ──────────────────────────────────────
-                volumeRow
-                    .padding(.horizontal, 32)
-                    .padding(.top, 24)
-
                 communitySection
                     .padding(.top, 36)
                     .padding(.bottom, 40)
@@ -241,6 +236,11 @@ struct LivePlayerView: View {
                         .padding(.top, 6)
                 }
             }
+
+ // Volume sits right under the song's progress bar.
+            volumeRow
+                .padding(.horizontal, 12)
+                .padding(.top, 4)
 
             if let next = audio.nowPlaying?.next {
                 Text("Next: \(next.title)\(next.artist.isEmpty ? "" : " · \(next.artist)")")
@@ -756,23 +756,29 @@ struct LiveBoardView: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 32)
+                .padding(.horizontal, 32).padding(.bottom, 70)
 
                 VStack {
-                    HStack(spacing: 12) {
-                        Spacer()
-                        SkipControl(onDark: true)
+                    Spacer()
+                    // Play/pause, skip and volume. They fade a few seconds after the last tap.
+                    HStack(spacing: 18) {
                         Button { if canPlay { audio.toggle() } } label: {
-                            Text(audio.isPlaying ? "STOP" : "PLAY")
-                                .font(BRFont.display(12)).kerning(2).foregroundColor(.white)
-                                .padding(.horizontal, 14).padding(.vertical, 8)
-                                .brGlass(in: Capsule(), interactive: true)
+                            Image(systemName: audio.isBuffering ? "ellipsis" : (audio.isPlaying ? "pause.fill" : "play.fill"))
+                                .font(.system(size: 22, weight: .semibold)).foregroundColor(.white)
+                                .frame(width: 56, height: 56)
+                                .brGlass(in: Circle(), interactive: true)
                         }
                         .buttonStyle(.plain).opacity(canPlay ? 1 : 0.4)
+                        .accessibilityLabel(audio.isPlaying ? "Pause" : "Play")
+                        SkipControl(onDark: true)
+                        Image(systemName: "speaker.fill").font(.system(size: 13)).foregroundColor(.white.opacity(0.7))
+                        SystemVolumeSlider(tint: .white).frame(width: 200, height: 34)
+                        Image(systemName: "speaker.wave.3.fill").font(.system(size: 13)).foregroundColor(.white.opacity(0.7))
                     }
-                    .padding(.horizontal, 24).padding(.top, 8)
+                    .padding(.horizontal, 22).padding(.vertical, 10)
+                    .brGlass(in: Capsule())
+                    .padding(.bottom, 8)
                     .opacity(awake ? 1 : 0).allowsHitTesting(awake)
-                    Spacer()
                     HStack {
                         Text("BABSON RADIO").font(BRFont.display(11)).kerning(5).foregroundColor(.white.opacity(0.4))
                         Spacer()

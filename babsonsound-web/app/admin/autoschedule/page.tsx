@@ -16,6 +16,41 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const when = (ms: number) =>
   new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
 
+const pad = (n: number) => String(n).padStart(2, '0')
+const localInput = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+
+/** Fix the schedule by hand: this playlist really played from X until Y (or is still playing). */
+function CorrectSchedule({ box, lab }: { box: string; lab: string }) {
+  const [label, setLabel] = useState('Pop Hits')
+  const [start, setStart] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 1); d.setHours(13, 0, 0, 0); return localInput(d) })
+  const [end, setEnd] = useState(() => localInput(new Date()))
+  const [ongoing, setOngoing] = useState(true)
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+  async function save() {
+    setBusy(true); setMsg('')
+    try {
+      await api('/api/admin/schedule-correction', { label, startAt: new Date(start).getTime(), endAt: new Date(end).getTime(), ongoing })
+      setMsg('Saved. The schedule and calendar now show it.')
+    } catch (e) { setMsg(e instanceof Error ? e.message : 'Could not save.') }
+    setBusy(false)
+  }
+  return (
+    <section className="sk-raised rounded-2xl p-5 space-y-3">
+      <h2 className="font-display text-br-gold tracking-widest text-sm">CORRECT THE SCHEDULE</h2>
+      <p className="text-sm text-br-dk-sub">Tell it what really played. It replaces the planned blocks for that time on the schedule, the app and the calendar. If it is still playing, the site keeps it going automatically.</p>
+      <div className="grid sm:grid-cols-3 gap-3">
+        <div><label className={lab}>PLAYLIST</label><input className={box + ' w-full'} value={label} onChange={e => setLabel(e.target.value)} /></div>
+        <div><label className={lab}>STARTED</label><input type="datetime-local" className={box + ' w-full'} value={start} onChange={e => setStart(e.target.value)} /></div>
+        <div><label className={lab}>ENDED</label><input type="datetime-local" className={box + ' w-full'} value={end} disabled={ongoing} onChange={e => setEnd(e.target.value)} /></div>
+      </div>
+      <label className="flex items-center gap-2 text-xs text-br-dk-sub"><input type="checkbox" checked={ongoing} onChange={e => setOngoing(e.target.checked)} /> It is still playing</label>
+      <PrimaryButton type="button" busy={busy} onClick={save}>SAVE CORRECTION</PrimaryButton>
+      {msg && <p className="text-xs text-br-dk-sub">{msg}</p>}
+    </section>
+  )
+}
+
 export default function AutoSchedulePage() {
   const { user, isAdmin, loading } = useAuth()
   const router = useRouter()
@@ -214,6 +249,8 @@ export default function AutoSchedulePage() {
           </div>
         )}
       </section>
+
+      <CorrectSchedule box={box} lab={lab} />
 
       <section className="sk-raised rounded-2xl p-5 space-y-3">
         <h2 className="font-display text-br-gold tracking-widest text-sm">CALENDAR FEED</h2>

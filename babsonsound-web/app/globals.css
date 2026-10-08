@@ -68,23 +68,23 @@
   --sk-btn-text-shadow: 0 -1px 0 rgba(0,0,0,.35);
 }
 
-/* Dark mode in the daytime: a darker version of the cream, with the same green highlight. At night the near-black
-   green stays so the cover colors pop (see ArtTheme.tsx, which sets data-night on <html>). */
+/* Dark mode in the daytime: a darker version of the cream, with the same green highlight. In party mode (night only, see lib/party.ts) the near-black
+   green stays so the cover colors pop. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"])[data-night="0"] {
-    --br-bg:#1C1913; --br-surface:#26221A; --br-surface2:#302B21;
-    --br-border:#3A3428; --br-border2:#473F31;
-    --br-text:#F1EBDC; --br-sub:#A89F8A; --br-muted:#6B6454;
-    --br-hero-a:#2E2A20; --br-hero-b:#1C1913;
-    --sk-face-top:#2E2A20; --sk-face-bot:#26221A; --sk-field:#15130E;
+  :root:not([data-theme="light"]):not([data-party="1"]) {
+    --br-bg:#2B261F; --br-surface:#36302A; --br-surface2:#423B33;
+    --br-border:#524A3E; --br-border2:#5F5648;
+    --br-text:#F4ECDA; --br-sub:#BBB09A; --br-muted:#8C8271;
+    --br-hero-a:#3D372E; --br-hero-b:#2B261F;
+    --sk-face-top:#413A31; --sk-face-bot:#36302A; --sk-field:#231F19; --sk-hi: rgba(255,244,220,.10);
   }
 }
-:root[data-theme="dark"][data-night="0"] {
-  --br-bg:#1C1913; --br-surface:#26221A; --br-surface2:#302B21;
-  --br-border:#3A3428; --br-border2:#473F31;
-  --br-text:#F1EBDC; --br-sub:#A89F8A; --br-muted:#6B6454;
-  --br-hero-a:#2E2A20; --br-hero-b:#1C1913;
-  --sk-face-top:#2E2A20; --sk-face-bot:#26221A; --sk-field:#15130E;
+:root[data-theme="dark"]:not([data-party="1"]) {
+  --br-bg:#2B261F; --br-surface:#36302A; --br-surface2:#423B33;
+  --br-border:#524A3E; --br-border2:#5F5648;
+  --br-text:#F4ECDA; --br-sub:#BBB09A; --br-muted:#8C8271;
+  --br-hero-a:#3D372E; --br-hero-b:#2B261F;
+  --sk-face-top:#413A31; --sk-face-bot:#36302A; --sk-field:#231F19; --sk-hi: rgba(255,244,220,.10);
 }
 
 /* ── Base ────────────────────────────────────────────────────── */

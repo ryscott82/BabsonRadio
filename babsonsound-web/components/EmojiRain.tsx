@@ -11,10 +11,13 @@ let nextId = 1
 
 export function rain(e: string, count = 1, spreadMs = 0) {
   if (typeof window === 'undefined') return
-  const list: P[] = Array.from({ length: count }, () => ({
+  // On the full screen board (a screen on the wall) the drops are bigger and each reaction is a little shower.
+  const wall = document.body.dataset.board === '1' || !!document.fullscreenElement
+  const n = wall ? Math.max(count, 3) : count
+  const list: P[] = Array.from({ length: n }, () => ({
     id: nextId++, e, left: 4 + Math.random() * 92, dur: 2600 + Math.random() * 1800,
     delay: spreadMs ? Math.random() * spreadMs : Math.random() * 350,
-    size: 26 + Math.random() * 20, dx: (Math.random() - 0.5) * 80, rot: (Math.random() - 0.5) * 120,
+    size: (26 + Math.random() * 20) * (wall ? 2 : 1), dx: (Math.random() - 0.5) * 80, rot: (Math.random() - 0.5) * 120,
   }))
   window.dispatchEvent(new CustomEvent<P[]>(EVT, { detail: list }))
 }
@@ -40,14 +43,14 @@ export default function EmojiRain() {
     const on = (ev: Event) => {
       if (reduce) return
       const add = (ev as CustomEvent<P[]>).detail
-      setPs(cur => [...cur, ...add].slice(-90))
+      setPs(cur => [...cur, ...add].slice(-150))
     }
     window.addEventListener(EVT, on)
     return () => window.removeEventListener(EVT, on)
   }, [])
   if (!mounted) return null
   return createPortal(
-    <div aria-hidden className="fixed inset-0 z-[60] pointer-events-none overflow-hidden">
+    <div aria-hidden className="fixed inset-0 z-[150] pointer-events-none overflow-hidden">
       {ps.map(p => (
         <span key={p.id} className="br-rain-drop"
               onAnimationEnd={() => setPs(cur => cur.filter(x => x.id !== p.id))}

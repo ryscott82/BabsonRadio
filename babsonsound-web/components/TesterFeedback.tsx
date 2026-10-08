@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { api } from '@/lib/auth'
 
-// "Report bug / feature" button in the top bar, shown on every page to beta testers.
+// "Report bug / feature" link in the footer, shown on every page to beta testers.
 export default function TesterFeedback() {
   const { user, isTester } = useAuth()
   const path = usePathname()
@@ -31,8 +31,8 @@ export default function TesterFeedback() {
   return (
     <>
       <button type="button" onClick={() => setOpen(true)}
-              className="sk-key rounded-lg h-9 px-3 text-xs font-semibold text-br-dk-text whitespace-nowrap">
-        <span className="hidden sm:inline">Report bug / feature</span><span className="sm:hidden">Report</span>
+              className="text-br-dk-sub hover:text-br-dk-text transition-colors">
+        Report bug / feature
       </button>
       {open && createPortal(
         <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={close}>

@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/server/admin'
 import { removeContactGraph } from '@/lib/server/contactGraph'
 import { isTester } from '@/lib/server/testers'
 import { finishSchoolUpgrade } from '@/lib/server/upgrade'
+import { cleanBirthday } from '@/lib/server/birthdays'
 import { CONCENTRATIONS, MAX_CONCENTRATIONS, TERMS_VERSION, normText, validGradYear } from '@/lib/terms'
 import { HttpError, handle, isBabsonToken, isDeveloperToken, readJson, requireUser, str } from '@/lib/server/http'
 
@@ -29,6 +30,7 @@ export async function GET(req: Request) {
       invisible: u.get('invisible') === true,
       gradYear: u.get('gradYear') ?? '',
       concentrations: u.get('concentrations') ?? [],
+      birthday: cleanBirthday(u.get('birthday')),
     }
   })
 }
@@ -64,6 +66,15 @@ export async function POST(req: Request) {
     if ('concentrations' in b) {
       const picked = list(b.concentrations, MAX_CONCENTRATIONS, normText)
       update.concentrations = CONCENTRATIONS.length ? picked.filter(c => CONCENTRATIONS.includes(c)) : picked
+    }
+    // Optional birthday (month and day). Send null to remove it.
+    if ('birthday' in b) {
+      if (b.birthday === null) update.birthday = FieldValue.delete()
+      else {
+        const bd = cleanBirthday(b.birthday)
+        if (!bd) throw new HttpError(400, 'Pick a real month and day.')
+        update.birthday = bd
+      }
     }
     if (b.acceptTerms === TERMS_VERSION) { update.termsAcceptedAt = FieldValue.serverTimestamp(); update.termsVersion = TERMS_VERSION }
     if (!Object.keys(update).length) throw new HttpError(400, 'Nothing to update.')

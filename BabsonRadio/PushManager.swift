@@ -28,6 +28,8 @@ enum PushKind: String, CaseIterable, Identifiable {
 
 nonisolated private struct KindsReply: Decodable { let kinds: [String] }
 
+nonisolated private struct MyPushReply: Decodable { let birthday: Bool; let announcements: Bool }
+
 @MainActor
 final class PushManager: ObservableObject {
     static let shared = PushManager()
@@ -46,6 +48,45 @@ final class PushManager: ObservableObject {
     }
 
     private var token = ""
+
+    // ── Personal choices (everyone): the happy-birthday message and station announcements ──
+    @Published var birthdayOn = false
+    @Published var announcementsOn = false
+
+    func loadMine() async {
+#if canImport(FirebaseMessaging)
+        guard let t = await fetchToken() else { return }
+        token = t
+        let q = t.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? t
+        if let r: MyPushReply = try? await BackendAPI.get("/api/me/push?token=\(q)") {
+            birthdayOn = r.birthday; announcementsOn = r.announcements
+        }
+#endif
+    }
+
+    /// Turn "birthday" or "announcements" on or off. The first "on" asks iOS for permission.
+    func setMine(birthday: Bool? = nil, announcements: Bool? = nil) async {
+#if canImport(FirebaseMessaging)
+        busy = true; status = ""
+        defer { busy = false }
+        if birthday == true || announcements == true {
+            let granted = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+            guard granted else { status = "Notifications are off for Babson Radio. Turn them on in Settings."; return }
+            UIApplication.shared.registerForRemoteNotifications()
+        }
+        if token.isEmpty { token = await fetchToken() ?? "" }
+        guard !token.isEmpty else { status = "Could not reach the notification service. Try again in a minute."; return }
+        var body: [String: Any] = ["token": token]
+        if let birthday { body["birthday"] = birthday }
+        if let announcements { body["announcements"] = announcements }
+        do {
+            let r: MyPushReply = try await BackendAPI.post("/api/me/push", body)
+            birthdayOn = r.birthday; announcementsOn = r.announcements
+        } catch { status = (error as? BackendError)?.message ?? error.localizedDescription }
+#else
+        status = "Push is not set up in this build yet."
+#endif
+    }
 
     /// Look up this phone's current choices (does not ask for permission).
     func load() async {

@@ -91,4 +91,7 @@ nonisolated struct MeResponse: Decodable {
     let lastName: String?
     let gradYear: String?
     let concentrations: [String]?
+    let birthday: Birthday?
 }
+
+nonisolated struct Birthday: Decodable { let month: Int; let day: Int }

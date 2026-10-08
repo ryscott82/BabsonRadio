@@ -89,6 +89,19 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
       apiGet<{ avg: number; count: number; mine: number }>(`/api/live/rating?occId=${encodeURIComponent(rid)}`).then(setRating).catch(() => {})
     }, 60_000)
   }, [rid, user?.uid])
+  // End-of-show feedback: from 5 minutes before the show ends until 45 minutes after, ask for stars and a short comment.
+  const endsAt = rateable ? (np?.occId === rateable.occId ? np.showEnd : last?.end ?? 0) : 0
+  const closing = !!rateable && rateable.isShow && endsAt > 0 && now >= endsAt - 5 * 60_000
+  const [comment, setComment] = useState('')
+  const [commentSent, setCommentSent] = useState('')
+  async function sendFeedback() {
+    if (!can) { setMsg('Sign in with your school email to send feedback.'); return }
+    if (!rateable || !rating.mine) { setMsg('Pick a star rating first.'); return }
+    try {
+      await api('/api/live/rating', { occId: rateable.occId, stars: rating.mine, title: rateable.title, comment })
+      setCommentSent(rateable.occId); setMsg('Thanks! Your feedback goes to the host.')
+    } catch (err) { setMsg(err instanceof Error ? err.message : 'Could not send your feedback.') }
+  }
   async function rate(stars: number) {
     if (!can) { setMsg('Sign in with your school email to rate.'); return }
     if (!rateable) return
@@ -176,7 +189,27 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
         </div>
       )}
 
-      {rateable && (
+      {rateable && closing && (
+        <div className="sk-raised rounded-2xl p-4 space-y-3">
+          <p className="text-br-dk-text font-medium">{endsAt > now ? 'Almost over' : 'That was'}: {rateable.title}. How was it?</p>
+          <span className="flex" role="group" aria-label="Star rating">
+            {[1, 2, 3, 4, 5].map(n => (
+              <button key={n} type="button" onClick={() => rate(n)} aria-label={`${n} star${n > 1 ? 's' : ''}`}
+                      className={`text-3xl leading-none px-0.5 ${n <= rating.mine ? 'text-br-gold' : 'text-br-dk-muted'}`}>★</button>
+            ))}
+          </span>
+          {commentSent === rateable.occId ? (
+            <p className="text-sm text-br-gold">Thanks! Your feedback goes to the host.</p>
+          ) : (
+            <>
+              <textarea value={comment} onChange={e => setComment(e.target.value)} rows={2} maxLength={280}
+                        placeholder="Anything the host should know? (optional)" className="sk-field w-full rounded-lg px-3 py-2 text-sm text-br-dk-text" />
+              <button type="button" onClick={sendFeedback} className="sk-btn font-display tracking-[0.2em] text-xs px-5 py-2.5 rounded-lg">SEND FEEDBACK</button>
+            </>
+          )}
+        </div>
+      )}
+      {rateable && !closing && (
         <div className="sk-raised rounded-2xl p-4 flex flex-wrap items-center gap-3">
           <span className="text-sm text-br-dk-text">{rateable.isShow ? 'Rate the whole show' : 'Rate this hour of music'}: {rateable.title}</span>
           <span className="flex" role="group" aria-label="Star rating">

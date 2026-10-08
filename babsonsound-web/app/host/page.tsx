@@ -10,6 +10,7 @@ import ImagePicker from '@/components/ImagePicker'
 interface HShow { id: string; key: string; kind: 'weekly' | 'slot'; refId: string; title: string; startAt: number; endAt: number; open: boolean }
 interface NowPlaying { song: string; elapsed: number; duration: number; isLive: boolean; streamer: string; listeners: number }
 interface Insight {
+  comments?: { stars: number; text: string; at: number }[]
   requestsOpen?: boolean; requests?: { id: string; text: string; name: string; at: number }[]
   note: { headline: string; message: string } | null
   reactions: Record<string, number>; recentReactions: Record<string, number>
@@ -18,6 +19,7 @@ interface Insight {
 }
 interface Status {
   staff: boolean; canEditAny: boolean; insights: Record<string, Insight>; controlsOpen: boolean; windowHours: number; now: number
+  birthdays?: string[]
   shows: HShow[]; nowPlaying: NowPlaying | null; pending: { id: string; scheduleId: string }[]
 }
 
@@ -234,6 +236,17 @@ function Insights({ st }: { st: Status }) {
         <ul className="text-sm space-y-0.5">
           {top.map(x => <li key={x.id} className="text-br-dk-text">▲ {x.votes} · {x.text}</li>)}
         </ul>
+      )}
+      {!!i.comments?.length && (
+        <div className="space-y-1">
+          <p className="text-xs text-br-dk-sub font-display tracking-widest">FEEDBACK</p>
+          <ul className="text-sm space-y-1">
+            {i.comments.map((c, n) => <li key={n} className="text-br-dk-text">{c.stars} ★ · {c.text}</li>)}
+          </ul>
+        </div>
+      )}
+      {!!st.birthdays?.length && (
+        <p className="text-sm text-br-dk-text">🎂 Birthdays today: <span className="text-br-gold">{st.birthdays.join(', ')}</span></p>
       )}
     </section>
   )

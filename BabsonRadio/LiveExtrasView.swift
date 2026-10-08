@@ -105,6 +105,14 @@ final class LiveExtrasModel: ObservableObject {
         if let r: ShowRatingReply = try? await BackendAPI.get("/api/live/rating?occId=\(enc(occId))") { showStars = r.mine }
     }
 
+    /// End-of-show feedback: stars plus an optional note for the host.
+    func sendFeedback(stars: Int, comment: String, occId: String, title: String) async -> Bool {
+        do {
+            let _: EmptyResponse = try await BackendAPI.post("/api/live/rating", ["occId": occId, "stars": stars, "title": title, "comment": comment])
+            return true
+        } catch { flash((error as? BackendError)?.message ?? error.localizedDescription); return false }
+    }
+
     func rateShow(_ n: Int, occId: String, title: String) async {
         let before = showStars
         showStars = n
@@ -172,6 +180,13 @@ struct LiveExtrasView: View {
     @Environment(\.colorScheme) private var scheme
 
     private var np: NowPlayingInfo? { audio.nowPlaying }
+
+    // End-of-show feedback state
+    @State private var curShow: (occId: String, title: String)? = nil
+    @State private var prevShow: (occId: String, title: String, at: Date)? = nil
+    @State private var fbStars = 0
+    @State private var fbComment = ""
+    @State private var fbSent = ""
     private var text: Color { scheme == .dark ? .brDkText : .brLtText }
     private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
     private var gold: Color { scheme == .dark ? .brGold : .brGreen }
@@ -183,6 +198,51 @@ struct LiveExtrasView: View {
         guard Date().timeIntervalSince1970 * 1000 > start + 10 * 60_000 else { return nil }
         let title = (np.showTitle?.isEmpty == false ? np.showTitle : np.blockTitle) ?? ""
         return (occ, title, np.isShow ?? false)
+    }
+
+    private var showTitleNow: String { (np?.showTitle?.isEmpty == false ? np?.showTitle : np?.blockTitle) ?? "" }
+
+    /// From 5 minutes before a show ends until 45 minutes after, ask how it was.
+    private var feedbackTarget: (occId: String, title: String)? {
+        guard auth.currentUser.map({ !$0.isGuest }) == true else { return nil }
+        if let np, np.isShow == true, let occ = np.occId, !occ.isEmpty, let end = np.showEnd, end > 0 {
+            let left = end - Date().timeIntervalSince1970 * 1000
+            if left > 0 && left <= 5 * 60_000 { return (occ, showTitleNow) }
+        }
+        if let p = prevShow, Date().timeIntervalSince(p.at) < 45 * 60 { return (p.occId, p.title) }
+        return nil
+    }
+
+    private func feedbackCard(_ t: (occId: String, title: String)) -> some View {
+        VStack(spacing: 8) {
+            Text("How was \(t.title)?").font(.system(size: 14, weight: .semibold)).foregroundColor(text).multilineTextAlignment(.center)
+            if fbSent == t.occId {
+                Text("Thanks! Your feedback goes to the host.").font(.system(size: 13)).foregroundColor(gold)
+            } else {
+                HStack(spacing: 6) {
+                    ForEach(1...5, id: \.self) { n in
+                        Button { fbStars = n } label: {
+                            Image(systemName: n <= fbStars ? "star.fill" : "star").font(.system(size: 28)).foregroundColor(n <= fbStars ? gold : sub)
+                        }.buttonStyle(.plain)
+                    }
+                }
+                TextField("Anything the host should know? (optional)", text: $fbComment, axis: .vertical)
+                    .lineLimit(1...3).font(.system(size: 14)).padding(10)
+                    .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                Button("SEND FEEDBACK") {
+                    Task {
+                        if await model.sendFeedback(stars: fbStars, comment: fbComment, occId: t.occId, title: t.title) {
+                            fbSent = t.occId; fbComment = ""; fbStars = 0
+                        }
+                    }
+                }
+                .font(BRFont.display(14)).kerning(2).foregroundColor(gold).disabled(fbStars == 0)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity)
+        .brGlass(in: RoundedRectangle(cornerRadius: 16))
     }
 
     var body: some View {
@@ -211,7 +271,9 @@ struct LiveExtrasView: View {
                 }
             }
 
-            if let r = rateable {
+            if let t = feedbackTarget {
+                feedbackCard(t)
+            } else if let r = rateable {
                 starRow(label: (r.isShow ? "Rate the whole show: " : "Rate this hour of music: ") + r.title, value: model.showStars) { n in
                     Task { await model.rateShow(n, occId: r.occId, title: r.title) }
                 }
@@ -225,6 +287,11 @@ struct LiveExtrasView: View {
         .task { await model.pollLoop() }
         .task(id: songKey) { await model.loadSongStars(title: np?.title ?? "", artist: np?.artist ?? "") }
         .task(id: np?.occId ?? "") { await model.loadShowStars(occId: np?.occId ?? "") }
+        .onAppear { if np?.isShow == true, let o = np?.occId, !o.isEmpty { curShow = (o, showTitleNow) } }
+        .onChange(of: np?.occId ?? "") { _, new in
+            if let c = curShow, c.occId != new { prevShow = (c.occId, c.title, Date()); fbStars = 0; fbComment = "" }
+            curShow = (np?.isShow == true && !new.isEmpty) ? (new, showTitleNow) : nil
+        }
     }
 
     private func starRow(label: String, value: Int, set: @escaping (Int) -> Void) -> some View {

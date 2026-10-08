@@ -1,5 +1,12 @@
 {
   "crons": [
-    { "path": "/api/cron/autoschedule", "schedule": "0 9 * * *" }
+    {
+      "path": "/api/cron/autoschedule",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/birthdays",
+      "schedule": "0 12 * * *"
+    }
   ]
 }

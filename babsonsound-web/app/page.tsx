@@ -126,6 +126,15 @@ export default async function HomePage() {
       </div>
       </div>
 
+      {/* Request a spot: a button here and one in the profile, instead of a tab in the nav */}
+      <section className="sk-raised rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+        <div className="flex-1">
+          <h2 className="font-display text-br-dk-text text-2xl tracking-wide">WANT YOUR OWN SHOW?</h2>
+          <p className="text-sm text-br-dk-sub mt-1">Pick a time and tell us what you would play. Students can request an hour on air.</p>
+        </div>
+        <Link href="/slots" className="sk-btn font-display tracking-[0.2em] text-sm px-6 py-3.5 rounded-xl text-center shrink-0">REQUEST A SPOT</Link>
+      </section>
+
       {/* Empty state when no content in Firestore yet */}
       {episodes.length === 0 && shows.length === 0 && schedule.length === 0 && (
         <div className="text-center py-24 text-br-dk-muted">

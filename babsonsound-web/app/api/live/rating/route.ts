@@ -42,7 +42,8 @@ export async function POST(req: Request) {
     await db.collection('ratings').doc(`${occId}__${t.uid}`).set({
       occId, showKey: occId.replace(/_\d{10,14}$/, ''), uid: t.uid, stars, showTitle: str(b.title, 80),
       isShow: cur?.occId === occId ? cur.isShow : true, at: Timestamp.now(),
-    })
+      ...(typeof b.comment === 'string' ? { comment: str(b.comment, 280) } : {}),
+    }, { merge: true })
     return { ok: true }
   })
 }

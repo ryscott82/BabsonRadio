@@ -79,6 +79,9 @@ private struct SignedInProfileView: View {
                         AboutYouSection()
                             .padding(.horizontal, 20)
                             .padding(.bottom, 20)
+                        NotificationChoicesSection()
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
                     }
 
                     // Hosts (listed on a show) and staff get the radio controls and set list.
@@ -1478,6 +1481,8 @@ struct AboutYouSection: View {
     @Environment(\.colorScheme) var scheme
     @State private var gradYear = ""
     @State private var concentration = ""
+    @State private var bMonth = 0
+    @State private var bDay = 0
     @State private var message: String?
     @State private var saving = false
 
@@ -1528,6 +1533,26 @@ struct AboutYouSection: View {
                 }
             }
 
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Birthday (optional)").font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                HStack {
+                    Picker("Month", selection: $bMonth) {
+                        Text("Month").tag(0)
+                        ForEach(1...12, id: \.self) { Text(Calendar.current.monthSymbols[$0 - 1]).tag($0) }
+                    }
+                    Picker("Day", selection: $bDay) {
+                        Text("Day").tag(0)
+                        ForEach(1...31, id: \.self) { Text("\($0)").tag($0) }
+                    }
+                }
+                .pickerStyle(.menu)
+                .tint(scheme == .dark ? .brGold : .brGreen)
+                Text("Birthdays are only used to send you a notification and to let the DJ know when it's your birthday. We never ask for the year.")
+                    .font(.system(size: 12))
+                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+            }
+
             if let message {
                 Text(message).font(.system(size: 12)).foregroundColor(scheme == .dark ? .brGold : .brGreen)
             }
@@ -1535,9 +1560,11 @@ struct AboutYouSection: View {
                 saving = true; message = nil
                 Task {
                     do {
+                        let birthday: Any = (bMonth > 0 && bDay > 0) ? ["month": bMonth, "day": bDay] : NSNull()
                         let _: EmptyResponse = try await BackendAPI.post("/api/me", [
                             "gradYear": gradYear,
                             "concentrations": concentration.isEmpty ? [String]() : [concentration],
+                            "birthday": birthday,
                         ])
                         message = "Saved."
                     } catch { message = error.localizedDescription }
@@ -1559,8 +1586,36 @@ struct AboutYouSection: View {
             if let me: MeResponse = try? await BackendAPI.get("/api/me") {
                 gradYear = me.gradYear ?? ""
                 concentration = me.concentrations?.first ?? ""
+                bMonth = me.birthday?.month ?? 0
+                bDay = me.birthday?.day ?? 0
             }
         }
+    }
+}
+
+
+// MARK: - Notifications everyone can choose (birthday message, station announcements)
+
+struct NotificationChoicesSection: View {
+    @Environment(\.colorScheme) var scheme
+    @StateObject private var push = PushManager.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Notifications").font(.system(size: 15, weight: .semibold))
+                .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+            Toggle("Happy birthday message", isOn: Binding(get: { push.birthdayOn }, set: { v in Task { await push.setMine(birthday: v) } }))
+            Toggle("Station announcements (live events and news)", isOn: Binding(get: { push.announcementsOn }, set: { v in Task { await push.setMine(announcements: v) } }))
+            if !push.status.isEmpty {
+                Text(push.status).font(.system(size: 12)).foregroundColor(.brRed)
+            }
+        }
+        .font(.system(size: 14))
+        .tint(scheme == .dark ? .brGold : .brGreen)
+        .padding(18)
+        .brCard()
+        .disabled(push.busy || !PushManager.available)
+        .task { await push.loadMine() }
     }
 }
 

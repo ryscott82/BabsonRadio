@@ -3,6 +3,7 @@ import { handle } from '@/lib/server/http'
 import { HOST_WINDOW_MS, hostContext, occurrenceId, showOpen } from '@/lib/server/host'
 import { azNowPlaying } from '@/lib/server/azuracast'
 import { canEditAnyShow } from '@/lib/server/host'
+import { birthdaysToday } from '@/lib/server/birthdays'
 import { EMOJIS, getNote, parseSongs, reactionSummary } from '@/lib/server/live'
 
 export const runtime = 'nodejs'
@@ -33,6 +34,7 @@ export async function GET(req: Request) {
       const stars = ratings.docs.map(d => d.get('stars') as number)
       const v = (votes.get('votes') ?? {}) as Record<string, string[]>
       insights[id] = {
+        comments: ratings.docs.filter(d => d.get('comment')).map(d => ({ stars: d.get('stars'), text: d.get('comment'), at: d.get('at')?.toMillis?.() ?? 0 })).sort((a, b) => b.at - a.at).slice(0, 20),
         requestsOpen: rqDoc.exists && rqDoc.get('open') === true,
         requests: rqList.docs.map(d => ({ id: d.id, text: d.get('text'), name: d.get('name'), at: d.get('at').toMillis() })).sort((a, b) => b.at - a.at).slice(0, 30),
         note, reactions: rx.total, recentReactions: rx.recent,
@@ -41,7 +43,10 @@ export async function GET(req: Request) {
       }
     }
 
+    const birthdays = controlsOpen ? (await birthdaysToday(db, now).catch(() => [])).map(p => p.name) : []
+
     return {
+      birthdays,
       staff: c.staff, canEditAny: await canEditAnyShow(db, c.t), emojis: EMOJIS, insights, controlsOpen, windowHours: HOST_WINDOW_MS / 3_600_000, now,
       shows: c.shows.map(s => ({ ...s, id: occurrenceId(s), open: showOpen(s, now) })),
       nowPlaying, pending,

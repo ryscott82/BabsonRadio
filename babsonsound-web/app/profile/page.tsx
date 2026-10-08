@@ -49,12 +49,15 @@ function ReportForm() {
 function AboutYou() {
   const [gradYear, setGradYear] = useState('')
   const [conc, setConc] = useState<string[]>([])
+  const [bMonth, setBMonth] = useState('')
+  const [bDay, setBDay] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
   useEffect(() => {
-    apiGet<{ gradYear: string; concentrations: string[] }>('/api/me').then(r => {
+    apiGet<{ gradYear: string; concentrations: string[]; birthday?: { month: number; day: number } | null }>('/api/me').then(r => {
       setGradYear(r.gradYear ?? ''); setConc(r.concentrations ?? [])
+      setBMonth(r.birthday ? String(r.birthday.month) : ''); setBDay(r.birthday ? String(r.birthday.day) : '')
     }).catch(() => {})
   }, [])
 
@@ -62,7 +65,7 @@ function AboutYou() {
   async function save(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setMsg('')
     try {
-      await api('/api/me', { gradYear, concentrations: conc.filter(Boolean) })
+      await api('/api/me', { gradYear, concentrations: conc.filter(Boolean), birthday: bMonth && bDay ? { month: Number(bMonth), day: Number(bDay) } : null })
       setMsg('Saved.')
     } catch (err) { setMsg(err instanceof Error ? err.message : 'Could not save.') }
     setBusy(false)
@@ -92,6 +95,20 @@ function AboutYou() {
       ) : (
         <Field label="Concentration" value={conc[0] ?? ''} maxLength={60} onChange={e => setConc([e.target.value])} placeholder="Entrepreneurship" />
       )}
+      <div>
+        <span className={lab}>BIRTHDAY (OPTIONAL)</span>
+        <div className="flex gap-3">
+          <select className={box} aria-label="Birthday month" value={bMonth} onChange={e => setBMonth(e.target.value)}>
+            <option value="">Month</option>
+            {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+          </select>
+          <select className={box} aria-label="Birthday day" value={bDay} onChange={e => setBDay(e.target.value)}>
+            <option value="">Day</option>
+            {Array.from({ length: 31 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
+          </select>
+        </div>
+        <p className="text-xs text-br-dk-sub mt-1.5">Birthdays are only used to send you a notification and to let the DJ know when it&apos;s your birthday. We never ask for the year.</p>
+      </div>
       {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}
       <PrimaryButton type="submit" busy={busy}>SAVE DETAILS</PrimaryButton>
     </form>
@@ -144,6 +161,13 @@ export default function ProfilePage() {
           {userDoc?.username && <p className="text-br-gold text-sm font-display tracking-widest">@{userDoc.username}</p>}
           <p className="text-br-dk-sub text-sm">{user.email}{isDeveloper ? ' · Developer' : ''}</p>
         </div>
+
+        {(isBabson || isDeveloper) && (
+          <Link href="/slots" className="block sk-raised rounded-2xl p-5">
+            <p className="text-br-dk-text text-sm font-medium">Request a spot</p>
+            <p className="text-br-dk-sub text-xs mt-1">Ask for an hour on air. See your requests and approved shows too.</p>
+          </Link>
+        )}
 
         {hosts && (
           <Link href="/host" className="block sk-raised rounded-2xl p-5">

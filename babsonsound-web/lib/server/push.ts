@@ -7,8 +7,11 @@ import { adminDb } from './admin'
 // Push notifications to admins' phones (through Firebase Cloud Messaging, which is free).
 // A phone registers once from the Admin screen in the app. Each device chooses which kinds it wants.
 
-export const PUSH_KINDS = ['reports', 'requests', 'cancellations', 'testers', 'ops'] as const
+export const PUSH_KINDS = ['reports', 'requests', 'cancellations', 'testers', 'ops', 'birthday', 'announcements'] as const
 export type PushKind = (typeof PUSH_KINDS)[number]
+
+/** Kinds each person chooses for themselves from their own profile (everyone, not just admins). */
+export const USER_KINDS: PushKind[] = ['birthday', 'announcements']
 
 export const cleanKinds = (v: unknown): PushKind[] =>
   (Array.isArray(v) ? v : []).filter((x): x is PushKind => (PUSH_KINDS as readonly string[]).includes(String(x)))
@@ -44,6 +47,56 @@ export async function notifyAdmins(kind: PushKind, msg: { title: string; body: s
     await Promise.all(dead.map(d => d.ref.delete()))
   } catch (e) {
     console.error('[push]', e)
+  }
+}
+
+/** Station announcements (live events and the like) to every phone that turned them on. Returns how many were delivered. */
+export async function notifyAnnouncements(msg: { title: string; body: string }): Promise<number> {
+  try {
+    if (!getApps().length) return 0
+    const snap = await adminDb().collection('deviceTokens').where('kinds', 'array-contains', 'announcements').get()
+    let ok = 0
+    for (let i = 0; i < snap.docs.length; i += 500) { // FCM takes up to 500 devices per call
+      const docs = snap.docs.slice(i, i + 500)
+      const res = await getMessaging(getApps()[0]).sendEachForMulticast({
+        tokens: docs.map(d => d.id),
+        notification: { title: clip(msg.title, 60), body: clip(msg.body, 160) },
+        data: { kind: 'announcements' },
+        apns: { payload: { aps: { sound: 'default' } } },
+      })
+      ok += res.successCount
+      const dead = res.responses.flatMap((r, j) =>
+        !r.success && /registration-token-not-registered|invalid-registration-token|invalid-argument/.test(r.error?.code ?? '') ? [docs[j]] : [])
+      await Promise.all(dead.map(d => d.ref.delete()))
+    }
+    return ok
+  } catch (e) {
+    console.error('[push]', e)
+    return 0
+  }
+}
+
+/** Send one message to specific people's phones, only to devices that turned this kind on. Never throws. */
+export async function notifyUsers(kind: PushKind, uids: string[], msg: { title: string; body: string }): Promise<number> {
+  try {
+    if (!uids.length || !getApps().length) return 0
+    const want = new Set(uids)
+    const snap = await adminDb().collection('deviceTokens').where('kinds', 'array-contains', kind).get()
+    const docs = snap.docs.filter(d => want.has(String(d.get('uid'))))
+    if (!docs.length) return 0
+    const res = await getMessaging(getApps()[0]).sendEachForMulticast({
+      tokens: docs.map(d => d.id),
+      notification: { title: clip(msg.title, 60), body: clip(msg.body, 160) },
+      data: { kind },
+      apns: { payload: { aps: { sound: 'default' } } },
+    })
+    const dead = res.responses.flatMap((r, i) =>
+      !r.success && /registration-token-not-registered|invalid-registration-token|invalid-argument/.test(r.error?.code ?? '') ? [docs[i]] : [])
+    await Promise.all(dead.map(d => d.ref.delete()))
+    return res.successCount
+  } catch (e) {
+    console.error('[push]', e)
+    return 0
   }
 }
 

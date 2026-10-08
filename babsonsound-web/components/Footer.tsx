@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { INSTAGRAM_URL, LINKS } from '@/lib/links'
 import ContactEmail from './ContactEmail'
+import TesterFeedback from './TesterFeedback'
 
 const ext = { target: '_blank', rel: 'noopener noreferrer' } as const
 
@@ -23,6 +24,7 @@ export default function Footer() {
           <a href="/privacy" className={link}>Privacy</a>
           <a href="/terms" className={link}>Terms</a>
           <span className="text-br-dk-sub">Contact: <ContactEmail className="text-br-dk-sub hover:text-br-dk-text underline underline-offset-4" /></span>
+          <TesterFeedback />
           {INSTAGRAM_URL && <a href={INSTAGRAM_URL} {...ext} className={link}>Instagram</a>}
         </nav>
       </div>

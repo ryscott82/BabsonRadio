@@ -284,5 +284,14 @@ body::before {
   --sk-btn-bot: color-mix(in srgb, var(--art-3) 55%, #000);
   --sk-btn-edge: color-mix(in srgb, var(--art-3) 30%, #000);
 }
-.art-ui .sk-hero { border-color: color-mix(in srgb, var(--art-1) 45%, transparent); }
+.art-ui .sk-hero {
+  border-color: color-mix(in srgb, var(--art-1) 45%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--art-1) 38%, var(--br-hero-a)), color-mix(in srgb, var(--art-3) 28%, var(--br-hero-b)));
+}
+/* Card backgrounds take a wash of the cover colors: top from color 1, bottom from color 2. Text colors are untouched. */
+.art-ui .sk-raised {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--art-1) 20%, var(--sk-face-top)), color-mix(in srgb, var(--art-2) 16%, var(--sk-face-bot)));
+  border-color: color-mix(in srgb, var(--art-2) 30%, var(--br-border));
+}
+.art-ui .sk-field { background: color-mix(in srgb, var(--art-3) 10%, var(--sk-field)); }
 @media (prefers-reduced-motion: reduce) { .art-ui { transition: none; } }

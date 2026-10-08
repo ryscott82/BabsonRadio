@@ -135,6 +135,7 @@ struct LivePlayerView: View {
                     .padding(.top, 8)
                 }
             }
+            .clipped()
             .background {
                 ZStack {
                     (scheme == .dark ? Color.brDkBg : Color.brLtBg)
@@ -824,30 +825,61 @@ struct LiveBoardView: View {
 
 // MARK: - Pull-up drawer
 
-/// A panel that peeks up from the bottom with a handle. Tap or drag the handle to open it; drag down or tap to close.
+/// A shelf that peeks up from the bottom: a green lip with a grip and "Swipe up to rate!", and a panel behind it.
+/// Tap or drag the lip to open it; drag down or tap to close.
 struct LiveDrawer<Content: View>: View {
-    static var handleHeight: CGFloat { 40 }
+    static var handleHeight: CGFloat { 46 }
     @Binding var open: Bool
     let height: CGFloat
     let tint: Color
     @ViewBuilder var content: () -> Content
     @Environment(\.colorScheme) private var scheme
     @GestureState private var drag: CGFloat = 0
+    @State private var nudge = false
+    @ObservedObject private var theme = ArtTheme.shared
+
+    private var corner: CGFloat { 22 }
 
     var body: some View {
         let closedOffset = height - Self.handleHeight
         VStack(spacing: 0) {
-            VStack(spacing: 2) {
-                Capsule().fill((scheme == .dark ? Color.brDkSub : Color.brLtSub).opacity(0.5)).frame(width: 38, height: 5)
-                Text(open ? "CLOSE" : "RATE · VOTE · COMMUNITY")
-                    .font(BRFont.display(11)).kerning(3)
-                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+            // The lip
+            ZStack {
+                UnevenRoundedRectangle(topLeadingRadius: corner, topTrailingRadius: corner)
+                    .fill(LinearGradient(colors: [theme.lip, theme.lipDeep], startPoint: .top, endPoint: .bottom))
+                    .overlay(alignment: .bottom) {
+                        // A darker lower edge, so the lip has thickness
+                        Rectangle().fill(.black.opacity(0.28)).frame(height: 3)
+                    }
+                    .shadow(color: .black.opacity(0.3), radius: 8, y: -2)
+                    .overlay(alignment: .top) {
+                        // A lit top edge, like a real shelf
+                        UnevenRoundedRectangle(topLeadingRadius: corner, topTrailingRadius: corner)
+                            .stroke(Color.white.opacity(0.35), lineWidth: 1)
+                            .mask(LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: .center))
+                    }
+                VStack(spacing: 3) {
+                    // Grip
+                    HStack(spacing: 4) { ForEach(0..<3, id: \.self) { _ in Capsule().fill(.white.opacity(0.55)).frame(width: 14, height: 3) } }
+                    HStack(spacing: 6) {
+                        Image(systemName: open ? "chevron.down" : "chevron.up").font(.system(size: 10, weight: .bold))
+                            .offset(y: (!open && nudge) ? -2 : 0)
+                        Text(open ? "Swipe down to close" : "Swipe up to rate!")
+                            .font(BRFont.display(14)).kerning(2)
+                    }
+                    .foregroundColor(.white)
+                    .shadow(color: .black.opacity(0.35), radius: 1, y: 1)
+                }
             }
-            .frame(maxWidth: .infinity).frame(height: Self.handleHeight)
+            .frame(height: Self.handleHeight)
+            // Tipped back a little, so the shelf looks like it recedes into the screen.
+            .rotation3DEffect(.degrees(open ? 0 : -14), axis: (x: 1, y: 0, z: 0), anchor: .bottom, perspective: 0.5)
+            .animation(.spring(duration: 0.3), value: open)
             .contentShape(Rectangle())
             .onTapGesture { withAnimation(.spring(duration: 0.3)) { open.toggle() } }
+            // Global coordinates: the lip moves while you drag it, so measuring in its own space makes the drag jitter.
             .gesture(
-                DragGesture()
+                DragGesture(minimumDistance: 4, coordinateSpace: .global)
                     .updating($drag) { v, state, _ in state = v.translation.height }
                     .onEnded { v in
                         withAnimation(.spring(duration: 0.3)) {
@@ -855,16 +887,23 @@ struct LiveDrawer<Content: View>: View {
                         }
                     }
             )
+
+            // The panel
             ScrollView(showsIndicators: false) { content() }
                 .frame(height: height - Self.handleHeight)
+                .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
+                // The shadow the lip casts into the shelf: the panel sits in behind it
+                .overlay(alignment: .top) {
+                    LinearGradient(colors: [.black.opacity(0.28), .clear], startPoint: .top, endPoint: .bottom).frame(height: 16).allowsHitTesting(false)
+                }
         }
         .frame(height: height)
-        .background(
-            UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24)
-                .fill(.regularMaterial)
-                .overlay(UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24).fill(tint.opacity(0.06)))
-                .shadow(color: .black.opacity(0.18), radius: 14, y: -2)
-        )
-        .offset(y: max(open ? min(drag, height) : closedOffset + min(drag, 0), 0))
+        .offset(y: offset(closedOffset))
+        .onAppear { withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { nudge = true } }
+    }
+
+    private func offset(_ closed: CGFloat) -> CGFloat {
+        let base: CGFloat = open ? 0 : closed
+        return min(max(base + drag, 0), closed)
     }
 }

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		946BB8F1307821C800B22A5F /* File.txt in Resources */ = {isa = PBXBuildFile; fileRef = 946BB8F0307821C800B22A5F /* File.txt */; };
 		946DA56C3075D5080065A9A2 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 946DA56B3075D5080065A9A2 /* FirebaseAuth */; };
 		946DA56E3075D5080065A9A2 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 946DA56D3075D5080065A9A2 /* FirebaseCore */; };
 		94A827D430777D0900A030E1 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 94A827D330777D0900A030E1 /* FirebaseMessaging */; };
@@ -14,6 +15,7 @@
 
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* BabsonRadio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BabsonRadio.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		946BB8F0307821C800B22A5F /* File.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = File.txt; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -52,6 +54,7 @@
 		000000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
+				946BB8F0307821C800B22A5F /* File.txt */,
 				000000000000000000000010 /* BabsonRadio */,
 				94A827D230777D0900A030E1 /* Frameworks */,
 				000000000000000000000020 /* Products */,
@@ -140,6 +143,7 @@
 		000000000000000140000000 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
+				946BB8F1307821C800B22A5F /* File.txt in Resources */,
 			);
 		};
 /* End PBXResourcesBuildPhase section */

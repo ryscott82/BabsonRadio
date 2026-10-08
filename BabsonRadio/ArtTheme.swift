@@ -99,6 +99,10 @@ final class ArtTheme: ObservableObject {
     /// True when the whole UI should follow the cover.
     static func full(_ scheme: ColorScheme) -> Bool { enabled && scheme == .dark && isNight }
 
+    /// The drawer lip: the cover's main color in every mode (Babson green until a cover has faded in), plus a deeper shade for its gradient.
+    var lip: Color { main == .babson ? .brGreenMid : main.color }
+    var lipDeep: Color { main == .babson ? .brGreen : main.mixed(with: ArtRGB(r: 0, g: 0, b: 0), 0.35).color }
+
     /// The On Air badge: the cover's color in every mode, station red until a cover has faded in.
     var badge: Color { second == .babson ? .brRed : second.color }
 

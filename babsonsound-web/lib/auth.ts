@@ -7,6 +7,7 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   updateProfile,
+  verifyBeforeUpdateEmail,
   reauthenticateWithCredential,
   EmailAuthProvider,
   inMemoryPersistence,
@@ -220,4 +221,20 @@ export function onAuthChange(callback: (user: User | null) => void) {
   let stopped = false
   restorePreviewSignIn().then(() => { if (!stopped) unsub = onAuthStateChanged(auth, callback) })
   return () => { stopped = true; unsub() }
+}
+
+/**
+ * A guest who is a student adds their school email. We save their details, then Firebase emails a confirmation link to the
+ * school address. Once they click it, the sign-in email becomes the school one, so they sign in again with it.
+ */
+export async function addSchoolEmail(args: { email: string; password: string; firstName: string; lastName: string; gradYear: string }) {
+  const u = auth.currentUser
+  if (!u || !u.email) throw fail('Sign in first.', 'BR-AUTH-002')
+  const email = args.email.trim().toLowerCase()
+  if (!isBabsonEmail(email)) throw fail('Use your Babson, Olin or Wellesley email.', 'BR-ACC-001')
+  try { await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, args.password)) }
+  catch (e) { throw fbFail(e, 'That password is not right.') }
+  await api('/api/me/school-email', { email, firstName: args.firstName, lastName: args.lastName, gradYear: args.gradYear })
+  try { await verifyBeforeUpdateEmail(u, email) }
+  catch (e) { throw fbFail(e, 'Could not send the link. Try again in a minute.') }
 }

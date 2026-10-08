@@ -9,6 +9,7 @@ struct LivePlayerView: View {
     @ObservedObject private var presence = PresenceManager.shared
     @Environment(\.colorScheme) var scheme
     @State private var showProfileSheet = false
+    @State private var showVote = false
 
     /// Signed-out visitors can preview the stream.
     private var canPlay: Bool { auth.canListenLive || !auth.isSignedIn }
@@ -87,6 +88,18 @@ struct LivePlayerView: View {
                 LiveExtrasView()
                     .padding(.top, 20)
 
+                if auth.isSignedIn && auth.canListenLive {
+                    Button { showVote = true } label: {
+                        Label("What would you like to hear?", systemImage: "hand.thumbsup")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(accent)
+                            .padding(.horizontal, 18).padding(.vertical, 12)
+                            .brGlass(in: Capsule(), tint: accent.opacity(0.25), fallback: accent.opacity(0.14))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 20)
+                }
+
                 // ── Volume row ──────────────────────────────────────
                 volumeRow
                     .padding(.horizontal, 32)
@@ -114,6 +127,7 @@ struct LivePlayerView: View {
             Text("Create a free account to get show reminders and see who is tuned in. The music keeps playing.")
         }
         .sheet(isPresented: $showProfileSheet) { ProfileView() }
+        .sheet(isPresented: $showVote) { VoteView() }
         .onAppear { audio.startPolling() }
         .onDisappear { audio.stopPolling() }
     }
@@ -582,8 +596,8 @@ struct LiveVisualizer: View {
     @State private var wasPlaying = false
 
     /// Tune these two to taste. Higher softness = blurrier, lower strength = fainter.
-    private static let softness: CGFloat = 40
-    private static let strength: Double = 0.75
+    private static let softness: CGFloat = 14
+    private static let strength: Double = 0.9
 
     private var animated: Bool { !lowPower && !reduceMotion && scenePhase == .active }
 

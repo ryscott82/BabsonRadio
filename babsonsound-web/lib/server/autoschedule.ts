@@ -60,7 +60,8 @@ export async function rebuildAutoSchedule(db: Firestore, opts: { dryRun?: boolea
   for (const d of existing.docs) {
     const s = d.get('startAt').toMillis() as number
     const e = d.get('endAt').toMillis() as number
-    if (s >= lockEdge) { toDelete.push(d.id); continue }
+    // Hours won by a listener vote are never rebuilt away.
+    if (s >= lockEdge && d.get('ruleId') !== 'vote') { toDelete.push(d.id); continue }
     // A block that is about to start stays, but not where something is now scheduled on top of it.
     const pieces = clipInterval({ startMs: s, endMs: e }, real)
     if (pieces.length === 1 && pieces[0].startMs === s && pieces[0].endMs === e) {

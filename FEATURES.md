@@ -89,3 +89,12 @@ Legend: [x] built, [ ] planned.
 - Set AZURACAST_URL, AZURACAST_API_KEY, AZURACAST_STATION_ID in Vercel
 - firebase deploy --only firestore:rules
 - Controls endpoints are untested against a real AzuraCast server
+
+## What would you like to hear (votes)
+- Signed-in people see a live tally for the NEXT hour (web home page, iOS Live tab button). Students, developers and guests connected to Babson can vote; one vote each, changeable until the hour starts.
+- When a genre gets a majority (half) of the people who usually listen at that hour it takes over (average of the last 4 weeks of listener samples for that hour, rounded up, at least 3; 15 until there is history). The number is fixed per hour block and shown in the app. It takes over that hour from the auto-scheduler (`autoBlocks` with ruleId `vote`, never rebuilt away; booked shows stay). The AzuraCast sync runs afterwards if it is on.
+- Free-text artist/song requests (5 a day each) go to Admin > Listener requests (staff only). They never play automatically.
+
+## Add a school email (guests who are students)
+- Guest page (web) and Guest profile (iOS): school email, name, grad year and current password. Firebase emails a confirmation link; after clicking it they sign in again with the school email and the same password, and the first `/api/me` call upgrades the account to a student (guest pass/link removed).
+- iOS reminds guests about once a week. No phone number is collected in this flow, so contact-based friends stay off until they add one.

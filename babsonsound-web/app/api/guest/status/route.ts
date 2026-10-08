@@ -1,6 +1,7 @@
 import { adminAuth, adminDb } from '@/lib/server/admin'
 import { BABSON_EMAIL, handle, isBabsonToken, isDeveloperToken, isTesterToken, requireUser } from '@/lib/server/http'
 import { ensureGuestUserDoc, guestLibraryAccess } from '@/lib/server/guests'
+import { finishSchoolUpgrade } from '@/lib/server/upgrade'
 
 export const runtime = 'nodejs'
 
@@ -15,7 +16,9 @@ export async function GET(req: Request) {
     const email = (t.email ?? '').toLowerCase()
     if (BABSON_EMAIL.test(email) || isTesterToken(t)) {
       const ok = isBabsonToken(t)
-      return { tier: 'student', needsVerification: !ok, canListenLive: ok, canAccessBacklog: ok }
+      // A guest who just switched to their school email becomes a student here.
+      const upgraded = ok ? await finishSchoolUpgrade(adminDb(), t) : false
+      return { tier: 'student', needsVerification: !ok, canListenLive: ok, canAccessBacklog: ok, upgraded }
     }
 
     const db = adminDb()

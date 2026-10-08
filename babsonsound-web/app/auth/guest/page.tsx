@@ -6,8 +6,9 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/contexts/AuthContext'
 import {
-  api, apiGet, deleteMyAccount, guestSignIn, guestSignUp, resendVerification, sendPasswordReset, signOut,
+  addSchoolEmail, api, apiGet, deleteMyAccount, guestSignIn, guestSignUp, resendVerification, sendPasswordReset, signOut,
 } from '@/lib/auth'
+import { gradYearOptions } from '@/lib/terms'
 import { AgreeBox, BabsonEmailField, Card, ErrorText, Field, GhostButton, PrimaryButton } from '@/components/AuthUI'
 
 function Spinner() {
@@ -86,6 +87,46 @@ function GuestForms() {
 
 type Status = { emailVerified: boolean; requestStatus: string | null; canAccessBacklog?: boolean; libraryVia?: 'pass' | 'contacts' | null; libraryUntil?: number | null }
 
+function SchoolEmailForm() {
+  const [open, setOpen] = useState(false)
+  const [email, setEmail] = useState('')
+  const [first, setFirst] = useState('')
+  const [last, setLast] = useState('')
+  const [gradYear, setGradYear] = useState('')
+  const [pw, setPw] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [sent, setSent] = useState(false)
+
+  if (sent) return <p className="text-sm text-br-dk-sub">We sent a link to {email}. Open it, then sign in again with your school email and your same password.</p>
+  if (!open) return (
+    <div className="rounded-xl border border-br-dk-border p-4 space-y-2">
+      <p className="text-sm text-br-dk-text">Are you a Babson, Olin or Wellesley student?</p>
+      <p className="text-xs text-br-dk-sub">Add your school email to unlock everything: the Library, ratings, reactions and friends.</p>
+      <button className="text-sm text-br-gold" onClick={() => setOpen(true)}>Add my school email</button>
+    </div>
+  )
+  return (
+    <form className="space-y-3" onSubmit={async e => {
+      e.preventDefault(); setBusy(true); setMsg('')
+      try { await addSchoolEmail({ email, password: pw, firstName: first, lastName: last, gradYear }); setSent(true) }
+      catch (err) { setMsg(err instanceof Error ? err.message : 'Try again.') }
+      setBusy(false)
+    }}>
+      <Field label="School email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@babson.edu" autoComplete="off" />
+      <Field label="First name" value={first} onChange={e => setFirst(e.target.value)} autoComplete="given-name" />
+      <Field label="Last name" value={last} onChange={e => setLast(e.target.value)} autoComplete="family-name" />
+      <select value={gradYear} onChange={e => setGradYear(e.target.value)} className="sk-field w-full rounded-lg px-3 py-2 text-sm text-br-dk-text">
+        <option value="">Graduation year</option>
+        {gradYearOptions().map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+      <Field label="Your current password" type="password" value={pw} onChange={e => setPw(e.target.value)} autoComplete="current-password" />
+      {msg && <p className="text-sm text-br-red">{msg}</p>}
+      <PrimaryButton type="submit" busy={busy}>SEND CONFIRMATION LINK</PrimaryButton>
+    </form>
+  )
+}
+
 function GuestHome() {
   const { user, guestPass, passActive, hasLibraryAccess, reload } = useAuth()
   const [status, setStatus] = useState<Status | null>(null)
@@ -148,6 +189,8 @@ function GuestHome() {
           {hasLibraryAccess && <Link href="/library" className="inline-block font-display tracking-widest text-sm text-br-gold">LIBRARY →</Link>}
         </div>
       </div>
+
+      <div className="mt-6"><SchoolEmailForm /></div>
 
       <div className="mt-6 space-y-4">
         {!verified ? (

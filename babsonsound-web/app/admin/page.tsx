@@ -115,7 +115,7 @@ export default function AdminPage() {
               ...(isAdmin ? [['/admin/autoschedule', 'Auto-scheduler'], ['/admin/setlists', 'Set lists']] : []),
             ]} />
             <ToolGroup title="PEOPLE" links={[
-              ['/admin/feedback', 'Bugs and ideas'],
+              ['/admin/feedback', 'Bugs and ideas'], ['/admin/requests', 'Listener requests'],
               ...(isAdmin ? [['/admin/users', 'Users and roles'], ['/admin/testers', 'Beta testers']] : []),
             ]} />
             <ToolGroup title="NUMBERS" links={[

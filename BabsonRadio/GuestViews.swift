@@ -113,6 +113,7 @@ struct GuestProfileView: View {
     @Environment(\.colorScheme) var scheme
     @Environment(\.scenePhase) private var scenePhase
     @State private var sponsorEmail = ""
+    @State private var showSchoolEmail = false
 
     private var text: Color { scheme == .dark ? .brDkText : .brLtText }
     private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
@@ -131,6 +132,18 @@ struct GuestProfileView: View {
                         Text(statusDetail).font(.system(size: 13)).foregroundColor(sub)
                         Text("Live radio is open to everyone who is signed in.")
                             .font(.system(size: 12)).foregroundColor(sub).padding(.top, 4)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+                    .background(card)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Are you a Babson, Olin or Wellesley student?").font(.system(size: 15, weight: .semibold)).foregroundColor(text)
+                        Text("Add your school email to unlock the Library, ratings, reactions and friends.")
+                            .font(.system(size: 13)).foregroundColor(sub)
+                        Button("Add my school email") { showSchoolEmail = true }
+                            .font(.system(size: 13, weight: .semibold)).foregroundColor(accent)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
@@ -182,6 +195,7 @@ struct GuestProfileView: View {
                 }
             }
         }
+        .sheet(isPresented: $showSchoolEmail) { AddSchoolEmailView() }
         .onAppear { auth.refreshGuestStatus() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { auth.refreshGuestStatus() } }
     }
@@ -242,5 +256,76 @@ struct GuestLockedNote: View {
         }
         .padding(32)
         .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Add a school email (guests who are students)
+
+struct AddSchoolEmailView: View {
+    @StateObject private var auth = AuthManager.shared
+    @Environment(\.colorScheme) var scheme
+    @Environment(\.dismiss) private var dismiss
+    @State private var username = ""
+    @State private var domain = "@babson.edu"
+    @State private var firstName = ""
+    @State private var lastName = ""
+    @State private var gradYear = ""
+    @State private var password = ""
+
+    private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
+    private var accent: Color { scheme == .dark ? .brGold : .brGreen }
+    private var ready: Bool {
+        !username.trimmingCharacters(in: .whitespaces).isEmpty && !firstName.isEmpty && !lastName.isEmpty && !gradYear.isEmpty && !password.isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 14) {
+                    if let sent = auth.schoolEmailSentTo {
+                        Text("Check \(sent)").font(BRFont.display(22)).foregroundColor(scheme == .dark ? .brDkText : .brLtText).padding(.top, 24)
+                        Text("Open the link we sent. Then sign out and sign back in with your school email and the same password you use now.")
+                            .font(.system(size: 14)).foregroundColor(sub).multilineTextAlignment(.center)
+                        Button("Sign out now") { auth.schoolEmailSentTo = nil; auth.signOut(); dismiss() }
+                            .font(.system(size: 14, weight: .semibold)).foregroundColor(accent).padding(.top, 8)
+                    } else {
+                        Text("Add your school email").font(BRFont.display(22)).foregroundColor(scheme == .dark ? .brDkText : .brLtText).padding(.top, 24)
+                        Text("We will send a confirmation link to it. Your account keeps working until then.")
+                            .font(.system(size: 13)).foregroundColor(sub).multilineTextAlignment(.center)
+                        BRTextField(placeholder: "School username", text: $username, icon: "envelope",
+                                    keyboardType: .emailAddress, autocapitalization: .never,
+                                    suffix: domain, domainChoice: $domain, domainOptions: AuthManager.schoolDomains)
+                        BRTextField(placeholder: "First name", text: $firstName, icon: "person", textContentType: .givenName)
+                        BRTextField(placeholder: "Last name", text: $lastName, icon: "person", textContentType: .familyName)
+                        Picker("Graduation year", selection: $gradYear) {
+                            Text("Graduation year").tag("")
+                            ForEach(Terms.gradYearOptions(), id: \.value) { Text($0.label).tag($0.value) }
+                        }.pickerStyle(.menu).tint(accent).frame(maxWidth: .infinity, alignment: .leading)
+                        BRTextField(placeholder: "Your current password", text: $password, icon: "lock",
+                                    textContentType: .password, isSecure: true)
+                        if let err = auth.errorMessage { Text(err).font(.system(size: 13)).foregroundColor(.brRed) }
+                        Button(action: {
+                            auth.addSchoolEmail(email: username.trimmingCharacters(in: .whitespaces).lowercased() + domain,
+                                                firstName: firstName.trimmingCharacters(in: .whitespaces),
+                                                lastName: lastName.trimmingCharacters(in: .whitespaces),
+                                                gradYear: gradYear, password: password)
+                        }) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12).fill(accent).frame(height: 52)
+                                if auth.isLoading { ProgressView() } else {
+                                    Text("SEND CONFIRMATION LINK").font(BRFont.display(15)).kerning(2)
+                                        .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain).disabled(!ready || auth.isLoading).opacity(ready ? 1 : 0.5)
+                    }
+                }
+                .padding(.horizontal, 24).padding(.bottom, 40)
+            }
+            .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+        }
+        .onAppear { auth.errorMessage = nil; auth.infoMessage = nil }
     }
 }

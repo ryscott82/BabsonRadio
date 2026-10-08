@@ -38,6 +38,8 @@ class AuthManager: ObservableObject {
     /// Guest-only: sponsor pass and Library access from /api/guest/status.
     @Published var guestStatus: GuestStatus? = nil
     private var expiryTimer: Timer?
+    /// Set after the confirmation link was sent to a guest's school email.
+    @Published var schoolEmailSentTo: String? = nil
     /// Invisible mode: hides you from "tuned in" lists and from friends' "liked this" hints.
     @Published var isInvisible = false
     /// False until the first sign-in check has finished, so the splash screen knows when the app is ready.
@@ -411,6 +413,29 @@ class AuthManager: ObservableObject {
         }
     }
 
+    /// A guest who is a student adds their school email: we save their details, then Firebase emails a confirmation
+    /// link to the school address. After they open it they sign in again with that address (same password).
+    func addSchoolEmail(email: String, firstName: String, lastName: String, gradYear: String, password: String) {
+        errorMessage = nil; infoMessage = nil
+        guard let user = Auth.auth().currentUser, let current = user.email else { return }
+        let school = Self.cleaned(email)
+        guard Self.isBabsonEmail(school) else { errorMessage = "Use your Babson, Olin or Wellesley email."; return }
+        isLoading = true
+        Task {
+            defer { isLoading = false }
+            do {
+                try await user.reauthenticate(with: EmailAuthProvider.credential(withEmail: current, password: password))
+                let _: EmptyResponse = try await BackendAPI.post("/api/me/school-email", [
+                    "email": school, "firstName": firstName, "lastName": lastName, "gradYear": gradYear,
+                ])
+                try await user.sendEmailVerification(beforeUpdatingEmail: school)
+                schoolEmailSentTo = school
+            } catch {
+                errorMessage = Self.authMessage(error)
+            }
+        }
+    }
+
     /// Permanently deletes the account and its data (re-checks the password first).
     func deleteAccount(password: String) {
         guard let user = Auth.auth().currentUser, let email = user.email else { return }
@@ -582,6 +607,7 @@ class AuthManager: ObservableObject {
     func sendPasswordReset(email: String) { errorMessage = Self.setupMessage }
     func refreshGuestStatus() {}
     func requestSponsor(email: String) { errorMessage = Self.setupMessage }
+    func addSchoolEmail(email: String, firstName: String, lastName: String, gradYear: String, password: String) { errorMessage = Self.setupMessage }
     func deleteAccount(password: String) { errorMessage = Self.setupMessage }
 
     func resendVerification() {}
@@ -747,4 +773,16 @@ nonisolated struct GuestStatus: Decodable {
     let requestStatus: String?
     /// True when the server says this guest may open the Library.
     let canAccessBacklog: Bool?
+}
+
+// MARK: - Reminder to add a school email (guests only)
+
+enum SchoolEmailPrompt {
+    private static let key = "br_school_email_prompt_at"
+    /// Ask at most once a week, and never in the first minute of a brand-new account's first launch.
+    static func due(now: Date = Date()) -> Bool {
+        guard let last = UserDefaults.standard.object(forKey: key) as? Date else { return true }
+        return now.timeIntervalSince(last) > 7 * 24 * 3600
+    }
+    static func markShown() { UserDefaults.standard.set(Date(), forKey: key) }
 }

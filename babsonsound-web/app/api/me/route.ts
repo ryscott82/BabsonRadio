@@ -2,6 +2,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { removeContactGraph } from '@/lib/server/contactGraph'
 import { isTester } from '@/lib/server/testers'
+import { finishSchoolUpgrade } from '@/lib/server/upgrade'
 import { CONCENTRATIONS, MAX_CONCENTRATIONS, TERMS_VERSION, normText, validGradYear } from '@/lib/terms'
 import { HttpError, handle, isBabsonToken, isDeveloperToken, readJson, requireUser, str } from '@/lib/server/http'
 
@@ -10,6 +11,8 @@ export const runtime = 'nodejs'
 export async function GET(req: Request) {
   return handle(async () => {
     const t = await requireUser(req)
+    // A guest who just signed in with their confirmed school email becomes a student here.
+    if (isBabsonToken(t)) await finishSchoolUpgrade(adminDb(), t).catch(() => {})
     const u = await adminDb().collection('users').doc(t.uid).get()
     if (!u.exists) throw new HttpError(404, 'Profile not found.')
     return {

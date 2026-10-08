@@ -4,6 +4,8 @@ struct ContentView: View {
     @Environment(\.colorScheme) var scheme
     @ObservedObject private var auth = AuthManager.shared
     @State private var splashDone = false
+    @State private var askSchoolEmail = false
+    @State private var showSchoolEmailSheet = false
 
     var body: some View {
         TabView {
@@ -31,6 +33,15 @@ struct ContentView: View {
         .tint(scheme == .dark ? .brGold : .brGreen)
         .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
         .task(id: auth.isSignedIn) { ContactsManager.shared.promptOnFirstOpen() }
+        .alert("Are you a Babson student?", isPresented: $askSchoolEmail) {
+            Button("Add my school email") { showSchoolEmailSheet = true }
+            Button("Not now", role: .cancel) {}
+        } message: {
+            Text("Add your Babson, Olin or Wellesley email to unlock the Library, ratings, reactions and friends.")
+        }
+        .sheet(isPresented: $showSchoolEmailSheet) { AddSchoolEmailView() }
+        .onChange(of: splashDone) { _, done in maybeAskSchoolEmail(done) }
+        .onChange(of: auth.currentUser?.id) { _, _ in maybeAskSchoolEmail(splashDone) }
         .overlay {
             if !splashDone {
                 SplashView()
@@ -48,6 +59,15 @@ struct ContentView: View {
             if rest > 0 { try? await Task.sleep(nanoseconds: UInt64(rest * 1_000_000_000)) }
             withAnimation(.easeOut(duration: 0.5)) { splashDone = true }
         }
+    }
+}
+
+extension ContentView {
+    /// Guests get a gentle reminder about once a week to add their school email.
+    fileprivate func maybeAskSchoolEmail(_ ready: Bool) {
+        guard ready, auth.currentUser?.isGuest == true, SchoolEmailPrompt.due() else { return }
+        SchoolEmailPrompt.markShown()
+        Task { try? await Task.sleep(nanoseconds: 4_000_000_000); askSchoolEmail = true }
     }
 }
 

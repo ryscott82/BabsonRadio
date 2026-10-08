@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { LINKS } from '@/lib/links'
 import ShareFormButton from '@/components/ShareFormButton'
 import InterestFormCta from '@/components/InterestFormCta'
+import VoteCard from '@/components/VoteCard'
 import { getRecentEpisodes, getTodaySchedule, getFeaturedShows } from '@/lib/firestore'
 
 export const revalidate = 60 // re-fetch data every 60 seconds
@@ -38,6 +39,8 @@ export default async function HomePage() {
       <section>
         <LivePlayer />
       </section>
+
+      <VoteCard />
 
       {/* ── Today's Schedule ─────────────────────────────────── */}
       {schedule.length > 0 && (

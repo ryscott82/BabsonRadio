@@ -142,3 +142,9 @@ export async function requireLibrary(req: Request) {
   if (!acc.ok) throw new HttpError(403, 'The Library opens when a Babson student sponsors you.')
   return t
 }
+
+/** Same test as requireLibrary, as a yes/no. */
+export async function canUseLibrary(t: import('firebase-admin/auth').DecodedIdToken): Promise<boolean> {
+  if (isBabsonToken(t) || isDeveloperToken(t)) return true
+  return (await guestLibraryAccess(adminDb(), t.uid, (t.email ?? '').toLowerCase(), t.email_verified === true)).ok
+}

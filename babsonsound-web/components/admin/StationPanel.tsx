@@ -25,6 +25,8 @@ export default function StationPanel() {
   const [pick, setPick] = useState('')
   const [headline, setHeadline] = useState('')
   const [message, setMessage] = useState('')
+  const [q, setQ] = useState('')
+  const [found, setFound] = useState<{ requestId: string; title: string; artist: string }[]>([])
   const [confirm, setConfirm] = useState<'emergency-stop' | 'resume' | null>(null)
 
   const load = useCallback(() => { apiGet<Data>('/api/admin/controls').then(setD).catch(e => setErr(e.message)) }, [])
@@ -35,6 +37,18 @@ export default function StationPanel() {
     try { await api('/api/admin/controls', body); setMsg(ok); load() }
     catch (e) { setErr(e instanceof Error ? e.message : 'Failed.') }
     setBusy(''); setConfirm(null)
+  }
+  async function search() {
+    setBusy('search'); setErr(''); setMsg('')
+    try { const r = await apiGet<{ songs: typeof found }>(`/api/admin/play-next?q=${encodeURIComponent(q)}`); setFound(r.songs); if (!r.songs.length) setMsg('No songs found. Only playlists that allow requests are searchable.') }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Search failed.') }
+    setBusy('')
+  }
+  async function playNext(s: { requestId: string; title: string; artist: string }) {
+    setBusy('next'); setErr(''); setMsg('')
+    try { await api('/api/admin/play-next', { requestId: s.requestId, label: `${s.artist} - ${s.title}` }); setMsg(`${s.title} will play next.`); setFound([]); setQ('') }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Failed.') }
+    setBusy('')
   }
   async function pin(clear: boolean) {
     const occId = pick || d?.shows.find(s => s.onAir)?.occId || d?.shows[0]?.occId
@@ -71,6 +85,25 @@ export default function StationPanel() {
             <button type="button" disabled={!!busy} onClick={() => setConfirm('resume')} className={`border border-br-dk-border text-br-dk-text ${btn}`}>RESUME</button>
           </>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs text-br-dk-sub font-display tracking-widest">PLAY A SONG NEXT</p>
+        <form onSubmit={e => { e.preventDefault(); if (q.trim().length > 1) search() }} className="flex gap-2">
+          <input value={q} onChange={e => setQ(e.target.value)} maxLength={80} placeholder="Song or artist" aria-label="Song or artist" className={field} />
+          <button type="submit" disabled={!!busy || q.trim().length < 2} className={`sk-btn ${btn}`}>SEARCH</button>
+        </form>
+        {found.length > 0 && (
+          <ul className="space-y-1">
+            {found.map(s => (
+              <li key={s.requestId} className="flex items-center justify-between gap-2 text-sm text-br-dk-text">
+                <span className="truncate">{s.title}<span className="text-br-dk-sub"> · {s.artist}</span></span>
+                <button type="button" disabled={!!busy} onClick={() => playNext(s)} className={`sk-btn shrink-0 ${btn}`}>PLAY NEXT</button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="text-xs text-br-dk-muted">Goes to the front of the line, ahead of votes and the schedule. Not for live shows.</p>
       </div>
 
       <div className="space-y-2">

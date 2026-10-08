@@ -154,3 +154,26 @@ export async function azControl(part: 'backend' | 'frontend', action: 'start' | 
   if (!azuraConfigured()) throw new Error('AzuraCast is not configured')
   await az(`/station/${station()}/${part}/${action}`, { method: 'POST' })
 }
+
+// ── Admin "play next" ────────────────────────────────────────────────────────
+
+export interface Requestable { requestId: string; title: string; artist: string }
+
+/** Songs the station can queue on request. AzuraCast only lists songs in playlists that allow requests. */
+export async function azSearchSongs(q: string): Promise<Requestable[]> {
+  if (!azuraConfigured()) throw new Error('AzuraCast is not configured')
+  type Row = { request_id?: string; song?: { title?: string; artist?: string } }
+  const r = await az<Row[] | { rows?: Row[] }>(`/station/${station()}/requests?searchPhrase=${encodeURIComponent(q)}&rowCount=15&current=1`)
+  const rows = Array.isArray(r) ? r : (r.rows ?? [])
+  return rows.filter(x => x.request_id).slice(0, 15).map(x => ({ requestId: String(x.request_id), title: x.song?.title ?? '', artist: x.song?.artist ?? '' }))
+}
+
+/** Put one song at the front of the line: clear what is already queued, then queue the request. */
+export async function azPlayNext(requestId: string): Promise<void> {
+  if (!azuraConfigured()) throw new Error('AzuraCast is not configured')
+  try {
+    const queue = await az<{ id: number }[]>(`/station/${station()}/queue`)
+    for (const item of queue) await az(`/station/${station()}/queue/${item.id}`, { method: 'DELETE' }).catch(() => null)
+  } catch { /* older AzuraCast has no queue endpoint; the request still goes in */ }
+  await az(`/station/${station()}/request/${encodeURIComponent(requestId)}`, { method: 'POST' })
+}

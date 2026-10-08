@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '@/lib/auth'
 import StationPanel from '@/components/admin/StationPanel'
+import Telemetry from '@/components/admin/Telemetry'
+import { plexMono } from '@/components/admin/opsFont'
 
 interface Alerts {
   pendingRequests: number; newReports: number | null
@@ -44,22 +46,25 @@ export default function AdminPage() {
   if (loading || !user || !isDirector) return <div className="min-h-[60vh]" />
 
   const needs = alerts && (alerts.pendingRequests > 0 || (alerts.newReports ?? 0) > 0 || alerts.cancellations.length > 0)
-  const tile = 'sk-raised rounded-xl px-4 py-3 min-w-0'
+  const tile = 'sk-raised px-3 py-2.5 min-w-0'
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
-      <div className="flex items-center gap-3">
-        <h1 className="font-display text-br-dk-text text-2xl tracking-[0.1em]">RADIO OPERATIONS</h1>
-        <span className="font-display text-br-gold text-xs tracking-widest">{isAdmin ? 'ADMIN' : 'DIRECTOR'}</span>
+    <div className={`ops ${plexMono.className} min-h-screen`}>
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-4">
+      <div className="flex items-center gap-3 border-b border-br-dk-border pb-3">
+        <h1 className="text-br-dk-text text-base font-semibold">radio-ops</h1>
+        <span className="text-br-gold text-xs">{isAdmin ? 'role=admin' : 'role=director'}</span>
         {dash && !dash.radioConnected && isAdmin && <span className="text-xs text-br-dk-sub ml-auto">Radio not connected</span>}
       </div>
+
+      <Telemetry />
 
       {/* Status strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className={tile}>
           <p className="text-[11px] text-br-dk-sub">On air</p>
           <p className="text-br-dk-text truncate">{dash?.onAir.title || 'Nothing scheduled'}</p>
-          <p className="text-xs text-br-dk-muted">{dash?.onAir.title ? (dash.onAir.isShow ? 'Show' : 'Genre block') : ''}{dash?.onAir.endAt ? ` · until ${clock(dash.onAir.endAt)}` : ''}</p>
+          <p className="text-xs text-br-dk-muted">{dash?.onAir.title ? (dash.onAir.isShow ? 'show' : 'genre block') : ''}{dash?.onAir.endAt ? ` · until ${clock(dash.onAir.endAt)}` : ''}</p>
         </div>
         <div className={tile}>
           <p className="text-[11px] text-br-dk-sub">{dash?.nowPlaying.isLive ? `Live · ${dash.nowPlaying.streamer}` : dash?.nowPlaying.playlist ? `Playlist · ${dash.nowPlaying.playlist}` : 'Playing'}</p>
@@ -67,7 +72,7 @@ export default function AdminPage() {
         </div>
         <div className={tile}>
           <p className="text-[11px] text-br-dk-sub">Listening now</p>
-          <p className="font-display text-2xl text-br-dk-text tabular-nums">{dash?.nowPlaying.listeners ?? '–'}</p>
+          <p className="text-2xl text-br-dk-text tabular-nums">{dash?.nowPlaying.listeners ?? '–'}</p>
         </div>
         <div className={tile}>
           <p className="text-[11px] text-br-dk-sub">Last 24 hours</p>
@@ -78,8 +83,8 @@ export default function AdminPage() {
 
       <div className="grid lg:grid-cols-5 gap-5">
         <div className="lg:col-span-3 space-y-5">
-          <section className="sk-raised rounded-2xl p-4">
-            <h2 className="font-display text-br-gold tracking-widest text-xs mb-3">NEEDS ATTENTION</h2>
+          <section className="sk-raised p-4">
+            <h2 className="text-br-gold text-xs mb-3">attention</h2>
             {!needs && <p className="text-sm text-br-dk-sub">Nothing waiting.</p>}
             {alerts && alerts.pendingRequests > 0 && (
               <p className="text-sm text-br-dk-text"><Link href="/admin/slots" className="underline">{alerts.pendingRequests} show request{alerts.pendingRequests === 1 ? '' : 's'}</Link> waiting for a decision.</p>
@@ -95,8 +100,8 @@ export default function AdminPage() {
             ))}
           </section>
 
-          <section className="sk-raised rounded-2xl p-4">
-            <h2 className="font-display text-br-gold tracking-widest text-xs mb-3">NEXT UP</h2>
+          <section className="sk-raised p-4">
+            <h2 className="text-br-gold text-xs mb-3">queue (24h)</h2>
             <ul className="text-sm divide-y divide-br-dk-border">
               {(dash?.next ?? []).map((n, i) => (
                 <li key={i} className="py-1.5 flex gap-3">
@@ -110,15 +115,15 @@ export default function AdminPage() {
           </section>
 
           <section className="grid sm:grid-cols-3 gap-5 text-sm">
-            <ToolGroup title="PROGRAMMING" links={[
+            <ToolGroup title="programming" links={[
               ['/admin/schedule', 'Schedule'], ['/admin/slots', 'Slot requests'], ['/admin/show-updates', 'Show updates'], ['/admin/library', 'Library content'],
               ...(isAdmin ? [['/admin/autoschedule', 'Auto-scheduler'], ['/admin/setlists', 'Set lists']] : []),
             ]} />
-            <ToolGroup title="PEOPLE" links={[
+            <ToolGroup title="people" links={[
               ['/admin/feedback', 'Bugs and ideas'], ['/admin/requests', 'Listener requests'],
               ...(isAdmin ? [['/admin/users', 'Users and roles'], ['/admin/testers', 'Beta testers'], ['/admin/birthdays', 'Birthdays'], ['/admin/notify', 'Send a notification']] : []),
             ]} />
-            <ToolGroup title="NUMBERS" links={[
+            <ToolGroup title="numbers" links={[
               ['/admin/insights', 'What listeners like'],
               ...(isAdmin ? [['/admin/listening', 'Listening log'], ['/admin/network', 'Friends web']] : []),
             ]} />
@@ -126,12 +131,13 @@ export default function AdminPage() {
         </div>
 
         {isAdmin && (
-          <section className="lg:col-span-2 sk-raised rounded-2xl p-4 h-fit">
-            <h2 className="font-display text-br-gold tracking-widest text-xs mb-3">STATION CONTROLS</h2>
+          <section className="lg:col-span-2 sk-raised p-4 h-fit">
+            <h2 className="text-br-gold text-xs mb-3">station controls</h2>
             <StationPanel />
           </section>
         )}
       </div>
+    </div>
     </div>
   )
 }
@@ -139,7 +145,7 @@ export default function AdminPage() {
 function ToolGroup({ title, links }: { title: string; links: (string[])[] }) {
   return (
     <div>
-      <h2 className="font-display text-br-dk-sub tracking-widest text-xs mb-2">{title}</h2>
+      <h2 className="text-br-dk-sub text-xs mb-2">{title}</h2>
       <ul className="space-y-1">
         {links.map(([href, label]) => <li key={href}><Link href={href} className="text-br-dk-text hover:text-br-gold">{label}</Link></li>)}
       </ul>

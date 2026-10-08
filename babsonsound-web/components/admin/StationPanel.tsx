@@ -88,7 +88,7 @@ export default function StationPanel() {
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs text-br-dk-sub font-display tracking-widest">PLAY A SONG NEXT</p>
+        <p className="text-xs text-br-dk-sub font-display tracking-widest">play a song next</p>
         <form onSubmit={e => { e.preventDefault(); if (q.trim().length > 1) search() }} className="flex gap-2">
           <input value={q} onChange={e => setQ(e.target.value)} maxLength={80} placeholder="Song or artist" aria-label="Song or artist" className={field} />
           <button type="submit" disabled={!!busy || q.trim().length < 2} className={`sk-btn ${btn}`}>SEARCH</button>
@@ -107,7 +107,7 @@ export default function StationPanel() {
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs text-br-dk-sub font-display tracking-widest">MESSAGE TO EVERYONE</p>
+        <p className="text-xs text-br-dk-sub font-display tracking-widest">message to everyone</p>
         {d.announcement && <p className="text-sm text-br-gold">Live now: {d.announcement.text} <span className="text-br-dk-muted">(until {when(d.announcement.until)})</span></p>}
         <textarea value={text} onChange={e => setText(e.target.value)} rows={2} maxLength={240} aria-label="Message to everyone"
                   placeholder="Shows on every page of the site and at the top of the app" className={field} />
@@ -121,7 +121,7 @@ export default function StationPanel() {
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs text-br-dk-sub font-display tracking-widest">MESSAGE ON ONE SHOW</p>
+        <p className="text-xs text-br-dk-sub font-display tracking-widest">message on one show</p>
         <select value={pick} onChange={e => { setPick(e.target.value); const s = d.shows.find(x => x.occId === e.target.value); setHeadline(s?.note?.headline ?? ''); setMessage(s?.note?.message ?? '') }} className={field} aria-label="Show">
           <option value="">{d.shows.find(s => s.onAir) ? 'On air now' : 'Choose a show'}</option>
           {d.shows.map(s => <option key={s.occId} value={s.occId}>{s.title} · {when(s.startAt)}{s.note ? ' · has message' : ''}</option>)}

@@ -105,7 +105,7 @@ export default function Visualizer({ color, playing }: { color: string; playing:
 
   if (!host) return null
   return createPortal(
-    <canvas ref={ref} aria-hidden className="fixed inset-0 w-full h-full pointer-events-none z-0 scale-110 opacity-75 blur-[40px]" />,
+    <canvas ref={ref} aria-hidden className="fixed inset-0 w-full h-full pointer-events-none z-0 scale-110 opacity-90 blur-[14px]" />,
     host,
   )
 }

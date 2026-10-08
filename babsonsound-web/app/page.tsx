@@ -18,7 +18,7 @@ export default async function HomePage() {
   ])
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-16">
+    <div className="max-w-6xl lg:max-w-[1800px] mx-auto px-4 lg:px-8 xl:px-12 py-8 space-y-16">
 
       {/* ── Interest form (hidden for signed-in members) ───────── */}
       <InterestFormCta><section className="sk-raised rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
@@ -36,14 +36,14 @@ export default async function HomePage() {
       </section></InterestFormCta>
 
       {/* Two panes on desktop: the player stays on the left, everything else scrolls on the right. */}
-      <div className="lg:grid lg:grid-cols-[minmax(380px,460px)_minmax(0,1fr)] lg:gap-10 lg:items-start space-y-16 lg:space-y-0">
-      <div className="space-y-6 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+      <div className="lg:grid lg:grid-cols-[minmax(400px,34%)_minmax(0,1fr)] lg:gap-10 xl:gap-14 lg:items-start space-y-16 lg:space-y-0">
+      <div className="lg:[@media(min-height:860px)]:sticky lg:top-24">
         <section>
           <LivePlayer pane />
         </section>
-        <VoteCard />
       </div>
       <div className="space-y-16 min-w-0">
+        <VoteCard />
 
       {/* ── Today's Schedule ─────────────────────────────────── */}
       {schedule.length > 0 && (
@@ -81,7 +81,7 @@ export default async function HomePage() {
         <section>
           <SectionHeader title="RECENT EPISODES" href="/browse" />
           <LikesProvider ids={episodes.slice(0, 8).map((ep: any) => ep.id)}>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-4 gap-5">
               {episodes.slice(0, 8).map((ep: any) => (
                 <div key={ep.id}>
                   <EpisodeCard episode={ep} />
@@ -97,7 +97,7 @@ export default async function HomePage() {
       {shows.length > 0 && (
         <section>
           <SectionHeader title="SHOWS" href="/shows" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4">
             {shows.map((show: any) => (
               <Link
                 key={show.id}

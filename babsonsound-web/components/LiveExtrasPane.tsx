@@ -9,5 +9,5 @@ export default function LiveExtrasPane() {
   const np = useNowPlaying()
   const wide = useWide()
   if (!wide) return null
-  return <LiveExtras np={np} />
+  return <LiveExtras np={np} compact />
 }

@@ -39,7 +39,7 @@ export default async function HomePage() {
       </section></InterestFormCta>
 
       {/* Two panes on desktop: the player stays on the left, everything else scrolls on the right. */}
-      <div className="lg:grid lg:grid-cols-[minmax(400px,34%)_minmax(0,1fr)] lg:gap-10 xl:gap-14 lg:items-start space-y-16 lg:space-y-0">
+      <div className="lg:grid lg:grid-cols-[minmax(520px,58%)_minmax(0,1fr)] lg:gap-10 xl:gap-14 lg:items-start space-y-16 lg:space-y-0">
       <div className="lg:[@media(min-height:860px)]:sticky lg:top-24">
         <section>
           <LivePlayer pane />

@@ -21,7 +21,8 @@ const tooSoon = () => { const n = Date.now(); const r = n - lastTap < 500; if (!
 
 interface Song { id: string; text: string; votes: number; mine: boolean }
 
-export default function LiveExtras({ np }: { np: NowPlaying | null }) {
+export default function LiveExtras({ np, compact = false }: { np: NowPlaying | null; compact?: boolean }) {
+  const card = compact ? 'sk-raised rounded-xl p-3' : 'sk-raised rounded-2xl p-4'
   const { hasMemberAccess, user } = useAuth()
   const can = !!user && hasMemberAccess
   const occId = np?.occId ?? ''
@@ -138,7 +139,7 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
     <div className="mt-4 space-y-4">
       <EmojiRain />
       {np?.note && (
-        <div className="sk-raised rounded-2xl p-4 border-l-4" style={{ borderLeftColor: accent ?? 'var(--br-accent)' }}>
+        <div className={`${card} border-l-4`} style={{ borderLeftColor: accent ?? 'var(--br-accent)' }}>
           {np.note.headline && <p className="text-br-dk-text font-medium">{np.note.headline}</p>}
           {np.note.message && <p className="text-sm text-br-dk-sub whitespace-pre-wrap">{np.note.message}</p>}
           {np.note.by && <p className="text-xs text-br-dk-muted mt-1">from {np.note.by}</p>}
@@ -149,11 +150,11 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
         <p className="text-xs text-br-dk-sub text-center">Reactions are off while Invisible mode is on. Turn it off in your profile to join in.</p>
       )}
       {occId && !invisible && (
-        <div className="sk-raised rounded-2xl p-4 flex flex-wrap items-center gap-3">
+        <div className={`${card} flex flex-wrap items-center gap-3`}>
           <span className="text-xs text-br-dk-sub">React</span>
           {EMOJIS.map(e => (
             <button key={e} type="button" onClick={() => react(e)} aria-label={`React ${e}`}
-                    className="sk-key rounded-full h-11 w-12 flex items-center justify-center text-xl active:scale-90 transition-transform">
+                    className="sk-key rounded-full h-9 w-10 flex items-center justify-center text-base active:scale-90 transition-transform">
               {e}
             </button>
           ))}
@@ -161,19 +162,19 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
       )}
 
       {songKey && (
-        <div className="sk-raised rounded-2xl p-4 flex flex-wrap items-center gap-3">
+        <div className={`${card} flex flex-wrap items-center gap-3`}>
           <span className="text-sm text-br-dk-text truncate max-w-full">Rate this song</span>
           <span className="flex" role="group" aria-label="Song rating">
             {[1, 2, 3, 4, 5].map(n => (
               <button key={n} type="button" onClick={() => rateSong(n)} aria-label={`${n} star${n > 1 ? 's' : ''} for this song`}
-                      className={`text-2xl leading-none px-0.5 ${n <= mineSong ? 'text-br-gold' : 'text-br-dk-muted'}`}>★</button>
+                      className={`text-xl leading-none px-0.5 ${n <= mineSong ? 'text-br-gold' : 'text-br-dk-muted'}`}>★</button>
             ))}
           </span>
         </div>
       )}
 
       {sorted.length > 0 && (
-        <div className="sk-raised rounded-2xl p-4 space-y-2">
+        <div className={`${card} space-y-2`}>
           <p className="font-display text-br-gold tracking-widest text-sm">SET LIST{listTitle ? ` · ${listTitle.toUpperCase()}` : ''}</p>
           <ul className="space-y-1">
             {sorted.map(s => (
@@ -190,12 +191,12 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
       )}
 
       {rateable && closing && (
-        <div className="sk-raised rounded-2xl p-4 space-y-3">
+        <div className={`${card} space-y-3`}>
           <p className="text-br-dk-text font-medium">{endsAt > now ? 'Almost over' : 'That was'}: {rateable.title}. How was it?</p>
           <span className="flex" role="group" aria-label="Star rating">
             {[1, 2, 3, 4, 5].map(n => (
               <button key={n} type="button" onClick={() => rate(n)} aria-label={`${n} star${n > 1 ? 's' : ''}`}
-                      className={`text-3xl leading-none px-0.5 ${n <= rating.mine ? 'text-br-gold' : 'text-br-dk-muted'}`}>★</button>
+                      className={`text-2xl leading-none px-0.5 ${n <= rating.mine ? 'text-br-gold' : 'text-br-dk-muted'}`}>★</button>
             ))}
           </span>
           {commentSent === rateable.occId ? (
@@ -210,12 +211,12 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
         </div>
       )}
       {rateable && !closing && (
-        <div className="sk-raised rounded-2xl p-4 flex flex-wrap items-center gap-3">
+        <div className={`${card} flex flex-wrap items-center gap-3`}>
           <span className="text-sm text-br-dk-text">{rateable.isShow ? 'Rate the whole show' : 'Rate this hour of music'}: {rateable.title}</span>
           <span className="flex" role="group" aria-label="Star rating">
             {[1, 2, 3, 4, 5].map(n => (
               <button key={n} type="button" onClick={() => rate(n)} aria-label={`${n} star${n > 1 ? 's' : ''}`}
-                      className={`text-2xl leading-none px-0.5 ${n <= rating.mine ? 'text-br-gold' : 'text-br-dk-muted'}`}>★</button>
+                      className={`text-xl leading-none px-0.5 ${n <= rating.mine ? 'text-br-gold' : 'text-br-dk-muted'}`}>★</button>
             ))}
           </span>
           {rating.count > 0 && <span className="text-xs text-br-dk-sub">{rating.avg} average · {rating.count} rating{rating.count === 1 ? '' : 's'}</span>}

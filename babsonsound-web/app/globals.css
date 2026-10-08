@@ -302,10 +302,10 @@ body::before {
 @supports (color: oklch(from red l c h)) {
 @media (prefers-color-scheme: dark) {
 :root:not([data-theme="light"]) .art-ui {
-  --br-accent: oklch(from var(--art-2) 0.78 clamp(0.09, c, 0.16) h);
-  --sk-btn-top: oklch(from var(--art-2) 0.50 clamp(0.08, c, 0.14) h);
-  --sk-btn-bot: oklch(from var(--art-2) 0.38 clamp(0.07, c, 0.12) h);
-  --sk-btn-edge: oklch(from var(--art-2) 0.27 clamp(0.05, c, 0.09) h);
+  --br-accent: oklch(from var(--art-2) 0.76 clamp(0.04, calc(c * 0.55), 0.085) h);
+  --sk-btn-top: oklch(from var(--art-2) 0.48 clamp(0.04, calc(c * 0.55), 0.08) h);
+  --sk-btn-bot: oklch(from var(--art-2) 0.37 clamp(0.035, calc(c * 0.5), 0.07) h);
+  --sk-btn-edge: oklch(from var(--art-2) 0.27 clamp(0.03, calc(c * 0.45), 0.055) h);
 }
 :root:not([data-theme="light"]) .art-ui .sk-hero {
   border-color: oklch(from var(--art-1) 0.42 clamp(0.04, calc(c * 0.5), 0.09) h);
@@ -318,10 +318,10 @@ body::before {
 :root:not([data-theme="light"]) .art-ui .sk-field { background: oklch(from var(--art-1) 0.135 clamp(0.02, calc(c * 0.3), 0.045) h); }
 }
 :root[data-theme="dark"] .art-ui {
-  --br-accent: oklch(from var(--art-2) 0.78 clamp(0.09, c, 0.16) h);
-  --sk-btn-top: oklch(from var(--art-2) 0.50 clamp(0.08, c, 0.14) h);
-  --sk-btn-bot: oklch(from var(--art-2) 0.38 clamp(0.07, c, 0.12) h);
-  --sk-btn-edge: oklch(from var(--art-2) 0.27 clamp(0.05, c, 0.09) h);
+  --br-accent: oklch(from var(--art-2) 0.76 clamp(0.04, calc(c * 0.55), 0.085) h);
+  --sk-btn-top: oklch(from var(--art-2) 0.48 clamp(0.04, calc(c * 0.55), 0.08) h);
+  --sk-btn-bot: oklch(from var(--art-2) 0.37 clamp(0.035, calc(c * 0.5), 0.07) h);
+  --sk-btn-edge: oklch(from var(--art-2) 0.27 clamp(0.03, calc(c * 0.45), 0.055) h);
 }
 :root[data-theme="dark"] .art-ui .sk-hero {
   border-color: oklch(from var(--art-1) 0.42 clamp(0.04, calc(c * 0.5), 0.09) h);
@@ -332,4 +332,21 @@ body::before {
   border-color: oklch(from var(--art-1) 0.32 clamp(0.03, calc(c * 0.4), 0.07) h);
 }
 :root[data-theme="dark"] .art-ui .sk-field { background: oklch(from var(--art-1) 0.135 clamp(0.02, calc(c * 0.3), 0.045) h); }
+}
+
+/* ── Top bar follows the cover too, while the home page is open (ArtTheme sets data-art and --nav-1/--nav-2 on <html>) ── */
+@property --nav-1 { syntax: '<color>'; inherits: true; initial-value: #006644; }
+@property --nav-2 { syntax: '<color>'; inherits: true; initial-value: #006644; }
+:root { transition: --nav-1 12s ease-in-out, --nav-2 12s ease-in-out; }
+:root[data-art] .art-nav {
+  --br-accent: var(--nav-2);
+  background-color: color-mix(in srgb, var(--nav-1) 30%, var(--br-bg));
+  border-color: color-mix(in srgb, var(--nav-1) 40%, var(--br-border));
+}
+@media (prefers-reduced-motion: reduce) { :root { transition: none; } }
+@supports (color: oklch(from red l c h)) {
+  @media (prefers-color-scheme: dark) {
+    :root[data-art]:not([data-theme="light"]) .art-nav { --br-accent: oklch(from var(--nav-2) 0.74 clamp(0.04, calc(c * 0.55), 0.085) h); background-color: oklch(from var(--nav-1) 0.16 clamp(0.025, calc(c * 0.38), 0.05) h); border-color: oklch(from var(--nav-1) 0.27 clamp(0.03, calc(c * 0.4), 0.06) h); }
+  }
+  :root[data-art][data-theme="dark"] .art-nav { --br-accent: oklch(from var(--nav-2) 0.74 clamp(0.04, calc(c * 0.55), 0.085) h); background-color: oklch(from var(--nav-1) 0.16 clamp(0.025, calc(c * 0.38), 0.05) h); border-color: oklch(from var(--nav-1) 0.27 clamp(0.03, calc(c * 0.4), 0.06) h); }
 }

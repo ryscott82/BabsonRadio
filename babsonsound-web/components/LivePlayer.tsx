@@ -128,10 +128,10 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
       {/* Animated background, tinted with the on-air event's color */}
       {!board && <Visualizer color={glow} playing={isPlaying} follow={art.on && !np?.color} />}
 
-      <div className={`relative p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 ${pane ? 'lg:flex-col lg:p-8' : ''}`}>
+      <div className={`relative p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 ${pane ? 'lg:flex-col lg:p-12 lg:gap-10' : ''}`}>
 
         {/* Art block */}
-        <div className={`relative shrink-0 w-44 h-44 md:w-56 md:h-56 ${pane ? 'lg:w-full lg:max-w-[22rem] lg:h-auto lg:aspect-square' : ''} rounded-xl overflow-hidden grain flex items-center justify-center ${np?.color ? '' : 'bg-gradient-to-br from-[#003D27] to-[#006644]'}`}
+        <div className={`relative shrink-0 w-44 h-44 md:w-56 md:h-56 ${pane ? 'lg:w-full lg:max-w-[30rem] lg:h-auto lg:aspect-square' : ''} rounded-xl overflow-hidden grain flex items-center justify-center ${np?.color ? '' : 'bg-gradient-to-br from-[#003D27] to-[#006644]'}`}
              style={np?.color ? { background: `linear-gradient(135deg, ${np.color}, ${np.color}66 70%, #000000aa)`, boxShadow: `0 0 40px ${np.color}55` } : undefined}>
           {np?.art ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -159,10 +159,10 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
             <span className="font-display text-white text-xs tracking-[0.25em]">On Air</span>
           </div>
 
-          <h2 className="font-display text-br-dk-text text-3xl md:text-4xl tracking-wide mb-1">
+          <h2 className={`font-display text-br-dk-text text-3xl md:text-4xl ${pane ? 'lg:text-5xl' : ''} tracking-wide mb-1`}>
             {hasSong ? np!.title : 'Live Stream'}
           </h2>
-          <p className="text-br-dk-sub text-sm mb-1">
+          <p className={`text-br-dk-sub text-sm ${pane ? 'lg:text-base' : ''} mb-1`}>
             {hasSong ? (np!.artist || 'Babson Radio') : 'Babson College — Internet Radio'}
           </p>
           {np?.showTitle && <p className="text-xs mb-1" style={{ color: np.color || undefined }}>On air: {np.showTitle}</p>}
@@ -197,7 +197,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
 
           {/* Play button centered under the art; equalizer on its left, skip on its right */}
           <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-4 w-full max-w-[19rem] mx-auto md:mx-0 lg:mx-auto">
-            <div className="justify-self-end h-16 flex items-center">
+            <div className={`justify-self-end h-16 ${pane ? 'lg:h-20' : ''} flex items-center`}>
               {isPlaying && (
               <div className="flex items-end gap-1 h-8">
                 {[1,2,3,4].map(i => (
@@ -213,7 +213,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
             <button
               onClick={togglePlay}
               disabled={!canListenLive}
-              aria-pressed={isPlaying} className="sk-btn disabled:opacity-40 w-16 h-16 rounded-full flex items-center justify-center"
+              aria-pressed={isPlaying} className={`sk-btn disabled:opacity-40 w-16 h-16 ${pane ? 'lg:w-20 lg:h-20' : ''} rounded-full flex items-center justify-center`}
             >
               {isBuffering ? (
                 <svg className="w-6 h-6 animate-spin text-current" fill="none" viewBox="0 0 24 24">
@@ -231,7 +231,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
                 </svg>
               )}
             </button>
-            <div className="justify-self-start mt-2">
+            <div className={`justify-self-start mt-2 ${pane ? 'lg:mt-4' : ''}`}>
               <SkipButton np={np} />
             </div>
           </div>

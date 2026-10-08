@@ -24,6 +24,21 @@ export default function ArtTheme({ className, children }: { className?: string; 
     return () => clearTimeout(t)
   }, [])
 
+  // The top bar sits outside this wrapper, so mirror the two colors it needs onto the page root while the home page is open.
+  const live = ready && palette.length === 3
+  const rootA = live ? palette[0] : BABSON_GREEN, rootB = live ? palette[1] : BABSON_GREEN
+  useEffect(() => {
+    if (!ART_THEME) return
+    const r = document.documentElement
+    r.dataset.art = '1'
+    return () => { delete r.dataset.art; r.style.removeProperty('--nav-1'); r.style.removeProperty('--nav-2') }
+  }, [])
+  useEffect(() => {
+    if (!ART_THEME) return
+    const r = document.documentElement
+    r.style.setProperty('--nav-1', rootA); r.style.setProperty('--nav-2', rootB)
+  }, [rootA, rootB])
+
   if (!ART_THEME) return <div className={className}>{children}</div>
   const use = ready && palette.length === 3
   const [a, b, c] = use ? palette : [BABSON_GREEN, BABSON_GREEN, BABSON_GREEN]

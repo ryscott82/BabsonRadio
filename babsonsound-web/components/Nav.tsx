@@ -41,7 +41,7 @@ export default function Nav() {
   const close = () => { setMenuOpen(false); setMobileOpen(false) }
 
   return (
-    <header className="fixed top-0 inset-x-0 z-50 bg-br-dk-bg/90 backdrop-blur border-b border-br-dk-border shadow-[0_2px_0_rgba(var(--sk-rgb),0.06)]">
+    <header className="art-nav fixed top-0 inset-x-0 z-50 bg-br-dk-bg/90 backdrop-blur border-b border-br-dk-border shadow-[0_2px_0_rgba(var(--sk-rgb),0.06)]">
       <div className="max-w-6xl lg:max-w-[1800px] mx-auto px-4 lg:px-8 xl:px-12 h-16 flex items-center gap-8">
 
         {/* Wordmark */}

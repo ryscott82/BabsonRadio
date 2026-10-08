@@ -47,19 +47,19 @@ export default function VoteCard() {
 
   const top = Math.max(1, s.threshold, ...s.options.map(o => o.count))
   return (
-    <section className="sk-raised rounded-2xl p-5 sm:p-6 space-y-4">
+    <section className="sk-raised rounded-xl p-4 space-y-3">
       <div>
-        <h2 className="font-display text-br-dk-text text-2xl tracking-wide">WHAT WOULD YOU LIKE TO HEAR?</h2>
-        <p className="text-sm text-br-dk-sub mt-1">
+        <h2 className="font-display text-br-dk-text text-lg tracking-wide">WHAT WOULD YOU LIKE TO HEAR?</h2>
+        <p className="text-xs text-br-dk-sub mt-0.5">
           {s.winner
             ? `${s.winner} is taking over ${clock(s.blockStart)} – ${clock(s.blockEnd)}.`
             : `Vote for ${clock(s.blockStart)} – ${clock(s.blockEnd)}. At ${s.threshold} votes, a genre takes over the hour.`}
         </p>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {s.options.map(o => (
           <button key={o.label} disabled={busy || !s.canVote} onClick={() => vote(o.label)}
-                  className={`relative w-full text-left rounded-lg overflow-hidden sk-field px-3 py-2 text-sm text-br-dk-text ${s.myVote === o.label ? 'ring-1 ring-br-gold' : ''}`}>
+                  className={`relative w-full text-left rounded-lg overflow-hidden sk-field px-3 py-1.5 text-xs text-br-dk-text ${s.myVote === o.label ? 'ring-1 ring-br-gold' : ''}`}>
             <span className="absolute inset-y-0 left-0 bg-br-gold/20" style={{ width: `${Math.min(100, (o.count / top) * 100)}%` }} />
             <span className="relative flex justify-between gap-3">
               <span>{o.label}{s.winner === o.label ? ' ✓' : ''}</span>

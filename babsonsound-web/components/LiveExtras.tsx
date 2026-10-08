@@ -26,12 +26,19 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
   const can = !!user && hasMemberAccess
   const occId = np?.occId ?? ''
 
+  // Invisible mode switches off the social bits: reactions (sending and seeing them).
+  const [invisible, setInvisible] = useState(false)
+  useEffect(() => {
+    if (!can) { queueMicrotask(() => setInvisible(false)); return }
+    apiGet<{ invisible: boolean }>('/api/me').then(r => setInvisible(r.invisible)).catch(() => {})
+  }, [can, user?.uid])
+
   // ── reactions: tap one and a handful rain down on every screen ──
   const [msg, setMsg] = useState('')
   const cid = useId().replace(/[^A-Za-z0-9]/g, '')
   const since = useRef(0)
   useEffect(() => {
-    if (!occId) return
+    if (!occId || invisible) return
     since.current = 0
     return poll(() => {
       apiGet<{ occId: string; events: { at: number; e: string; c: string }[]; now: number }>('/api/live/reactions')
@@ -43,7 +50,7 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
           since.current = Math.max(since.current, r.events.length ? r.events[r.events.length - 1].at : 0, r.now - 4_000)
         }).catch(() => {})
     }, 3_000)
-  }, [occId, cid])
+  }, [occId, cid, invisible])
   async function react(e: string) {
     if (!can) { setMsg('Sign in with your school email to react.'); return }
     setMsg(''); rainBurst(e)
@@ -125,7 +132,10 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
         </div>
       )}
 
-      {occId && (
+      {occId && invisible && (
+        <p className="text-xs text-br-dk-sub text-center">Reactions are off while Invisible mode is on. Turn it off in your profile to join in.</p>
+      )}
+      {occId && !invisible && (
         <div className="sk-raised rounded-2xl p-4 flex flex-wrap items-center gap-3">
           <span className="text-xs text-br-dk-sub">React</span>
           {EMOJIS.map(e => (

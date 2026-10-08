@@ -40,6 +40,14 @@ export async function GET() {
 }
 
 const sent = new Map<string, number[]>() // best effort, per server instance
+const invisibleCache = new Map<string, { at: number; v: boolean }>()
+async function isInvisible(db: Firestore, uid: string, now: number): Promise<boolean> {
+  const hit = invisibleCache.get(uid)
+  if (hit && now - hit.at < 60_000) return hit.v
+  const v = (await db.collection('users').doc(uid).get()).get('invisible') === true
+  invisibleCache.set(uid, { at: now, v })
+  return v
+}
 const stored = { minute: 0, n: 0 }
 
 export async function POST(req: Request) {
@@ -55,6 +63,7 @@ export async function POST(req: Request) {
     sent.set(t.uid, [...recent, now])
 
     const db = adminDb()
+    if (await isInvisible(db, t.uid, now)) throw new HttpError(403, 'Reactions are off while Invisible mode is on.', 'BR-LIV-002')
     const cur = await currentOnAir(db, now)
     if (!cur) throw new HttpError(409, 'Nothing is on air to react to.')
     const m = bucketMinute(now)

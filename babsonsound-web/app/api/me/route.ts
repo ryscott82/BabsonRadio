@@ -1,5 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
+import { removeContactGraph } from '@/lib/server/contactGraph'
 import { isTester } from '@/lib/server/testers'
 import { CONCENTRATIONS, MAX_CONCENTRATIONS, TERMS_VERSION, normText, validGradYear } from '@/lib/terms'
 import { HttpError, handle, isBabsonToken, isDeveloperToken, readJson, requireUser, str } from '@/lib/server/http'
@@ -30,7 +31,8 @@ export async function GET(req: Request) {
 }
 
 // Edit your own first name and/or turn invisible mode on or off.
-// Invisible: you don't show up in anyone's "tuned in" list and your likes aren't shown to friends.
+// Invisible: you don't show up in anyone's "tuned in" list, your likes aren't shown to friends, your contacts are not
+// used for "saved by members" suggestions, and live reactions (sending and seeing them) are off.
 export async function POST(req: Request) {
   return handle(async () => {
     const t = await requireUser(req)
@@ -63,6 +65,8 @@ export async function POST(req: Request) {
     if (b.acceptTerms === TERMS_VERSION) { update.termsAcceptedAt = FieldValue.serverTimestamp(); update.termsVersion = TERMS_VERSION }
     if (!Object.keys(update).length) throw new HttpError(400, 'Nothing to update.')
     await adminDb().collection('users').doc(t.uid).update(update)
+    // Going invisible also takes this person's saved numbers out of the "saved by members" counts.
+    if (b.invisible === true) await removeContactGraph(adminDb(), t.uid).catch(e => console.error('[contact graph]', e))
     return { ok: true }
   })
 }

@@ -8,6 +8,7 @@ import PreviewLock from '@/components/PreviewLock'
 import VerifyBanner from '@/components/VerifyBanner'
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://babsonradio.com'),
   title: 'Babson Radio',
   description: 'Student-run internet radio — Babson College',
   openGraph: {
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
     description: 'Student-run internet radio — Babson College',
     siteName: 'Babson Radio',
   },
+  twitter: { card: 'summary_large_image' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

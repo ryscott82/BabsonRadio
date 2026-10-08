@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import Contacts
+import CryptoKit
 
 // MARK: - Profile Tab
 // Shows AuthView if signed out, signed-in profile otherwise.
@@ -25,6 +26,7 @@ private struct SignedInProfileView: View {
     let user: BRUser
     @Environment(\.dismiss) private var dismiss
     @State private var showReport = false
+    @State private var showSuggestAlert = false
     @State private var hostAvailable = false
     @StateObject private var auth = AuthManager.shared
     @StateObject private var contacts = ContactsManager()
@@ -187,9 +189,30 @@ private struct SignedInProfileView: View {
                 .ignoresSafeArea()
             }
         }
+        .alert("Suggesting people at Babson", isPresented: $showSuggestAlert) {
+            Button("Continue") {
+                Task {
+                    await contacts.acceptNotice()
+                    if !contacts.accessGranted { contacts.requestAccess() }
+                }
+            }
+            Button("Turn on Invisible mode") {
+                auth.setInvisible(true)
+                Task {
+                    await contacts.acceptNotice()
+                    if !contacts.accessGranted { contacts.requestAccess() }
+                }
+            }
+        } message: {
+            Text("To suggest people who probably go to Babson, the app checks your contacts on your phone for school emails, and counts how many members saved the same phone numbers. Your phone scrambles each number before it is sent, we keep only scrambled codes (never names), nobody sees who saved whom, and a number is only suggested when at least 3 other members saved it. Invisible mode turns all of this off, along with live reactions and friend activity.")
+        }
+        .onChange(of: auth.isInvisible) { _, nowInvisible in
+            if nowInvisible { contacts.clearSaved() } else { Task { await contacts.refreshSuggestions(force: true) } }
+        }
         .task {
             // Only silently loads if access was previously granted — never auto-prompts
             await contacts.requestAccessIfNeeded()
+            if contacts.accessGranted && !contacts.noticeSeen && !auth.isInvisible { showSuggestAlert = true }
         }
     }
 
@@ -432,7 +455,7 @@ private struct SignedInProfileView: View {
                 Text("Invisible mode")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                Text("Friends won't see you tuned in, and your likes won't show as \"your friend liked this\".")
+                Text("Friends won't see you tuned in, your likes won't show as \"your friend liked this\", live reactions are off, and your contacts aren't used for suggestions.")
                     .font(.system(size: 12))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             }
@@ -649,19 +672,55 @@ private struct SignedInProfileView: View {
                     } else {
                         // Show up to 5 contacts inline; "Choose from contacts" for all
                         VStack(spacing: 0) {
-                            ForEach(contacts.list.prefix(5)) { contact in
+                            // Contacts who look like Babson people go first, with the reason.
+                            if !contacts.babson.isEmpty {
+                                Text("LIKELY AT BABSON")
+                                    .font(BRFont.display(11))
+                                    .kerning(2)
+                                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 18)
+                                    .padding(.top, 14)
+                                ForEach(contacts.babson.prefix(5)) { contact in
+                                    ContactInviteRow(contact: contact, caption: contact.caption) {
+                                        if let phone = contact.primaryPhone {
+                                            activeSheet = .messageComposer(phone)
+                                        }
+                                    }
+                                    Divider()
+                                        .background(scheme == .dark ? Color.brDkBorder : Color.brLtBorder)
+                                        .padding(.leading, 60)
+                                }
+                            }
+                            let others = contacts.list.filter { $0.score == 0 }.prefix(contacts.babson.isEmpty ? 5 : 2)
+                            ForEach(others) { contact in
                                 ContactInviteRow(contact: contact) {
                                     if let phone = contact.primaryPhone {
                                         activeSheet = .messageComposer(phone)
                                     }
                                 }
-                                if contact.id != contacts.list.prefix(5).last?.id {
+                                if contact.id != others.last?.id {
                                     Divider()
                                         .background(scheme == .dark ? Color.brDkBorder : Color.brLtBorder)
                                         .padding(.leading, 60)
                                 }
                             }
                         }
+
+                        Divider()
+                            .background(scheme == .dark ? Color.brDkBorder : Color.brLtBorder)
+
+                        // Shared-contact suggestions are on for everyone; Invisible mode is the way out.
+                        Text(auth.isInvisible
+                             ? "Invisible mode is on, so suggestions from shared contacts are off."
+                             : (contacts.suggestionsNote.isEmpty
+                                ? "Suggestions also use how many members saved the same contacts. Invisible mode turns this off."
+                                : contacts.suggestionsNote))
+                            .font(.system(size: 12))
+                            .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 12)
 
                         Divider()
                             .background(scheme == .dark ? Color.brDkBorder : Color.brLtBorder)
@@ -684,7 +743,7 @@ private struct SignedInProfileView: View {
                     }
                 } else {
                     // Permission not granted
-                    Button(action: { contacts.requestAccess() }) {
+                    Button(action: { if contacts.noticeSeen { contacts.requestAccess() } else { showSuggestAlert = true } }) {
                         HStack(spacing: 12) {
                             Image(systemName: "person.crop.circle.badge.plus")
                                 .font(.system(size: 18))
@@ -706,7 +765,7 @@ private struct SignedInProfileView: View {
             .brCard()
             .padding(.horizontal, 20)
 
-            Text("Babson Radio never stores or uploads your contacts.")
+            Text("Spotting a school email or Babson in a contact happens on your phone. Shared-contact suggestions send scrambled phone numbers, never names. Invisible mode turns that off.")
                 .font(.system(size: 11))
                 .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
                 .padding(.horizontal, 24)
@@ -718,6 +777,7 @@ private struct SignedInProfileView: View {
 
 private struct ContactInviteRow: View {
     let contact: BRContact
+    var caption: String? = nil
     let onInvite: () -> Void
     @Environment(\.colorScheme) var scheme
 
@@ -737,7 +797,11 @@ private struct ContactInviteRow: View {
                 Text(contact.name)
                     .font(.system(size: 15, weight: .medium))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                if let phone = contact.primaryPhone {
+                if let caption {
+                    Text(caption)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                } else if let phone = contact.primaryPhone {
                     Text(phone)
                         .font(.system(size: 12))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
@@ -774,9 +838,9 @@ struct ContactPickerView: View {
     @State private var search = ""
 
     var filtered: [BRContact] {
-        search.isEmpty ? contacts.list : contacts.list.filter {
-            $0.name.localizedCaseInsensitiveContains(search)
-        }
+        let base = search.isEmpty ? contacts.list : contacts.list.filter { $0.name.localizedCaseInsensitiveContains(search) }
+        // Likely Babson contacts first, then everyone else in the usual order.
+        return base.filter { $0.score > 0 }.sorted { $0.score > $1.score } + base.filter { $0.score == 0 }
     }
 
     var body: some View {
@@ -794,7 +858,9 @@ struct ContactPickerView: View {
                         }
                         VStack(alignment: .leading) {
                             Text(contact.name).font(.system(size: 15, weight: .medium))
-                            if let p = contact.primaryPhone {
+                            if let why = contact.caption {
+                                Text(why).font(.system(size: 12, weight: .semibold)).foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                            } else if let p = contact.primaryPhone {
                                 Text(p).font(.system(size: 12)).foregroundColor(.secondary)
                             }
                         }
@@ -903,9 +969,22 @@ private struct ActiveInviteRow: View {
 
 // MARK: - ContactsManager
 
+nonisolated private struct SavedReply: Decodable {
+    struct Item: Decodable { let hash: String; let others: Int }
+    let saved: [Item]
+}
+
 class ContactsManager: ObservableObject {
     @Published var accessGranted = false
     @Published var list: [BRContact] = []
+    /// Contacts that look like Babson people, best matches first. Worked out on this phone; nothing is uploaded.
+    @Published var babson: [BRContact] = []
+    /// The person has seen the explanation of "saved by members" suggestions (shown once, before contacts are used).
+    @Published var noticeSeen = UserDefaults.standard.bool(forKey: "br_contact_notice_v1")
+    @Published var suggestionsNote = ""
+
+    /// On for everyone who has seen the notice, except people in Invisible mode (the opt-out).
+    var suggestionsActive: Bool { noticeSeen && !AuthManager.shared.isInvisible }
 
     // Store kept alive for the lifetime of the manager
     private let store = CNContactStore()
@@ -933,11 +1012,89 @@ class ContactsManager: ObservableObject {
         }
     }
 
+    /// Is this contact probably a Babson student? A school email is the strongest sign, then Babson in their
+    /// company or school field, then Babson in the name (which can also just be a surname, so it ranks last).
+    /// Same as the website: US numbers only, "+1XXXXXXXXXX", then SHA-256 as hex. The server scrambles it again.
+    nonisolated private static func phoneHash(_ raw: String) -> String? {
+        var d = raw.filter(\.isNumber)
+        if d.count == 11, d.hasPrefix("1") { d.removeFirst() }
+        guard d.count == 10, let first = d.first, first != "0", first != "1" else { return nil }
+        return SHA256.hash(data: Data("+1\(d)".utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
+    nonisolated private static func cachedSaved() -> [String: Int] {
+        guard let data = UserDefaults.standard.data(forKey: "br_saved_by"),
+              let m = try? JSONDecoder().decode([String: Int].self, from: data) else { return [:] }
+        return m
+    }
+
+    /// Put the "saved by N members" counts on the contacts and re-sort the likely-Babson list.
+    private func applySaved(_ counts: [String: Int]) {
+        list = list.map { var c = $0; c.savedBy = counts[c.id] ?? 0; return c }
+        babson = list.filter { $0.score > 0 }.sorted { $0.score > $1.score }
+    }
+
+    /// Ask the server which of my contacts many members have saved. At most twice a day; the server allows once an hour.
+    func refreshSuggestions(force: Bool = false) async {
+        guard suggestionsActive, !list.isEmpty else { return }
+        let last = UserDefaults.standard.double(forKey: "br_contact_sync_at")
+        if !force, Date().timeIntervalSince1970 - last < 12 * 3600 { return }
+        let hashes = Array(Set(list.flatMap(\.phoneHashes)).prefix(3000))
+        guard !hashes.isEmpty else { return }
+        do {
+            let r: SavedReply = try await BackendAPI.post("/api/contacts/popular", ["hashes": hashes])
+            var byHash: [String: Int] = [:]
+            for i in r.saved { byHash[i.hash] = i.others }
+            var byContact: [String: Int] = [:]
+            for c in list { if let n = c.phoneHashes.compactMap({ byHash[$0] }).max() { byContact[c.id] = n } }
+            if let data = try? JSONEncoder().encode(byContact) { UserDefaults.standard.set(data, forKey: "br_saved_by") }
+            UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "br_contact_sync_at")
+            applySaved(byContact)
+            suggestionsNote = byContact.isEmpty ? "No one is saved by enough members yet. Check back as more people join." : ""
+        } catch {
+            let m = (error as? BackendError)?.message ?? error.localizedDescription
+            if m.contains("BR-CON-003") { UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "br_contact_sync_at") }
+            else { suggestionsNote = m }
+        }
+    }
+
+    /// They have read the explanation: start using shared-contact suggestions.
+    func acceptNotice() async {
+        noticeSeen = true
+        UserDefaults.standard.set(true, forKey: "br_contact_notice_v1")
+        await refreshSuggestions(force: true)
+    }
+
+    /// Invisible mode was switched on: forget the counts here (the server removes this person's codes itself).
+    func clearSaved() {
+        suggestionsNote = ""
+        UserDefaults.standard.removeObject(forKey: "br_saved_by")
+        UserDefaults.standard.removeObject(forKey: "br_contact_sync_at")
+        applySaved([:])
+    }
+
+    nonisolated private static func babsonMatch(_ c: CNContact, name: String) -> (reason: String, rank: Int)? {
+        let schoolDomains = ["babson.edu", "olin.edu", "wellesley.edu"]
+        for e in c.emailAddresses {
+            let addr = (e.value as String).lowercased()
+            if schoolDomains.contains(where: { addr.hasSuffix("@" + $0) }) { return ("School email", 4) }
+        }
+        let details = [c.organizationName, c.departmentName, c.jobTitle, c.nickname]
+        if details.contains(where: { $0.localizedCaseInsensitiveContains("babson") }) { return ("Babson in their contact details", 2) }
+        if name.localizedCaseInsensitiveContains("babson") { return ("Babson in their name", 1) }
+        return nil
+    }
+
     private func loadContacts() {
         let keys: [CNKeyDescriptor] = [
             CNContactGivenNameKey as CNKeyDescriptor,
             CNContactFamilyNameKey as CNKeyDescriptor,
-            CNContactPhoneNumbersKey as CNKeyDescriptor
+            CNContactPhoneNumbersKey as CNKeyDescriptor,
+            CNContactEmailAddressesKey as CNKeyDescriptor,
+            CNContactOrganizationNameKey as CNKeyDescriptor,
+            CNContactDepartmentNameKey as CNKeyDescriptor,
+            CNContactJobTitleKey as CNKeyDescriptor,
+            CNContactNicknameKey as CNKeyDescriptor
         ]
         let request = CNContactFetchRequest(keysToFetch: keys)
         request.sortOrder = .givenName
@@ -951,13 +1108,20 @@ class ContactsManager: ObservableObject {
                         .trimmingCharacters(in: .whitespaces)
                     let phone = contact.phoneNumbers.first?.value.stringValue
                     if !name.isEmpty, let phone {
-                        result.append(BRContact(id: contact.identifier, name: name, primaryPhone: phone))
+                        let match = Self.babsonMatch(contact, name: name)
+                        let hashes = contact.phoneNumbers.compactMap { Self.phoneHash($0.value.stringValue) }
+                        result.append(BRContact(id: contact.identifier, name: name, primaryPhone: phone,
+                                                babsonReason: match?.reason, babsonRank: match?.rank ?? 0, phoneHashes: hashes))
                     }
                 }
             } catch {
                 print("Contacts load error: \(error)")
             }
-            DispatchQueue.main.async { self.list = result }
+            DispatchQueue.main.async {
+                self.list = result
+                self.applySaved(self.suggestionsActive ? Self.cachedSaved() : [:])
+                Task { await self.refreshSuggestions() }
+            }
         }
     }
 }
@@ -968,6 +1132,24 @@ struct BRContact: Identifiable {
     let id: String
     let name: String
     let primaryPhone: String?
+    /// Why this looks like a Babson contact (nil = no sign of it). Decided on the phone.
+    var babsonReason: String? = nil
+    var babsonRank: Int = 0
+    /// Scrambled codes for this person's numbers (SHA-256 of "+1XXXXXXXXXX"). Only used if suggestions are turned on.
+    var phoneHashes: [String] = []
+    /// How many Babson Radio members have this person saved (0 = unknown or too few to say).
+    var savedBy: Int = 0
+
+    /// Higher = more likely at Babson. Many members having them saved counts as a strong sign.
+    var score: Int { max(babsonRank, savedBy >= 3 ? 3 : 0) }
+
+    /// The reason shown under the name.
+    var caption: String? {
+        var parts: [String] = []
+        if let r = babsonReason { parts.append(r) }
+        if savedBy >= 3 { parts.append("Saved by \(savedBy) members") }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
 
     var initials: String {
         let parts = name.split(separator: " ")

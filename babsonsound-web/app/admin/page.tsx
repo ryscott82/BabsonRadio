@@ -120,7 +120,7 @@ export default function AdminPage() {
             ]} />
             <ToolGroup title="NUMBERS" links={[
               ['/admin/insights', 'What listeners like'],
-              ...(isAdmin ? [['/admin/listening', 'Listening log']] : []),
+              ...(isAdmin ? [['/admin/listening', 'Listening log'], ['/admin/network', 'Friends web']] : []),
             ]} />
           </section>
         </div>

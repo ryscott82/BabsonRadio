@@ -161,7 +161,7 @@ export default function ProfilePage() {
               <div>
                 <p className="text-br-dk-text text-sm font-medium">Invisible mode</p>
                 <p className="text-br-dk-sub text-xs mt-1">
-                  Friends won&apos;t see you tuned in, and your likes won&apos;t show up as &ldquo;your friend liked this.&rdquo;
+                  Friends won&apos;t see you tuned in, your likes won&apos;t show up as &ldquo;your friend liked this,&rdquo; live reactions are off (sending and seeing), and your contacts aren&apos;t used for suggestions.
                 </p>
               </div>
               <button role="switch" aria-checked={invisible} disabled={saving} onClick={toggle}

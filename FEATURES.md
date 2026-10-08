@@ -20,6 +20,8 @@ Legend: [x] built, [ ] planned.
 - [x] See the message a host pinned for the show
 - [x] Profile: concentration and year
 - [x] Request a show slot
+- [x] Invite friends: contacts with a school email or "Babson" in their details or name are listed first as "Likely at Babson" with the reason (worked out on the phone, nothing uploaded; iOS)
+- [x] "Saved by N members" suggestions: on by default after a one-time notice; Invisible mode is the opt-out (also turns off live reactions and friend activity). Scrambled numbers only, shown only when 3+ other members saved the number, never who. Costs one Firestore write per sync; counts rebuild once a day (iOS)
 - [x] Contact William (signed in only)
 - [x] Station-wide message banner (website and app), closable on the site
 - [x] Password reset limited to one email every 3 minutes (website and app)
@@ -73,6 +75,7 @@ Legend: [x] built, [ ] planned.
 ## Setup still needed
 - Optional: Firestore TTL policies on `exp` for collection groups `rxEvents` (reaction events, 1 day) and `listenSessions` (listening log, 1 year)
 - Add the listening log to the privacy policy before launch
+- Shared-contact suggestions need `PHONE_HASH_PEPPER` set in Vercel (already used for contact matching), and App Store privacy answers should list Contacts as collected (phone numbers, scrambled, linked to the account, used for app functionality)
 - Set AZURACAST_URL, AZURACAST_API_KEY, AZURACAST_STATION_ID in Vercel
 - firebase deploy --only firestore:rules
 - Controls endpoints are untested against a real AzuraCast server

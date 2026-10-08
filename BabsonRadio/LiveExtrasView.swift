@@ -61,6 +61,7 @@ final class LiveExtrasModel: ObservableObject {
 
     /// Tap: rain a handful here right away and tell the server so everyone else sees them too.
     func react(_ emoji: String) async {
+        guard !AuthManager.shared.isInvisible else { return }
         rain(emoji, count: Int.random(in: 4...5))
         guard Date().timeIntervalSince(lastSend) > 0.5 else { return }
         lastSend = Date()
@@ -71,7 +72,7 @@ final class LiveExtrasModel: ObservableObject {
     /// Check for other people's reactions every few seconds while the live screen is open.
     func pollLoop() async {
         while !Task.isCancelled {
-            await pollOnce()
+            if !AuthManager.shared.isInvisible { await pollOnce() }
             try? await Task.sleep(nanoseconds: 3_000_000_000)
         }
     }
@@ -167,6 +168,7 @@ private struct RainDropView: View {
 struct LiveExtrasView: View {
     @ObservedObject private var audio = AudioPlayerManager.shared
     @ObservedObject private var model = LiveExtrasModel.shared
+    @ObservedObject private var auth = AuthManager.shared
     @Environment(\.colorScheme) private var scheme
 
     private var np: NowPlayingInfo? { audio.nowPlaying }
@@ -185,7 +187,10 @@ struct LiveExtrasView: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            if let occ = np?.occId, !occ.isEmpty {
+            if let occ = np?.occId, !occ.isEmpty, auth.isInvisible {
+                Text("Reactions are off while Invisible mode is on.")
+                    .font(.system(size: 12)).foregroundColor(sub).multilineTextAlignment(.center)
+            } else if let occ = np?.occId, !occ.isEmpty {
                 HStack(spacing: 10) {
                     ForEach(LiveExtrasModel.emojis, id: \.self) { e in
                         Button { Task { await model.react(e) } } label: {

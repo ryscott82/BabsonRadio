@@ -2,6 +2,7 @@ import type { Firestore, Query } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireUser } from '@/lib/server/http'
 import { indexKeyFromE164 } from '@/lib/server/phone'
+import { removeContactGraph } from '@/lib/server/contactGraph'
 
 export const runtime = 'nodejs'
 
@@ -32,6 +33,8 @@ export async function POST(req: Request) {
     const phone = user.get('phoneNumber')
     if (phone) await db.collection('phoneIndex').doc(await indexKeyFromE164(phone)).delete()
 
+    await removeContactGraph(db, uid).catch(() => {}) // take this person's saved numbers back out of the counts
+    await db.collection('contactGraph').doc(uid).delete()
     await deleteQuery(db, userRef.collection('connections'))
     await deleteQuery(db, db.collection('slotRequests').where('requesterUid', '==', uid))
     await deleteQuery(db, db.collection('airSlots').where('requesterUid', '==', uid))

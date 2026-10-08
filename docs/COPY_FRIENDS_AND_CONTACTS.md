@@ -19,7 +19,7 @@ Your wording:
 **C2. Headline** — Current: Know someone who should listen?
 **C3. Sub-line** — Current: Pick a contact and we'll draft the message for you.
 **C4. Suggestions heading** — Current: LIKELY AT BABSON
-**C5. Reasons under a name** — Current: "School email", "Saved by N members", or the matched word (for example "Babson in their organization")
+**C5. Reasons under a name** — Current: always "Might be interested in Babson Radio" (the reason is never shown)
 **C6. Link to full list** — Current: Choose from all contacts
 **C7. Button when contacts are not allowed yet** — Current: Allow access to contacts
 **C8. Empty list** — Current: No contacts found.

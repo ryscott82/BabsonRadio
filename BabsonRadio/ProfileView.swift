@@ -670,13 +670,7 @@ private struct SignedInProfileView: View {
                         VStack(spacing: 0) {
                             // Contacts who look like Babson people go first, with the reason.
                             if !contacts.babson.isEmpty {
-                                Text("You may know...")
-                                    .font(BRFont.display(11))
-                                    .kerning(2)
-                                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 18)
-                                    .padding(.top, 14)
+                                Spacer().frame(height: 6)
                                 ForEach(contacts.babson.prefix(5)) { contact in
                                     ContactInviteRow(contact: contact, caption: contact.caption) {
                                         if let phone = contact.primaryPhone {
@@ -688,18 +682,13 @@ private struct SignedInProfileView: View {
                                         .padding(.leading, 60)
                                 }
                             }
-                            let others = contacts.list.filter { $0.score == 0 }.prefix(contacts.babson.isEmpty ? 5 : 2)
-                            ForEach(others) { contact in
-                                ContactInviteRow(contact: contact) {
-                                    if let phone = contact.primaryPhone {
-                                        activeSheet = .messageComposer(phone)
-                                    }
-                                }
-                                if contact.id != others.last?.id {
-                                    Divider()
-                                        .background(scheme == .dark ? Color.brDkBorder : Color.brLtBorder)
-                                        .padding(.leading, 60)
-                                }
+                            if contacts.babson.isEmpty {
+                                Text("No suggestions yet. You can still pick anyone below.")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 18)
+                                    .padding(.vertical, 16)
                             }
                         }
 
@@ -1158,15 +1147,11 @@ struct BRContact: Identifiable {
     var savedBy: Int = 0
 
     /// Higher = more likely at Babson. Many members having them saved counts as a strong sign.
-    var score: Int { max(babsonRank, savedBy >= 3 ? 3 : 0) }
+    var score: Int { max(babsonRank, savedBy >= 1 ? 3 : 0) }
 
     /// The reason shown under the name.
-    var caption: String? {
-        var parts: [String] = []
-        if let r = babsonReason { parts.append(r) }
-        if savedBy >= 3 { parts.append("Saved by \(savedBy) members") }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
-    }
+    /// Never says why (a school email, a saved number, ...); only that they might be interested.
+    var caption: String? { score > 0 ? "Might be interested in Babson Radio" : nil }
 
     var initials: String {
         let parts = name.split(separator: " ")

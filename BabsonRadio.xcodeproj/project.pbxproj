@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		946DA56C3075D5080065A9A2 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 946DA56B3075D5080065A9A2 /* FirebaseAuth */; };
 		946DA56E3075D5080065A9A2 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 946DA56D3075D5080065A9A2 /* FirebaseCore */; };
+		94A827D430777D0900A030E1 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 94A827D330777D0900A030E1 /* FirebaseMessaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 		000000000000000130000000 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				94A827D430777D0900A030E1 /* FirebaseMessaging in Frameworks */,
 				946DA56E3075D5080065A9A2 /* FirebaseCore in Frameworks */,
 				946DA56C3075D5080065A9A2 /* FirebaseAuth in Frameworks */,
 			);
@@ -51,6 +53,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000010 /* BabsonRadio */,
+				94A827D230777D0900A030E1 /* Frameworks */,
 				000000000000000000000020 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -61,6 +64,13 @@
 				000000000000000000000120 /* BabsonRadio.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		94A827D230777D0900A030E1 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -83,6 +93,7 @@
 			packageProductDependencies = (
 				946DA56B3075D5080065A9A2 /* FirebaseAuth */,
 				946DA56D3075D5080065A9A2 /* FirebaseCore */,
+				94A827D330777D0900A030E1 /* FirebaseMessaging */,
 			);
 			productName = MyApp;
 			productReference = 000000000000000000000120 /* BabsonRadio.app */;
@@ -424,6 +435,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 946DA56A3075D5080065A9A2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseCore;
+		};
+		94A827D330777D0900A030E1 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 946DA56A3075D5080065A9A2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

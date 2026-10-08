@@ -3,13 +3,13 @@ import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 
 // "Saved by N Babson Radio members": how many members have a given phone number in their contacts.
 // Only scrambled numbers are kept (an HMAC with a server secret, never names), and only the count ever leaves
-// the server, never who saved whom. A number is shown only when 3 or more other members saved it.
+// the server, never who saved whom. A number is suggested only when at least 1 other member saved it.
 //
 // Cost design: a sync is ONE write (the member's own list). The counts are rebuilt at most once a day by
 // reading each member's list once and writing only the popular numbers into 16 small shard documents.
 // Looking numbers up is at most 16 reads. So the cost scales with members, not with contacts.
 
-export const MIN_OTHERS = 3
+export const MIN_OTHERS = 1
 export const MAX_KEYS = 3000
 export const REBUILD_MS = 24 * 3600_000
 const SHARDS = '0123456789abcdef'.split('')
@@ -54,7 +54,7 @@ export async function rebuildIfStale(db: Firestore): Promise<void> {
   await batch.commit()
 }
 
-/** How many members have each key saved, as of the last daily rebuild (only numbers saved by 4+ members appear). */
+/** How many members have each key saved, as of the last daily rebuild (only numbers saved by 2+ members appear). */
 export async function popularity(db: Firestore, keys: string[]): Promise<Map<string, number>> {
   const need = [...new Set(keys.map(k => k[0]))]
   const snaps = await db.getAll(...need.map(c => shardRef(db, c)))

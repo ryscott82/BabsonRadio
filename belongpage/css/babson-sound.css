@@ -357,3 +357,8 @@ section h2:before,section h2:after{content:"";height:1px;width:48px;background:v
 }
 
 .br-gate input[type=email]{flex-basis:100%}
+
+/* Credit line */
+.br-credit{text-align:center;padding:28px 16px 36px;font-family:"Bebas Neue",Impact,sans-serif;font-size:16px;letter-spacing:.18em;color:var(--br-sub);border-top:1px solid var(--br-border)}
+.br-credit a{color:var(--br-accent-text);text-decoration:none;border-bottom:1px solid currentColor}
+.br-credit a:hover{filter:brightness(1.15)}

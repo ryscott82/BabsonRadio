@@ -29,7 +29,7 @@ export default function Footer() {
         </nav>
       </div>
       <p className="max-w-6xl mx-auto px-4 pb-6 text-xs text-br-dk-sub">
-        Designed by <a href="https://ryanedwardscott.com" {...ext} className="underline underline-offset-4 hover:text-br-dk-text transition-colors">Ryan Scott</a>
+        Designed by <a href="https://ryanedwardmediagroup.com" {...ext} className="underline underline-offset-4 hover:text-br-dk-text transition-colors">Ryan Edward Media Group</a>
       </p>
     </footer>
   )

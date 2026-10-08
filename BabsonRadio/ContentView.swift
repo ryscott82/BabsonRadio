@@ -32,6 +32,7 @@ struct ContentView: View {
         }
         .tint(scheme == .dark ? .brGold : .brGreen)
         .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+        .overlay(alignment: .top) { StatusBarBlur() }
         .task(id: auth.isSignedIn) { ContactsManager.shared.promptOnFirstOpen() }
         .alert("Are you a Babson student?", isPresented: $askSchoolEmail) {
             Button("Add my school email") { showSchoolEmailSheet = true }
@@ -88,4 +89,19 @@ private struct BRTabIcon: View {
 
 #Preview {
     ContentView()
+}
+
+
+/// A soft blur over the very top of every tab, so the clock and battery stay readable when content scrolls under them.
+struct StatusBarBlur: View {
+    var body: some View {
+        GeometryReader { geo in
+            Rectangle()
+                .fill(.ultraThinMaterial.opacity(0.55))
+                .frame(height: geo.safeAreaInsets.top)
+                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(0.6), location: 0.55), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+        }
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(false)
+    }
 }

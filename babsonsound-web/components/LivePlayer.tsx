@@ -131,7 +131,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
       <div className={`relative p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 ${pane ? 'lg:flex-col lg:p-8' : ''}`}>
 
         {/* Art block */}
-        <div className={`relative shrink-0 w-44 h-44 md:w-56 md:h-56 rounded-xl overflow-hidden grain flex items-center justify-center ${np?.color ? '' : 'bg-gradient-to-br from-[#003D27] to-[#006644]'}`}
+        <div className={`relative shrink-0 w-44 h-44 md:w-56 md:h-56 ${pane ? 'lg:w-full lg:max-w-[22rem] lg:h-auto lg:aspect-square' : ''} rounded-xl overflow-hidden grain flex items-center justify-center ${np?.color ? '' : 'bg-gradient-to-br from-[#003D27] to-[#006644]'}`}
              style={np?.color ? { background: `linear-gradient(135deg, ${np.color}, ${np.color}66 70%, #000000aa)`, boxShadow: `0 0 40px ${np.color}55` } : undefined}>
           {np?.art ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -195,8 +195,21 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
             </p>
           )}
 
-          {/* EQ animation + play button */}
-          <div className={`flex items-center gap-5 justify-center md:justify-start ${pane ? 'lg:justify-center' : ''}`}>
+          {/* Play button centered under the art; equalizer on its left, skip on its right */}
+          <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-4 w-full max-w-[19rem] mx-auto md:mx-0 lg:mx-auto">
+            <div className="justify-self-end h-16 flex items-center">
+              {isPlaying && (
+              <div className="flex items-end gap-1 h-8">
+                {[1,2,3,4].map(i => (
+                  <div
+                    key={i}
+                    className="eq-bar w-1 bg-br-gold rounded-full"
+                    style={{ height: '100%', animationDelay: `${i * 0.12}s` }}
+                  />
+                ))}
+              </div>
+            )}
+            </div>
             <button
               onClick={togglePlay}
               disabled={!canListenLive}
@@ -218,30 +231,16 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
                 </svg>
               )}
             </button>
-
-            <SkipButton np={np} />
-
-            {/* EQ bars */}
-            {isPlaying && (
-              <div className="flex items-end gap-1 h-8">
-                {[1,2,3,4].map(i => (
-                  <div
-                    key={i}
-                    className="eq-bar w-1 bg-br-gold rounded-full"
-                    style={{ height: '100%', animationDelay: `${i * 0.12}s` }}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Listener count */}
-            {listenerCount > 0 && (
-              <span className="text-br-dk-sub text-sm">
-                {listenerCount} listening
-                {friends.length > 0 && <> · {friendsLine(friends)}</>}
-              </span>
-            )}
+            <div className="justify-self-start mt-2">
+              <SkipButton np={np} />
+            </div>
           </div>
+          {listenerCount > 0 && (
+            <p className="text-br-dk-sub text-sm mt-3 text-center md:text-left lg:text-center">
+              {listenerCount} listening
+              {friends.length > 0 && <> · {friendsLine(friends)}</>}
+            </p>
+          )}
           <button onClick={openBoard} className="hidden lg:inline-block mt-4 text-xs text-br-dk-sub hover:text-br-gold font-display tracking-[0.2em]">
             FULL SCREEN
           </button>

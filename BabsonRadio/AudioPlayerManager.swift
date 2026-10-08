@@ -279,8 +279,9 @@ class AudioPlayerManager: ObservableObject {
 #if canImport(UIKit)
         guard let url = URL(string: urlString),
               let (data, _) = try? await URLSession.shared.data(from: url),
-              let image = UIImage(data: data) else { return }
+              let image = UIImage(data: data) else { ArtTheme.shared.update(from: nil); return }
         artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+        ArtTheme.shared.update(from: image)
 #endif
     }
 

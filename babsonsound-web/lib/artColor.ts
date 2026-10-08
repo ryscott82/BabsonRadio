@@ -68,10 +68,16 @@ const hueGap = (a: number, b: number) => { const d = Math.abs(a - b) % 360; retu
 function skinLike(h: number, s: number, l: number) { return h >= 5 && h <= 45 && s >= 0.15 && s <= 0.7 && l >= 0.2 && l <= 0.8 }
 
 /**
- * The three main colors of a cover as hex, most common first. Gray, near-black/white and face-colored pixels from the
+ * [main color, paired green, second color] from a cover. Gray, near-black/white and face-colored pixels from the
  * center are skipped. Each color is nudged to a middle brightness so it reads on both the light and dark themes.
  * Returns [] while loading or when the picture can't be read.
  */
+/** A green that sits well next to a cover's main hue: warm covers get emerald, yellows leaf green, greens a deep Babson-like green, blues sea green, purples a fresher green. */
+export function pairedGreen(h: number): string {
+  const g = h >= 345 || h < 45 ? 152 : h < 75 ? 125 : h < 165 ? 158 : h < 255 ? 150 : 138
+  return hexOf(g, 0.72, 0.31)
+}
+
 export function useArtPalette(url: string | undefined): string[] {
   const [state, setState] = useState<{ url: string; colors: string[] }>({ url: '', colors: [] })
   useEffect(() => {
@@ -111,7 +117,9 @@ export function useArtPalette(url: string | undefined): string[] {
           const base = picked[0]
           picked.push({ h: (base.h + (picked.length === 1 ? 35 : -35) + 360) % 360, s: base.s, l: base.l })
         }
-        const colors = picked.map(p => hexOf(p.h, Math.max(0.45, Math.min(0.85, p.s)), Math.max(0.42, Math.min(0.58, p.l))))
+        const covers = picked.map(p => hexOf(p.h, Math.max(0.55, Math.min(0.9, p.s)), Math.max(0.42, Math.min(0.58, p.l))))
+        // [dominant cover color, a green that pairs with it, second cover color]
+        const colors = [covers[0], pairedGreen(picked[0].h), covers[1]]
         if (alive) setState({ url, colors })
       } catch { if (alive) setState({ url, colors: [] }) }
     }

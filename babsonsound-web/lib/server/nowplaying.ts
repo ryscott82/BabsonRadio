@@ -15,6 +15,8 @@ export interface NowPlayingInfo {
   elapsed: number; duration: number
   /** Unix seconds when this song started on the stream (0 if unknown). */
   playedAt: number
+  /** The last few songs that played, newest first. */
+  history: { title: string; artist: string; art: string; playedAt: number }[]
   /** Tempo of this song and where its first beat falls, in seconds, from the AzuraCast custom field "beat" (0 = not analyzed). */
   bpm: number; beatOffset: number
   isLive: boolean; streamer: string; listeners: number
@@ -46,7 +48,7 @@ let cache: { at: number; value: Built } | null = null
 
 type Built = Omit<NowPlayingInfo, 'announcement'>
 const empty = (configured: boolean): Built => ({
-  configured, title: '', artist: '', album: '', art: '', elapsed: 0, duration: 0, playedAt: 0, bpm: 0, beatOffset: 0,
+  configured, title: '', artist: '', album: '', art: '', elapsed: 0, duration: 0, playedAt: 0, history: [], bpm: 0, beatOffset: 0,
   isLive: false, streamer: '', playlist: '', listeners: 0, next: null, showTitle: '', blockTitle: '', color: '',
   occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, updatedAt: Date.now(),
 })
@@ -57,6 +59,7 @@ type Raw = {
   playing_next?: { song?: Song }
   live?: { is_live?: boolean; streamer_name?: string }
   listeners?: { current?: number; total?: number }
+  song_history?: { played_at?: number; song?: Song }[]
 }
 
 /** The scheduled thing on air right now (one-time event > student slot > weekly show > genre block). */
@@ -107,7 +110,10 @@ async function build(): Promise<Built> {
     const value: Built = {
       configured: true, title, artist, album: s.album ?? '', art: s.art ?? '',
       elapsed: r.now_playing?.elapsed ?? 0, duration: r.now_playing?.duration ?? 0,
-      playedAt: r.now_playing?.played_at ?? 0, bpm, beatOffset: known ? known.offset : bpm ? Math.max(0, Number(offRaw) || 0) : 0,
+      playedAt: r.now_playing?.played_at ?? 0,
+      history: (r.song_history ?? []).filter(h => h.song && (h.song.title || h.song.text)).slice(0, 5)
+        .map(h => ({ title: h.song!.title || h.song!.text || '', artist: h.song!.artist ?? '', art: h.song!.art ?? '', playedAt: h.played_at ?? 0 })),
+      bpm, beatOffset: known ? known.offset : bpm ? Math.max(0, Number(offRaw) || 0) : 0,
       isLive, streamer: r.live?.streamer_name ?? '',
       playlist,
       listeners: r.listeners?.current ?? 0,

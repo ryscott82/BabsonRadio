@@ -7,6 +7,7 @@ struct LivePlayerView: View {
     @StateObject private var audio = AudioPlayerManager.shared
     @StateObject private var auth = AuthManager.shared
     @ObservedObject private var presence = PresenceManager.shared
+    @ObservedObject private var theme = ArtTheme.shared
     @Environment(\.colorScheme) var scheme
     @State private var showProfileSheet = false
     @State private var showVote = false
@@ -17,7 +18,13 @@ struct LivePlayerView: View {
     /// The on-air event's color, or the station gold/green.
     private var accent: Color {
         if let hex = audio.nowPlaying?.color, !hex.isEmpty { return Color(hex: hex) }
-        return scheme == .dark ? .brGold : .brGreen
+        return theme.accent(scheme)
+    }
+
+    /// Visualizer color: the show's color when there is one, else the cover's main color.
+    private var glowColor: Color {
+        if let hex = audio.nowPlaying?.color, !hex.isEmpty { return Color(hex: hex) }
+        return theme.glow(scheme)
     }
 
     var body: some View {
@@ -113,7 +120,8 @@ struct LivePlayerView: View {
             .background {
                 ZStack {
                     (scheme == .dark ? Color.brDkBg : Color.brLtBg)
-                    LiveVisualizer(color: accent, playing: audio.isPlaying, beat: audio.beatClock)
+                    theme.wash(scheme)
+                    LiveVisualizer(color: glowColor, playing: audio.isPlaying, beat: audio.beatClock)
                 }
                 .ignoresSafeArea()
             }
@@ -128,7 +136,7 @@ struct LivePlayerView: View {
         }
         .sheet(isPresented: $showProfileSheet) { ProfileView() }
         .sheet(isPresented: $showVote) { VoteView() }
-        .onAppear { audio.startPolling() }
+        .onAppear { audio.startPolling(); ArtTheme.shared.start() }
         .onDisappear { audio.stopPolling() }
     }
 
@@ -140,7 +148,7 @@ struct LivePlayerView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("BABSON")
                     .font(BRFont.display(13))
-                    .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                    .foregroundColor(theme.accent(scheme))
                     .kerning(4)
                 Text("RADIO")
                     .font(BRFont.display(26))
@@ -212,14 +220,14 @@ struct LivePlayerView: View {
             if let song, song.isLive, !song.streamer.isEmpty {
                 Text("Live with \(song.streamer)")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                    .foregroundColor(theme.accent(scheme))
             }
 
             if let song, song.duration > 0 {
                 TimelineView(.periodic(from: .now, by: 1)) { ctx in
                     let t = song.elapsed + ctx.date.timeIntervalSince(audio.nowPlayingFetchedAt)
                     ProgressView(value: min(max(t / song.duration, 0), 1))
-                        .tint(scheme == .dark ? .brGold : .brGreen)
+                        .tint(theme.accent(scheme))
                         .padding(.top, 6)
                 }
             }
@@ -245,7 +253,7 @@ struct LivePlayerView: View {
     private var playControl: some View {
         Button(action: { if canPlay { audio.toggle() } }) {
             ZStack {
-                let base = scheme == .dark ? Color.brGold : Color.brGreen
+                let base = theme.button(scheme)
                 Color.clear
                     .frame(width: 72, height: 72)
                     .brGlass(in: Circle(), tint: base.opacity(0.75), interactive: true, fallback: base.opacity(0.9))
@@ -275,7 +283,7 @@ struct LivePlayerView: View {
 
 #if os(iOS)
             // Real system volume (same level as the hardware buttons)
-            SystemVolumeSlider(tint: scheme == .dark ? .brGold : .brGreen)
+            SystemVolumeSlider(tint: theme.accent(scheme))
                 .frame(height: 34)
 #else
             Capsule()
@@ -303,7 +311,7 @@ struct LivePlayerView: View {
                 }
                 .padding(.vertical, 14)
                 .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
-                .brGlass(in: RoundedRectangle(cornerRadius: 14), tint: scheme == .dark ? Color.brGold : Color.brGreen, interactive: true, fallback: scheme == .dark ? Color.brGold : Color.brGreen)
+                .brGlass(in: RoundedRectangle(cornerRadius: 14), tint: theme.button(scheme), interactive: true, fallback: theme.button(scheme))
             }
 
             if !auth.isSignedIn || auth.isTester {
@@ -319,7 +327,7 @@ struct LivePlayerView: View {
                     Spacer()
                 }
                 .padding(.vertical, 14)
-                .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                .foregroundColor(theme.accent(scheme))
                 .brGlass(in: RoundedRectangle(cornerRadius: 14), interactive: true)
             }
             }
@@ -333,7 +341,7 @@ struct LivePlayerView: View {
                 }
             }
             .font(.system(size: 14, weight: .medium))
-            .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+            .foregroundColor(theme.accent(scheme))
         }
         .padding(.horizontal, 24)
     }

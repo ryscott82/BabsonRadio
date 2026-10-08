@@ -8,6 +8,7 @@ import InterestFormCta from '@/components/InterestFormCta'
 import VoteCard from '@/components/VoteCard'
 import LiveExtrasPane from '@/components/LiveExtrasPane'
 import ArtTheme from '@/components/ArtTheme'
+import RecentlyPlayed from '@/components/RecentlyPlayed'
 import { getRecentEpisodes, getTodaySchedule, getFeaturedShows } from '@/lib/firestore'
 
 export const revalidate = 60 // re-fetch data every 60 seconds
@@ -43,6 +44,7 @@ export default async function HomePage() {
         <section>
           <LivePlayer pane />
         </section>
+        <div className="hidden lg:block"><RecentlyPlayed /></div>
       </div>
       <div className="space-y-16 min-w-0">
         <div className="space-y-6 empty:hidden">

@@ -201,7 +201,8 @@ struct LiveExtrasView: View {
     @State private var fbSent = ""
     private var text: Color { scheme == .dark ? .brDkText : .brLtText }
     private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
-    private var gold: Color { scheme == .dark ? .brGold : .brGreen }
+    @ObservedObject private var theme = ArtTheme.shared
+    private var gold: Color { theme.accent(scheme) }
     private var songKey: String { "\(np?.artist ?? "")|\(np?.title ?? "")" }
 
     /// The block or show on air, once it has been going 10 minutes.
@@ -254,7 +255,7 @@ struct LiveExtrasView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity)
-        .brGlass(in: RoundedRectangle(cornerRadius: 16))
+        .brGlass(in: RoundedRectangle(cornerRadius: 16), tint: theme.glassTint(scheme))
     }
 
     var body: some View {

@@ -533,13 +533,12 @@ private struct SignedInProfileView: View {
                             Spacer()
                         }
                         .padding(.vertical, 13)
-                        .background(
-                            inviteSent
-                                ? Color.brGreen.opacity(0.7)
-                                : (scheme == .dark ? Color.brGold : Color.brGreen)
-                        )
                         .foregroundColor(scheme == .dark && !inviteSent ? Color.brDkBg : .white)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .glassEffect(
+                            .regular.tint(inviteSent
+                                ? Color.brGreen.opacity(0.7)
+                                : (scheme == .dark ? Color.brGold : Color.brGreen)).interactive(),
+                            in: RoundedRectangle(cornerRadius: 12))
                     }
                     .buttonStyle(.plain)
                     .disabled(guestEmail.trimmingCharacters(in: .whitespaces).isEmpty || inviteSent)

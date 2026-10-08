@@ -191,14 +191,16 @@ struct LiveExtrasView: View {
                 Text("Reactions are off while Invisible mode is on.")
                     .font(.system(size: 12)).foregroundColor(sub).multilineTextAlignment(.center)
             } else if let occ = np?.occId, !occ.isEmpty {
-                HStack(spacing: 10) {
-                    ForEach(LiveExtrasModel.emojis, id: \.self) { e in
-                        Button { Task { await model.react(e) } } label: {
-                            Text(e).font(.system(size: 24)).frame(width: 52, height: 44)
-                                .background(.ultraThinMaterial, in: Capsule())
+                GlassEffectContainer(spacing: 10) {
+                    HStack(spacing: 10) {
+                        ForEach(LiveExtrasModel.emojis, id: \.self) { e in
+                            Button { Task { await model.react(e) } } label: {
+                                Text(e).font(.system(size: 24)).frame(width: 52, height: 44)
+                                    .glassEffect(.regular.interactive(), in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("React with \(e)")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("React with \(e)")
                     }
                 }
             }

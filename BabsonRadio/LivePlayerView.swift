@@ -31,7 +31,7 @@ struct LivePlayerView: View {
                         .multilineTextAlignment(.center)
                         .padding(12)
                         .frame(maxWidth: .infinity)
-                        .background(accent.opacity(0.18), in: RoundedRectangle(cornerRadius: 12))
+                        .glassEffect(.regular.tint(accent.opacity(0.3)), in: RoundedRectangle(cornerRadius: 16))
                         .padding(.horizontal, 20)
                         .padding(.top, geo.safeAreaInsets.top + 8)
                 }
@@ -188,7 +188,7 @@ struct LivePlayerView: View {
                 .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                 .padding(12)
                 .frame(maxWidth: .infinity)
-                .background(accent.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
+                .glassEffect(.regular.tint(accent.opacity(0.25)), in: RoundedRectangle(cornerRadius: 16))
             }
 
             if let song, song.isLive, !song.streamer.isEmpty {
@@ -284,9 +284,8 @@ struct LivePlayerView: View {
                     Spacer()
                 }
                 .padding(.vertical, 14)
-                .background(scheme == .dark ? Color.brGold : Color.brGreen)
                 .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .glassEffect(.regular.tint(scheme == .dark ? Color.brGold : Color.brGreen).interactive(), in: RoundedRectangle(cornerRadius: 14))
             }
 
             ShareLink(item: BabsonLinks.interest,
@@ -301,8 +300,8 @@ struct LivePlayerView: View {
                     Spacer()
                 }
                 .padding(.vertical, 14)
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(scheme == .dark ? Color.brGold : Color.brGreen, lineWidth: 1.5))
                 .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 14))
             }
 
             HStack(spacing: 22) {

@@ -139,7 +139,32 @@ export async function guestSignIn(email: string, password: string) {
 
 // ── Shared ────────────────────────────────────────────────────
 
+// One reset email per address every few minutes (and a short pause between any two), so the button can not be mashed.
+// This lives in the browser; Firebase also throttles repeated requests on its own side.
+const RESET_WAIT_MS = 3 * 60_000
+const RESET_ANY_MS = 20_000
+const resetKey = (email: string) => `br_reset_${email.trim().toLowerCase()}`
+
+/** Seconds until another reset email may be requested for this address (0 = go ahead). */
+export function resetSecondsLeft(email: string): number {
+  try {
+    const now = Date.now()
+    const a = Number(localStorage.getItem(resetKey(email)) ?? 0) + RESET_WAIT_MS - now
+    const b = Number(localStorage.getItem('br_reset_any') ?? 0) + RESET_ANY_MS - now
+    return Math.max(0, Math.ceil(Math.max(a, b) / 1000))
+  } catch { return 0 }
+}
+
 export async function sendPasswordReset(email: string) {
+  const left = resetSecondsLeft(email)
+  if (left > 0) {
+    const m = Math.floor(left / 60), s = String(left % 60).padStart(2, '0')
+    throw fail(`A reset link was just sent. You can ask for another in ${m}:${s}.`, 'BR-ACC-010')
+  }
+  try {
+    const now = String(Date.now())
+    localStorage.setItem(resetKey(email), now); localStorage.setItem('br_reset_any', now)
+  } catch { /* private window: no cooldown, Firebase still throttles */ }
   try {
     await sendPasswordResetEmail(auth, email.trim().toLowerCase())
   } catch (e) {

@@ -4,15 +4,21 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { signOut } from '@/lib/auth'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { apiGet } from '@/lib/auth'
 import ThemeToggle from './ThemeToggle'
 import TesterFeedback from './TesterFeedback'
 import { INSTAGRAM_URL, LINKS } from '@/lib/links'
 
 export default function Nav() {
-  const { user, userDoc, isAdmin, isDirector, isBabson, isGuest } = useAuth()
+  const { user, userDoc, isAdmin, isDirector, isBabson, isDeveloper, isGuest, isHost } = useAuth()
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [hostsAny, setHostsAny] = useState(false) // listed as a host on a show (e.g. an approved student slot)
+  useEffect(() => {
+    if (!user || !(isBabson || isDeveloper)) { queueMicrotask(() => setHostsAny(false)); return }
+    apiGet<{ host: boolean }>('/api/host/access').then(r => setHostsAny(r.host)).catch(() => setHostsAny(false))
+  }, [user, isBabson, isDeveloper])
   const initials = (() => {
     const first = (userDoc?.firstName ?? userDoc?.displayName ?? user?.displayName ?? user?.email ?? 'U').trim()
     const last = (userDoc?.lastName ?? '').trim()
@@ -69,6 +75,18 @@ export default function Nav() {
               {link.label}
             </a>
           ))}
+          {(hostsAny || isHost || isDirector || isAdmin) && (
+            <Link
+              href="/host"
+              className={`font-display tracking-widest text-sm px-4 py-2 rounded-md transition-colors ${
+                pathname.startsWith('/host')
+                  ? 'text-br-gold bg-br-dk-surface'
+                  : 'text-br-dk-sub hover:text-br-dk-text hover:bg-br-dk-surface'
+              }`}
+            >
+              Host
+            </Link>
+          )}
           {(isAdmin || isDirector) && (
             <Link
               href="/admin"
@@ -78,7 +96,7 @@ export default function Nav() {
                   : 'text-br-dk-sub hover:text-br-dk-text hover:bg-br-dk-surface'
               }`}
             >
-              Admin
+              Radio Ops
             </Link>
           )}
           <Link href="/browse"
@@ -200,10 +218,16 @@ export default function Nav() {
             className="font-display tracking-widest text-sm text-br-dk-sub hover:text-br-dk-text py-2">
             Search
           </Link>
+          {(hostsAny || isHost || isDirector || isAdmin) && (
+            <Link href="/host" onClick={() => setMenuOpen(false)}
+              className="font-display tracking-widest text-sm text-br-dk-sub hover:text-br-dk-text py-2">
+              Host
+            </Link>
+          )}
           {(isAdmin || isDirector) && (
             <Link href="/admin" onClick={() => setMenuOpen(false)}
               className="font-display tracking-widest text-sm text-br-dk-sub hover:text-br-dk-text py-2">
-              Admin
+              Radio Ops
             </Link>
           )}
         </div>

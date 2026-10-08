@@ -85,6 +85,11 @@ private struct SignedInProfileView: View {
                         .task {
                             if let s: HostStatus = try? await BackendAPI.get("/api/host/status") { hostAvailable = s.staff || !s.shows.isEmpty }
                         }
+                    if user.isAdmin {
+                        adminRow
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
+                    }
                     if hostAvailable {
                         hostRow
                             .padding(.horizontal, 20)
@@ -274,6 +279,37 @@ private struct SignedInProfileView: View {
         .sheet(isPresented: $showReport) { FeedbackView() }
     }
 
+    /// Only admins (and developers) see this. The server checks the role again on every request.
+    private var adminRow: some View {
+        NavigationLink {
+            AdminView()
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "gauge.with.dots.needle.67percent")
+                    .font(.system(size: 18))
+                    .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Admin")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                    Text("Reports, station controls and notifications.")
+                        .font(.system(size: 13))
+                        .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .brCard()
+        }
+        .buttonStyle(.plain)
+    }
+
     private var hostRow: some View {
         NavigationLink {
             HostPanelView()
@@ -287,7 +323,7 @@ private struct SignedInProfileView: View {
                     Text("Host panel")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                    Text("Radio controls and your set list, open around your show.")
+                    Text("Your live feed and set list, open around your show.")
                         .font(.system(size: 13))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .multilineTextAlignment(.leading)
@@ -1047,8 +1083,6 @@ struct HostPanelView: View {
     @StateObject private var host = HostManager()
     @Environment(\.colorScheme) var scheme
 
-    @State private var skipBusy = false
-    @State private var skipMessage: String?
     @State private var pick: String = ""
     @State private var songs = ""
     @State private var setlistMessage: String?
@@ -1112,23 +1146,7 @@ struct HostPanelView: View {
                 Text((np?.song ?? "").isEmpty ? "Nothing reported right now" : np!.song)
                     .font(.system(size: 18, weight: .semibold)).foregroundColor(text)
                 if let np { Text("\(np.listeners) listening").font(.system(size: 12)).foregroundColor(sub) }
-                Button {
-                    Task {
-                        skipBusy = true; skipMessage = nil
-                        do { let _: EmptyResponse = try await BackendAPI.post("/api/host/skip", [:]); skipMessage = "Skipped. The next song is starting." }
-                        catch { skipMessage = (error as? BackendError)?.message ?? error.localizedDescription }
-                        skipBusy = false
-                        try? await Task.sleep(for: .seconds(2)); await host.load()
-                    }
-                } label: {
-                    HStack { if skipBusy { ProgressView().tint(.white) } else { Text("SKIP THIS SONG").font(BRFont.display(14)).kerning(2) } }
-                        .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(accent).foregroundColor(scheme == .dark ? .brDkBg : .white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-                .disabled(skipBusy)
-                if let m = skipMessage { Text(m).font(.system(size: 12)).foregroundColor(sub) }
-                Text("Open from \(s.windowHours) hours before your show until \(s.windowHours) hours after. Every skip is logged.")
+                Text("Open from \(s.windowHours) hours before your show until \(s.windowHours) hours after. Station controls are with the admins.")
                     .font(.system(size: 11)).foregroundColor(sub)
             } else if let next = s.shows.first(where: { $0.startAt.timeIntervalSinceNow > Double(s.windowHours) * 3600 }) {
                 Text("Controls open \(s.windowHours) hours before \(next.title), which starts \(next.startAt.formatted(.dateTime.weekday(.wide).hour().minute())).")

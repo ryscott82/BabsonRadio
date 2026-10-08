@@ -24,6 +24,18 @@ struct LivePlayerView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
 
+                if let a = audio.nowPlaying?.announcement, !a.text.isEmpty {
+                    Text(a.text)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                        .multilineTextAlignment(.center)
+                        .padding(12)
+                        .frame(maxWidth: .infinity)
+                        .background(accent.opacity(0.18), in: RoundedRectangle(cornerRadius: 12))
+                        .padding(.horizontal, 20)
+                        .padding(.top, geo.safeAreaInsets.top + 8)
+                }
+
                 // ── Header ──────────────────────────────────────────
                 headerRow(topInset: geo.safeAreaInsets.top)
                     .padding(.horizontal, 20)
@@ -72,6 +84,9 @@ struct LivePlayerView: View {
                         .padding(.top, 12)
                 }
 
+                LiveExtrasView()
+                    .padding(.top, 20)
+
                 // ── Volume row ──────────────────────────────────────
                 volumeRow
                     .padding(.horizontal, 32)
@@ -91,6 +106,7 @@ struct LivePlayerView: View {
             }
             .ignoresSafeArea(edges: .top)
         }
+        .overlay { EmojiRainOverlay() }
         .alert("Enjoying Babson Radio?", isPresented: $audio.showSignInPrompt) {
             Button("Create account or sign in") { showProfileSheet = true }
             Button("Keep listening", role: .cancel) {}

@@ -26,6 +26,10 @@ class AuthManager: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String? = nil
     @Published var infoMessage: String? = nil
+    /// Seconds before another password reset email can be requested (0 = ready).
+    @Published var resetCooldown = 0
+    private var resetTimer: Timer?
+    private static let resetWindow: TimeInterval = 180
     /// Signed in with a babson.edu address that hasn't been verified yet.
     @Published var needsEmailVerification = false
     /// While the 3-day window is running and the email link hasn't been clicked: the day the link is needed by.
@@ -334,10 +338,38 @@ class AuthManager: ObservableObject {
         guard Self.firebaseReady else { errorMessage = Self.setupMessage; return }
         let e = Self.cleaned(email)
         guard !e.isEmpty else { errorMessage = "Enter your email first. (BR-ACC-009)"; return }
+        let left = Self.resetSecondsLeft()
+        if left > 0 {
+            errorMessage = "A reset link was just sent. You can ask for another in \(left / 60):\(String(format: "%02d", left % 60)). (BR-ACC-010)"
+            startResetTick()
+            return
+        }
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "br_reset_at")
+        startResetTick()
         errorMessage = nil; infoMessage = nil
         Task {
             try? await Auth.auth().sendPasswordReset(withEmail: e)
             infoMessage = "If that account exists, a reset link is on its way."   // never reveal which accounts exist
+        }
+    }
+
+    /// Seconds left on the reset cooldown. One reset email every few minutes per device.
+    static func resetSecondsLeft() -> Int {
+        let at = UserDefaults.standard.double(forKey: "br_reset_at")
+        guard at > 0 else { return 0 }
+        return max(0, Int((at + resetWindow - Date().timeIntervalSince1970).rounded(.up)))
+    }
+
+    func startResetTick() {
+        resetTimer?.invalidate()
+        resetCooldown = Self.resetSecondsLeft()
+        guard resetCooldown > 0 else { return }
+        resetTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] t in
+            Task { @MainActor in
+                guard let self else { t.invalidate(); return }
+                self.resetCooldown = Self.resetSecondsLeft()
+                if self.resetCooldown == 0 { t.invalidate() }
+            }
         }
     }
 
@@ -640,6 +672,8 @@ struct BRUser: Identifiable {
     var lastName: String = ""
 
     var isGuest: Bool { role == "guest" }
+    /// Admins and developers. Only decides what is shown; the server checks the role on every request.
+    var isAdmin: Bool { role == "superAdmin" || isDeveloper }
 
     var initials: String {
         if !lastName.isEmpty, let f = displayName.first, let l = lastName.first {

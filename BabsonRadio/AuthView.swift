@@ -180,7 +180,10 @@ struct AuthView: View {
                 .disabled(auth.isLoading)
 
                 if mode == .signIn {
-                    Button("Forgot password?") { auth.sendPasswordReset(email: fullEmail) }
+                    Button(auth.resetCooldown > 0
+                           ? "Resend in \(auth.resetCooldown / 60):\(String(format: "%02d", auth.resetCooldown % 60))"
+                           : "Forgot password?") { auth.sendPasswordReset(email: fullEmail) }
+                        .disabled(auth.resetCooldown > 0)
                         .font(.system(size: 13))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .padding(.top, 14)

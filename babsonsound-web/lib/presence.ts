@@ -11,7 +11,7 @@ export interface PresenceInfo {
 /** Tell the server we're (still) listening. Safe to call when signed out — it just does nothing. */
 export async function sendHeartbeat(listening: boolean) {
   if (!auth.currentUser) return
-  await api('/api/presence', { listening }).catch(() => {})
+  await api('/api/presence', { listening, platform: 'web' }).catch(() => {})
 }
 
 /** Listener count for everyone; connected, visible friends' first names for verified students. */

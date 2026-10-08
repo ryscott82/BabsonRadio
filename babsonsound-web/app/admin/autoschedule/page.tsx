@@ -175,6 +175,10 @@ export default function AutoSchedulePage() {
           Keep AzuraCast&apos;s station time zone the same as the one above.
         </p>
         <label className="flex items-center gap-3 text-sm text-br-dk-text">
+          <input type="checkbox" checked={cfg.learn !== false} onChange={e => update({ learn: e.target.checked })} />
+          Learn from listeners: play genres people listen to, rate and react to more often (every genre still gets airtime). <a href="/admin/insights" className="underline">See what it learned</a>
+        </label>
+        <label className="flex items-center gap-3 text-sm text-br-dk-text">
           <input type="checkbox" checked={cfg.syncToAzuraCast} onChange={e => update({ syncToAzuraCast: e.target.checked })} />
           Send the schedule to AzuraCast automatically after every rebuild
         </label>

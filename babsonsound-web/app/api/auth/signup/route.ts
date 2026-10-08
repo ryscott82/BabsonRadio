@@ -1,3 +1,5 @@
+import { after } from 'next/server'
+import { notifyAdmins } from '@/lib/server/push'
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from '@/lib/server/admin'
 import { PUBLIC_ACCESS } from '@/lib/access'
@@ -81,6 +83,7 @@ export async function POST(req: Request) {
       await adminAuth().deleteUser(uid).catch(() => {})
       throw e
     }
+    if (pending) after(() => notifyAdmins('testers', { title: 'Tester waiting for approval', body: email }))
     return { ok: true }
   })
 }

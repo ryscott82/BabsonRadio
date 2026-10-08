@@ -61,7 +61,7 @@ export default function LivePlayer() {
   useEffect(() => {
     if (!isPlaying) return
     sendHeartbeat(true)
-    const t = setInterval(() => sendHeartbeat(true), 60_000)
+    const t = setInterval(() => sendHeartbeat(true), 120_000)
     return () => { clearInterval(t); sendHeartbeat(false) }
   }, [isPlaying])
 

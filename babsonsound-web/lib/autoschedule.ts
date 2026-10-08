@@ -35,6 +35,8 @@ export interface AutoConfig {
   defaultFillers: string[]  // used when no rule matches
   syncToAzuraCast: boolean  // push the plan to AzuraCast playlists after every rebuild
   playlistMap: Record<string, string> // filler name -> AzuraCast playlist name (optional; default is the same name)
+  /** Favor genres listeners like (listener counts, ratings, reactions). Every genre still gets airtime. */
+  learn: boolean
   rules: AutoRule[]
 }
 
@@ -50,6 +52,7 @@ export const DEFAULT_CONFIG: AutoConfig = {
   maxBlockMinutes: 60,
   lockMinutes: 60,
   syncToAzuraCast: false,
+  learn: true,
   playlistMap: {},
   defaultFillers: ['Indie & Alt', 'Throwback Hits', 'Pop Hits', 'Hip-Hop & R&B'],
   rules: [
@@ -167,6 +170,20 @@ export function clipInterval(a: Interval, busy: Interval[], minMs = 5 * 60_000):
   return pieces.filter(p => p.endMs - p.startMs >= minMs)
 }
 
+/** Pick the night's genre. Without learned weights this rotates; with them, liked genres come up more often (never below 40% of average). */
+function pickGenre(pool: string[], dayKey: number, ruleId: string, W: Record<string, number>, exclude = -1): number {
+  const seed = dayKey + ruleId.length * 3
+  if (!Object.keys(W).length) {
+    const idx = ((seed % pool.length) + pool.length) % pool.length
+    return idx === exclude ? (idx + 1) % pool.length : idx
+  }
+  const w = pool.map((f, i) => (i === exclude ? 0 : Math.max(0.4, W[f.toLowerCase()] ?? 1)))
+  const total = w.reduce((a, b) => a + b, 0)
+  let r = (hash(seed * 7919 + ruleId.length) / 4294967296) * total
+  for (let i = 0; i < w.length; i++) { r -= w[i]; if (r < 0) return i }
+  return 0
+}
+
 export function planAutoBlocks(opts: {
   cfg: AutoConfig
   fromMs: number            // plan from here (already rounded/locked by the caller)
@@ -174,6 +191,7 @@ export function planAutoBlocks(opts: {
   busy: Interval[]          // approved air slots + kept blocks
   weekly: WeeklyEntry[]     // recurring weekly shows, evaluated in station time
   lastLabel?: string        // filler of the block just before fromMs, to avoid repeating it
+  weights?: Record<string, number> // learned taste per genre (lowercase name → 1 = average); empty = no preference
 }): PlannedBlock[] {
   const { cfg, busy, weekly } = opts
   const step = cfg.stepMinutes * 60_000
@@ -222,19 +240,25 @@ export function planAutoBlocks(opts: {
 
   // 5: choose fillers — least recently used first, never the same as the block before it
   const lastUsed = new Map<string, number>()
+  const W = opts.weights ?? {}
   let prev = opts.lastLabel
   return raw.map((b, i) => {
     if (b.oneGenre && b.dayKey !== undefined && b.pool.length) {
       // Same genre all window long (also after a show interrupts it); a different one tomorrow.
-      // Rotate through the pool one day at a time, starting point varies per rule.
-      const idx = (b.dayKey + b.ruleId.length * 3) % b.pool.length
-      prev = b.pool[idx]
-      return { startMs: b.startMs, endMs: b.endMs, label: b.pool[idx], ruleId: b.ruleId }
+      const idx = pickGenre(b.pool, b.dayKey, b.ruleId, W)
+      const prevIdx = b.pool.length > 1 ? pickGenre(b.pool, b.dayKey - 1, b.ruleId, W) : -1
+      // Never the same genre two nights running, unless it is the only one.
+      const use = idx === prevIdx ? pickGenre(b.pool, b.dayKey, b.ruleId, W, idx) : idx
+      prev = b.pool[use]
+      return { startMs: b.startMs, endMs: b.endMs, label: b.pool[use], ruleId: b.ruleId }
     }
     const options = b.pool.length > 1 ? b.pool.filter(f => f !== prev) : b.pool
-    const ranked = [...options].sort((x, y) =>
-      (lastUsed.get(x) ?? -1) - (lastUsed.get(y) ?? -1) ||
-      hash(b.startMs / step + x.length) - hash(b.startMs / step + y.length))
+    // Favor what listeners like, but still rotate: the longer ago a genre played, the more it counts.
+    const score = (f: string) => {
+      const gap = lastUsed.has(f) ? Math.min(i - (lastUsed.get(f) ?? 0), 4) : 4
+      return (W[f.toLowerCase()] ?? 1) * (0.4 + gap * 0.15) + (hash(b.startMs / step + f.length) % 1000) / 1e6
+    }
+    const ranked = [...options].sort((x, y) => score(y) - score(x))
     const label = ranked[0] ?? 'Indie & Alt'
     lastUsed.set(label, i)
     prev = label
@@ -283,6 +307,7 @@ export function sanitizeConfig(input: unknown): AutoConfig {
     maxBlockMinutes: clamp(o.maxBlockMinutes, 30, 360, d.maxBlockMinutes),
     lockMinutes: clamp(o.lockMinutes, 0, 360, d.lockMinutes),
     syncToAzuraCast: o.syncToAzuraCast === true,
+    learn: o.learn !== false,
     playlistMap: Object.fromEntries(Object.entries((o.playlistMap ?? {}) as Record<string, unknown>).slice(0, 60)
       .map(([k, v]) => [text(k, 40), text(v, 80)]).filter(([k, v]) => k && v)),
     defaultFillers: list(o.defaultFillers).length ? list(o.defaultFillers) : d.defaultFillers,

@@ -1,5 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
+import { after } from 'next/server'
+import { notifyAdmins } from '@/lib/server/push'
 import { HttpError, handle, readJson, requireUser, str } from '@/lib/server/http'
 
 export const runtime = 'nodejs'
@@ -30,6 +32,8 @@ export async function POST(req: Request) {
       userAgent: (req.headers.get('user-agent') ?? '').slice(0, 300),
       status: 'new', createdAt: Timestamp.now(),
     })
+    const who = u.get('firstName') ?? u.get('displayName') ?? 'Someone'
+    after(() => notifyAdmins('reports', { title: type === 'feature' ? 'New feature idea' : 'New bug report', body: `${who}: ${message}` }, t.uid))
     return { ok: true }
   })
 }

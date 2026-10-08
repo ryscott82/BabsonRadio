@@ -1,5 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
+import { currentOnAir } from '@/lib/server/live'
 import { HttpError, handle, readJson, requireMember, requireUser, str } from '@/lib/server/http'
 
 export const runtime = 'nodejs'
@@ -36,8 +37,11 @@ export async function POST(req: Request) {
     const occId = str(b.occId, 160), stars = Number(b.stars)
     check(occId, Date.now())
     if (!Number.isInteger(stars) || stars < 1 || stars > 5) throw new HttpError(400, 'Pick 1 to 5 stars.')
-    await adminDb().collection('ratings').doc(`${occId}__${t.uid}`).set({
-      occId, uid: t.uid, stars, showTitle: str(b.title, 80), at: Timestamp.now(),
+    const db = adminDb()
+    const cur = await currentOnAir(db).catch(() => null)
+    await db.collection('ratings').doc(`${occId}__${t.uid}`).set({
+      occId, showKey: occId.replace(/_\d{10,14}$/, ''), uid: t.uid, stars, showTitle: str(b.title, 80),
+      isShow: cur?.occId === occId ? cur.isShow : true, at: Timestamp.now(),
     })
     return { ok: true }
   })

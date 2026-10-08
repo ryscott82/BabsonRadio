@@ -29,6 +29,7 @@ export default function HostPage() {
   const router = useRouter()
   const [st, setSt] = useState<Status | null>(null)
   const [error, setError] = useState('')
+  const [tab, setTab] = useState<'live' | 'stats' | 'setlist' | 'shows'>('live')
 
   const load = useCallback(async () => {
     try { setSt(await apiGet<Status>('/api/host/status')); setError('') }
@@ -49,7 +50,7 @@ export default function HostPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">HOST PANEL</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">HOST</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
       <ErrorText>{error}</ErrorText>
@@ -61,12 +62,16 @@ export default function HostPage() {
       )}
       {st && (st.staff || st.shows.length > 0) && (
         <>
-          <Controls st={st} />
-          <LiveNote st={st} reload={load} />
-          <Insights st={st} />
-          <SetList st={st} />
-          <Shows st={st} />
-          <ChangeRequest st={st} reload={load} />
+          <div className="flex gap-1 border-b border-br-dk-border" role="tablist">
+            {([['live', 'Live'], ['stats', 'Stats'], ['setlist', 'Set list'], ['shows', 'My shows']] as const).map(([k, l]) => (
+              <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+                      className={`font-display tracking-widest text-sm px-4 py-2 -mb-px border-b-2 ${tab === k ? 'border-br-gold text-br-gold' : 'border-transparent text-br-dk-sub hover:text-br-dk-text'}`}>{l}</button>
+            ))}
+          </div>
+          {tab === 'live' && (<><Controls st={st} /><LiveNote st={st} reload={load} /><Insights st={st} /></>)}
+          {tab === 'stats' && <Stats />}
+          {tab === 'setlist' && <SetList st={st} />}
+          {tab === 'shows' && (<><Shows st={st} /><ChangeRequest st={st} reload={load} /></>)}
         </>
       )}
     </div>
@@ -320,5 +325,80 @@ function ChangeRequest({ st, reload }: { st: Status; reload: () => void }) {
       {st.pending.length > 0 && <p className="text-xs text-br-dk-sub">{st.pending.length} request{st.pending.length > 1 ? 's' : ''} waiting for review.</p>}
       <PrimaryButton type="submit" busy={busy}>SEND REQUEST</PrimaryButton>
     </form>
+  )
+}
+
+interface StatsData {
+  shows: { key: string; title: string }[]; showKey?: string
+  stats: null | {
+    title: string; ratingAvg: number; ratingCount: number; stationAvg: number; rank: number | null; rankOf: number
+    reactions: Record<string, number>; avgListeners: number; peakListeners: number
+    airings: { occId: string; startAt: number; avgListeners: number; peakListeners: number; tunedIn: number; reactions: number; ratingAvg: number; ratingCount: number }[]
+    bestSongs: { title: string; artist: string; avg: number; count: number }[]
+    lowSongs: { title: string; artist: string; avg: number; count: number }[]
+  }
+}
+
+// How the show is doing over time: listeners, reactions, ratings, songs and where it ranks.
+function Stats() {
+  const [key, setKey] = useState('')
+  const [d, setD] = useState<StatsData | null>(null)
+  const [err, setErr] = useState('')
+  useEffect(() => {
+    let live = true
+    apiGet<StatsData>(`/api/host/stats${key ? `?showKey=${encodeURIComponent(key)}` : ''}`)
+      .then(r => { if (live) setD(r) }).catch(e => live && setErr(e instanceof Error ? e.message : 'Could not load your stats.'))
+    return () => { live = false }
+  }, [key])
+  if (err) return <ErrorText>{err}</ErrorText>
+  if (!d) return <p className="text-sm text-br-dk-sub">Loading…</p>
+  const s = d.stats
+  if (!s) return <p className="text-sm text-br-dk-sub">Stats appear after your first show airs.</p>
+  const tile = 'sk-raised rounded-xl p-4 text-center'
+  const empty = !s.airings.length
+  return (
+    <div className="space-y-5">
+      {d.shows.length > 1 && (
+        <select value={d.showKey} onChange={e => setKey(e.target.value)} className="sk-field rounded-lg px-3 py-2 text-sm text-br-dk-text w-full" aria-label="Show">
+          {d.shows.map(x => <option key={x.key} value={x.key}>{x.title}</option>)}
+        </select>
+      )}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className={tile}><p className="font-display text-3xl text-br-dk-text tabular-nums">{s.ratingCount ? `${s.ratingAvg} ★` : '–'}</p><p className="text-xs text-br-dk-sub">{s.ratingCount} rating{s.ratingCount === 1 ? '' : 's'}</p></div>
+        <div className={tile}><p className="font-display text-3xl text-br-dk-text tabular-nums">{s.rank ? `#${s.rank}` : '–'}</p><p className="text-xs text-br-dk-sub">{s.rank ? `of ${s.rankOf} shows` : 'needs ratings'}</p></div>
+        <div className={tile}><p className="font-display text-3xl text-br-dk-text tabular-nums">{s.avgListeners || '–'}</p><p className="text-xs text-br-dk-sub">avg listeners</p></div>
+        <div className={tile}><p className="font-display text-3xl text-br-dk-text tabular-nums">{s.peakListeners || '–'}</p><p className="text-xs text-br-dk-sub">peak listeners</p></div>
+      </div>
+      {s.ratingCount > 0 && <p className="text-xs text-br-dk-sub">Station average rating is {s.stationAvg} ★. Rank uses the last 60 days and gives little weight to shows with only a few ratings.</p>}
+      <div className="sk-raised rounded-2xl p-4 flex flex-wrap gap-5 text-lg text-br-dk-text">
+        {Object.entries(s.reactions).map(([e, n]) => <span key={e}>{e} <span className="tabular-nums text-base">{n}</span></span>)}
+        <span className="text-xs text-br-dk-sub self-center">reactions, all time</span>
+      </div>
+      {empty ? <p className="text-sm text-br-dk-sub">Nothing recorded for this show yet. Numbers appear once it has aired with listeners.</p> : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-br-dk-text">
+            <thead className="text-xs text-br-dk-sub text-left"><tr><th className="py-2 pr-3">Aired</th><th className="pr-3">Avg</th><th className="pr-3">Peak</th><th className="pr-3">Tuned in</th><th className="pr-3">Reactions</th><th>Rating</th></tr></thead>
+            <tbody>
+              {s.airings.map(a => (
+                <tr key={a.occId} className="border-t border-br-dk-border tabular-nums">
+                  <td className="py-1.5 pr-3">{new Date(a.startAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</td>
+                  <td className="pr-3">{a.avgListeners || '–'}</td><td className="pr-3">{a.peakListeners || '–'}</td><td className="pr-3">{a.tunedIn}</td>
+                  <td className="pr-3">{a.reactions}</td><td>{a.ratingCount ? `${a.ratingAvg} ★ (${a.ratingCount})` : '–'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-xs text-br-dk-muted mt-2">&ldquo;Tuned in&rdquo; counts signed-in listeners who started listening during your show.</p>
+        </div>
+      )}
+      {s.bestSongs.length > 0 && (
+        <div className="grid sm:grid-cols-2 gap-5">
+          <div className="sk-raised rounded-2xl p-4"><p className="font-display text-br-gold tracking-widest text-xs mb-2">TOP RATED SONGS</p>
+            <ul className="text-sm space-y-1">{s.bestSongs.map((x, i) => <li key={i} className="flex justify-between gap-3"><span className="truncate">{x.artist ? `${x.artist} – ` : ''}{x.title}</span><span className="text-br-gold shrink-0">{x.avg} ★ ({x.count})</span></li>)}</ul></div>
+          {s.lowSongs.length > 0 && <div className="sk-raised rounded-2xl p-4"><p className="font-display text-br-dk-sub tracking-widest text-xs mb-2">LOWEST RATED</p>
+            <ul className="text-sm space-y-1">{s.lowSongs.map((x, i) => <li key={i} className="flex justify-between gap-3"><span className="truncate">{x.artist ? `${x.artist} – ` : ''}{x.title}</span><span className="text-br-dk-sub shrink-0">{x.avg} ★ ({x.count})</span></li>)}</ul></div>}
+        </div>
+      )}
+    </div>
   )
 }

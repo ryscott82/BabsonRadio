@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { gradYearOptions } from '@/lib/terms'
 import { signIn, signUp, signOut, resendVerification, sendPasswordReset } from '@/lib/auth'
+import { useResetCooldown, mmss } from '@/lib/useResetCooldown'
 import { normalizeUS } from '@/lib/phone'
 import { AgreeBox, Card, ErrorText, Field, GhostButton, PrimaryButton, formatPhone } from '@/components/AuthUI'
 
@@ -65,6 +66,8 @@ function Forms() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [resetBump, setResetBump] = useState(0)
+  const resetLeft = useResetCooldown(email, resetBump)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -133,12 +136,13 @@ function Forms() {
         <ErrorText>{error}</ErrorText>
         <PrimaryButton type="submit" busy={busy}>{mode === 'create' ? 'CREATE ACCOUNT' : 'SIGN IN'}</PrimaryButton>
         {mode === 'signin' && (
-          <button type="button" className="block mx-auto text-sm text-br-dk-sub hover:text-br-dk-text"
+          <button type="button" disabled={resetLeft > 0} className="block mx-auto text-sm text-br-dk-sub hover:text-br-dk-text disabled:opacity-60 disabled:hover:text-br-dk-sub"
             onClick={async () => {
               if (!email) return setError('Enter your Babson username above first.')
-              await sendPasswordReset(email).catch(() => {})
-              setError('If that account exists, a reset link is on its way.')
-            }}>Forgot password?</button>
+              try { await sendPasswordReset(email); setError('If that account exists, a reset link is on its way.') }
+              catch (e) { setError(e instanceof Error ? e.message : 'Try again in a moment.') }
+              setResetBump(n => n + 1)
+            }}>{resetLeft > 0 ? `Resend in ${mmss(resetLeft)}` : 'Forgot password?'}</button>
         )}
       </form>
 

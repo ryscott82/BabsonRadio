@@ -4,7 +4,7 @@ import Combine
 // MARK: - Presence ("tuned in")
 // The server decides what each person may see: everyone gets an anonymous count; verified students
 // also get first names of connected contacts who are tuned in and NOT in invisible mode.
-// While audio plays we send a heartbeat every 60s so the server knows we're listening.
+// While audio plays we send a heartbeat every 2 minutes so the server knows we're listening.
 
 nonisolated struct PresenceFriend: Identifiable, Decodable {
     let uid: String
@@ -75,7 +75,7 @@ class PresenceManager: ObservableObject {
         if playing {
             wasListening = true
             beat(true)
-            heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 120, repeats: true) { [weak self] _ in
                 Task { @MainActor in self?.beat(true) }
             }
         } else if wasListening {
@@ -87,7 +87,7 @@ class PresenceManager: ObservableObject {
     private func beat(_ listening: Bool) {
         guard AuthManager.shared.isSignedIn else { return }
         Task {
-            let _: EmptyResponse? = try? await BackendAPI.post("/api/presence", ["listening": listening])
+            let _: EmptyResponse? = try? await BackendAPI.post("/api/presence", ["listening": listening, "platform": "ios"])
             refresh()
         }
     }

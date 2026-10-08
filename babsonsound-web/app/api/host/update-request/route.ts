@@ -1,5 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
+import { after } from 'next/server'
+import { notifyAdmins } from '@/lib/server/push'
 import { HttpError, handle, readJson, str } from '@/lib/server/http'
 import { hostContext } from '@/lib/server/host'
 import { checkImageRef } from '@/lib/server/images'
@@ -35,6 +37,7 @@ export async function POST(req: Request) {
       showName, description, imageUrl: img?.imageUrl ?? '', imagePath: img?.imagePath ?? '',
       status: 'pending', createdAt: Timestamp.now(),
     })
+    after(() => notifyAdmins('requests', { title: 'Show change requested', body: `${user.get('firstName') ?? 'A host'} wants to change ${show.get('showName') ?? 'their show'}` }, c.t.uid))
     return { id: ref.id }
   })
 }

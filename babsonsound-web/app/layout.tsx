@@ -3,6 +3,7 @@ import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import Nav from '@/components/Nav'
 import Footer from '@/components/Footer'
+import AnnouncementBanner from '@/components/AnnouncementBanner'
 import PreviewLock from '@/components/PreviewLock'
 import VerifyBanner from '@/components/VerifyBanner'
 
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Nav />
           <VerifyBanner />
           <main className="relative z-[1] pt-16">
+            <AnnouncementBanner />
             {children}
           </main>
           <Footer />

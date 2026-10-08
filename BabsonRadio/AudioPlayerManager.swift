@@ -25,6 +25,15 @@ nonisolated struct NowPlayingInfo: Decodable, Equatable {
     /// Message a host or admin pinned for the current show.
     struct Note: Decodable, Equatable { let headline: String; let message: String }
     let note: Note?
+    /// The airing on now (a show or a genre block), used for reactions and ratings. Missing from older servers.
+    let occId: String?
+    let isShow: Bool?
+    let blockTitle: String?
+    let showStart: Double?   // milliseconds since 1970
+    let showEnd: Double?
+    /// A message for everyone, pushed from the station controls.
+    struct Announcement: Decodable, Equatable { let text: String; let updatedAt: Double; let until: Double }
+    let announcement: Announcement?
 }
 
 class AudioPlayerManager: ObservableObject {

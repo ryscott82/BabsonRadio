@@ -1,5 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
+import { after } from 'next/server'
+import { notifyAdmins } from '@/lib/server/push'
 import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/http'
 import { findConflict } from '@/lib/server/slots'
 import { checkImageRef } from '@/lib/server/images'
@@ -67,6 +69,7 @@ export async function POST(req: Request) {
       startAt: Timestamp.fromDate(start), endAt: Timestamp.fromDate(end), durationMin,
       status: 'pending', createdAt: Timestamp.now(),
     })
+    after(() => notifyAdmins('requests', { title: 'New show request', body: `${user.get('firstName') ?? 'A student'}: ${title}` }, t.uid))
     return { id: ref.id }
   })
 }

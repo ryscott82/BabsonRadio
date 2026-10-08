@@ -1,10 +1,24 @@
 import SwiftUI
 import AVFoundation
+import UIKit
+#if canImport(FirebaseMessaging)
+import FirebaseMessaging
+#endif
 #if canImport(FirebaseCore)
 import FirebaseCore
 #endif
 
+/// Passes the phone's push token to Firebase (only matters once an admin turns notifications on).
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+#if canImport(FirebaseMessaging)
+        Messaging.messaging().apnsToken = deviceToken
+#endif
+    }
+}
+
 @main struct MyApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
 #if canImport(FirebaseCore)

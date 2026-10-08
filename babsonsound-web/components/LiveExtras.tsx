@@ -1,9 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
 import type { NowPlaying } from '@/lib/nowplaying'
+import EmojiRain, { rain, rainBurst } from './EmojiRain'
 
 // Things around the live player: a pinned note from the host, quick reactions, the host's set list with upvotes,
 // and star ratings for the show. Everyone can see them; students (and developers) can take part.
@@ -15,6 +16,9 @@ const poll = (fn: () => void, ms: number) => {
   return () => clearInterval(t)
 }
 
+let lastTap = 0
+const tooSoon = () => { const n = Date.now(); const r = n - lastTap < 500; if (!r) lastTap = n; return r }
+
 interface Song { id: string; text: string; votes: number; mine: boolean }
 
 export default function LiveExtras({ np }: { np: NowPlaying | null }) {
@@ -22,22 +26,30 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
   const can = !!user && hasMemberAccess
   const occId = np?.occId ?? ''
 
-  // ── reactions ──
-  const [recent, setRecent] = useState<Record<string, number>>({})
-  const [mineSent, setMineSent] = useState<Record<string, number>>({})
+  // ── reactions: tap one and a handful rain down on every screen ──
   const [msg, setMsg] = useState('')
+  const cid = useId().replace(/[^A-Za-z0-9]/g, '')
+  const since = useRef(0)
   useEffect(() => {
     if (!occId) return
+    since.current = 0
     return poll(() => {
-      apiGet<{ occId: string; recent: Record<string, number> }>('/api/live/reactions')
-        .then(r => { if (r.occId === occId) { setRecent(r.recent); setMineSent({}) } }).catch(() => {})
-    }, 6_000)
-  }, [occId])
+      apiGet<{ occId: string; events: { at: number; e: string; c: string }[]; now: number }>('/api/live/reactions')
+        .then(r => {
+          if (r.occId !== occId) return
+          const first = since.current === 0 // do not replay what happened before we arrived
+          const fresh = r.events.filter(x => x.c !== cid && x.at > since.current)
+          if (!first) fresh.forEach(x => rain(x.e, 1, 2_500))
+          since.current = Math.max(since.current, r.events.length ? r.events[r.events.length - 1].at : 0, r.now - 4_000)
+        }).catch(() => {})
+    }, 3_000)
+  }, [occId, cid])
   async function react(e: string) {
     if (!can) { setMsg('Sign in with your school email to react.'); return }
-    setMsg(''); setMineSent(m => ({ ...m, [e]: (m[e] ?? 0) + 1 }))
-    try { await api('/api/live/reactions', { emoji: e }) }
-    catch (err) { setMineSent(m => ({ ...m, [e]: Math.max(0, (m[e] ?? 1) - 1) })); setMsg(err instanceof Error ? err.message : 'Could not send.') }
+    setMsg(''); rainBurst(e)
+    if (tooSoon()) return
+    try { await api('/api/live/reactions', { emoji: e, cid }) }
+    catch (err) { setMsg(err instanceof Error ? err.message : 'Could not send.') }
   }
 
   // ── set list ──
@@ -53,15 +65,15 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
   }
 
   // ── rating (the show on air, or the one that just ended) ──
-  const [last, setLast] = useState<{ occId: string; title: string; end: number } | null>(null)
+  const [last, setLast] = useState<{ occId: string; title: string; end: number; isShow: boolean } | null>(null)
   useEffect(() => {
-    if (np?.isShow && np.occId) queueMicrotask(() => setLast({ occId: np.occId, title: np.showTitle, end: np.showEnd }))
-  }, [np?.isShow, np?.occId, np?.showTitle, np?.showEnd])
+    if (np?.occId) queueMicrotask(() => setLast({ occId: np.occId, title: np.showTitle || np.blockTitle, end: np.showEnd, isShow: np.isShow }))
+  }, [np?.occId, np?.showTitle, np?.blockTitle, np?.showEnd, np?.isShow])
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t) }, [])
-  const rateable = np?.isShow && np.showStart && now > np.showStart + 10 * 60_000
-    ? { occId: np.occId, title: np.showTitle }
-    : last && now < last.end + 45 * 60_000 && (!np?.isShow || np.occId !== last.occId) ? { occId: last.occId, title: last.title } : null
+  const rateable = np?.occId && np.showStart && now > np.showStart + 10 * 60_000
+    ? { occId: np.occId, title: np.showTitle || np.blockTitle, isShow: np.isShow }
+    : last && now < last.end + 45 * 60_000 && (!np?.occId || np.occId !== last.occId) ? { occId: last.occId, title: last.title, isShow: last.isShow } : null
   const [rating, setRating] = useState<{ avg: number; count: number; mine: number }>({ avg: 0, count: 0, mine: 0 })
   const rid = rateable?.occId ?? ''
   useEffect(() => {
@@ -80,11 +92,31 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
     } catch (err) { setMsg(err instanceof Error ? err.message : 'Could not save your rating.') }
   }
 
+  // ── rate the song that is playing ──
+  const songKey = np?.title ? `${np.artist}|${np.title}` : ''
+  const [songStars, setSongStars] = useState<{ key: string; n: number }>({ key: '', n: 0 })
+  useEffect(() => {
+    if (!songKey || !np) return
+    let live = true
+    apiGet<{ mine: number }>(`/api/live/song-rating?title=${encodeURIComponent(np.title)}&artist=${encodeURIComponent(np.artist)}`)
+      .then(r => { if (live) setSongStars({ key: songKey, n: r.mine }) }).catch(() => { if (live) setSongStars({ key: songKey, n: 0 }) })
+    return () => { live = false }
+  }, [songKey, np, user?.uid])
+  const mineSong = songStars.key === songKey ? songStars.n : 0
+  async function rateSong(n: number) {
+    if (!can) { setMsg('Sign in with your school email to rate songs.'); return }
+    if (!np) return
+    setSongStars({ key: songKey, n })
+    try { await api('/api/live/song-rating', { title: np.title, artist: np.artist, stars: n }) }
+    catch (err) { setMsg(err instanceof Error ? err.message : 'Could not save your rating.') }
+  }
+
   const sorted = [...songs].sort((a, b) => b.votes - a.votes)
   const accent = np?.color || undefined
 
   return (
     <div className="mt-4 space-y-4">
+      <EmojiRain />
       {np?.note && (
         <div className="sk-raised rounded-2xl p-4 border-l-4" style={{ borderLeftColor: accent ?? 'var(--br-accent)' }}>
           {np.note.headline && <p className="text-br-dk-text font-medium">{np.note.headline}</p>}
@@ -98,12 +130,22 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
           <span className="text-xs text-br-dk-sub">React</span>
           {EMOJIS.map(e => (
             <button key={e} type="button" onClick={() => react(e)} aria-label={`React ${e}`}
-                    className="sk-key rounded-full h-10 px-3 flex items-center gap-2 text-lg active:scale-95 transition-transform">
-              <span>{e}</span>
-              <span className="text-xs text-br-dk-sub tabular-nums">{(recent[e] ?? 0) + (mineSent[e] ?? 0) || ''}</span>
+                    className="sk-key rounded-full h-11 w-12 flex items-center justify-center text-xl active:scale-90 transition-transform">
+              {e}
             </button>
           ))}
-          <span className="text-xs text-br-dk-muted">last few minutes</span>
+        </div>
+      )}
+
+      {songKey && (
+        <div className="sk-raised rounded-2xl p-4 flex flex-wrap items-center gap-3">
+          <span className="text-sm text-br-dk-text truncate max-w-full">Rate this song</span>
+          <span className="flex" role="group" aria-label="Song rating">
+            {[1, 2, 3, 4, 5].map(n => (
+              <button key={n} type="button" onClick={() => rateSong(n)} aria-label={`${n} star${n > 1 ? 's' : ''} for this song`}
+                      className={`text-2xl leading-none px-0.5 ${n <= mineSong ? 'text-br-gold' : 'text-br-dk-muted'}`}>★</button>
+            ))}
+          </span>
         </div>
       )}
 
@@ -126,7 +168,7 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
 
       {rateable && (
         <div className="sk-raised rounded-2xl p-4 flex flex-wrap items-center gap-3">
-          <span className="text-sm text-br-dk-text">Rate {rateable.title}</span>
+          <span className="text-sm text-br-dk-text">{rateable.isShow ? 'Rate the whole show' : 'Rate this hour of music'}: {rateable.title}</span>
           <span className="flex" role="group" aria-label="Star rating">
             {[1, 2, 3, 4, 5].map(n => (
               <button key={n} type="button" onClick={() => rate(n)} aria-label={`${n} star${n > 1 ? 's' : ''}`}

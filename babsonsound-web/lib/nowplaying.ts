@@ -9,12 +9,14 @@ export interface NowPlaying {
   isLive: boolean; streamer: string; listeners: number
   next: { title: string; artist: string } | null
   showTitle: string
+  blockTitle: string
   color: string
   occId: string
   isShow: boolean
   showStart: number
   showEnd: number
   note: { headline: string; message: string; updatedAt: number; by: string } | null
+  announcement: { text: string; updatedAt: number; until: number } | null
   updatedAt: number
   /** client clock (ms) when this was fetched, for the progress bar */
   receivedAt: number

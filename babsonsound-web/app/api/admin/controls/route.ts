@@ -4,6 +4,9 @@ import { HttpError, handle, readJson, requireStaff } from '@/lib/server/http'
 import { azControl, azSkip, azuraConfigured, azNowPlaying } from '@/lib/server/azuracast'
 import { buildScheduleFeed } from '@/lib/server/scheduleFeed'
 import { getNote, occIdOf } from '@/lib/server/live'
+import { getAnnouncement, setAnnouncement } from '@/lib/server/announcement'
+import { notifyAdmins } from '@/lib/server/push'
+import { after } from 'next/server'
 
 export const runtime = 'nodejs'
 
@@ -18,7 +21,7 @@ export async function GET(req: Request) {
       occId: occIdOf(i), title: i.title, startAt: i.startAt, endAt: i.endAt, onAir: i.startAt <= now && i.endAt > now,
       note: await getNote(db, occIdOf(i), now),
     })))
-    return { configured: azuraConfigured(), nowPlaying: await azNowPlaying().catch(() => null), shows }
+    return { configured: azuraConfigured(), nowPlaying: await azNowPlaying().catch(() => null), shows, announcement: await getAnnouncement(db, now) }
   })
 }
 
@@ -26,7 +29,14 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   return handle(async () => {
     const t = await requireStaff(req)
-    const action = (await readJson(req)).action
+    const body = await readJson(req)
+    const action = body.action
+    // Audience message: works even if the radio itself is not connected.
+    if (action === 'announce' || action === 'clear-announcement') {
+      await setAnnouncement(adminDb(), action === 'announce' ? String(body.text ?? '') : '', Number(body.minutes) || 60, t.uid)
+      await adminDb().collection('hostActions').add({ uid: t.uid, action: String(action), show: '(admin)', at: Timestamp.now() })
+      return { ok: true }
+    }
     if (!azuraConfigured()) throw new HttpError(503, 'The radio controls are not connected yet.', 'BR-HST-003')
     try {
       if (action === 'skip') await azSkip()
@@ -39,6 +49,7 @@ export async function POST(req: Request) {
       throw new HttpError(502, 'The radio did not accept that. Check the AzuraCast key has broadcasting permission.', 'BR-HST-003')
     }
     await adminDb().collection('hostActions').add({ uid: t.uid, action: String(action), show: '(admin)', at: Timestamp.now() })
+    if (action === 'emergency-stop' || action === 'resume') after(() => notifyAdmins('ops', { title: action === 'resume' ? 'Station back on air' : 'Station stopped', body: 'Another admin used the station controls.' }, t.uid))
     return { ok: true }
   })
 }

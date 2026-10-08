@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import MyRatings from '@/components/MyRatings'
 import { api, apiGet, deleteMyAccount, signOut } from '@/lib/auth'
 import { Card, ErrorText, Field, GhostButton, PrimaryButton } from '@/components/AuthUI'
 
@@ -150,7 +151,7 @@ export default function ProfilePage() {
         {hosts && (
           <Link href="/host" className="block sk-raised rounded-2xl p-5">
             <p className="text-br-dk-text text-sm font-medium">Host panel</p>
-            <p className="text-br-dk-sub text-xs mt-1">Radio controls and your set list (open around your show), plus changes to your show page.</p>
+            <p className="text-br-dk-sub text-xs mt-1">Your live feed, a message for listeners and your set list (open around your show), plus changes to your show page.</p>
           </Link>
         )}
 
@@ -173,6 +174,7 @@ export default function ProfilePage() {
         <ErrorText>{error}</ErrorText>
 
         {(isBabson || isDeveloper) && <AboutYou />}
+        {(isBabson || isDeveloper) && <MyRatings />}
 
         <ReportForm />
 

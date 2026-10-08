@@ -1,6 +1,6 @@
 import 'server-only'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
-import { clipInterval, localParts, occursOn, parseClock, type Repeat } from '../autoschedule'
+import { clipInterval, endAfter, localParts, occursOn, parseClock, type Repeat } from '../autoschedule'
 import { loadConfig } from './autoschedule'
 import { localDate, localToUtc } from './tz'
 
@@ -82,7 +82,7 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
       if (s === null) continue
       const e = parseClock(String(w.get('endTime') ?? ''))
       const dur = Number(w.get('durationMin'))
-      const endMin = e !== null && e > s ? e : s + (Number.isFinite(dur) && dur > 0 ? dur : 60)
+      const endMin = e !== null ? endAfter(s, e) : s + (Number.isFinite(dur) && dur > 0 ? dur : 60)
       const startAt = localToUtc(y, m, dd, s, tz), endAt = localToUtc(y, m, dd, endMin, tz)
       if (endAt <= since || startAt >= until) continue
       items.push({

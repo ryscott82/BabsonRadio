@@ -141,6 +141,7 @@ export default function AdminSchedulePage() {
             <label><span className={lab}>ENDS</span>
               <input type="time" className={box} value={edit.endTime} onChange={e => setEdit({ ...edit, endTime: e.target.value })} required /></label>
           </div>
+          {edit.endTime && edit.endTime <= edit.startTime && <p className="text-xs text-br-dk-sub -mt-2">Ends the next day, after midnight.</p>}
           <Field label="Hosts (comma separated)" value={edit.hostNames.join(', ')}
                  onChange={e => setEdit({ ...edit, hostNames: e.target.value.split(',').map(x => x.trimStart()) })} />
           <Field label="Host accounts (usernames, comma separated)" value={edit.hostUsernames.join(', ')} placeholder="jsmith1, adoe2"
@@ -186,7 +187,7 @@ export default function AdminSchedulePage() {
                   : <div className="w-12 h-12 rounded-lg sk-field shrink-0" style={s.color ? { background: s.color } : undefined} />}
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-br-dk-text truncate">{s.showName}{s.isActive ? '' : ' (hidden)'}</p>
-                  <p className="text-xs text-br-dk-sub truncate">{s.startTime} – {s.endTime}{s.repeat === 'biweekly' ? ' · every other week' : s.repeat === 'monthly' ? ` · ${s.weeks.map(w => w === 5 ? 'last' : ['', '1st', '2nd', '3rd', '4th'][w]).join(', ')} of the month` : s.repeat === 'dates' ? ` · ${s.dates.slice(0, 3).join(', ')}${s.dates.length > 3 ? '…' : ''}` : ''}{s.hostNames.length ? ` · ${s.hostNames.join(', ')}` : ''}</p>
+                  <p className="text-xs text-br-dk-sub truncate">{s.startTime} – {s.endTime}{s.endTime <= s.startTime ? ' (+1 day)' : ''}{s.repeat === 'biweekly' ? ' · every other week' : s.repeat === 'monthly' ? ` · ${s.weeks.map(w => w === 5 ? 'last' : ['', '1st', '2nd', '3rd', '4th'][w]).join(', ')} of the month` : s.repeat === 'dates' ? ` · ${s.dates.slice(0, 3).join(', ')}${s.dates.length > 3 ? '…' : ''}` : ''}{s.hostNames.length ? ` · ${s.hostNames.join(', ')}` : ''}</p>
                 </div>
                 <button onClick={() => { setEdit({ ...s }); setNotice('') }} className="text-xs text-br-gold">Edit</button>
                 <button onClick={() => remove(s)} className="text-xs text-br-dk-sub hover:text-br-red">Delete</button>
@@ -216,6 +217,7 @@ export default function AdminSchedulePage() {
             <label><span className={lab}>ENDS</span>
               <input type="time" className={box} value={editEv.endTime} onChange={e => setEditEv({ ...editEv, endTime: e.target.value })} required /></label>
           </div>
+          {editEv.endTime && editEv.endTime <= editEv.startTime && <p className="text-xs text-br-dk-sub -mt-2">Ends the next day, after midnight.</p>}
           <Field label="Hosts (comma separated)" value={editEv.hostNames.join(', ')}
                  onChange={e => setEditEv({ ...editEv, hostNames: e.target.value.split(',').map(x => x.trimStart()) })} />
           <label><span className={lab}>CATEGORY</span>
@@ -246,7 +248,7 @@ export default function AdminSchedulePage() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm text-br-dk-text truncate">{ev.title}</p>
-              <p className="text-xs text-br-dk-sub truncate">{ev.date} · {ev.startTime} – {ev.endTime}{ev.hostNames.length ? ` · ${ev.hostNames.join(', ')}` : ''}</p>
+              <p className="text-xs text-br-dk-sub truncate">{ev.date} · {ev.startTime} – {ev.endTime}{ev.endTime <= ev.startTime ? ' (+1 day)' : ''}{ev.hostNames.length ? ` · ${ev.hostNames.join(', ')}` : ''}</p>
             </div>
             <button onClick={() => { setEditEv({ ...ev }); setNotice('') }} className="text-xs text-br-gold">Edit</button>
             <button onClick={() => removeEv(ev)} className="text-xs text-br-dk-sub hover:text-br-red">Delete</button>

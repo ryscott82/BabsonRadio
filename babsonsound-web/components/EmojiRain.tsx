@@ -26,6 +26,14 @@ const noop = () => () => {}
 export default function EmojiRain() {
   const [ps, setPs] = useState<P[]>([])
   const mounted = useSyncExternalStore(noop, () => true, () => false)
+  // In full screen only the full-screen element is drawn, so the rain has to live inside it.
+  const [host, setHost] = useState<Element | null>(null)
+  useEffect(() => {
+    const sync = () => setHost(document.fullscreenElement)
+    sync()
+    document.addEventListener('fullscreenchange', sync)
+    return () => document.removeEventListener('fullscreenchange', sync)
+  }, [])
   useEffect(() => {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const on = (ev: Event) => {
@@ -46,6 +54,6 @@ export default function EmojiRain() {
                        ['--dx' as string]: `${p.dx}px`, ['--rot' as string]: `${p.rot}deg` }}>{p.e}</span>
       ))}
     </div>,
-    document.body,
+    host ?? document.body,
   )
 }

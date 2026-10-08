@@ -1,7 +1,7 @@
 import 'server-only'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 import type { DecodedIdToken } from 'firebase-admin/auth'
-import { localParts, occursOn, parseClock, type Repeat } from '../autoschedule'
+import { endAfter, localParts, occursOn, parseClock, type Repeat } from '../autoschedule'
 import { loadConfig } from './autoschedule'
 import { localDate, localToUtc } from './tz'
 import { HttpError, isBabsonToken, isDeveloperToken, requireUser } from './http'
@@ -46,7 +46,7 @@ export async function hostShows(db: Firestore, uid: string, now: number, days = 
       const s = parseClock(String(w.get('startTime') ?? ''))
       if (s === null) continue
       const e = parseClock(String(w.get('endTime') ?? ''))
-      const endMin = e !== null && e > s ? e : s + 60
+      const endMin = e !== null ? endAfter(s, e) : s + 60
       out.push({
         key: `weekly:${w.id}`, kind: 'weekly', refId: w.id, title: w.get('showName') ?? 'Your show',
         startAt: localToUtc(y, m, dd, s, tz), endAt: localToUtc(y, m, dd, endMin, tz),

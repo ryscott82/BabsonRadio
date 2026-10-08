@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     if (rep.repeat === 'dates' && !rep.dates?.length) throw new HttpError(400, 'Add at least one date.')
     if (rep.repeat === 'monthly' && !rep.weeks?.length) throw new HttpError(400, 'Pick which weeks of the month.')
     if (rep.repeat === 'biweekly' && !rep.anchor) throw new HttpError(400, 'Pick a date this show airs, so we know which weeks.')
-    if (start === null || end === null || end <= start) throw new HttpError(400, 'Pick a start time and an end time after it.')
+    if (start === null || end === null || end === start) throw new HttpError(400, 'Pick a start time and an end time. An end before the start means the show runs past midnight.')
     const hostNames = (Array.isArray(b.hostNames) ? b.hostNames : []).map(x => str(x, 40)).filter(Boolean).slice(0, 8)
     const img = b.imageUrl ? checkImageRef(null, b.imageUrl, b.imagePath) : null
     // Host accounts (usernames): these people get the host panel during this show's window.

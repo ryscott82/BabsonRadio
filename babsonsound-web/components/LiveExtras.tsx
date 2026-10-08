@@ -25,6 +25,15 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
   const card = compact ? 'sk-raised rounded-xl p-3' : 'sk-raised rounded-2xl p-4'
   const { hasMemberAccess, user } = useAuth()
   const can = !!user && hasMemberAccess
+  // The reaction row: the usual ones plus any this person has earned (the server decides which).
+  const [emojis, setEmojis] = useState<string[]>(EMOJIS)
+  useEffect(() => {
+    if (!can) { queueMicrotask(() => setEmojis(EMOJIS)); return }
+    const load = () => apiGet<{ emojis: string[] }>('/api/live/emojis').then(r => setEmojis(r.emojis)).catch(() => {})
+    load()
+    const t = setInterval(() => { if (!document.hidden) load() }, 60_000)
+    return () => clearInterval(t)
+  }, [can, user?.uid])
   const occId = np?.occId ?? ''
 
   // Invisible mode switches off the social bits: reactions (sending and seeing them).
@@ -152,7 +161,7 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
       {occId && !invisible && (
         <div className={`${card} flex flex-wrap items-center gap-3`}>
           <span className="text-xs text-br-dk-sub">React</span>
-          {EMOJIS.map(e => (
+          {emojis.map(e => (
             <button key={e} type="button" onClick={() => react(e)} aria-label={`React ${e}`}
                     className="sk-key rounded-full h-9 w-10 flex items-center justify-center text-base active:scale-90 transition-transform">
               {e}

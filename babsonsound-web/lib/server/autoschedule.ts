@@ -1,7 +1,7 @@
 import 'server-only'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 import {
-  DEFAULT_CONFIG, clipInterval, parseClock, planAutoBlocks, sanitizeConfig,
+  DEFAULT_CONFIG, clipInterval, endAfter, parseClock, planAutoBlocks, sanitizeConfig,
   type AutoConfig, type Interval, type PlannedBlock, type WeeklyEntry,
 } from '../autoschedule'
 import { syncToAzuraCast, type SyncResult } from './azuracast'
@@ -29,7 +29,7 @@ async function loadWeekly(db: Firestore): Promise<WeeklyEntry[]> {
     if (start === null || (typeof d.get('dayOfWeek') !== 'number' && d.get('repeat') !== 'dates')) return []
     const end = parseClock(String(d.get('endTime') ?? ''))
     const dur = Number(d.get('durationMin'))
-    const endMin = end !== null && end > start ? end : start + (Number.isFinite(dur) && dur > 0 ? dur : 60)
+    const endMin = end !== null ? endAfter(start, end) : start + (Number.isFinite(dur) && dur > 0 ? dur : 60)
     return [{ dow: (d.get('dayOfWeek') as number | undefined) ?? 0, startMin: start, endMin, rep: { repeat: d.get('repeat'), anchor: d.get('anchor'), weeks: d.get('weeks'), dates: d.get('dates') } }]
   })
 }

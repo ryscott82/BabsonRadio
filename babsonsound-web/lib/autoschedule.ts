@@ -124,6 +124,9 @@ export function cleanRepeat(b: Record<string, unknown>): Required<Pick<Repeat, '
 }
 
 /** "HH:MM" (24h) or "h:mm AM/PM" → minutes since midnight, or null. "24:00" → 1440. */
+/** End minute-of-day for a show: an end at or before the start means it runs past midnight (next day). */
+export function endAfter(start: number, end: number): number { return end > start ? end : end + 1440 }
+
 export function parseClock(s: string): number | null {
   const t = String(s ?? '').trim()
   let m = /^(\d{1,2}):(\d{2})$/.exec(t)
@@ -204,7 +207,10 @@ export function planAutoBlocks(opts: {
     weekly.some(w => {
       // evaluate against the station-local day of this slice
       const p = localParts(a, cfg.timezone)
-      return occursOn({ ...w.rep, dayOfWeek: w.rep?.repeat === 'dates' ? undefined : w.dow }, p.dow, p.y, p.m, p.d) && p.minutes < w.endMin && p.minutes + cfg.stepMinutes > w.startMin
+      const on = (q: { dow: number; y: number; m: number; d: number }) => occursOn({ ...w.rep, dayOfWeek: w.rep?.repeat === 'dates' ? undefined : w.dow }, q.dow, q.y, q.m, q.d)
+      if (on(p) && p.minutes < w.endMin && p.minutes + cfg.stepMinutes > w.startMin) return true
+      // a show that started yesterday and runs past midnight
+      return w.endMin > 1440 && p.minutes < w.endMin - 1440 && on(localParts(a - 86_400_000, cfg.timezone))
     })
 
   // 1–4: tag free slices by rule and merge neighbours

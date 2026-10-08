@@ -2,6 +2,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { currentOnAir } from '@/lib/server/live'
 import { HttpError, handle, readJson, requireMember, requireUser, str } from '@/lib/server/http'
+import { noteStars } from '@/lib/server/earnedEmojis'
 
 export const runtime = 'nodejs'
 
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
       isShow: cur?.occId === occId ? cur.isShow : true, at: Timestamp.now(),
       ...(typeof b.comment === 'string' ? { comment: str(b.comment, 280) } : {}),
     }, { merge: true })
+    await noteStars(db, t.uid, `h:${occId}`, stars).catch(() => {})
     return { ok: true }
   })
 }

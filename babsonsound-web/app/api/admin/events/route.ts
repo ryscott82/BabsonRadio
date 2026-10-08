@@ -53,10 +53,10 @@ export async function POST(req: Request) {
     const start = parseClock(str(b.startTime, 10)), end = parseClock(str(b.endTime, 10))
     if (!title) throw new HttpError(400, 'Give the event a name.')
     if (!m) throw new HttpError(400, 'Pick a date.')
-    if (start === null || end === null || end <= start) throw new HttpError(400, 'Pick a start time and an end time after it.')
+    if (start === null || end === null || end === start) throw new HttpError(400, 'Pick a start time and an end time. An end before the start means the event runs past midnight.')
     const tz = (await loadConfig(db)).timezone
     const startAt = localToUtc(Number(m[1]), Number(m[2]), Number(m[3]), start, tz)
-    const endAt = localToUtc(Number(m[1]), Number(m[2]), Number(m[3]), end, tz)
+    const endAt = localToUtc(Number(m[1]), Number(m[2]), Number(m[3]), end > start ? end : end + 1440, tz)
     if (endAt <= Date.now()) throw new HttpError(400, 'That time has already passed.')
 
     const img = b.imageUrl ? checkImageRef(null, b.imageUrl, b.imagePath) : null

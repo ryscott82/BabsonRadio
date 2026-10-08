@@ -9,16 +9,16 @@ import UIKit
 nonisolated struct NowPlayingInfo: Decodable, Equatable {
     struct Next: Decodable, Equatable { let title: String; let artist: String }
     let configured: Bool
-    let title: String
-    let artist: String
+    var title: String
+    var artist: String
     let album: String
     let art: String
-    let elapsed: Double
-    let duration: Double
+    var elapsed: Double
+    var duration: Double
     let isLive: Bool
     let streamer: String
     let listeners: Int
-    let next: Next?
+    var next: Next?
     /// Scheduled show/event on air now, and its color (#RRGGBB, empty = default).
     let showTitle: String?
     let color: String?
@@ -271,6 +271,44 @@ class AudioPlayerManager: ObservableObject {
         }
         if np.art != artworkURL { await loadArtwork(np.art) }
         if changed || artworkURL.isEmpty == false { updateNowPlayingInfo() }
+        scheduleAdvance(for: np)
+    }
+
+    // MARK: - Moving to the next song without waiting for the server
+
+    /// The stream reaches your ears a few seconds after the server's clock, so wait this long past the song's end before swapping the title.
+    private let hearDelay: Double = 5
+    private var advanceTask: Task<Void, Never>?
+
+    /// When this song's end time passes, show the next song's title and artist right away, then ask the server for the real data.
+    private func scheduleAdvance(for np: NowPlayingInfo) {
+        advanceTask?.cancel()
+        guard !np.isLive, np.duration > 0, np.next != nil else { return }
+        let end: Double
+        if let started = np.playedAt, started > 0 { end = started + np.duration }
+        else { end = nowPlayingFetchedAt.timeIntervalSince1970 + (np.duration - np.elapsed) }
+        let wait = end + hearDelay - Date().timeIntervalSince1970
+        guard wait < 20 * 60 else { return }
+        advanceTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(max(0, wait) * 1_000_000_000))
+            guard !Task.isCancelled, let self else { return }
+            await self.advanceNow(from: np)
+        }
+    }
+
+    private func advanceNow(from old: NowPlayingInfo) async {
+        guard var cur = nowPlaying, cur.title == old.title, let next = cur.next else { return }
+        cur.title = next.title; cur.artist = next.artist; cur.elapsed = 0; cur.duration = 0; cur.next = nil
+        nowPlaying = cur
+        nowPlayingTitle = next.title
+        nowPlayingSubtitle = next.artist
+        updateNowPlayingInfo()
+        await refreshNowPlaying()
+        // Separate task: refreshing reschedules (and cancels) the one that is running this.
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            if self?.nowPlaying?.title == next.title { await self?.refreshNowPlaying() }
+        }
     }
 
     private func loadArtwork(_ urlString: String) async {

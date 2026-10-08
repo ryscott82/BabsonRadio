@@ -12,6 +12,7 @@ nonisolated private struct ReactionFeed: Decodable {
 }
 nonisolated private struct MineReply: Decodable { let mine: Int }
 nonisolated private struct ShowRatingReply: Decodable { let mine: Int }
+nonisolated struct EmojiList: Decodable { let emojis: [String] }
 nonisolated struct SkipReply: Decodable { let eligible: Bool; let votes: Int; let needed: Int; let mine: Bool }
 
 private func enc(_ s: String) -> String {
@@ -39,6 +40,9 @@ final class LiveExtrasModel: ObservableObject {
     @Published var songStars = 0
     @Published var showStars = 0
     @Published var skip: SkipReply? = nil
+    /// The reaction row: the usual ones plus any this person has earned (the server decides which).
+    @Published var emojis: [String] = LiveExtrasModel.emojis
+    private var pollRound = 0
 
     private let cid = UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(10).lowercased()
     private var since: Double = 0
@@ -74,9 +78,16 @@ final class LiveExtrasModel: ObservableObject {
     /// Check for other people's reactions every few seconds while the live screen is open.
     func pollLoop() async {
         while !Task.isCancelled {
+            if pollRound % 20 == 0 { await loadEmojis() } // about once a minute
+            pollRound += 1
             if !AuthManager.shared.isInvisible { await pollOnce() }
             try? await Task.sleep(nanoseconds: 3_000_000_000)
         }
+    }
+
+    func loadEmojis() async {
+        guard AuthManager.shared.isSignedIn, let r: EmojiList = try? await BackendAPI.get("/api/live/emojis") else { return }
+        emojis = r.emojis
     }
 
     private func pollOnce() async {
@@ -266,9 +277,9 @@ struct LiveExtrasView: View {
             } else if let occ = np?.occId, !occ.isEmpty {
                 BRGlassGroup(spacing: 10) {
                     HStack(spacing: 10) {
-                        ForEach(LiveExtrasModel.emojis, id: \.self) { e in
+                        ForEach(model.emojis, id: \.self) { e in
                             Button { Task { await model.react(e) } } label: {
-                                Text(e).font(.system(size: 24)).frame(width: 52, height: 44)
+                                Text(e).font(.system(size: 24)).frame(width: model.emojis.count > 5 ? 42 : 52, height: 44)
                                     .brGlass(in: Capsule(), interactive: true)
                             }
                             .buttonStyle(.plain)

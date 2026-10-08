@@ -314,7 +314,7 @@ struct LivePlayerView: View {
                 .brGlass(in: RoundedRectangle(cornerRadius: 14), tint: theme.button(scheme), interactive: true, fallback: theme.button(scheme))
             }
 
-            if !auth.isSignedIn || auth.isTester {
+            if auth.isTester {
             ShareLink(item: BabsonLinks.interest,
                       subject: Text("Babson Radio"),
                       message: Text("Student radio is coming back to Babson. Tell them what you want to hear:")) {

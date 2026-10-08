@@ -76,7 +76,7 @@ export default function Network() {
             {d.nodes.map(n => (
               <g key={n.id} onClick={() => setPick(pick === n.id ? null : n.id)} className="cursor-pointer" opacity={pick && !near.has(n.id) ? 0.25 : 1}>
                 <circle cx={pos[n.id]?.x} cy={pos[n.id]?.y} r={5 + Math.min(n.friends, 12)}
-                  fill={match(n) ? '#facc15' : '#007A50'} stroke="#fff" strokeWidth={match(n) || pick === n.id ? 2 : 0.5} />
+                  fill={match(n) ? '#4ade80' : '#007A50'} stroke="#fff" strokeWidth={match(n) || pick === n.id ? 2 : 0.5} />
                 {(match(n) || near.has(n.id) || n.friends >= 6) && (
                   <text x={pos[n.id]?.x} y={(pos[n.id]?.y ?? 0) - 10 - Math.min(n.friends, 12)} textAnchor="middle" fontSize="11" fill="currentColor" className="text-br-dk-text">{n.name}</text>
                 )}

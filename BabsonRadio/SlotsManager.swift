@@ -22,9 +22,9 @@ class SlotsManager: ObservableObject {
 
     /// The whole schedule for the next week (public; students also see host names on student shows).
     func loadFeed() async {
-        if let r: ScheduleFeedResponse = try? await BackendAPI.get("/api/schedule?days=14") {
+        if let r: ScheduleFeedResponse = try? await BackendAPI.get("/api/schedule?days=14&back=7") {
             feed = r.items
-            await ReminderManager.shared.update(feed: r.items, timezone: r.timezone)
+            await ReminderManager.shared.update(feed: r.items.filter { $0.endAt > Date() }, timezone: r.timezone)
         }
     }
 

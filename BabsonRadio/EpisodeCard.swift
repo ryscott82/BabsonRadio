@@ -132,7 +132,7 @@ struct EpisodeThumbnail: View {
         switch episode.thumbnailColor {
         case .green: return .brGold
         case .dark:  return Color(hex: "888888")
-        case .warm:  return Color(hex: "DDB050")
+        case .warm:  return Color(hex: "3FA86B")
         }
     }
 

@@ -10,10 +10,11 @@ export const runtime = 'nodejs'
 export async function GET(req: Request) {
   return handle(async () => {
     const days = Math.min(30, Math.max(1, Number(new URL(req.url).searchParams.get('days')) || 7))
+    const back = Math.min(14, Math.max(0, Number(new URL(req.url).searchParams.get('back')) || 0)) // past days to include
     const member = await requireMember(req).then(() => true, () => false)
     const db = adminDb()
     return {
-      items: await buildScheduleFeed(db, { days, showStudentHosts: member }),
+      items: await buildScheduleFeed(db, { days, showStudentHosts: member, back }),
       timezone: (await loadConfig(db)).timezone, // station time zone (the app uses it for weekly reminders)
     }
   })

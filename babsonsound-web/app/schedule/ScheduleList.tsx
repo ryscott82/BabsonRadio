@@ -19,6 +19,7 @@ const DAY = 86_400_000
 const HOUR_PX = 56            // height of one hour on the calendar
 const DAYS_SHOWN = 3
 const DAYS_LOADED = 28
+const DAYS_BACK = 7   // how far back you can look
 const startOfDay = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime() }
 const time = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
@@ -62,7 +63,7 @@ export default function ScheduleList() {
   const scroller = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const load = () => apiGet<{ items: Item[] }>('/api/schedule?days=28')
+    const load = () => apiGet<{ items: Item[] }>(`/api/schedule?days=28&back=${DAYS_BACK}`)
       .then(r => { setItems(r.items); setNow(Date.now()) })
       .catch(e => setError(e instanceof Error ? e.message : 'Could not load the schedule.'))
     load()
@@ -114,7 +115,8 @@ export default function ScheduleList() {
 
   const today = startOfDay(now)
   const shown = Array.from({ length: DAYS_SHOWN }, (_, i) => first + i * DAY)
-  const canBack = first > today
+  const minDay = today - DAYS_BACK * DAY
+  const canBack = first > minDay
   const canFwd = first + DAYS_SHOWN * DAY < today + DAYS_LOADED * DAY
   const hours = Array.from({ length: 24 }, (_, h) => h)
   const hourLabel = (h: number) => new Date(2000, 0, 1, h).toLocaleTimeString([], { hour: 'numeric' })
@@ -128,11 +130,11 @@ export default function ScheduleList() {
 
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <button onClick={() => setFirst(f => f - DAY)} disabled={!canBack} aria-label="Previous day"
+          <button onClick={() => setFirst(f => Math.max(minDay, f - DAY))} disabled={!canBack} aria-label="Previous day"
                   className="sk-key rounded-lg w-9 h-9 text-br-dk-text disabled:opacity-40">‹</button>
           <button onClick={() => setFirst(f => f + DAY)} disabled={!canFwd} aria-label="Next day"
                   className="sk-key rounded-lg w-9 h-9 text-br-dk-text disabled:opacity-40">›</button>
-          <button onClick={() => setFirst(f => Math.max(today, f - 7 * DAY))} disabled={!canBack} aria-label="Previous week"
+          <button onClick={() => setFirst(f => Math.max(minDay, f - 7 * DAY))} disabled={!canBack} aria-label="Previous week"
                   className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-40">‹ WEEK</button>
           <button onClick={() => setFirst(f => Math.min(today + (DAYS_LOADED - DAYS_SHOWN) * DAY, f + 7 * DAY))} disabled={!canFwd} aria-label="Next week"
                   className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-40">WEEK ›</button>
@@ -183,14 +185,14 @@ export default function ScheduleList() {
                       <div key={it.id} role="button" tabIndex={0} onClick={() => setOpen(it)}
                            onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setOpen(it)}
                            className={`absolute inset-x-0.5 rounded-md px-1.5 py-1 overflow-hidden cursor-pointer text-left ${
-                             it.source === 'auto' ? 'sk-field' : `sk-raised border-l-2 ${it.color ? '' : 'border-br-gold'}`} ${live ? 'ring-1 ring-br-red' : ''}`}
+                             it.source === 'auto' ? 'sk-field' : `sk-raised border-l-2 ${it.color ? '' : 'border-br-gold'}`} ${live ? 'ring-1 ring-br-red' : ''} ${it.endAt <= now ? 'opacity-55' : ''}`}
                            style={{
                              top: top + 1, height,
                              ...(it.color && it.source !== 'auto' ? { borderLeftColor: it.color, backgroundImage: `linear-gradient(${it.color}38, ${it.color}38)` } : {}),
                            }}>
                         <p className="text-xs leading-tight text-br-dk-text pr-6 line-clamp-2">{it.title}</p>
                         {tall && <p className="text-[10px] text-br-dk-sub truncate">{time(it.startAt)}{it.hosts.length ? ` · ${it.hosts[0]}` : ''}</p>}
-                        {height >= 34 && (
+                        {height >= 34 && it.endAt > now && (
                           <span className="absolute top-1 right-1">
                             <Bell small on={bells.has(it.reminderKey)} label={`Remind me before ${it.title}`}
                                   onClick={e => { e.stopPropagation(); toggleBell(it) }} />

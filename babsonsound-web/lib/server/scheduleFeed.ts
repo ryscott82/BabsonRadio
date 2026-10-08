@@ -24,14 +24,16 @@ export interface ScheduleItem {
   reminderKey: string
 }
 
-export async function buildScheduleFeed(db: Firestore, opts: { days: number; showStudentHosts: boolean; now?: number; includeAuto?: boolean }): Promise<ScheduleItem[]> {
+export async function buildScheduleFeed(db: Firestore, opts: { days: number; showStudentHosts: boolean; now?: number; includeAuto?: boolean; back?: number }): Promise<ScheduleItem[]> {
   const now = opts.now ?? Date.now()
   const until = now + opts.days * 86_400_000
+  const back = Math.max(0, Math.min(14, Math.floor(opts.back ?? 0)))   // days of past schedule to include
+  const since = now - back * 86_400_000
   const cfg = await loadConfig(db)
   const tz = cfg.timezone
   const items: ScheduleItem[] = []
 
-  const slots = await db.collection('airSlots').where('endAt', '>', Timestamp.fromMillis(now)).get()
+  const slots = await db.collection('airSlots').where('endAt', '>', Timestamp.fromMillis(since)).get()
   for (const d of slots.docs) {
     const startAt = d.get('startAt').toMillis() as number
     if (startAt >= until) continue
@@ -45,7 +47,7 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
   }
 
   const autoPieces: ScheduleItem[] = []
-  const autos = opts.includeAuto === false ? { docs: [] } : await db.collection('autoBlocks').where('endAt', '>', Timestamp.fromMillis(now)).get()
+  const autos = opts.includeAuto === false ? { docs: [] } : await db.collection('autoBlocks').where('endAt', '>', Timestamp.fromMillis(since)).get()
   for (const d of autos.docs) {
     const startAt = d.get('startAt').toMillis() as number
     if (startAt >= until) continue
@@ -57,7 +59,7 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
   }
 
   // One-time events the station scheduled by hand.
-  const evs = await db.collection('events').where('endAt', '>', Timestamp.fromMillis(now)).get()
+  const evs = await db.collection('events').where('endAt', '>', Timestamp.fromMillis(since)).get()
   for (const d of evs.docs) {
     const startAt = d.get('startAt').toMillis() as number
     if (startAt >= until || d.get('isActive') === false) continue
@@ -70,7 +72,7 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
   }
 
   const weekly = await db.collection('schedule').where('isActive', '==', true).get()
-  for (let off = 0; off <= opts.days; off++) {
+  for (let off = -back; off <= opts.days; off++) {
     const probe = now + off * 86_400_000
     const [y, m, dd] = localDate(probe, tz)
     const dow = localParts(probe, tz).dow
@@ -82,7 +84,7 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
       const dur = Number(w.get('durationMin'))
       const endMin = e !== null && e > s ? e : s + (Number.isFinite(dur) && dur > 0 ? dur : 60)
       const startAt = localToUtc(y, m, dd, s, tz), endAt = localToUtc(y, m, dd, endMin, tz)
-      if (endAt <= now || startAt >= until) continue
+      if (endAt <= since || startAt >= until) continue
       items.push({
         id: `weekly-${w.id}-${y}${m}${dd}`,
         // Shows that don't air every week are marked as one-offs so the iPhone app doesn't set a repeating weekly alert for them.

@@ -32,7 +32,7 @@ export async function GET(req: Request) {
     }
     return {
       radioConnected: azuraConfigured(),
-      nowPlaying: { configured: np.configured, song: np.title ? `${np.artist ? np.artist + ' – ' : ''}${np.title}` : '', listeners: np.listeners, isLive: np.isLive, streamer: np.streamer },
+      nowPlaying: { configured: np.configured, song: np.title ? `${np.artist ? np.artist + ' – ' : ''}${np.title}` : '', listeners: np.listeners, isLive: np.isLive, streamer: np.streamer, playlist: np.playlist },
       onAir: { title: np.blockTitle, isShow: np.isShow, endAt: np.showEnd },
       next, announcement, last24h: cache.v,
     }

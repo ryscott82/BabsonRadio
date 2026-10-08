@@ -20,7 +20,7 @@ struct BRFont {
 extension Color {
     static let brGreen      = Color(hex: "006644")
     static let brGreenMid   = Color(hex: "007A50")
-    static let brGold       = Color(hex: "DDD055")
+    static let brGold       = Color(hex: "2FB67C") // bright green accent (replaces the old yellow)
     static let brRed        = Color(hex: "C8302A")
 
     // Dark Mode
@@ -48,7 +48,7 @@ extension Color {
     static let brBorder      = Color("BRBorder")
     static let brPrimaryText = Color("BRPrimaryText")
     static let brSubText     = Color("BRSubText")
-    static let brActiveAccent = Color("BRActiveAccent") // gold in dark, green in light
+    static let brActiveAccent = Color("BRActiveAccent") // bright green in dark, Babson green in light
 
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
@@ -272,5 +272,43 @@ struct AgreeToggle: View {
         }
         .toggleStyle(.switch)
         .tint(scheme == .dark ? .brGold : .brGreen)
+    }
+}
+
+// MARK: - Liquid Glass with a fallback for iOS 25 and earlier
+
+@available(iOS 26.0, *)
+private func brGlassStyle(tint: Color?, interactive: Bool) -> Glass {
+    var g = Glass.regular
+    if let tint { g = g.tint(tint) }
+    if interactive { g = g.interactive() }
+    return g
+}
+
+extension View {
+    /// Liquid Glass on iOS 26 and newer. Older iOS gets a flat fill in `fallback`, or a frosted material when none is given.
+    @ViewBuilder
+    func brGlass<S: Shape>(in shape: S, tint: Color? = nil, interactive: Bool = false, fallback: Color? = nil) -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(brGlassStyle(tint: tint, interactive: interactive), in: shape)
+        } else if let fallback {
+            self.background(fallback, in: shape)
+        } else {
+            self.background(.ultraThinMaterial, in: shape)
+        }
+    }
+}
+
+/// Groups glass pieces so they blend on iOS 26 and newer; just lays them out on older iOS.
+struct BRGlassGroup<Content: View>: View {
+    var spacing: CGFloat = 10
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) { content() }
+        } else {
+            content()
+        }
     }
 }

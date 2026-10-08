@@ -31,12 +31,21 @@ nonisolated private struct Report: Decodable, Identifiable {
     let createdAt: Double
 }
 nonisolated private struct ReportList: Decodable { let items: [Report] }
+nonisolated private struct TesterRequest: Decodable, Identifiable {
+    let uid: String
+    let email: String
+    let name: String
+    let joinedAt: Double
+    var id: String { uid }
+}
+nonisolated private struct TesterList: Decodable { let requests: [TesterRequest] }
 
 @MainActor
 private final class AdminModel: ObservableObject {
     @Published var alerts: AdminAlerts?
     @Published var dash: AdminDash?
     @Published var reports: [Report] = []
+    @Published var testers: [TesterRequest] = []
     @Published var message = ""
     @Published var busy = false
     @Published var error: String?
@@ -44,8 +53,15 @@ private final class AdminModel: ObservableObject {
     func load() async {
         if let a: AdminAlerts = try? await BackendAPI.get("/api/admin/alerts") { alerts = a }
         if let d: AdminDash = try? await BackendAPI.get("/api/admin/dashboard") { dash = d }
+        if let t: TesterList = try? await BackendAPI.get("/api/admin/testers") { testers = t.requests }
         do { let r: ReportList = try await BackendAPI.get("/api/admin/feedback"); reports = r.items; error = nil }
         catch { self.error = (error as? BackendError)?.message ?? error.localizedDescription }
+    }
+
+    func decide(_ t: TesterRequest, approve: Bool) async {
+        do { let _: EmptyResponse = try await BackendAPI.put("/api/admin/testers", ["uid": t.uid, "decision": approve ? "approve" : "deny"]) }
+        catch { self.error = (error as? BackendError)?.message ?? error.localizedDescription }
+        await load()
     }
 
     func mark(_ r: Report, done: Bool) async {
@@ -83,6 +99,7 @@ struct AdminView: View {
                 if let e = model.error { Text(e).font(.system(size: 13)).foregroundColor(.brRed) }
                 status
                 attention
+                testers
                 reports
                 station
                 notifications
@@ -144,6 +161,32 @@ struct AdminView: View {
             ForEach(model.alerts?.cancellations ?? []) { c in
                 Text("Cancelled: \(c.title) (\(c.requesterName.isEmpty ? "student" : c.requesterName))\(c.wasApproved ? " · was approved" : "")\(c.reason.isEmpty ? "" : " · \"\(c.reason)\"")")
                     .font(.system(size: 13)).foregroundColor(sub)
+            }
+        }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
+    }
+
+    private var testers: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            BRSectionHeader(title: "BETA TESTER REQUESTS")
+            if model.testers.isEmpty {
+                Text("No one is waiting.").font(.system(size: 14)).foregroundColor(sub)
+            }
+            ForEach(model.testers) { t in
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(t.name.isEmpty ? t.email : t.name)
+                        .font(.system(size: 15, weight: .semibold)).foregroundColor(text)
+                    Text("\(t.email) · signed up \(Date(timeIntervalSince1970: t.joinedAt / 1000).formatted(.dateTime.month().day().hour().minute()))")
+                        .font(.system(size: 12)).foregroundColor(sub)
+                    HStack(spacing: 10) {
+                        Button("Approve") { Task { await model.decide(t, approve: true) } }
+                            .buttonStyle(.borderedProminent).tint(Color.brGreen)
+                        Button("Deny") { Task { await model.decide(t, approve: false) } }
+                            .buttonStyle(.bordered).tint(Color.brRed)
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                }
+                .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()

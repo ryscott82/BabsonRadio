@@ -31,7 +31,7 @@ struct LivePlayerView: View {
                         .multilineTextAlignment(.center)
                         .padding(12)
                         .frame(maxWidth: .infinity)
-                        .glassEffect(.regular.tint(accent.opacity(0.3)), in: RoundedRectangle(cornerRadius: 16))
+                        .brGlass(in: RoundedRectangle(cornerRadius: 16), tint: accent.opacity(0.3), fallback: accent.opacity(0.18))
                         .padding(.horizontal, 20)
                         .padding(.top, geo.safeAreaInsets.top + 8)
                 }
@@ -152,7 +152,11 @@ struct LivePlayerView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 BRTagChip(text: audio.nowPlaying?.isLive == true ? "LIVE DJ" : "LIVE", style: .gold)
-                BRTagChip(text: ScheduleItem.sampleSchedule.first(where: { $0.isLive })?.showName.uppercased() ?? "BABSON RADIO", style: .subtle)
+                BRTagChip(text: {
+                    let t = audio.nowPlaying?.showTitle ?? ""
+                    let b = audio.nowPlaying?.blockTitle ?? ""
+                    return (t.isEmpty ? (b.isEmpty ? "BABSON RADIO" : b) : t).uppercased()
+                }(), style: .subtle)
                 Spacer()
             }
 
@@ -188,7 +192,7 @@ struct LivePlayerView: View {
                 .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                 .padding(12)
                 .frame(maxWidth: .infinity)
-                .glassEffect(.regular.tint(accent.opacity(0.25)), in: RoundedRectangle(cornerRadius: 16))
+                .brGlass(in: RoundedRectangle(cornerRadius: 16), tint: accent.opacity(0.25), fallback: accent.opacity(0.15))
             }
 
             if let song, song.isLive, !song.streamer.isEmpty {
@@ -285,7 +289,7 @@ struct LivePlayerView: View {
                 }
                 .padding(.vertical, 14)
                 .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
-                .glassEffect(.regular.tint(scheme == .dark ? Color.brGold : Color.brGreen).interactive(), in: RoundedRectangle(cornerRadius: 14))
+                .brGlass(in: RoundedRectangle(cornerRadius: 14), tint: scheme == .dark ? Color.brGold : Color.brGreen, interactive: true, fallback: scheme == .dark ? Color.brGold : Color.brGreen)
             }
 
             ShareLink(item: BabsonLinks.interest,
@@ -301,7 +305,7 @@ struct LivePlayerView: View {
                 }
                 .padding(.vertical, 14)
                 .foregroundColor(scheme == .dark ? .brGold : .brGreen)
-                .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 14))
+                .brGlass(in: RoundedRectangle(cornerRadius: 14), interactive: true)
             }
 
             HStack(spacing: 22) {
@@ -318,27 +322,6 @@ struct LivePlayerView: View {
             .foregroundColor(scheme == .dark ? .brGold : .brGreen)
         }
         .padding(.horizontal, 24)
-    }
-
-    private var scheduleSection: some View {
-        VStack(spacing: 0) {
-            BRSectionHeader(title: "TODAY'S SCHEDULE")
-                .padding(.horizontal, 20)
-                .padding(.bottom, 16)
-
-            VStack(spacing: 1) {
-                ForEach(ScheduleItem.sampleSchedule) { item in
-                    ScheduleRow(item: item)
-                }
-            }
-            .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(scheme == .dark ? Color.brDkBorder : Color.brLtBorder, lineWidth: 1)
-            )
-            .padding(.horizontal, 20)
-        }
     }
 
 }

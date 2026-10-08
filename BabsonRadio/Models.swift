@@ -50,15 +50,6 @@ enum ThumbnailColor: CaseIterable {
 
 // MARK: - Sample Data
 
-extension ScheduleItem {
-    static let sampleSchedule: [ScheduleItem] = [
-        ScheduleItem(time: "8:00 PM",  showName: "Late Night Vibes",  host: "with DJ Marquis",   isLive: true),
-        ScheduleItem(time: "10:00 PM", showName: "The Pitch Room",    host: "with Sarah Chen"),
-        ScheduleItem(time: "11:30 PM", showName: "Indie & Alt",        host: "Curated mix"),
-        ScheduleItem(time: "1:00 AM",  showName: "Overnight Mix",     host: "Curated mix"),
-    ]
-}
-
 extension Episode {
     static let sampleEpisodes: [Episode] = [
         Episode(

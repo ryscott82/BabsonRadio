@@ -74,10 +74,6 @@ function AboutYou() {
     <form onSubmit={save} className="bg-br-dk-surface border border-br-dk-border rounded-2xl p-5 space-y-4">
       <div>
         <p className="text-br-dk-text text-sm font-medium">About you (optional)</p>
-        <p className="text-br-dk-sub text-xs mt-1">
-          Lets you see things like &ldquo;3 people in your concentration are listening.&rdquo; Others only ever see counts, never your name,
-          and only when at least 3 people share it. Invisible mode keeps you out of those counts.
-        </p>
       </div>
       <label className="block"><span className={lab}>GRADUATION YEAR</span>
         <select className={box} value={gradYear} onChange={e => setGradYear(e.target.value)}>

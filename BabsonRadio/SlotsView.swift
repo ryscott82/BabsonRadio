@@ -553,7 +553,8 @@ struct ScheduleView: View {
     private var cal: Calendar { Calendar.current }
     private var today: Date { cal.startOfDay(for: Date()) }
     private var shown: [Date] { (0..<daysShown).compactMap { cal.date(byAdding: .day, value: $0, to: first) } }
-    private var canBack: Bool { first > today }
+    private var minDay: Date { cal.date(byAdding: .day, value: -7, to: today) ?? today }   // how far back you can look
+    private var canBack: Bool { first > minDay }
     private var canForward: Bool {
         guard let end = cal.date(byAdding: .day, value: daysShown, to: first),
               let limit = cal.date(byAdding: .day, value: daysLoaded, to: today) else { return false }
@@ -561,7 +562,7 @@ struct ScheduleView: View {
     }
 
     private func move(_ days: Int) {
-        if let d = cal.date(byAdding: .day, value: days, to: first) { first = max(d, today) }
+        if let d = cal.date(byAdding: .day, value: days, to: first) { first = max(d, minDay) }
     }
 
     private var rangeText: String {
@@ -689,6 +690,7 @@ struct ScheduleView: View {
                     let top = max(e.startAt, start).timeIntervalSince(start) / 3600 * hourH
                     let height = max(min(e.endAt, end).timeIntervalSince(max(e.startAt, start)) / 3600 * hourH - 2, 22)
                     CalendarBlock(entry: e, height: height, onOpen: { selected = e })
+                        .opacity(e.endAt <= Date() ? 0.55 : 1)
                         .frame(width: geo.size.width - 4, height: height)
                         .offset(x: 2, y: top + 1)
                 }

@@ -534,11 +534,15 @@ private struct SignedInProfileView: View {
                         }
                         .padding(.vertical, 13)
                         .foregroundColor(scheme == .dark && !inviteSent ? Color.brDkBg : .white)
-                        .glassEffect(
-                            .regular.tint(inviteSent
+                        .brGlass(
+                            in: RoundedRectangle(cornerRadius: 12),
+                            tint: inviteSent
                                 ? Color.brGreen.opacity(0.7)
-                                : (scheme == .dark ? Color.brGold : Color.brGreen)).interactive(),
-                            in: RoundedRectangle(cornerRadius: 12))
+                                : (scheme == .dark ? Color.brGold : Color.brGreen),
+                            interactive: true,
+                            fallback: inviteSent
+                                ? Color.brGreen.opacity(0.7)
+                                : (scheme == .dark ? Color.brGold : Color.brGreen))
                     }
                     .buttonStyle(.plain)
                     .disabled(guestEmail.trimmingCharacters(in: .whitespaces).isEmpty || inviteSent)
@@ -1485,10 +1489,6 @@ struct AboutYouSection: View {
             Text("About you (optional)")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-            Text("Lets you see things like \"3 people in your concentration are listening.\" Others only see counts, never your name, and only when at least 3 people share it. Invisible mode keeps you out of those counts.")
-                .font(.system(size: 12))
-                .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-
             VStack(alignment: .leading, spacing: 4) {
                 Text("Graduation year").font(.system(size: 12, weight: .semibold))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)

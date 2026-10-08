@@ -13,7 +13,7 @@ interface Alerts {
 }
 interface Dash {
   radioConnected: boolean
-  nowPlaying: { configured: boolean; song: string; listeners: number; isLive: boolean; streamer: string }
+  nowPlaying: { configured: boolean; song: string; listeners: number; isLive: boolean; streamer: string; playlist: string }
   onAir: { title: string; isShow: boolean; endAt: number }
   next: { title: string; startAt: number; endAt: number; source: string }[]
   announcement: { text: string } | null
@@ -62,7 +62,7 @@ export default function AdminPage() {
           <p className="text-xs text-br-dk-muted">{dash?.onAir.title ? (dash.onAir.isShow ? 'Show' : 'Genre block') : ''}{dash?.onAir.endAt ? ` · until ${clock(dash.onAir.endAt)}` : ''}</p>
         </div>
         <div className={tile}>
-          <p className="text-[11px] text-br-dk-sub">{dash?.nowPlaying.isLive ? `Live · ${dash.nowPlaying.streamer}` : 'Playing'}</p>
+          <p className="text-[11px] text-br-dk-sub">{dash?.nowPlaying.isLive ? `Live · ${dash.nowPlaying.streamer}` : dash?.nowPlaying.playlist ? `Playlist · ${dash.nowPlaying.playlist}` : 'Playing'}</p>
           <p className="text-br-dk-text truncate">{dash?.nowPlaying.song || '–'}</p>
         </div>
         <div className={tile}>

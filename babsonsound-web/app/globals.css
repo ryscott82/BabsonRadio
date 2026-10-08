@@ -8,7 +8,7 @@
   --color-br-green:      #006644;
   --color-br-green-mid:  #007A50;
   --color-br-gold:       var(--br-accent);
-  --color-br-brass:      #DDD055;           /* always gold: for use on the dark-green art blocks */
+  --color-br-brass:      #8FE3B8;           /* light green: for use on the dark-green art blocks */
   --color-br-red:        #C8302A;
 
   --color-br-dk-bg:       var(--br-bg);

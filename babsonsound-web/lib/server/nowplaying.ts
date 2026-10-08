@@ -13,6 +13,8 @@ export interface NowPlayingInfo {
   title: string; artist: string; album: string; art: string
   elapsed: number; duration: number
   isLive: boolean; streamer: string; listeners: number
+  /** Name of the AzuraCast playlist the current song came from ('' when live or unknown). Staff only; listeners never see it. */
+  playlist: string
   next: { title: string; artist: string } | null
   /** The scheduled show/event on air right now, and the color its scheduler picked ('' = default). */
   showTitle: string
@@ -38,13 +40,13 @@ let cache: { at: number; value: Built } | null = null
 type Built = Omit<NowPlayingInfo, 'announcement'>
 const empty = (configured: boolean): Built => ({
   configured, title: '', artist: '', album: '', art: '', elapsed: 0, duration: 0,
-  isLive: false, streamer: '', listeners: 0, next: null, showTitle: '', blockTitle: '', color: '',
+  isLive: false, streamer: '', playlist: '', listeners: 0, next: null, showTitle: '', blockTitle: '', color: '',
   occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, updatedAt: Date.now(),
 })
 
 type Song = { text?: string; artist?: string; title?: string; album?: string; art?: string }
 type Raw = {
-  now_playing?: { song?: Song; elapsed?: number; duration?: number }
+  now_playing?: { song?: Song; elapsed?: number; duration?: number; playlist?: string }
   playing_next?: { song?: Song }
   live?: { is_live?: boolean; streamer_name?: string }
   listeners?: { current?: number; total?: number }
@@ -92,6 +94,7 @@ async function build(): Promise<Built> {
       configured: true, title, artist, album: s.album ?? '', art: s.art ?? '',
       elapsed: r.now_playing?.elapsed ?? 0, duration: r.now_playing?.duration ?? 0,
       isLive: r.live?.is_live === true, streamer: r.live?.streamer_name ?? '',
+      playlist: r.now_playing?.playlist ?? '',
       listeners: r.listeners?.current ?? 0,
       next: n && (n.title || n.text) ? { title: n.title || n.text || '', artist: n.artist ?? '' } : null,
       ...(await onAir()),

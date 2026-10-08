@@ -274,9 +274,9 @@ body::before {
 /* ── Album-color theme (components/ArtTheme.tsx) ─────────────────────────────────────────────
    --art-1/2/3 start at the station green and fade to the cover's three colors.
    1 = visualizer and glow, 2 = accents (stars, links, progress, equalizer), 3 = buttons. */
-@property --art-1 { syntax: '<color>'; inherits: true; initial-value: #2fb67c; }
-@property --art-2 { syntax: '<color>'; inherits: true; initial-value: #2fb67c; }
-@property --art-3 { syntax: '<color>'; inherits: true; initial-value: #2fb67c; }
+@property --art-1 { syntax: '<color>'; inherits: true; initial-value: #006644; }
+@property --art-2 { syntax: '<color>'; inherits: true; initial-value: #006644; }
+@property --art-3 { syntax: '<color>'; inherits: true; initial-value: #006644; }
 .art-ui {
   transition: --art-1 12s ease-in-out, --art-2 12s ease-in-out, --art-3 12s ease-in-out;
   --br-accent: var(--art-2);
@@ -295,3 +295,39 @@ body::before {
 }
 .art-ui .sk-field { background: color-mix(in srgb, var(--art-3) 10%, var(--sk-field)); }
 @media (prefers-reduced-motion: reduce) { .art-ui { transition: none; } }
+
+/* Dark mode: the cover's hues as deep tones for surfaces and lifted tones for text, so nothing goes muddy. */
+@supports (color: oklch(from red l c h)) {
+@media (prefers-color-scheme: dark) {
+:root:not([data-theme="light"]) .art-ui {
+  --br-accent: oklch(from var(--art-2) 0.78 clamp(0.07, c, 0.16) h);
+  --sk-btn-top: oklch(from var(--art-3) 0.56 clamp(0.08, c, 0.17) h);
+  --sk-btn-bot: oklch(from var(--art-3) 0.41 clamp(0.07, c, 0.14) h);
+  --sk-btn-edge: oklch(from var(--art-3) 0.28 clamp(0.05, c, 0.10) h);
+}
+:root:not([data-theme="light"]) .art-ui .sk-hero {
+  border-color: oklch(from var(--art-1) 0.45 clamp(0.05, c, 0.12) h / 0.7);
+  background: linear-gradient(135deg, oklch(from var(--art-1) 0.30 clamp(0.04, calc(c * 0.6), 0.10) h), oklch(from var(--art-3) 0.16 clamp(0.03, calc(c * 0.5), 0.07) h));
+}
+:root:not([data-theme="light"]) .art-ui .sk-raised {
+  background: linear-gradient(180deg, oklch(from var(--art-1) 0.25 clamp(0.03, calc(c * 0.5), 0.07) h), oklch(from var(--art-2) 0.19 clamp(0.025, calc(c * 0.45), 0.06) h));
+  border-color: oklch(from var(--art-2) 0.34 clamp(0.03, calc(c * 0.5), 0.08) h);
+}
+:root:not([data-theme="light"]) .art-ui .sk-field { background: oklch(from var(--art-3) 0.14 clamp(0.02, calc(c * 0.4), 0.05) h); }
+}
+:root[data-theme="dark"] .art-ui {
+  --br-accent: oklch(from var(--art-2) 0.78 clamp(0.07, c, 0.16) h);
+  --sk-btn-top: oklch(from var(--art-3) 0.56 clamp(0.08, c, 0.17) h);
+  --sk-btn-bot: oklch(from var(--art-3) 0.41 clamp(0.07, c, 0.14) h);
+  --sk-btn-edge: oklch(from var(--art-3) 0.28 clamp(0.05, c, 0.10) h);
+}
+:root[data-theme="dark"] .art-ui .sk-hero {
+  border-color: oklch(from var(--art-1) 0.45 clamp(0.05, c, 0.12) h / 0.7);
+  background: linear-gradient(135deg, oklch(from var(--art-1) 0.30 clamp(0.04, calc(c * 0.6), 0.10) h), oklch(from var(--art-3) 0.16 clamp(0.03, calc(c * 0.5), 0.07) h));
+}
+:root[data-theme="dark"] .art-ui .sk-raised {
+  background: linear-gradient(180deg, oklch(from var(--art-1) 0.25 clamp(0.03, calc(c * 0.5), 0.07) h), oklch(from var(--art-2) 0.19 clamp(0.025, calc(c * 0.45), 0.06) h));
+  border-color: oklch(from var(--art-2) 0.34 clamp(0.03, calc(c * 0.5), 0.08) h);
+}
+:root[data-theme="dark"] .art-ui .sk-field { background: oklch(from var(--art-3) 0.14 clamp(0.02, calc(c * 0.4), 0.05) h); }
+}

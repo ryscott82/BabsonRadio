@@ -46,7 +46,8 @@ export function useArtColor(url: string | undefined): string {
 /** One switch for the whole album-color theme. Set to false and the page goes back to the plain green look. */
 export const ART_THEME = true
 
-const GREEN = '#2fb67c'
+/** Official Babson Green (Pantone 3425 C). Every element of the home page starts here. */
+export const BABSON_GREEN = '#006644'
 
 function hslOf(R: number, G: number, B: number): [number, number, number] {
   const r = R / 255, g = G / 255, b = B / 255
@@ -121,4 +122,3 @@ export function useArtPalette(url: string | undefined): string[] {
   return ART_THEME && url && state.url === url ? state.colors : []
 }
 
-export const STATION_GREEN = GREEN

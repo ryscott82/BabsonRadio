@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useNowPlaying } from '@/lib/nowplaying'
-import { ART_THEME, STATION_GREEN, useArtPalette } from '@/lib/artColor'
+import { ART_THEME, BABSON_GREEN, useArtPalette } from '@/lib/artColor'
 
 // Wraps the home page body (not the top bar). Everyone starts on the station green; a few seconds in, the page
 // fades to the three main colors of the current cover, one per kind of element (see .art-ui in globals.css).
@@ -26,7 +26,7 @@ export default function ArtTheme({ className, children }: { className?: string; 
 
   if (!ART_THEME) return <div className={className}>{children}</div>
   const use = ready && palette.length === 3
-  const [a, b, c] = use ? palette : [STATION_GREEN, STATION_GREEN, STATION_GREEN]
+  const [a, b, c] = use ? palette : [BABSON_GREEN, BABSON_GREEN, BABSON_GREEN]
   const style = { '--art-1': a, '--art-2': b, '--art-3': c } as React.CSSProperties
   return (
     <Ctx.Provider value={{ on: true, main: use ? a : '' }}>

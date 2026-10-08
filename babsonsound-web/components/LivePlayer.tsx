@@ -126,7 +126,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
     <>
     <div className="relative overflow-hidden rounded-2xl sk-hero grain">
       {/* Animated background, tinted with the on-air event's color */}
-      {!board && <Visualizer color={glow} playing={isPlaying} />}
+      {!board && <Visualizer color={glow} playing={isPlaying} follow={art.on && !np?.color} />}
 
       <div className={`relative p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 ${pane ? 'lg:flex-col lg:p-8' : ''}`}>
 

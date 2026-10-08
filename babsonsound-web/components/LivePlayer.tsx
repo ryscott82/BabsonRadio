@@ -34,7 +34,9 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   const artColor = useArtColor(np?.art || undefined)
   const art = useArtMain()
   // With the album-color theme on, the glow follows the page's fade (green first, then the cover's main color).
-  const glow = np?.color || (art.on ? art.main : artColor) || ''
+  // Only dark mode at night uses the cover/show colors; otherwise it's the station green.
+  const showColor = art.full ? (np?.color || '') : ''
+  const glow = art.full ? (showColor || (art.on ? art.main : artColor) || '') : ''
 
   // Full screen board (for a screen on the wall): just the music, big, over the visualizer.
   const [board, setBoard] = useState(false)
@@ -126,13 +128,13 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
     <>
     <div className="relative overflow-hidden rounded-2xl sk-hero grain">
       {/* Animated background, tinted with the on-air event's color */}
-      {!board && <Visualizer color={glow} playing={isPlaying} follow={art.on && !np?.color} />}
+      {!board && <Visualizer color={glow} playing={isPlaying} follow={art.full && !showColor} />}
 
       <div className={`relative p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 ${pane ? 'lg:flex-col lg:p-12 lg:gap-10' : ''}`}>
 
         {/* Art block */}
-        <div className={`relative shrink-0 w-44 h-44 md:w-56 md:h-56 ${pane ? 'lg:w-full lg:max-w-[30rem] lg:h-auto lg:aspect-square' : ''} rounded-xl overflow-hidden grain flex items-center justify-center ${np?.color ? '' : 'bg-gradient-to-br from-[#003D27] to-[#006644]'}`}
-             style={np?.color ? { background: `linear-gradient(135deg, ${np.color}, ${np.color}66 70%, #000000aa)`, boxShadow: `0 0 40px ${np.color}55` } : undefined}>
+        <div className={`relative shrink-0 w-44 h-44 md:w-56 md:h-56 ${pane ? 'lg:w-full lg:max-w-[30rem] lg:h-auto lg:aspect-square' : ''} rounded-xl overflow-hidden grain flex items-center justify-center ${showColor ? '' : 'bg-gradient-to-br from-[#003D27] to-[#006644]'}`}
+             style={showColor ? { background: `linear-gradient(135deg, ${showColor}, ${showColor}66 70%, #000000aa)`, boxShadow: `0 0 40px ${showColor}55` } : undefined}>
           {np?.art ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={np.art} alt={hasSong ? `Cover for ${np.title}` : ''} className="absolute inset-0 w-full h-full object-cover" />
@@ -154,7 +156,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
         {/* Info + controls */}
         <div className={`flex-1 text-center md:text-left ${pane ? 'lg:text-center' : ''}`}>
           {/* ON AIR badge */}
-          <div className="inline-flex items-center gap-1.5 bg-br-red px-3 py-1 rounded mb-4">
+          <div className="inline-flex items-center gap-1.5 bg-br-red px-3 py-1 rounded mb-4 transition-colors duration-[2000ms]" style={art.badge ? { backgroundColor: art.badge } : undefined}>
             <span className="w-1.5 h-1.5 rounded-full bg-white/70" />
             <span className="font-display text-white text-xs tracking-[0.25em]">On Air</span>
           </div>
@@ -165,7 +167,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
           <p className={`text-br-dk-sub text-sm ${pane ? 'lg:text-base' : ''} mb-1`}>
             {hasSong ? (np!.artist || 'Babson Radio') : 'Babson College — Internet Radio'}
           </p>
-          {np?.showTitle && <p className="text-xs mb-1" style={{ color: np.color || undefined }}>On air: {np.showTitle}</p>}
+          {np?.showTitle && <p className="text-xs mb-1" style={{ color: showColor || undefined }}>On air: {np.showTitle}</p>}
           {hasSong && np!.isLive && np!.streamer && (
             <p className="text-br-gold text-xs mb-1">Live with {np!.streamer}</p>
           )}

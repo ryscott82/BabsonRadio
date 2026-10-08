@@ -10,7 +10,7 @@ export async function GET() {
       headers: {
         'Content-Type': 'text/calendar; charset=utf-8',
         'Content-Disposition': 'inline; filename="babson-radio.ics"',
-        'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=3600',
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=900',
       },
     })
   } catch (e) {

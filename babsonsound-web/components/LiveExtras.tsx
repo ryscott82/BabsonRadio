@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
 import type { NowPlaying } from '@/lib/nowplaying'
 import EmojiRain, { rain, rainBurst } from './EmojiRain'
+import { useArtMain } from '@/components/ArtTheme'
 
 // Things around the live player: a pinned note from the host, quick reactions, the host's set list with upvotes,
 // and star ratings for the show. Everyone can see them; students (and developers) can take part.
@@ -142,8 +143,9 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
     catch (err) { setMsg(err instanceof Error ? err.message : 'Could not save your rating.') }
   }
 
+  const art = useArtMain()
   const sorted = [...songs].sort((a, b) => b.votes - a.votes)
-  const accent = np?.color || undefined
+  const accent = art.full ? (np?.color || undefined) : undefined
 
   return (
     <div className="mt-4 space-y-4">

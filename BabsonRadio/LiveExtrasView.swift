@@ -294,20 +294,6 @@ struct LiveExtrasView: View {
                 }
             }
 
-            if auth.isSignedIn, let sk = model.skip, sk.eligible {
-                VStack(spacing: 4) {
-                    Button { Task { await model.askSkip() } } label: {
-                        Label(sk.mine ? "You asked to skip" : "Skip this song", systemImage: "forward.fill")
-                            .font(.system(size: 14, weight: .semibold)).foregroundColor(gold)
-                            .padding(.horizontal, 18).padding(.vertical, 10)
-                            .brGlass(in: Capsule(), interactive: true)
-                    }
-                    .buttonStyle(.plain).disabled(sk.mine)
-                    Text("\(sk.votes) of \(sk.needed) needed. It skips when 90% of listeners ask.")
-                        .font(.system(size: 11)).foregroundColor(sub)
-                }
-            }
-
             if let t = feedbackTarget {
                 feedbackCard(t)
             } else if let r = rateable {
@@ -324,11 +310,6 @@ struct LiveExtrasView: View {
         .task { await model.pollLoop() }
         .task(id: songKey) { await model.loadSongStars(title: np?.title ?? "", artist: np?.artist ?? "") }
         .task(id: np?.occId ?? "") { await model.loadShowStars(occId: np?.occId ?? "") }
-        .task(id: "\(songKey)|\(auth.isSignedIn)") {
-            // Check the skip count every 10 seconds while a song from the auto DJ is playing.
-            guard auth.isSignedIn, np?.isLive != true, np?.isShow != true else { model.skip = nil; return }
-            while !Task.isCancelled { await model.loadSkip(); try? await Task.sleep(nanoseconds: 10_000_000_000) }
-        }
         .onAppear { if np?.isShow == true, let o = np?.occId, !o.isEmpty { curShow = (o, showTitleNow) } }
         .onChange(of: np?.occId ?? "") { _, new in
             if let c = curShow, c.occId != new { prevShow = (c.occId, c.title, Date()); fbStars = 0; fbComment = "" }

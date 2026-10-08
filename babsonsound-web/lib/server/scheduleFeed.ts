@@ -58,6 +58,22 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
     })
   }
 
+  // What really played when it differed from the plan (see actualPlaylist.ts): it replaces the planned block for that time.
+  if (opts.includeAuto !== false) {
+    const act = await db.collection('autoActual').where('endAt', '>', Timestamp.fromMillis(since)).get()
+    const actual = act.docs.map(d => ({ id: d.id, startMs: d.get('startAt').toMillis() as number, endMs: d.get('endAt').toMillis() as number, label: String(d.get('label') ?? '') }))
+      .filter(a => a.startMs < until && a.endMs > a.startMs)
+    if (actual.length) {
+      const planned = autoPieces.splice(0)
+      for (const a of planned) clipInterval({ startMs: a.startAt, endMs: a.endAt }, actual, 60_000).forEach((c, n) =>
+        autoPieces.push({ ...a, id: n === 0 ? a.id : `${a.id}-${n}`, startAt: c.startMs, endAt: c.endMs }))
+      for (const a of actual) autoPieces.push({
+        id: `auto-actual-${a.id}`, source: 'auto', title: a.label, description: '', hosts: [], imageUrl: '', category: '',
+        format: 'playlist', startAt: a.startMs, endAt: a.endMs, showSlug: '', color: '', reminderKey: `genre:${a.label.toLowerCase()}`,
+      })
+    }
+  }
+
   // One-time events the station scheduled by hand.
   const evs = await db.collection('events').where('endAt', '>', Timestamp.fromMillis(since)).get()
   for (const d of evs.docs) {

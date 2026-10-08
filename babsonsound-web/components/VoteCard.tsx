@@ -77,6 +77,50 @@ export default function VoteCard() {
         </form>
       )}
       {msg && <p className="text-xs text-br-dk-sub">{msg}</p>}
+      {s.canVote && <PlaylistRequest />}
     </section>
+  )
+}
+
+/** Ask for a song to be added to a playlist: title, artist and a playlist from the menu. */
+function PlaylistRequest() {
+  const [playlists, setPlaylists] = useState<string[]>([])
+  const [title, setTitle] = useState('')
+  const [artist, setArtist] = useState('')
+  const [playlist, setPlaylist] = useState('')
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    apiGet<{ playlists: string[] }>('/api/playlist-request').then(r => setPlaylists(r.playlists)).catch(() => {})
+  }, [])
+  if (!playlists.length) return null
+  async function send(e: React.FormEvent) {
+    e.preventDefault(); setBusy(true); setMsg('')
+    try {
+      await api('/api/playlist-request', { title, artist, playlist })
+      setTitle(''); setArtist(''); setMsg('Sent. The station will take a look.')
+    } catch (err) { setMsg(err instanceof Error ? err.message : 'Try again.') }
+    setBusy(false)
+  }
+  return (
+    <form onSubmit={send} className="space-y-2 pt-3 border-t border-br-dk-border">
+      <h3 className="font-display text-br-dk-text tracking-wide">ADD A SONG TO A PLAYLIST</h3>
+      <div className="grid grid-cols-2 gap-2">
+        <input value={title} onChange={e => setTitle(e.target.value)} maxLength={120} placeholder="Song title" aria-label="Song title"
+               className="sk-field rounded-lg px-3 py-2 text-sm text-br-dk-text" />
+        <input value={artist} onChange={e => setArtist(e.target.value)} maxLength={120} placeholder="Artist" aria-label="Artist"
+               className="sk-field rounded-lg px-3 py-2 text-sm text-br-dk-text" />
+      </div>
+      <div className="flex gap-2">
+        <select value={playlist} onChange={e => setPlaylist(e.target.value)} aria-label="Playlist"
+                className="sk-field flex-1 rounded-lg px-3 py-2 text-sm text-br-dk-text">
+          <option value="">Choose a playlist</option>
+          {playlists.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+        <button type="submit" disabled={busy || !playlist || title.trim().length < 2 || artist.trim().length < 2}
+                className="sk-btn font-display tracking-widest text-xs px-4 rounded-lg disabled:opacity-50">SEND</button>
+      </div>
+      {msg && <p className="text-xs text-br-dk-sub">{msg}</p>}
+    </form>
   )
 }

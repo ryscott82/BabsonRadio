@@ -23,15 +23,17 @@ extension Color {
     static let brGold       = Color(hex: "2FB67C") // bright green accent (replaces the old yellow)
     static let brRed        = Color(hex: "C8302A")
 
-    // Dark Mode
-    static let brDkBg       = Color(hex: "080808")
-    static let brDkSurface  = Color(hex: "111111")
-    static let brDkSurface2 = Color(hex: "1A1A1A")
-    static let brDkBorder   = Color(hex: "252525")
-    static let brDkBorder2  = Color(hex: "303030")
-    static let brDkText     = Color(hex: "E8E8E8")
-    static let brDkSub      = Color(hex: "888888")
-    static let brDkMuted    = Color(hex: "444444")
+    // Dark Mode. At night (7pm to 6am) it's near black so the cover colors pop; in the daytime it's a
+    // darker version of the cream, with the same green highlight as light mode.
+    private static var dkNight: Bool { ArtTheme.isNight }
+    static var brDkBg: Color       { Color(hex: dkNight ? "080808" : "1C1913") }
+    static var brDkSurface: Color  { Color(hex: dkNight ? "111111" : "26221A") }
+    static var brDkSurface2: Color { Color(hex: dkNight ? "1A1A1A" : "302B21") }
+    static var brDkBorder: Color   { Color(hex: dkNight ? "252525" : "3A3428") }
+    static var brDkBorder2: Color  { Color(hex: dkNight ? "303030" : "473F31") }
+    static var brDkText: Color     { Color(hex: dkNight ? "E8E8E8" : "F1EBDC") }
+    static var brDkSub: Color      { Color(hex: dkNight ? "888888" : "A89F8A") }
+    static var brDkMuted: Color    { Color(hex: dkNight ? "444444" : "6B6454") }
 
     // Light Mode
     static let brLtBg       = Color(hex: "F5F0E8")
@@ -128,6 +130,7 @@ struct BRSectionHeader: View {
 // MARK: - ON AIR Badge
 
 struct OnAirBadge: View {
+    @ObservedObject private var theme = ArtTheme.shared
     var body: some View {
         HStack(spacing: 6) {
             Circle()
@@ -140,9 +143,9 @@ struct OnAirBadge: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 3)
-        .background(Color.brRed)
+        .background(theme.badge)
         .clipShape(RoundedRectangle(cornerRadius: 3))
-        .shadow(color: Color.brRed.opacity(0.35), radius: 6, x: 0, y: 2)
+        .shadow(color: theme.badge.opacity(0.35), radius: 6, x: 0, y: 2)
     }
 }
 

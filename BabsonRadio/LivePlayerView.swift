@@ -11,19 +11,20 @@ struct LivePlayerView: View {
     @Environment(\.colorScheme) var scheme
     @State private var showProfileSheet = false
     @State private var showVote = false
+    @Environment(\.verticalSizeClass) private var vSize
 
     /// Signed-out visitors can preview the stream.
     private var canPlay: Bool { auth.canListenLive || !auth.isSignedIn }
 
     /// The on-air event's color, or the station gold/green.
     private var accent: Color {
-        if let hex = audio.nowPlaying?.color, !hex.isEmpty { return Color(hex: hex) }
+        if ArtTheme.full(scheme), let hex = audio.nowPlaying?.color, !hex.isEmpty { return Color(hex: hex) }
         return theme.accent(scheme)
     }
 
     /// Visualizer color: the show's color when there is one, else the cover's main color.
     private var glowColor: Color {
-        if let hex = audio.nowPlaying?.color, !hex.isEmpty { return Color(hex: hex) }
+        if ArtTheme.full(scheme), let hex = audio.nowPlaying?.color, !hex.isEmpty { return Color(hex: hex) }
         return theme.glow(scheme)
     }
 
@@ -72,9 +73,8 @@ struct LivePlayerView: View {
                 }
 
                 // ── Play / Stop Control ─────────────────────────────
-                playControl
+                playRow
                     .padding(.top, 28)
-                    .opacity(canPlay ? 1 : 0.4)
 
                 if !auth.isSignedIn {
                     Text("You're previewing the live stream. Sign in or create a free account from the Profile tab for reminders, friends and more.")
@@ -128,6 +128,16 @@ struct LivePlayerView: View {
             .ignoresSafeArea(edges: .top)
         }
         .overlay { EmojiRainOverlay() }
+#if os(iOS)
+        // Turned sideways on an iPhone: a clean full screen board with just the music, like the website's full screen mode.
+        .overlay {
+            if vSize == .compact {
+                LiveBoardView(canPlay: canPlay, glow: glowColor).transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: vSize == .compact)
+        .toolbar(vSize == .compact ? .hidden : .visible, for: .tabBar)
+#endif
         .alert("Enjoying Babson Radio?", isPresented: $audio.showSignInPrompt) {
             Button("Create account or sign in") { showProfileSheet = true }
             Button("Keep listening", role: .cancel) {}
@@ -248,6 +258,21 @@ struct LivePlayerView: View {
         return u.isGuest
             ? "Your guest access has ended. Ask a Babson student to sponsor you from the Profile tab."
             : "Listening isn't available right now."
+    }
+
+    /// Equalizer on the left while playing, play/stop in the middle, skip on the right (same as the website).
+    private var playRow: some View {
+        HStack(alignment: .top, spacing: 16) {
+            ZStack(alignment: .trailing) {
+                Color.clear
+                if audio.isPlaying { EqualizerBars(color: theme.accent(scheme)) }
+            }
+            .frame(maxWidth: .infinity).frame(height: 72)
+            playControl.opacity(canPlay ? 1 : 0.4)
+            HStack { SkipControl().padding(.top, 12); Spacer(minLength: 0) }
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: 320)
     }
 
     private var playControl: some View {
@@ -680,3 +705,107 @@ struct LiveVisualizer: View {
         }
     }
 }
+
+
+#if os(iOS)
+// MARK: - Full screen board (landscape)
+
+/// Just the music, big, over the visualizer. Controls fade away a few seconds after you stop touching the screen.
+struct LiveBoardView: View {
+    let canPlay: Bool
+    let glow: Color
+    @ObservedObject private var audio = AudioPlayerManager.shared
+    @ObservedObject private var theme = ArtTheme.shared
+    @State private var awake = true
+    @State private var hideTask: Task<Void, Never>?
+
+    private var np: NowPlayingInfo? { audio.nowPlaying }
+    private var hasSong: Bool { np?.title.isEmpty == false }
+
+    private func wake() {
+        withAnimation(.easeOut(duration: 0.2)) { awake = true }
+        hideTask?.cancel()
+        hideTask = Task {
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            if !Task.isCancelled { withAnimation(.easeIn(duration: 0.5)) { awake = false } }
+        }
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            let side = min(geo.size.height * 0.74, geo.size.width * 0.4)
+            ZStack {
+                Color.black.ignoresSafeArea()
+                LiveVisualizer(color: glow, playing: audio.isPlaying, beat: audio.beatClock).ignoresSafeArea()
+
+                HStack(spacing: 40) {
+                    art(side: side)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(hasSong ? (np?.title ?? "") : "Babson Radio")
+                            .font(BRFont.display(34)).foregroundColor(.white)
+                            .lineLimit(3).minimumScaleFactor(0.6)
+                        Text(hasSong ? ((np?.artist.isEmpty == false) ? np!.artist : "Babson Radio") : "Live from campus")
+                            .font(.system(size: 20, weight: .medium)).foregroundColor(.white.opacity(0.8)).lineLimit(2)
+                        if let show = np?.showTitle, !show.isEmpty {
+                            Text(show.uppercased()).font(BRFont.display(13)).kerning(3).foregroundColor(glow).padding(.top, 8)
+                        }
+                        if hasSong, let next = np?.next {
+                            Text("Next: \(next.title)\(next.artist.isEmpty ? "" : " · \(next.artist)")")
+                                .font(.system(size: 14)).foregroundColor(.white.opacity(0.5)).lineLimit(1).padding(.top, 10)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 32)
+
+                VStack {
+                    HStack(spacing: 12) {
+                        Spacer()
+                        SkipControl(onDark: true)
+                        Button { if canPlay { audio.toggle() } } label: {
+                            Text(audio.isPlaying ? "STOP" : "PLAY")
+                                .font(BRFont.display(12)).kerning(2).foregroundColor(.white)
+                                .padding(.horizontal, 14).padding(.vertical, 8)
+                                .brGlass(in: Capsule(), interactive: true)
+                        }
+                        .buttonStyle(.plain).opacity(canPlay ? 1 : 0.4)
+                    }
+                    .padding(.horizontal, 24).padding(.top, 8)
+                    .opacity(awake ? 1 : 0).allowsHitTesting(awake)
+                    Spacer()
+                    HStack {
+                        Text("BABSON RADIO").font(BRFont.display(11)).kerning(5).foregroundColor(.white.opacity(0.4))
+                        Spacer()
+                    }
+                    .padding(.horizontal, 32).padding(.bottom, 10)
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { wake() }
+        .onAppear { wake() }
+        .statusBarHidden(true)
+        .persistentSystemOverlays(.hidden)
+    }
+
+    @ViewBuilder private func art(side: CGFloat) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 18)
+                .fill(LinearGradient(colors: [glow.opacity(0.7), Color(hex: "080808")], startPoint: .topLeading, endPoint: .bottomTrailing))
+            VStack(spacing: 0) {
+                Text("BABSON").font(BRFont.display(14)).kerning(5).foregroundColor(Color.brGold.opacity(0.9))
+                Text("RADIO").font(BRFont.display(38)).kerning(6).foregroundColor(.white.opacity(0.92))
+            }
+            if let art = np?.art, !art.isEmpty, let url = URL(string: art) {
+                AsyncImage(url: url) { phase in
+                    if let image = phase.image { image.resizable().scaledToFill() } else { Color.clear }
+                }
+            }
+        }
+        .frame(width: side, height: side)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .shadow(color: glow.opacity(0.5), radius: 50)
+    }
+}
+#endif

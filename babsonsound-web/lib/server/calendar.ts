@@ -1,9 +1,6 @@
 import 'server-only'
-import { Timestamp, type Firestore } from 'firebase-admin/firestore'
-import { endAfter, localParts, occursOn, parseClock, type Repeat } from '../autoschedule'
-import { loadConfig } from './autoschedule'
-import { localToUtc } from './tz'
-import { SLOT_TYPES, type SlotType } from '../slots'
+import type { Firestore } from 'firebase-admin/firestore'
+import { buildScheduleFeed } from './scheduleFeed'
 
 // Builds the subscribable calendar (.ics): weekly shows, approved student slots and the auto-scheduled genre blocks.
 
@@ -24,60 +21,19 @@ function fold(line: string): string {
 interface Ev { uid: string; start: number; end: number; title: string; desc?: string }
 
 export async function buildCalendar(db: Firestore, now = Date.now()): Promise<string> {
-  const cfg = await loadConfig(db)
-  const tz = cfg.timezone
-  const events: Ev[] = []
-
-  // Approved student slots (public details only: no names)
-  const slots = await db.collection('airSlots').where('endAt', '>', Timestamp.fromMillis(now)).get()
-  for (const d of slots.docs) {
-    events.push({
-      uid: `slot-${d.id}@babsonradio.com`,
-      start: d.get('startAt').toMillis(), end: d.get('endAt').toMillis(),
-      title: d.get('title'), desc: SLOT_TYPES[d.get('type') as SlotType] ?? '',
-    })
-  }
-
-  // Genre blocks from the auto-scheduler
-  const autos = await db.collection('autoBlocks').where('endAt', '>', Timestamp.fromMillis(now)).get()
-  for (const d of autos.docs) {
-    events.push({
-      uid: `auto-${d.id}@babsonradio.com`,
-      start: d.get('startAt').toMillis(), end: d.get('endAt').toMillis(),
-      title: d.get('label'), desc: 'Babson Radio playlist',
-    })
-  }
-
-  // Weekly shows expanded 28 days ahead in station time
-  const weekly = await db.collection('schedule').where('isActive', '==', true).get()
-  for (let off = 0; off < 28; off++) {
-    const probe = now + off * 86_400_000
-    const day = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' })
-      .format(new Date(probe)).split('-').map(Number)
-    const dow = localParts(probe, tz).dow
-    for (const w of weekly.docs) {
-      if (!occursOn({ dayOfWeek: w.get('dayOfWeek'), repeat: w.get('repeat'), anchor: w.get('anchor'), weeks: w.get('weeks'), dates: w.get('dates') } as Repeat & { dayOfWeek?: number }, dow, day[0], day[1], day[2])) continue
-      const s = parseClock(String(w.get('startTime') ?? ''))
-      if (s === null) continue
-      const e = parseClock(String(w.get('endTime') ?? ''))
-      const dur = Number(w.get('durationMin'))
-      const endMin = e !== null ? endAfter(s, e) : s + (Number.isFinite(dur) && dur > 0 ? dur : 60)
-      const start = localToUtc(day[0], day[1], day[2], s, tz)
-      const end = localToUtc(day[0], day[1], day[2], endMin, tz)
-      if (end <= now) continue
-      const hosts = (w.get('hostNames') as string[] | undefined)?.join(', ')
-      events.push({
-        uid: `weekly-${w.id}-${day.join('')}@babsonradio.com`, start, end,
-        title: w.get('showName'), desc: hosts ? `with ${hosts}` : '',
-      })
-    }
-  }
+  // Same schedule the website and the app show (shows, student slots, one-time events, genre blocks, and what
+  // AzuraCast really played when it differed from the plan), plus yesterday so corrections show up in past events.
+  const feed = await buildScheduleFeed(db, { days: 28, back: 1, showStudentHosts: false, now })
+  const events: Ev[] = feed.map(i => ({
+    uid: `${i.id}@babsonradio.com`, start: i.startAt, end: i.endAt, title: i.title,
+    desc: i.source === 'auto' ? 'Babson Radio playlist' : i.hosts.length ? `with ${i.hosts.join(', ')}` : i.description,
+  }))
 
   events.sort((a, b) => a.start - b.start)
   const lines = [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Babson Radio//Schedule//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
     'X-WR-CALNAME:Babson Radio', 'X-WR-CALDESC:What is on Babson Radio',
-    'REFRESH-INTERVAL;VALUE=DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H',
+    'REFRESH-INTERVAL;VALUE=DURATION:PT15M', 'X-PUBLISHED-TTL:PT15M',
     ...events.flatMap(e => [
       'BEGIN:VEVENT', `UID:${e.uid}`, `DTSTAMP:${stamp(now)}`,
       `DTSTART:${stamp(e.start)}`, `DTEND:${stamp(e.end)}`,

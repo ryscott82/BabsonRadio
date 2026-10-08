@@ -87,35 +87,46 @@ final class ArtTheme: ObservableObject {
         withAnimation(.easeInOut(duration: 12)) { main = p.0; green = p.1; second = p.2 }
     }
 
+    // MARK: When the cover colors are used
+    // Light mode: plain cream with a hint of green. Only the On Air badge follows the cover.
+    // Dark mode in the daytime: a darker cream with the green highlight, same idea.
+    // Dark mode at night (7pm to 6am): the full cover colors everywhere.
+
+    static var isNight: Bool {
+        let h = Calendar.current.component(.hour, from: Date())
+        return h >= 19 || h < 6
+    }
+    /// True when the whole UI should follow the cover.
+    static func full(_ scheme: ColorScheme) -> Bool { enabled && scheme == .dark && isNight }
+
+    /// The On Air badge: the cover's color in every mode, station red until a cover has faded in.
+    var badge: Color { second == .babson ? .brRed : second.color }
+
     // MARK: Colors for each part of the UI (light and dark get different tones)
 
     /// Text accents, progress, stars, links: the paired green. Lifted in dark mode so it reads.
     func accent(_ scheme: ColorScheme) -> Color {
-        guard Self.enabled else { return scheme == .dark ? .brGold : .brGreen }
-        if scheme == .dark { let h = green.hsl; return ArtRGB.hsl(h.h, min(max(h.s, 0.45), 0.65), 0.64).color }
-        return green.color
+        guard Self.full(scheme) else { return scheme == .dark ? .brGold : .brGreen }
+        let h = green.hsl; return ArtRGB.hsl(h.h, min(max(h.s, 0.45), 0.65), 0.64).color
     }
     /// Play button and filled buttons: second cover color in light mode, the green in dark.
     func button(_ scheme: ColorScheme) -> Color {
-        guard Self.enabled else { return scheme == .dark ? .brGold : .brGreen }
-        if scheme == .dark { let h = green.hsl; return ArtRGB.hsl(h.h, min(max(h.s, 0.45), 0.6), 0.42).color }
-        return second.color
+        guard Self.full(scheme) else { return scheme == .dark ? .brGold : .brGreen }
+        let h = green.hsl; return ArtRGB.hsl(h.h, min(max(h.s, 0.45), 0.6), 0.42).color
     }
     /// The visualizer glow: the cover's main color, brightened in dark mode.
     func glow(_ scheme: ColorScheme) -> Color {
-        guard Self.enabled else { return scheme == .dark ? .brGold : .brGreen }
-        return (scheme == .dark ? main.mixed(with: ArtRGB(r: 1, g: 1, b: 1), 0.3) : main).color
+        guard Self.full(scheme) else { return scheme == .dark ? .brGold : .brGreen }
+        return main.mixed(with: ArtRGB(r: 1, g: 1, b: 1), 0.3).color
     }
     /// A wash behind the page and a tint for glass cards: rich in light mode, deep and muted in dark mode.
     func wash(_ scheme: ColorScheme) -> Color {
-        guard Self.enabled else { return .clear }
-        if scheme == .dark { let h = main.hsl; return ArtRGB.hsl(h.h, min(h.s, 0.4), 0.16).color }
-        return main.color.opacity(0.30)
+        guard Self.full(scheme) else { return .clear }
+        let h = main.hsl; return ArtRGB.hsl(h.h, min(h.s, 0.4), 0.16).color
     }
     func glassTint(_ scheme: ColorScheme) -> Color? {
-        guard Self.enabled else { return nil }
-        if scheme == .dark { let h = main.hsl; return ArtRGB.hsl(h.h, min(h.s, 0.4), 0.22).color.opacity(0.7) }
-        return main.color.opacity(0.35)
+        guard Self.full(scheme) else { return nil }
+        let h = main.hsl; return ArtRGB.hsl(h.h, min(h.s, 0.4), 0.22).color.opacity(0.7)
     }
 
     // MARK: Palette from a cover

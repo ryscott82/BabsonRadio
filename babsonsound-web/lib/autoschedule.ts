@@ -56,15 +56,16 @@ export const DEFAULT_CONFIG: AutoConfig = {
   playlistMap: {},
   defaultFillers: ['Indie & Alt', 'Throwback Hits', 'Pop Hits', 'Hip-Hop & R&B'],
   rules: [
-    // Nothing scheduled overnight: AzuraCast's default autoDJ playlist plays.
-    { id: 'overnight', name: 'Overnight (default playlist)', days: [0, 1, 2, 3, 4, 5, 6], start: '00:00', end: '07:00',
-      fillers: [], priority: 10, quiet: true },
+    // Nights run to 4am: study music Sun–Wed nights, party music Thu–Sat nights, then a gentle wake-up until 7.
+    // Each night is several genres in 2-hour blocks, and `learn` leans toward whatever listeners are enjoying.
+    { id: 'study-night', name: 'Study nights (Sun–Wed, to 4am)', days: [0, 1, 2, 3], start: '21:00', end: '04:00',
+      fillers: ['Lofi Beats', 'Jazz House for Studying', 'Chill Jazz', 'Acoustic'], priority: 20, blockMinutes: 120 },
+    { id: 'party-night', name: 'Party nights (Thu–Sat, to 4am)', days: [4, 5, 6], start: '21:00', end: '04:00',
+      fillers: ['Dance Mix', 'Pop Hits', 'Hip-Hop & R&B', 'Throwback Hits'], priority: 20, blockMinutes: 120 },
+    { id: 'wake-up', name: 'Wake-up (4am to 7am)', days: [0, 1, 2, 3, 4, 5, 6], start: '04:00', end: '07:00',
+      fillers: ['Acoustic Morning', 'Indie Folk', 'Chill Jazz'], priority: 15 },
     { id: 'weekday-morning', name: 'Weekday mornings', days: [1, 2, 3, 4, 5], start: '07:00', end: '10:00',
       fillers: ['Acoustic Morning', 'Indie Folk'], priority: 10 },
-    { id: 'weeknight', name: 'Weeknights', days: [0, 1, 2, 3, 4], start: '21:00', end: '24:00',
-      fillers: ['Lofi Beats', 'Chill Jazz', 'Acoustic'], priority: 20, blockMinutes: 120, oneGenre: true },
-    { id: 'weekend-night', name: 'Weekend nights', days: [5, 6], start: '21:00', end: '24:00',
-      fillers: ['Dance Mix', 'Throwback Hits'], priority: 20, blockMinutes: 120, oneGenre: true },
   ],
 }
 

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Shown while the app starts, so it is never a blank screen.
-/// Light mode: cream with the beaver. Dark mode: pure black with sweeping club lights.
+/// Light mode: cream with the beaver. Dark mode: pure black, with sweeping club lights only after 7pm (until 4am).
 /// It matches the system launch screen (same colors, same logo size and spot), so nothing jumps when it takes over.
 struct SplashView: View {
     @Environment(\.colorScheme) private var scheme
@@ -9,6 +9,12 @@ struct SplashView: View {
     @State private var appeared = false
 
     private var night: Bool { scheme == .dark }
+    /// The party: dark mode and between 7pm and 4am on the phone's clock. Decided once when the splash appears.
+    private let evening: Bool = {
+        let h = Calendar.current.component(.hour, from: Date())
+        return h >= 19 || h < 4
+    }()
+    private var party: Bool { night && evening }
     /// Same cream as the system launch screen (LaunchBackground in the asset catalog).
     private static let cream = Color(red: 0.953, green: 0.914, blue: 0.824)
 
@@ -16,7 +22,7 @@ struct SplashView: View {
         ZStack {
             (night ? Color.black : Self.cream).ignoresSafeArea()
 
-            if night {
+            if party {
                 ClubLights(animated: !reduceMotion).ignoresSafeArea()
             }
 
@@ -26,7 +32,7 @@ struct SplashView: View {
                 .scaledToFit()
                 .frame(width: 167.67)
                 .scaleEffect(appeared && !reduceMotion ? 1.0 : 0.98)
-                .shadow(color: night ? Color.white.opacity(0.18) : Color.clear, radius: 30)
+                .shadow(color: party ? Color.white.opacity(0.18) : Color.clear, radius: 30)
                 .overlay(alignment: .top) {
                     VStack(spacing: 0) {
                         Text("BABSON")

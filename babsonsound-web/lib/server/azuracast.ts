@@ -177,3 +177,17 @@ export async function azPlayNext(requestId: string): Promise<void> {
   } catch { /* older AzuraCast has no queue endpoint; the request still goes in */ }
   await az(`/station/${station()}/request/${encodeURIComponent(requestId)}`, { method: 'POST' })
 }
+
+let plCache: { at: number; names: string[] } | null = null
+
+/** Names of the station's enabled playlists, for the "add to a playlist" request menu. Empty when AzuraCast can't be reached. */
+export async function azPlaylistNames(): Promise<string[]> {
+  if (!azuraConfigured()) return []
+  if (plCache && Date.now() - plCache.at < 300_000) return plCache.names
+  try {
+    const lists = await az<Playlist[]>(`/station/${station()}/playlists`)
+    const names = lists.filter(p => p.is_enabled !== false && !/jingle|promo|sweeper|station id|\bads?\b/i.test(p.name)).map(p => p.name).sort((a, b) => a.localeCompare(b))
+    plCache = { at: Date.now(), names }
+    return names
+  } catch { return plCache?.names ?? [] }
+}

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
-import type { AutoConfig, AutoRule } from '@/lib/autoschedule'
+import { DEFAULT_CONFIG, type AutoConfig, type AutoRule } from '@/lib/autoschedule'
 import { ErrorText, PrimaryButton } from '@/components/AuthUI'
 
 interface Block { startMs: number; endMs: number; label: string; ruleId: string }
@@ -115,6 +115,10 @@ export default function AutoSchedulePage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-br-gold tracking-widest text-sm">RULES</h2>
+          <button className="sk-key rounded-lg px-3 py-1.5 text-xs font-display tracking-widest text-br-dk-text"
+                  onClick={() => { if (window.confirm('Replace all rules with the suggested schedule? Nothing is saved until you press Save.')) update({ rules: DEFAULT_CONFIG.rules.map(r => ({ ...r })) }) }}>
+            LOAD SUGGESTED SCHEDULE
+          </button>
           <button className="sk-key rounded-lg px-3 py-1.5 text-xs font-display tracking-widest text-br-dk-text"
                   onClick={() => update({ rules: [...cfg.rules, {
                     id: `rule-${Date.now().toString(36)}`, name: 'New rule', days: [1, 2, 3, 4, 5],

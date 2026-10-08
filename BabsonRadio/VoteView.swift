@@ -83,6 +83,7 @@ struct VoteView: View {
                                     .disabled(busy || request.trimmingCharacters(in: .whitespaces).count < 2)
                             }
                         }
+                        if s.canVote != false { PlaylistRequestForm() }
                     } else {
                         ProgressView().frame(maxWidth: .infinity).padding(.top, 40)
                     }
@@ -121,6 +122,67 @@ struct VoteView: View {
             do {
                 let _: EmptyResponse = try await BackendAPI.post("/api/vote/request", ["text": t])
                 request = ""; message = "Sent to the station. Thanks!"
+            } catch { message = (error as? BackendError)?.message ?? "Try again." }
+        }
+    }
+}
+
+
+nonisolated struct PlaylistList: Decodable { let playlists: [String] }
+
+/// Ask for a song to be added to a playlist: title, artist, and a playlist from the menu.
+/// The request goes to the host panel if a host is on air, otherwise to the station admins.
+struct PlaylistRequestForm: View {
+    @Environment(\.colorScheme) private var scheme
+    @State private var playlists: [String] = []
+    @State private var title = ""
+    @State private var artist = ""
+    @State private var playlist = ""
+    @State private var message: String?
+    @State private var busy = false
+
+    private var text: Color { scheme == .dark ? .brDkText : .brLtText }
+    private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
+    private var accent: Color { scheme == .dark ? .brGold : .brGreen }
+    private var ready: Bool {
+        !playlist.isEmpty && title.trimmingCharacters(in: .whitespaces).count >= 2 && artist.trimmingCharacters(in: .whitespaces).count >= 2
+    }
+
+    var body: some View {
+        Group {
+            if !playlists.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("ADD A SONG TO A PLAYLIST").font(BRFont.display(18)).kerning(1.5).foregroundColor(text).padding(.top, 14)
+                    BRTextField(placeholder: "Song title", text: $title, icon: "music.note")
+                    BRTextField(placeholder: "Artist", text: $artist, icon: "person")
+                    HStack {
+                        Picker("Playlist", selection: $playlist) {
+                            Text("Choose a playlist").tag("")
+                            ForEach(playlists, id: \.self) { Text($0).tag($0) }
+                        }
+                        .pickerStyle(.menu).tint(accent)
+                        Spacer()
+                        Button("SEND") { send() }
+                            .font(BRFont.display(14)).kerning(2).foregroundColor(accent)
+                            .disabled(busy || !ready)
+                    }
+                    if let m = message { Text(m).font(.system(size: 13)).foregroundColor(sub) }
+                }
+            }
+        }
+        .task {
+            if let r: PlaylistList = try? await BackendAPI.get("/api/playlist-request") { playlists = r.playlists }
+        }
+    }
+
+    private func send() {
+        busy = true; message = nil
+        let body = ["title": title, "artist": artist, "playlist": playlist]
+        Task {
+            defer { busy = false }
+            do {
+                let _: EmptyResponse = try await BackendAPI.post("/api/playlist-request", body)
+                title = ""; artist = ""; message = "Sent. The station will take a look."
             } catch { message = (error as? BackendError)?.message ?? "Try again." }
         }
     }

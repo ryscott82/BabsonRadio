@@ -4,6 +4,7 @@ import { HOST_WINDOW_MS, hostContext, occurrenceId, showOpen } from '@/lib/serve
 import { azNowPlaying } from '@/lib/server/azuracast'
 import { canEditAnyShow } from '@/lib/server/host'
 import { birthdaysToday } from '@/lib/server/birthdays'
+import { rowOf } from '@/lib/server/playlistRequests'
 import { EMOJIS, getNote, parseSongs, reactionSummary } from '@/lib/server/live'
 
 export const runtime = 'nodejs'
@@ -25,11 +26,12 @@ export async function GET(req: Request) {
     const insights: Record<string, unknown> = {}
     for (const sh of c.open.slice(0, 3)) {
       const id = occurrenceId(sh)
-      const [note, rx, ratings, list, votes, rqDoc, rqList] = await Promise.all([
+      const [note, rx, ratings, list, votes, rqDoc, rqList, plList] = await Promise.all([
         getNote(db, id, now), reactionSummary(db, id, now),
         db.collection('ratings').where('occId', '==', id).get(),
         db.collection('setlists').doc(id).get(), db.collection('setlistVotes').doc(id).get(),
         db.collection('liveRequests').doc(id).get(), db.collection('songRequests').where('occId', '==', id).get(),
+        db.collection('playlistRequests').where('occId', '==', id).get(),
       ])
       const stars = ratings.docs.map(d => d.get('stars') as number)
       const v = (votes.get('votes') ?? {}) as Record<string, string[]>
@@ -37,6 +39,7 @@ export async function GET(req: Request) {
         comments: ratings.docs.filter(d => d.get('comment')).map(d => ({ stars: d.get('stars'), text: d.get('comment'), at: d.get('at')?.toMillis?.() ?? 0 })).sort((a, b) => b.at - a.at).slice(0, 20),
         requestsOpen: rqDoc.exists && rqDoc.get('open') === true,
         requests: rqList.docs.map(d => ({ id: d.id, text: d.get('text'), name: d.get('name'), at: d.get('at').toMillis() })).sort((a, b) => b.at - a.at).slice(0, 30),
+        playlistRequests: plList.docs.map(rowOf).sort((a, b) => b.at - a.at).slice(0, 50),
         note, reactions: rx.total, recentReactions: rx.recent,
         ratingCount: stars.length, ratingAvg: stars.length ? Math.round((stars.reduce((a, b) => a + b, 0) / stars.length) * 10) / 10 : 0,
         songs: parseSongs(String(list.get('songs') ?? '')).map(x => ({ ...x, votes: v[x.id]?.length ?? 0 })).sort((a, b) => b.votes - a.votes),

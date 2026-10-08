@@ -4,6 +4,7 @@ import { currentOnAir, getNote, type LiveNote } from './live'
 import { listenerSample } from './taste'
 import { getAnnouncement, type Announcement } from './announcement'
 import { lookupBeat } from './beats'
+import { trackActual } from './actualPlaylist'
 
 // Public "what is on air" feed for the website and the iOS app.
 // Reads AzuraCast's public now-playing endpoint (no API key). Env: AZURACAST_URL, AZURACAST_STATION_ID.
@@ -125,6 +126,8 @@ async function build(): Promise<Built> {
     // use the AzuraCast playlist name so the label never disagrees with the music.
     if (!value.isLive && !value.isShow && playlist && USE_PLAYLIST_LABEL) value.blockTitle = playlist
     cache = { at: Date.now(), value }
+    // If AzuraCast is playing a different playlist than the plan, the schedule follows what is really on air.
+    await trackActual(adminDb(), { playlist, playedAt: value.playedAt, isLive, isShow: value.isShow }).catch(() => {})
     // Remember how many people listen to what (once every 5 minutes) so the auto-scheduler can learn.
     if (Date.now() - lastSample > 300_000) {
       lastSample = Date.now()

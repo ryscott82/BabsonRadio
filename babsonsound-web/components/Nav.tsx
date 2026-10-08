@@ -29,7 +29,7 @@ export default function Nav() {
   const navLinks = [
     { href: '/',        label: 'Live' },
     { href: '/schedule', label: 'Schedule' },
-    { href: '/shows',   label: 'Shows' },
+    { href: '/library', label: 'Library' },
     { href: '/slots',   label: 'Go On Air' },
   ]
 

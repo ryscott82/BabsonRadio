@@ -35,7 +35,7 @@ export function isBabsonEmail(email: string): boolean {
   return /^[^\s@]+@(babson|olin|wellesley)\.edu$/i.test(email.trim())
 }
 
-async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+async function request<T>(method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown): Promise<T> {
   const token = await auth.currentUser?.getIdToken()
   let res: Response
   try {
@@ -59,6 +59,7 @@ async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown):
 /** POST JSON to one of our API routes with the user's ID token (if signed in). */
 export const api = <T = Record<string, unknown>>(path: string, body: unknown) => request<T>('POST', path, body)
 export const apiGet = <T = Record<string, unknown>>(path: string) => request<T>('GET', path)
+export const apiDelete = <T = Record<string, unknown>>(path: string, body: unknown) => request<T>('DELETE', path, body)
 
 // ── Babson students ───────────────────────────────────────────
 

@@ -39,8 +39,7 @@ struct MessageComposer: UIViewControllerRepresentable {
 enum InviteMessage {
     static func body(from senderName: String) -> String {
         """
-        Hey! \(senderName) invited you to listen to Babson Radio 📻
-        Download the app: https://babsonradio.com/download
+        Tune into Babson Radio! Download the iOS app or visit babsonradio.com
         """
     }
 }

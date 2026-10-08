@@ -21,7 +21,10 @@ Legend: [x] built, [ ] planned.
 - [x] Profile: concentration and year
 - [x] Request a show slot
 - [x] Invite friends: contacts with a school email or "Babson" in their details or name are listed first as "Likely at Babson" with the reason (worked out on the phone, nothing uploaded; iOS)
-- [x] "Saved by N members" suggestions: on by default after a one-time notice; Invisible mode is the opt-out (also turns off live reactions and friend activity). Scrambled numbers only, shown only when 3+ other members saved the number, never who. Costs one Firestore write per sync; counts rebuild once a day (iOS)
+- [x] "Saved by N members" suggestions: on by default; the phone's contacts prompt appears the first time a student opens the app; Invisible mode is the opt-out (also turns off live reactions and friend activity). Scrambled numbers only, shown only when 3+ other members saved the number, never who. Costs one Firestore write per sync; counts rebuild once a day (iOS)
+- [x] Library tab (website and app): save episodes with a star, and see "Based on your interests" (from what you saved and liked; shows "New episodes" until there is something to go on)
+- [x] Search (website and app): real episodes, search by title, show or category, play and save
+- [x] Episodes are YouTube videos that play inside the site and app (the live stream pauses when a video starts in the app)
 - [x] Contact William (signed in only)
 - [x] Station-wide message banner (website and app), closable on the site
 - [x] Password reset limited to one email every 3 minutes (website and app)
@@ -50,6 +53,7 @@ Legend: [x] built, [ ] planned.
 - [x] Edit the weekly and repeating schedule (weekly, biweekly, monthly, dates)
 - [x] Create events
 - [x] "Needs attention" box on the admin page
+- [x] Add library episodes by pasting a YouTube link (Radio Ops > Library content); remove them there too
 
 ## Admin (super admin)
 - [x] Everything a director can do

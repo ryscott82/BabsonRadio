@@ -111,7 +111,7 @@ export default function AdminPage() {
 
           <section className="grid sm:grid-cols-3 gap-5 text-sm">
             <ToolGroup title="PROGRAMMING" links={[
-              ['/admin/schedule', 'Schedule'], ['/admin/slots', 'Slot requests'], ['/admin/show-updates', 'Show updates'],
+              ['/admin/schedule', 'Schedule'], ['/admin/slots', 'Slot requests'], ['/admin/show-updates', 'Show updates'], ['/admin/library', 'Library content'],
               ...(isAdmin ? [['/admin/autoschedule', 'Auto-scheduler'], ['/admin/setlists', 'Set lists']] : []),
             ]} />
             <ToolGroup title="PEOPLE" links={[

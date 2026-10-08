@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(\.colorScheme) var scheme
+    @ObservedObject private var auth = AuthManager.shared
 
     var body: some View {
         TabView {
@@ -15,9 +16,9 @@ struct ContentView: View {
                     BRTabIcon(systemName: "calendar", label: "Schedule")
                 }
 
-            FeedView()
+            LibraryView()
                 .tabItem {
-                    BRTabIcon(systemName: "rectangle.stack", label: "Shows")
+                    BRTabIcon(systemName: "books.vertical", label: "Library")
                 }
 
             // Search is the right-most tab; Profile is the circle button in the top corner of every page.
@@ -28,6 +29,7 @@ struct ContentView: View {
         }
         .tint(scheme == .dark ? .brGold : .brGreen)
         .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+        .task(id: auth.isSignedIn) { ContactsManager.shared.promptOnFirstOpen() }
     }
 }
 

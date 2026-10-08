@@ -6,14 +6,18 @@ struct SearchView: View {
     @Environment(\.colorScheme) var scheme
     @State private var query = ""
     @State private var isSearching = false
+    @ObservedObject private var lib = LibraryManager.shared
+    @ObservedObject private var auth = AuthManager.shared
 
-    var searchResults: [Episode] {
+    private var canUse: Bool { auth.isSignedIn && !auth.isGuest }
+
+    var searchResults: [LibEpisode] {
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
         let q = query.lowercased()
-        return Episode.sampleEpisodes.filter {
+        return lib.all.filter {
             $0.title.lowercased().contains(q) ||
             $0.showName.lowercased().contains(q) ||
-            $0.category.rawValue.lowercased().contains(q)
+            $0.category.lowercased().contains(q)
         }
     }
 
@@ -38,6 +42,7 @@ struct SearchView: View {
             }
             .navigationTitle("")
             .profileButton()
+            .task(id: canUse) { if canUse { await lib.loadAll() } }
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $query,
@@ -77,7 +82,7 @@ struct SearchView: View {
                     spacing: 12
                 ) {
                     ForEach(ShowCategory.allCases, id: \.self) { cat in
-                        CategoryTile(category: cat)
+                        CategoryTile(category: cat, onTap: { query = cat.rawValue })
                     }
                 }
                 .padding(.horizontal, 20)
@@ -88,9 +93,18 @@ struct SearchView: View {
                 BRSectionHeader(title: "RECENT EPISODES")
                     .padding(.horizontal, 20)
 
+                if !canUse {
+                    Text(auth.isSignedIn ? "Episodes are for Babson students. Guests can listen live." : "Sign in with your Babson email to browse episodes.")
+                        .font(.system(size: 14)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                        .padding(.horizontal, 20)
+                } else if lib.all.isEmpty {
+                    Text(lib.loaded ? "No episodes yet. They show up here as soon as the station adds them." : "Loading…")
+                        .font(.system(size: 14)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                        .padding(.horizontal, 20)
+                }
                 LazyVStack(spacing: 10) {
-                    ForEach(Episode.sampleEpisodes) { episode in
-                        EpisodeCard(episode: episode)
+                    ForEach(lib.all) { episode in
+                        EpisodeListRow(ep: episode)
                             .padding(.horizontal, 20)
                     }
                 }
@@ -118,7 +132,7 @@ struct SearchView: View {
 
                 LazyVStack(spacing: 10) {
                     ForEach(searchResults) { episode in
-                        EpisodeCard(episode: episode)
+                        EpisodeListRow(ep: episode)
                             .padding(.horizontal, 20)
                     }
                 }
@@ -155,10 +169,11 @@ struct SearchView: View {
 
 struct CategoryTile: View {
     let category: ShowCategory
+    var onTap: () -> Void = {}
     @Environment(\.colorScheme) var scheme
 
     var body: some View {
-        Button(action: {}) {
+        Button(action: onTap) {
             ZStack(alignment: .bottomLeading) {
                 // Background
                 RoundedRectangle(cornerRadius: 14)

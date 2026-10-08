@@ -26,10 +26,9 @@ private struct SignedInProfileView: View {
     let user: BRUser
     @Environment(\.dismiss) private var dismiss
     @State private var showReport = false
-    @State private var showSuggestAlert = false
     @State private var hostAvailable = false
     @StateObject private var auth = AuthManager.shared
-    @StateObject private var contacts = ContactsManager()
+    @ObservedObject private var contacts = ContactsManager.shared
     @StateObject private var presence = PresenceManager.shared
     @Environment(\.colorScheme) var scheme
 
@@ -189,30 +188,12 @@ private struct SignedInProfileView: View {
                 .ignoresSafeArea()
             }
         }
-        .alert("Suggesting people at Babson", isPresented: $showSuggestAlert) {
-            Button("Continue") {
-                Task {
-                    await contacts.acceptNotice()
-                    if !contacts.accessGranted { contacts.requestAccess() }
-                }
-            }
-            Button("Turn on Invisible mode") {
-                auth.setInvisible(true)
-                Task {
-                    await contacts.acceptNotice()
-                    if !contacts.accessGranted { contacts.requestAccess() }
-                }
-            }
-        } message: {
-            Text("To suggest people who probably go to Babson, the app checks your contacts on your phone for school emails, and counts how many members saved the same phone numbers. Your phone scrambles each number before it is sent, we keep only scrambled codes (never names), nobody sees who saved whom, and a number is only suggested when at least 3 other members saved it. Invisible mode turns all of this off, along with live reactions and friend activity.")
-        }
         .onChange(of: auth.isInvisible) { _, nowInvisible in
             if nowInvisible { contacts.clearSaved() } else { Task { await contacts.refreshSuggestions(force: true) } }
         }
         .task {
             // Only silently loads if access was previously granted — never auto-prompts
             await contacts.requestAccessIfNeeded()
-            if contacts.accessGranted && !contacts.noticeSeen && !auth.isInvisible { showSuggestAlert = true }
         }
     }
 
@@ -677,7 +658,7 @@ private struct SignedInProfileView: View {
                         VStack(spacing: 0) {
                             // Contacts who look like Babson people go first, with the reason.
                             if !contacts.babson.isEmpty {
-                                Text("LIKELY AT BABSON")
+                                Text("You may know...")
                                     .font(BRFont.display(11))
                                     .kerning(2)
                                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
@@ -746,7 +727,7 @@ private struct SignedInProfileView: View {
                     }
                 } else {
                     // Permission not granted
-                    Button(action: { if contacts.noticeSeen { contacts.requestAccess() } else { showSuggestAlert = true } }) {
+                    Button(action: { contacts.requestAccess() }) {
                         HStack(spacing: 12) {
                             Image(systemName: "person.crop.circle.badge.plus")
                                 .font(.system(size: 18))
@@ -982,12 +963,12 @@ class ContactsManager: ObservableObject {
     @Published var list: [BRContact] = []
     /// Contacts that look like Babson people, best matches first. Worked out on this phone; nothing is uploaded.
     @Published var babson: [BRContact] = []
-    /// The person has seen the explanation of "saved by members" suggestions (shown once, before contacts are used).
-    @Published var noticeSeen = UserDefaults.standard.bool(forKey: "br_contact_notice_v1")
     @Published var suggestionsNote = ""
 
-    /// On for everyone who has seen the notice, except people in Invisible mode (the opt-out).
-    var suggestionsActive: Bool { noticeSeen && !AuthManager.shared.isInvisible }
+    static let shared = ContactsManager()
+
+    /// On for everyone who allowed contacts, except people in Invisible mode (the opt-out).
+    var suggestionsActive: Bool { !AuthManager.shared.isInvisible }
 
     // Store kept alive for the lifetime of the manager
     private let store = CNContactStore()
@@ -999,7 +980,7 @@ class ContactsManager: ObservableObject {
             await MainActor.run { self.accessGranted = true }
             loadContacts()
         case .notDetermined:
-            // Don't auto-prompt — wait for the user to tap the button
+            // The first-open prompt (see promptOnFirstOpen) or the button in Profile asks; nothing happens here.
             break
         default:
             break
@@ -1061,11 +1042,21 @@ class ContactsManager: ObservableObject {
         }
     }
 
-    /// They have read the explanation: start using shared-contact suggestions.
-    func acceptNotice() async {
-        noticeSeen = true
-        UserDefaults.standard.set(true, forKey: "br_contact_notice_v1")
-        await refreshSuggestions(force: true)
+    /// Asks for contacts once, the first time a signed-in student opens the app. If they say no, the button in Profile
+    /// is still there. Guests never get this (the friends network is for students).
+    func promptOnFirstOpen() {
+        let auth = AuthManager.shared
+        guard auth.isSignedIn, !auth.isGuest else { return }
+        switch CNContactStore.authorizationStatus(for: .contacts) {
+        case .notDetermined:
+            guard !UserDefaults.standard.bool(forKey: "br_contacts_asked") else { return }
+            UserDefaults.standard.set(true, forKey: "br_contacts_asked")
+            requestAccess()
+        case .authorized:
+            Task { await requestAccessIfNeeded() }
+        default:
+            break
+        }
     }
 
     /// Invisible mode was switched on: forget the counts here (the server removes this person's codes itself).
@@ -1489,6 +1480,9 @@ struct AboutYouSection: View {
             Text("About you (optional)")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+            Text("Tell us about you!")
+                .font(.system(size: 12))
+                .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Graduation year").font(.system(size: 12, weight: .semibold))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)

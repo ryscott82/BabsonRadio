@@ -9,18 +9,10 @@ Rules the wording has to stay true to (they are how the code works):
 
 ## A. Contacts permission (iOS system pop-up)
 **A1. Reason shown in Apple's permission pop-up** (the old text said "never uploaded or stored", which is no longer true, so this one must change before release)
-Current: Babson Radio uses your contacts so you can invite friends. Your contacts are never uploaded or stored.
+Current: Babson Radio uses your contacts so you can invite friends and see who's already here! Your data is not sold to any third parties. (Shown the first time a student opens the app.)
 Your wording:
 
-## B. One-time notice before contacts are used (iOS, Profile > Invite friends)
-**B1. Title** — Current: Suggesting people at Babson
-Your wording:
-**B2. Body** — Current: To suggest people who probably go to Babson, the app checks your contacts on your phone for school emails, and counts how many members saved the same phone numbers. Your phone scrambles each number before it is sent, we keep only scrambled codes (never names), nobody sees who saved whom, and a number is only suggested when at least 3 other members saved it. Invisible mode turns all of this off, along with live reactions and friend activity.
-Your wording:
-**B3. Button, go ahead** — Current: Continue
-Your wording:
-**B4. Button, opt out** — Current: Turn on Invisible mode
-Your wording:
+## B. (Removed) The one-time "Suggesting people at Babson" popup is gone; the contacts permission text in A1 now does that job.
 
 ## C. Invite friends section (iOS, Profile)
 **C1. Heading** — Current: INVITE FRIENDS

@@ -312,3 +312,17 @@ struct BRGlassGroup<Content: View>: View {
         }
     }
 }
+
+
+/// "Designed by Ryan Scott" credit line; the name opens his site.
+struct DesignedByCredit: View {
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        Text("Designed by [Ryan Scott](https://ryanedwardscott.com)")
+            .font(.system(size: 12))
+            .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+            .tint(scheme == .dark ? .brGold : .brGreen)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+    }
+}

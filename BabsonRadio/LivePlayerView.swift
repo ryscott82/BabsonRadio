@@ -292,6 +292,7 @@ struct LivePlayerView: View {
                 .brGlass(in: RoundedRectangle(cornerRadius: 14), tint: scheme == .dark ? Color.brGold : Color.brGreen, interactive: true, fallback: scheme == .dark ? Color.brGold : Color.brGreen)
             }
 
+            if !auth.isSignedIn || auth.isTester {
             ShareLink(item: BabsonLinks.interest,
                       subject: Text("Babson Radio"),
                       message: Text("Student radio is coming back to Babson. Tell them what you want to hear:")) {
@@ -306,6 +307,7 @@ struct LivePlayerView: View {
                 .padding(.vertical, 14)
                 .foregroundColor(scheme == .dark ? .brGold : .brGreen)
                 .brGlass(in: RoundedRectangle(cornerRadius: 14), interactive: true)
+            }
             }
 
             HStack(spacing: 22) {

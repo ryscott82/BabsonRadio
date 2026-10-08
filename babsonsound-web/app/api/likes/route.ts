@@ -1,6 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
-import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/http'
+import { HttpError, handle, readJson, str } from '@/lib/server/http'
+import { requireLibrary } from '@/lib/server/guests'
 import { visibleFriends } from '@/lib/server/friends'
 
 export const runtime = 'nodejs'
@@ -10,7 +11,7 @@ const ID = /^[A-Za-z0-9_-]{1,100}$/
 // Like / unlike an episode. Students and developers only (guests never see episodes).
 export async function POST(req: Request) {
   return handle(async () => {
-    const t = await requireMember(req)
+    const t = await requireLibrary(req)
     const b = await readJson(req)
     const episodeId = str(b.episodeId, 100)
     if (!ID.test(episodeId)) throw new HttpError(400, 'Bad episode.')
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
 // Friends who are in invisible mode never appear.
 export async function GET(req: Request) {
   return handle(async () => {
-    const t = await requireMember(req)
+    const t = await requireLibrary(req)
     const ids = (new URL(req.url).searchParams.get('ids') ?? '').split(',').filter(i => ID.test(i)).slice(0, 30)
     const db = adminDb()
     if (!ids.length) return { liked: [], friends: {} }

@@ -9,7 +9,7 @@ struct SearchView: View {
     @ObservedObject private var lib = LibraryManager.shared
     @ObservedObject private var auth = AuthManager.shared
 
-    private var canUse: Bool { auth.isSignedIn && auth.currentUser?.isGuest != true }
+    private var canUse: Bool { auth.canAccessLibrary }
 
     var searchResults: [LibEpisode] {
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
@@ -94,7 +94,7 @@ struct SearchView: View {
                     .padding(.horizontal, 20)
 
                 if !canUse {
-                    Text(auth.isSignedIn ? "Episodes are for Babson students. Guests can listen live." : "Sign in with your Babson email to browse episodes.")
+                    Text(auth.isSignedIn ? "The Library opens when a Babson student sponsors you. Ask one from your Profile." : "Sign in with your Babson email to browse episodes.")
                         .font(.system(size: 14)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .padding(.horizontal, 20)
                 } else if lib.all.isEmpty {

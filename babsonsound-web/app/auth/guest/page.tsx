@@ -54,7 +54,7 @@ function GuestForms() {
   }
 
   return (
-    <Card title="GUEST ACCESS" subtitle="Listen live for 3 days free. A Babson student can extend your access. Guests can't open stored episodes.">
+    <Card title="GUEST ACCESS" subtitle="Live radio is free for everyone. A Babson student can unlock the Library for you.">
       <form onSubmit={submit} className="space-y-4">
         {mode === 'create' && (
           <Field label="Your name" value={name} onChange={e => setName(e.target.value)} autoComplete="given-name" placeholder="First name" />
@@ -69,7 +69,7 @@ function GuestForms() {
         <ErrorText>{error}</ErrorText>
         {info && <p className="text-sm text-br-dk-sub">{info}</p>}
         <PrimaryButton type="submit" busy={busy}>
-          {mode === 'create' ? 'START FREE TRIAL' : mode === 'signin' ? 'SIGN IN' : 'SEND RESET LINK'}
+          {mode === 'create' ? 'CREATE ACCOUNT' : mode === 'signin' ? 'SIGN IN' : 'SEND RESET LINK'}
         </PrimaryButton>
       </form>
       <div className="flex justify-center gap-5 text-sm mt-6">
@@ -84,10 +84,10 @@ function GuestForms() {
   )
 }
 
-type Status = { emailVerified: boolean; requestStatus: string | null }
+type Status = { emailVerified: boolean; requestStatus: string | null; canAccessBacklog?: boolean; libraryVia?: 'pass' | 'contacts' | null; libraryUntil?: number | null }
 
 function GuestHome() {
-  const { user, guestPass, guestTrialEndsAt, passActive, trialActive, reload } = useAuth()
+  const { user, guestPass, passActive, hasLibraryAccess, reload } = useAuth()
   const [status, setStatus] = useState<Status | null>(null)
   const [requests, setRequests] = useState<{ id: string; status: string }[]>([])
   const [sponsorEmail, setSponsorEmail] = useState('')
@@ -134,25 +134,25 @@ function GuestHome() {
       <div className="bg-br-dk-surface border border-br-dk-border rounded-2xl p-6 text-center space-y-2">
         {passActive && guestPass ? (
           <>
-            <p className="text-br-dk-text">Live radio unlocked by {guestPass.sponsorName}.</p>
+            <p className="text-br-dk-text">Library unlocked by {guestPass.sponsorName}.</p>
             <p className="text-br-dk-sub text-sm">Expires {fmt(guestPass.expiresAt)}.</p>
           </>
-        ) : trialActive && guestTrialEndsAt ? (
-          <>
-            <p className="text-br-dk-text">Free live trial</p>
-            <p className="text-br-dk-sub text-sm">Ends {fmt(guestTrialEndsAt)}.</p>
-          </>
+        ) : hasLibraryAccess ? (
+          <p className="text-br-dk-text">The Library is open for you.</p>
         ) : (
-          <p className="text-br-dk-sub text-sm">Your access has ended. Ask a Babson student to sponsor you to listen live again.</p>
+          <p className="text-br-dk-sub text-sm">Ask a Babson student to sponsor you to unlock the Library.</p>
         )}
-        <p className="text-br-dk-sub text-xs">Guests can listen live. Stored episodes are for Babson students.</p>
-        {(passActive || trialActive) && <Link href="/" className="inline-block font-display tracking-widest text-sm text-br-gold">LISTEN LIVE →</Link>}
+        <p className="text-br-dk-sub text-xs">Live radio is open to everyone who is signed in.</p>
+        <div className="flex justify-center gap-5">
+          <Link href="/" className="inline-block font-display tracking-widest text-sm text-br-gold">LISTEN LIVE →</Link>
+          {hasLibraryAccess && <Link href="/library" className="inline-block font-display tracking-widest text-sm text-br-gold">LIBRARY →</Link>}
+        </div>
       </div>
 
       <div className="mt-6 space-y-4">
         {!verified ? (
           <>
-            <p className="text-sm text-br-dk-sub">Verify your email to ask a student for more time. We sent a link to {user?.email}.</p>
+            <p className="text-sm text-br-dk-sub">Verify your email to ask a student to sponsor you. We sent a link to {user?.email}.</p>
             <div className="flex gap-3">
               <PrimaryButton busy={busy} onClick={() => run(resendVerification, 'Sent. Check your inbox.')}>RESEND LINK</PrimaryButton>
               <GhostButton onClick={() => run(refresh, 'Checked.')}>I&apos;VE VERIFIED</GhostButton>

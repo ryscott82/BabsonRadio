@@ -10,12 +10,12 @@ import { EpisodeRow, PlayerDialog, type Ep } from '@/components/EpisodeRow'
 interface Data { saved: Ep[]; savedIds: string[]; forYou: { basedOnInterests: boolean; items: Ep[] } }
 
 function LibraryBody() {
-  const { hasMemberAccess } = useAuth()
+  const { hasLibraryAccess } = useAuth()
   const [d, setD] = useState<Data | null>(null)
   const [err, setErr] = useState('')
   const [playing, setPlaying] = useState<Ep | null>(null)
   const load = useCallback(() => apiGet<Data>('/api/library').then(setD).catch(e => setErr(e.message)), [])
-  useEffect(() => { if (hasMemberAccess) load() }, [hasMemberAccess, load])
+  useEffect(() => { if (hasLibraryAccess) load() }, [hasLibraryAccess, load])
 
   async function toggle(ep: Ep) {
     if (!d) return

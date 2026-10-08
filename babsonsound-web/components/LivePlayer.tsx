@@ -30,7 +30,7 @@ export default function LivePlayer() {
   const pct = np && np.duration > 0
     ? Math.min(100, ((np.elapsed + Math.max(0, clock - np.receivedAt) / 1000) / np.duration) * 100) : 0
 
-  // Stop immediately if access lapses (trial/pass ended, sign-out).
+  // Stop immediately if access lapses (sign-out).
   useEffect(() => {
     if (!loading && !canListenLive && audioRef.current) {
       audioRef.current.pause()
@@ -150,9 +150,9 @@ export default function LivePlayer() {
           {!loading && !canListenLive && (
             <p className="text-br-dk-sub text-sm mb-4">
               {!user
-                ? <>Sign in with your Babson email, or <Link href="/auth/guest" className="text-br-gold">start a free guest trial</Link>.</>
+                ? <>Sign in to listen. No Babson email? <Link href="/auth/guest" className="text-br-gold">Create a guest account</Link>.</>
                 : isGuest
-                  ? <>Your guest access has ended. <Link href="/auth/guest" className="text-br-gold">Ask a student to sponsor you</Link>.</>
+                  ? <>Listening isn&apos;t available right now. Try again in a moment.</>
                   : <>Verify your Babson email to listen. <Link href="/auth" className="text-br-gold">Continue</Link>.</>}
             </p>
           )}

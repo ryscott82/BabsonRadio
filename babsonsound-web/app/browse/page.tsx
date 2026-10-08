@@ -7,7 +7,7 @@ import LockedGate from '@/components/LockedGate'
 import { EpisodeRow, PlayerDialog, type Ep } from '@/components/EpisodeRow'
 
 function BrowseBody() {
-  const { hasMemberAccess } = useAuth()
+  const { hasLibraryAccess } = useAuth()
   const [q, setQ] = useState('')
   const [items, setItems] = useState<Ep[] | null>(null)
   const [saved, setSaved] = useState<Set<string>>(new Set())
@@ -16,13 +16,13 @@ function BrowseBody() {
   const [playing, setPlaying] = useState<Ep | null>(null)
 
   useEffect(() => {
-    if (!hasMemberAccess) return
+    if (!hasLibraryAccess) return
     const t = setTimeout(() => {
       apiGet<{ items: Ep[]; savedIds: string[] }>(`/api/episodes?q=${encodeURIComponent(q)}`)
         .then(r => { setItems(r.items); setSaved(new Set(r.savedIds)); setErr('') }).catch(e => setErr(e.message))
     }, q ? 250 : 0)
     return () => clearTimeout(t)
-  }, [hasMemberAccess, q])
+  }, [hasLibraryAccess, q])
 
   async function toggle(ep: Ep) {
     const was = saved.has(ep.id)

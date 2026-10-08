@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @Environment(\.colorScheme) var scheme
     @ObservedObject private var auth = AuthManager.shared
+    @State private var splashDone = false
 
     var body: some View {
         TabView {
@@ -30,6 +31,23 @@ struct ContentView: View {
         .tint(scheme == .dark ? .brGold : .brGreen)
         .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
         .task(id: auth.isSignedIn) { ContactsManager.shared.promptOnFirstOpen() }
+        .overlay {
+            if !splashDone {
+                SplashView()
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
+        }
+        .task {
+            // Hold the splash until the sign-in check is done (at most 6 seconds), and at least long enough to see it.
+            let start = Date()
+            while !auth.hasResolvedAuth, Date().timeIntervalSince(start) < 6 {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+            }
+            let rest = 1.4 - Date().timeIntervalSince(start)
+            if rest > 0 { try? await Task.sleep(nanoseconds: UInt64(rest * 1_000_000_000)) }
+            withAnimation(.easeOut(duration: 0.5)) { splashDone = true }
+        }
     }
 }
 

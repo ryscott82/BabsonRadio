@@ -1,13 +1,12 @@
 import { adminAuth, adminDb } from '@/lib/server/admin'
 import { BABSON_EMAIL, handle, isBabsonToken, isDeveloperToken, isTesterToken, requireUser } from '@/lib/server/http'
-import { ensureGuestUserDoc, ensureTrial } from '@/lib/server/guests'
+import { ensureGuestUserDoc, guestLibraryAccess } from '@/lib/server/guests'
 
 export const runtime = 'nodejs'
 
 // One call tells the apps what the signed-in person may do.
-//   canListenLive    → live radio (students, developers, guests with a trial or sponsored pass)
-//   canAccessBacklog → stored episodes (students and developers ONLY — never guests)
-// The first call for a guest starts their one-time trial.
+//   canListenLive    → live radio: everyone who is signed in (a beta tester still waiting for approval cannot yet)
+//   canAccessBacklog → the Library: students and developers, plus guests with a sponsor's pass or a student who has them in their contacts
 export async function GET(req: Request) {
   return handle(async () => {
     const t = await requireUser(req)
@@ -26,9 +25,9 @@ export async function GET(req: Request) {
     }
     const emailVerified = t.email_verified === true || (await adminAuth().getUser(t.uid)).emailVerified
     await ensureGuestUserDoc(db, t.uid, email, t.name ?? 'Guest')
-    const trialEndsAt = await ensureTrial(db, t.uid)
 
-    const [passSnap, reqSnap] = await Promise.all([
+    const [library, passSnap, reqSnap] = await Promise.all([
+      guestLibraryAccess(db, t.uid, email, emailVerified),
       db.collection('guestPasses').doc(t.uid).get(),
       db.collection('guestRequests').where('guestUid', '==', t.uid).get(),
     ])
@@ -43,11 +42,12 @@ export async function GET(req: Request) {
     return {
       tier: 'guest',
       emailVerified,
-      trialEndsAt,
       pass,
       requestStatus: latest?.status ?? null,
-      canListenLive: trialEndsAt > now || !!pass,
-      canAccessBacklog: false,
+      canListenLive: true,
+      canAccessBacklog: library.ok,
+      libraryVia: library.via,
+      libraryUntil: library.until,
     }
   })
 }

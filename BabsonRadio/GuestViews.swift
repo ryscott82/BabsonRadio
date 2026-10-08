@@ -1,7 +1,7 @@
 import SwiftUI
 
 // MARK: - Guest sign-up / sign-in (free: Firebase email + password, no SMS, no email links)
-// Guests get LIVE radio only: a 3-day automatic trial, then a student-sponsored pass. Never episodes.
+// Guests can listen live. The Library needs a student's sponsor pass or a student connection.
 
 struct GuestAuthView: View {
     @StateObject private var auth = AuthManager.shared
@@ -26,7 +26,7 @@ struct GuestAuthView: View {
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                     .kerning(4)
                     .padding(.top, 56)
-                Text("Listen live free for 3 days. A Babson student can extend your access. Guests can't open stored episodes.")
+                Text("Live radio is free. A Babson student can unlock the Library for you.")
                     .font(.system(size: 13))
                     .foregroundColor(sub)
                     .multilineTextAlignment(.center)
@@ -63,7 +63,7 @@ struct GuestAuthView: View {
                         if auth.isLoading {
                             ProgressView().progressViewStyle(CircularProgressViewStyle(tint: scheme == .dark ? .brDkBg : .white))
                         } else {
-                            Text(mode == .create ? "START FREE TRIAL" : mode == .signIn ? "SIGN IN" : "SEND RESET LINK")
+                            Text(mode == .create ? "CREATE ACCOUNT" : mode == .signIn ? "SIGN IN" : "SEND RESET LINK")
                                 .font(BRFont.display(16)).kerning(3)
                                 .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
                         }
@@ -129,7 +129,7 @@ struct GuestProfileView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(statusTitle).font(.system(size: 16, weight: .semibold)).foregroundColor(text)
                         Text(statusDetail).font(.system(size: 13)).foregroundColor(sub)
-                        Text("Guests can listen live. Stored episodes are for Babson students.")
+                        Text("Live radio is open to everyone who is signed in.")
                             .font(.system(size: 12)).foregroundColor(sub).padding(.top, 4)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -168,6 +168,8 @@ struct GuestProfileView: View {
                     if let info = auth.infoMessage { Text(info).font(.system(size: 13)).foregroundColor(sub) }
 
                     DeleteAccountButton().padding(.top, 16)
+
+                    DesignedByCredit()
                 }
                 .padding(20)
             }
@@ -189,15 +191,15 @@ struct GuestProfileView: View {
     }()
 
     private var statusTitle: String {
-        if let p = auth.guestStatus?.pass, p.expiresAt > Date() { return "Live radio unlocked by \(p.sponsorName)" }
-        if auth.canListenLive { return "Free live trial" }
-        return "Your access has ended"
+        if let p = auth.guestStatus?.pass, p.expiresAt > Date() { return "Library unlocked by \(p.sponsorName)" }
+        if auth.canAccessLibrary { return "The Library is open for you" }
+        return "Live radio is open to you"
     }
 
     private var statusDetail: String {
         if let p = auth.guestStatus?.pass, p.expiresAt > Date() { return "Expires \(Self.fmt.string(from: p.expiresAt))." }
-        if let t = auth.guestStatus?.trialEndsAt, t > Date() { return "Ends \(Self.fmt.string(from: t))." }
-        return "Ask a Babson student to sponsor you to listen live again."
+        if auth.canAccessLibrary { return "Your access is checked again at the end of the semester." }
+        return "Ask a Babson student to sponsor you to unlock the Library."
     }
 }
 

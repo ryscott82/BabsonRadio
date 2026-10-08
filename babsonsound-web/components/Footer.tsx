@@ -26,6 +26,9 @@ export default function Footer() {
           {INSTAGRAM_URL && <a href={INSTAGRAM_URL} {...ext} className={link}>Instagram</a>}
         </nav>
       </div>
+      <p className="max-w-6xl mx-auto px-4 pb-6 text-xs text-br-dk-sub">
+        Designed by <a href="https://ryanedwardscott.com" {...ext} className="underline underline-offset-4 hover:text-br-dk-text transition-colors">Ryan Scott</a>
+      </p>
     </footer>
   )
 }

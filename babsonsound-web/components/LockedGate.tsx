@@ -4,18 +4,18 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 
-/** Wrap stored content (episodes/backlog). Only Babson students and developers see children — never guests. */
+/** Wrap stored content (episodes/backlog). Students and developers, plus guests with a sponsor's pass or a student connection. */
 export default function LockedGate({ children }: { children: ReactNode }) {
-  const { loading, user, needsVerification, hasMemberAccess, isGuest } = useAuth()
+  const { loading, user, needsVerification, hasLibraryAccess, isGuest } = useAuth()
   if (loading) return null
-  if (hasMemberAccess) return <>{children}</>
+  if (hasLibraryAccess) return <>{children}</>
 
   const message = !user
     ? 'Sign in with your Babson email to listen.'
     : needsVerification
       ? 'Verify your Babson email to unlock this.'
       : isGuest
-        ? 'Stored episodes are for Babson students. Guests can listen live.'
+        ? 'The Library opens when a Babson student sponsors you. Ask one from your guest page.'
         : 'This is for Babson students.'
 
   return (

@@ -1,6 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
-import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/http'
+import { HttpError, handle, readJson, str } from '@/lib/server/http'
+import { requireLibrary } from '@/lib/server/guests'
 import { episodesByIds, myEpisodeIds, recentEpisodes, recommend } from '@/lib/server/episodes'
 
 export const runtime = 'nodejs'
@@ -10,7 +11,7 @@ const ID = /^[A-Za-z0-9_-]{1,100}$/
 // The person's library: what they saved, and "Based on your interests" (from what they saved and liked).
 export async function GET(req: Request) {
   return handle(async () => {
-    const t = await requireMember(req)
+    const t = await requireLibrary(req)
     const db = adminDb()
     const mine = await myEpisodeIds(db, t.uid)
     const [all, saved, liked] = await Promise.all([
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
 // Save or remove an episode: { episodeId, saved: boolean }
 export async function POST(req: Request) {
   return handle(async () => {
-    const t = await requireMember(req)
+    const t = await requireLibrary(req)
     const b = await readJson(req)
     const episodeId = str(b.episodeId, 100)
     if (!ID.test(episodeId)) throw new HttpError(400, 'Bad episode.')

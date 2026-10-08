@@ -44,7 +44,7 @@ export default function TermsPage() {
       </Section>
 
       <Section title="2. Who can use it">
-        <p>Babson Radio is meant for people in the United States. You must be at least 13 years old, and if you are under 18 you need a parent or guardian&apos;s permission. Student accounts are for people with a Babson, Olin or Wellesley email address. Guests can listen live for a limited time, and a student can extend that.</p>
+        <p>Babson Radio is meant for people in the United States. You must be at least 13 years old, and if you are under 18 you need a parent or guardian&apos;s permission. Student accounts are for people with a Babson, Olin or Wellesley email address. Guests can listen live, and a Babson student can unlock the Library for them.</p>
         <p>Do not use Babson Radio where doing so would be unlawful, or if you have been removed from it.</p>
       </Section>
 

@@ -10,5 +10,4 @@ export type GuestDuration = keyof typeof GUEST_DURATIONS
 export const GUEST_DURATION_KEYS = Object.keys(GUEST_DURATIONS) as GuestDuration[]
 export const MAX_ACTIVE_GUESTS_PER_STUDENT = 10
 
-/** Every guest account gets one automatic trial of LIVE radio. Guests never get the episode backlog. */
-export const GUEST_TRIAL_HOURS = 72
+/** Live radio is open to everyone who is signed in. A guest gets the Library through a sponsor's pass or a student's contacts. */

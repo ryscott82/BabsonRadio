@@ -49,22 +49,21 @@ interface AuthContextValue {
   /** ms deadline to verify the email (only while the 3-day grace period is running), else null */
   verifyDeadline: number | null
   guestPass: GuestPass | null
-  /** ms timestamp the guest's one-time trial ends, if they have one */
-  guestTrialEndsAt: number | null
   passActive: boolean
-  trialActive: boolean
-  /** LIVE radio: students, developers, and guests with an active trial or sponsored pass */
+  /** LIVE radio: everyone who is signed in (students, developers, guests) */
   canListenLive: boolean
-  /** Stored content (episodes/backlog): students and developers ONLY — never guests */
+  /** Student features (reactions, ratings, slots, friends): students and developers only */
   hasMemberAccess: boolean
+  /** The Library: students and developers, plus guests with a sponsor's pass or a student who has them in their contacts */
+  hasLibraryAccess: boolean
   reload: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null, userDoc: null, loading: true, isAdmin: false, isDirector: false, isPendingTester: false, isHost: false,
   isBabson: false, isDeveloper: false, isTester: false, isGuest: false, needsVerification: false, verifyDeadline: null,
-  guestPass: null, guestTrialEndsAt: null, passActive: false, trialActive: false,
-  canListenLive: false, hasMemberAccess: false,
+  guestPass: null, passActive: false,
+  canListenLive: false, hasMemberAccess: false, hasLibraryAccess: false,
   reload: async () => {},
 })
 
@@ -72,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser]         = useState<User | null>(null)
   const [userDoc, setUserDoc]   = useState<UserDoc | null>(null)
   const [guestPass, setPass]    = useState<GuestPass | null>(null)
-  const [trialEndsAt, setTrial] = useState<number | null>(null)
+  const [guestLibrary, setGuestLibrary] = useState(false)
   const [loading, setLoading]   = useState(true)
   const [isDeveloper, setDev]   = useState(false)
   const [graceUntil, setGrace]  = useState(0)
@@ -105,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setUserDoc(null)
         setPass(null)
-        setTrial(null)
+        setGuestLibrary(false)
         setDev(false)
         setGrace(0)
         setTesterClaim(false)
@@ -130,23 +129,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         : null),
       () => setPass(null),
     )
-    const u2 = onSnapshot(
-      doc(db, 'guestTrials', user.uid),
-      snap => setTrial(snap.exists() ? snap.get('expiresAt').toMillis() : null),
-      () => setTrial(null),
-    )
-    return () => { u1(); u2() }
+    return () => { u1() }
   }, [user])
 
   // Re-evaluate at the moment the next trial/pass expires.
   useEffect(() => {
-    const ends = [trialEndsAt, graceUntil || null, guestPass && !guestPass.revoked ? guestPass.expiresAt : null]
+    const ends = [graceUntil || null, guestPass && !guestPass.revoked ? guestPass.expiresAt : null]
       .filter((t): t is number => t !== null && t > Date.now())
     if (!ends.length) return
     const ms = Math.min(...ends) - Date.now()
     const t = setTimeout(() => setNow(Date.now()), Math.min(ms + 500, 2 ** 31 - 1))
     return () => clearTimeout(t)
-  }, [guestPass, trialEndsAt, graceUntil])
+  }, [guestPass, graceUntil])
 
   const reload = useCallback(async () => {
     const u = await refreshUser()
@@ -169,7 +163,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isPendingTester = !!user && userDoc?.betaStatus === 'pending' && !babsonEmail
   const isGuest = !!user && !babsonEmail && !isDeveloper && !isPendingTester
   const passActive = !!guestPass && !guestPass.revoked && guestPass.expiresAt > now
-  const trialActive = trialEndsAt !== null && trialEndsAt > now
+
+  // Does this guest get the Library? The server decides (sponsor pass, or a student has them in their contacts).
+  useEffect(() => {
+    if (!user || !isGuest) { queueMicrotask(() => setGuestLibrary(false)); return }
+    let live = true
+    apiGet<{ canAccessBacklog?: boolean }>('/api/guest/status')
+      .then(s => { if (live) setGuestLibrary(s.canAccessBacklog === true) })
+      .catch(() => { if (live) setGuestLibrary(false) })
+    return () => { live = false }
+  }, [user, isGuest, passActive, now])
   const isStudent = isBabson || isDeveloper
   const isAdmin = isDeveloper || (isBabson && userDoc?.role === 'superAdmin')
   const isDirector = isAdmin || (isBabson && userDoc?.role === 'director')
@@ -178,9 +181,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, userDoc, loading, isAdmin, isDirector, isHost, isBabson, isDeveloper, isTester, isGuest, isPendingTester, needsVerification, verifyDeadline,
-      guestPass, guestTrialEndsAt: trialEndsAt, passActive, trialActive,
-      canListenLive: isStudent || (isGuest && (passActive || trialActive)),
+      guestPass, passActive,
+      canListenLive: isStudent || isGuest,
       hasMemberAccess: isStudent,
+      hasLibraryAccess: isStudent || (isGuest && guestLibrary),
       reload,
     }}>
       {children}

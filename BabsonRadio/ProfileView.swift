@@ -106,7 +106,13 @@ private struct SignedInProfileView: View {
 
                     reportRow
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 32)
+                        .padding(.bottom, user.isDeveloper ? 16 : 32)
+
+                    if user.isDeveloper {
+                        BeatDelayRow()
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 32)
+                    }
 
                     // Students only: developers have no babson.edu identity to sponsor guests with.
                     if !user.isDeveloper {
@@ -133,7 +139,10 @@ private struct SignedInProfileView: View {
 
                     DeleteAccountButton()
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 40)
+                        .padding(.bottom, 16)
+
+                    DesignedByCredit()
+                        .padding(.bottom, 24)
                 }
             }
             .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
@@ -1006,6 +1015,14 @@ class ContactsManager: ObservableObject {
         return SHA256.hash(data: Data("+1\(d)".utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
+    /// Scrambled code for an email address: SHA-256 of the lowercased address, as hex. The server scrambles it again.
+    /// Lets a guest whose verified email a member has saved be recognized, without any email leaving the phone in the clear.
+    nonisolated private static func emailHash(_ raw: String) -> String? {
+        let e = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard e.contains("@"), e.count <= 254 else { return nil }
+        return SHA256.hash(data: Data(e.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
     nonisolated private static func cachedSaved() -> [String: Int] {
         guard let data = UserDefaults.standard.data(forKey: "br_saved_by"),
               let m = try? JSONDecoder().decode([String: Int].self, from: data) else { return [:] }
@@ -1023,7 +1040,7 @@ class ContactsManager: ObservableObject {
         guard suggestionsActive, !list.isEmpty else { return }
         let last = UserDefaults.standard.double(forKey: "br_contact_sync_at")
         if !force, Date().timeIntervalSince1970 - last < 12 * 3600 { return }
-        let hashes = Array(Set(list.flatMap(\.phoneHashes)).prefix(3000))
+        let hashes = Array(Set(list.flatMap { $0.phoneHashes + $0.emailHashes }).prefix(3000))
         guard !hashes.isEmpty else { return }
         do {
             let r: SavedReply = try await BackendAPI.post("/api/contacts/popular", ["hashes": hashes])
@@ -1104,8 +1121,9 @@ class ContactsManager: ObservableObject {
                     if !name.isEmpty, let phone {
                         let match = Self.babsonMatch(contact, name: name)
                         let hashes = contact.phoneNumbers.compactMap { Self.phoneHash($0.value.stringValue) }
+                        let emailHashes = contact.emailAddresses.compactMap { Self.emailHash($0.value as String) }
                         result.append(BRContact(id: contact.identifier, name: name, primaryPhone: phone,
-                                                babsonReason: match?.reason, babsonRank: match?.rank ?? 0, phoneHashes: hashes))
+                                                babsonReason: match?.reason, babsonRank: match?.rank ?? 0, phoneHashes: hashes, emailHashes: emailHashes))
                     }
                 }
             } catch {
@@ -1131,6 +1149,8 @@ struct BRContact: Identifiable {
     var babsonRank: Int = 0
     /// Scrambled codes for this person's numbers (SHA-256 of "+1XXXXXXXXXX"). Only used if suggestions are turned on.
     var phoneHashes: [String] = []
+    /// Scrambled codes for this person's email addresses (SHA-256 of the lowercased address). Only used if suggestions are turned on.
+    var emailHashes: [String] = []
     /// How many Babson Radio members have this person saved (0 = unknown or too few to say).
     var savedBy: Int = 0
 
@@ -1541,5 +1561,33 @@ struct AboutYouSection: View {
                 concentration = me.concentrations?.first ?? ""
             }
         }
+    }
+}
+
+
+// MARK: - Beat delay (developers)
+
+/// Tune by ear: how long after the station sends a song you actually hear it. Moves the background pulse.
+private struct BeatDelayRow: View {
+    @ObservedObject private var audio = AudioPlayerManager.shared
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Beat delay").font(.system(size: 15, weight: .semibold))
+                Spacer()
+                Text(String(format: "%.2f s", audio.beatDelay))
+                    .font(.system(size: 14, design: .monospaced))
+                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+            }
+            Slider(value: $audio.beatDelay, in: 0...12, step: 0.25)
+                .tint(scheme == .dark ? .brGold : .brGreen)
+            Text("Lower it if the pulse lands after the beat, raise it if it lands before. Needs a song that has been analyzed.")
+                .font(.system(size: 12))
+                .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+        }
+        .padding(16)
+        .brGlass(in: RoundedRectangle(cornerRadius: 14))
     }
 }

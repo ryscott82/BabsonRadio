@@ -46,6 +46,7 @@ export async function POST(req: Request) {
       db.collection('presence').doc(uid).delete(),
       db.collection('guestPasses').doc(uid).delete(),
       db.collection('guestTrials').doc(uid).delete(),
+      db.collection('guestLinks').doc(uid).delete(),
       db.collection('contactSyncs').doc(uid).delete(),
       userRef.delete(),
     ])

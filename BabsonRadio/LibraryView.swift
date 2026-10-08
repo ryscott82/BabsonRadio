@@ -86,7 +86,7 @@ struct LibraryView: View {
 
     private var text: Color { scheme == .dark ? .brDkText : .brLtText }
     private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
-    private var canUse: Bool { auth.isSignedIn && auth.currentUser?.isGuest != true }
+    private var canUse: Bool { auth.canAccessLibrary }
 
     var body: some View {
         NavigationStack {
@@ -94,7 +94,7 @@ struct LibraryView: View {
                 VStack(alignment: .leading, spacing: 28) {
                     if !canUse {
                         Text(auth.isSignedIn
-                             ? "Saved episodes are for Babson students. Guests can listen live."
+                             ? "The Library opens when a Babson student sponsors you. Ask one from your Profile."
                              : "Sign in with your Babson email to save episodes. Use the profile button in the top corner.")
                             .font(.system(size: 14)).foregroundColor(sub)
                     } else {

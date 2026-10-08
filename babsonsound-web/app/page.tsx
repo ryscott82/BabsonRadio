@@ -4,6 +4,7 @@ import { LikesProvider, LikeBar } from '@/components/Likes'
 import Link from 'next/link'
 import { LINKS } from '@/lib/links'
 import ShareFormButton from '@/components/ShareFormButton'
+import InterestFormCta from '@/components/InterestFormCta'
 import { getRecentEpisodes, getTodaySchedule, getFeaturedShows } from '@/lib/firestore'
 
 export const revalidate = 60 // re-fetch data every 60 seconds
@@ -18,8 +19,8 @@ export default async function HomePage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-16">
 
-      {/* ── Interest form ────────────────────────────────────── */}
-      <section className="sk-raised rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+      {/* ── Interest form (hidden for signed-in members) ───────── */}
+      <InterestFormCta><section className="sk-raised rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
         <div className="flex-1">
           <h2 className="font-display text-br-dk-text text-2xl tracking-wide">TELL US WHAT YOU WANT TO HEAR</h2>
           <p className="text-sm text-br-dk-sub mt-1">Music, podcasts, sports highlights. The interest form takes under a minute.</p>
@@ -31,7 +32,7 @@ export default async function HomePage() {
           </a>
           <ShareFormButton className="text-center" />
         </div>
-      </section>
+      </section></InterestFormCta>
 
       {/* ── Live Player ──────────────────────────────────────── */}
       <section>

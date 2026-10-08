@@ -10,7 +10,7 @@ import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 // Looking numbers up is at most 16 reads. So the cost scales with members, not with contacts.
 
 export const MIN_OTHERS = 3
-export const MAX_KEYS = 1000
+export const MAX_KEYS = 3000
 export const REBUILD_MS = 24 * 3600_000
 const SHARDS = '0123456789abcdef'.split('')
 const shardRef = (db: Firestore, ch: string) => db.collection('contactPopularity').doc('s' + ch)

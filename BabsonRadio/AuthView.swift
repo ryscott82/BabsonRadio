@@ -204,7 +204,7 @@ struct AuthView: View {
                 }
                 .padding(.horizontal, 32)
                 .padding(.top, 20)
-                Text("Guests get 3 days of live radio free, and a Babson student can extend it.")
+                Text("Live radio is free for everyone. A Babson student can unlock the Library for you.")
                     .font(.system(size: 12))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                     .multilineTextAlignment(.center)

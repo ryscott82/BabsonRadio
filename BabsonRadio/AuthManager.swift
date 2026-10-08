@@ -35,11 +35,15 @@ class AuthManager: ObservableObject {
     /// While the 3-day window is running and the email link hasn't been clicked: the day the link is needed by.
     @Published var verifyDeadline: Date? = nil
     @Published var pendingEmail = ""
-    /// Guest-only: trial / sponsor pass details from /api/guest/status.
+    /// Guest-only: sponsor pass and Library access from /api/guest/status.
     @Published var guestStatus: GuestStatus? = nil
     private var expiryTimer: Timer?
     /// Invisible mode: hides you from "tuned in" lists and from friends' "liked this" hints.
     @Published var isInvisible = false
+    /// False until the first sign-in check has finished, so the splash screen knows when the app is ready.
+    @Published var hasResolvedAuth = false
+    /// On the beta tester list. The interest-form links only show for signed-out visitors and testers.
+    @Published var isTester = false
 
     func setInvisible(_ value: Bool) {
         let previous = isInvisible
@@ -54,20 +58,22 @@ class AuthManager: ObservableObject {
         }
     }
 
-    /// LIVE radio: students and developers, plus guests with an active trial or sponsored pass.
-    /// (Stored episodes are separate and are NEVER available to guests.)
-    var canListenLive: Bool {
+    /// LIVE radio: everyone who is signed in (students, developers and guests).
+    var canListenLive: Bool { isSignedIn && currentUser != nil }
+
+    /// The Library (stored episodes): students and developers, plus guests the server says qualify
+    /// (a sponsor's pass, or a student who has them in their contacts).
+    var canAccessLibrary: Bool {
         guard isSignedIn, let u = currentUser else { return false }
-        if !u.isGuest { return true }
-        return guestStatus?.hasLiveAccess(at: Date()) ?? false
+        return !u.isGuest || guestStatus?.canAccessBacklog == true
     }
 
-    /// Stops playback at the moment a guest's access runs out.
+    /// Re-checks a guest's Library access at the moment a sponsor's pass runs out.
     func scheduleExpiryCheck() {
         expiryTimer?.invalidate()
-        guard let end = guestStatus?.liveAccessEnds, end > Date() else { return }
+        guard let end = guestStatus?.pass?.expiresAt, end > Date() else { return }
         expiryTimer = Timer.scheduledTimer(withTimeInterval: end.timeIntervalSinceNow + 0.5, repeats: false) { [weak self] _ in
-            Task { @MainActor in self?.objectWillChange.send(); self?.enforceAccess() }
+            Task { @MainActor in self?.objectWillChange.send(); self?.refreshGuestStatus() }
         }
     }
 
@@ -131,9 +137,12 @@ class AuthManager: ObservableObject {
 
     private init() {
         // FirebaseApp is configured in MyApp.init (only if GoogleService-Info.plist is present).
-        guard Self.firebaseReady else { return }
+        guard Self.firebaseReady else { hasResolvedAuth = true; return }
         listener = Auth.auth().addStateDidChangeListener { [weak self] _, user in
-            Task { @MainActor in await self?.apply(user) }
+            Task { @MainActor in
+                await self?.apply(user)
+                self?.hasResolvedAuth = true
+            }
         }
     }
 
@@ -144,6 +153,7 @@ class AuthManager: ObservableObject {
             isSignedIn = false
             needsEmailVerification = false
             guestStatus = nil
+            isTester = false
             enforceAccess()
             return
         }
@@ -152,10 +162,11 @@ class AuthManager: ObservableObject {
         let claims = try? await user.getIDTokenResult()
         let isDev = (claims?.claims["developer"] as? Bool) == true
 
-        // Non-Babson, non-developer accounts are guests: live radio only (trial or sponsor pass).
+        // Non-Babson, non-developer accounts are guests: live radio for everyone signed in; the Library needs a sponsor's pass or a student connection.
         if !isDev && !Self.isBabsonEmail(email) {
             needsEmailVerification = false
             guestStatus = try? await BackendAPI.get("/api/guest/status")
+            isTester = false
             currentUser = BRUser(
                 id: user.uid,
                 displayName: user.displayName ?? "Guest",
@@ -194,6 +205,7 @@ class AuthManager: ObservableObject {
 
         let me: MeResponse? = try? await BackendAPI.get("/api/me")
         isInvisible = me?.invisible ?? false
+        isTester = me?.isTester ?? false
         let apiName = me?.firstName ?? ""
         let fallbackName = user.displayName ?? String(email.prefix(while: { $0 != "@" })).capitalized
         currentUser = BRUser(
@@ -311,7 +323,7 @@ class AuthManager: ObservableObject {
                 change.displayName = trimmed.isEmpty ? "Guest" : trimmed
                 try? await change.commitChanges()
                 try? await result.user.sendEmailVerification()
-                await apply(Auth.auth().currentUser)   // first status call starts the free trial
+                await apply(Auth.auth().currentUser)
                 let _: EmptyResponse? = try? await BackendAPI.post("/api/me", ["acceptTerms": Terms.version])
             } catch {
                 errorMessage = Self.authMessage(error, signingUp: true)
@@ -373,7 +385,7 @@ class AuthManager: ObservableObject {
         }
     }
 
-    /// Re-reads the account and the guest's trial / pass / request state.
+    /// Re-reads the account and the guest's pass / Library / request state.
     func refreshGuestStatus() {
         guard let user = Auth.auth().currentUser else { return }
         Task {
@@ -544,7 +556,7 @@ class AuthManager: ObservableObject {
     // Firebase package not added yet: the app compiles and the UI is reachable, but nothing is real.
     static var firebaseReady: Bool { false }
 
-    private init() {}
+    private init() { hasResolvedAuth = true }
 
     func signIn(email: String, password: String) { errorMessage = Self.setupMessage }
 
@@ -731,17 +743,8 @@ nonisolated struct GuestStatus: Decodable {
         let expiresAt: Date
     }
     let emailVerified: Bool?
-    let trialEndsAt: Date?
     let pass: Pass?
     let requestStatus: String?
-
-    /// Latest moment live radio is allowed (the later of trial end and sponsor-pass end).
-    var liveAccessEnds: Date? {
-        [trialEndsAt, pass?.expiresAt].compactMap { $0 }.max()
-    }
-
-    func hasLiveAccess(at date: Date) -> Bool {
-        guard let end = liveAccessEnds else { return false }
-        return end > date
-    }
+    /// True when the server says this guest may open the Library.
+    let canAccessBacklog: Bool?
 }

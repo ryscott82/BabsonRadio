@@ -15,17 +15,17 @@ const Ctx = createContext<LikesState>({ liked: new Set(), friends: {}, toggle: (
 
 /** Wrap a list of episodes: one request loads my likes and which friends liked each. Students only. */
 export function LikesProvider({ ids, children }: { ids: string[]; children: ReactNode }) {
-  const { hasMemberAccess } = useAuth()
+  const { hasLibraryAccess } = useAuth()
   const [liked, setLiked] = useState<Set<string>>(new Set())
   const [friends, setFriends] = useState<Record<string, string[]>>({})
   const key = ids.join(',')
 
   useEffect(() => {
-    if (!hasMemberAccess || !key) return
+    if (!hasLibraryAccess || !key) return
     apiGet<{ liked: string[]; friends: Record<string, string[]> }>(`/api/likes?ids=${encodeURIComponent(key)}`)
       .then(r => { setLiked(new Set(r.liked)); setFriends(r.friends) })
       .catch(() => {})
-  }, [hasMemberAccess, key])
+  }, [hasLibraryAccess, key])
 
   const toggle = useCallback((id: string) => {
     const next = !liked.has(id)
@@ -35,7 +35,7 @@ export function LikesProvider({ ids, children }: { ids: string[]; children: Reac
     })
   }, [liked])
 
-  return <Ctx.Provider value={{ liked, friends, toggle, enabled: hasMemberAccess }}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ liked, friends, toggle, enabled: hasLibraryAccess }}>{children}</Ctx.Provider>
 }
 
 export function LikeBar({ episodeId }: { episodeId: string }) {

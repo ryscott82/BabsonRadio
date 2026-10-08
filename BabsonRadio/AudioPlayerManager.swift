@@ -66,15 +66,24 @@ class AudioPlayerManager: ObservableObject {
     /// Tempo + beat position of the song on air, or nil (live DJ, or song not analyzed yet).
     @Published var beatClock: BeatClock?
 
-    /// Seconds between the station sending a song and you hearing it (the player's buffer). Raise it if the pulse feels early, lower it if late.
-    static let streamDelay: Double = 6
+    /// Seconds between the station sending a song and you hearing it (the player's buffer). Raise it if the pulse feels early,
+    /// lower it if late. Developers can adjust it live in Profile > Beat delay.
+    @Published var beatDelay: Double = {
+        let v = UserDefaults.standard.object(forKey: "br_beat_delay") as? Double
+        return v ?? 4
+    }() {
+        didSet {
+            UserDefaults.standard.set(beatDelay, forKey: "br_beat_delay")
+            if let np = nowPlaying { beatClock = Self.makeBeatClock(np, delay: beatDelay) }
+        }
+    }
 
-    private static func makeBeatClock(_ np: NowPlayingInfo) -> BeatClock? {
+    private static func makeBeatClock(_ np: NowPlayingInfo, delay: Double) -> BeatClock? {
         guard !np.isLive, let bpm = np.bpm, bpm > 0 else { return nil }
         let start: Date
         if let p = np.playedAt, p > 0 { start = Date(timeIntervalSince1970: p) }
         else { start = Date().addingTimeInterval(-np.elapsed) }
-        return BeatClock(bpm: bpm, origin: start.timeIntervalSinceReferenceDate + (np.beatOffset ?? 0) + streamDelay)
+        return BeatClock(bpm: bpm, origin: start.timeIntervalSinceReferenceDate + (np.beatOffset ?? 0) + delay)
     }
     @Published var nowPlayingSubtitle = "Live Stream"
     @Published var isBuffering = false
@@ -167,7 +176,7 @@ class AudioPlayerManager: ObservableObject {
 
     func play() {
         // Also covers lock-screen / Control Center play: live radio needs an account with access.
-        // Signed-out visitors can preview the live stream; signed-in people need access (students, trial or pass).
+        // Signed-out visitors can preview the live stream; everyone who is signed in can listen.
         guard AuthManager.shared.canListenLive || !AuthManager.shared.isSignedIn else { return }
         guard let url = URL(string: streamURLString) else {
             print("Invalid stream URL — update streamURLString in AudioPlayerManager.swift")
@@ -254,7 +263,7 @@ class AudioPlayerManager: ObservableObject {
         guard let np: NowPlayingInfo = try? await BackendAPI.get("/api/nowplaying"), np.configured else { return }
         let changed = np.title != nowPlaying?.title || np.artist != nowPlaying?.artist
         nowPlaying = np
-        beatClock = Self.makeBeatClock(np)
+        beatClock = Self.makeBeatClock(np, delay: beatDelay)
         nowPlayingFetchedAt = Date()
         if !np.title.isEmpty {
             nowPlayingTitle = np.title

@@ -31,7 +31,13 @@ Legend: [x] built, [ ] planned.
 - [x] Send bug reports and ideas
 - [ ] Email reminders (needs a sender such as Resend)
 
-## Guest / pending tester
+## Guest (non-school email)
+- [x] Can listen live as soon as they are signed in, no trial and no time limit
+- [x] Library opens with a Babson student's sponsor pass, or when a student has the guest's verified email in their contacts (scrambled, checked once, holds until the end of the semester and is re-checked then)
+- [x] Reactions, ratings, slot requests and friends stay student-only
+- [x] Interest-form links are hidden once someone is signed in, unless they are a beta tester
+
+## Pending tester
 - [x] Can create an account and see a "waiting for approval" screen
 - [x] Cannot interact until approved in /admin/testers
 

@@ -1,5 +1,6 @@
 import { adminDb } from '@/lib/server/admin'
-import { handle, requireMember } from '@/lib/server/http'
+import { handle } from '@/lib/server/http'
+import { requireLibrary } from '@/lib/server/guests'
 import { recentEpisodes } from '@/lib/server/episodes'
 
 export const runtime = 'nodejs'
@@ -8,7 +9,7 @@ export const runtime = 'nodejs'
 // Also says which ones I have saved so the save buttons show the right state.
 export async function GET(req: Request) {
   return handle(async () => {
-    const t = await requireMember(req)
+    const t = await requireLibrary(req)
     const db = adminDb()
     const q = (new URL(req.url).searchParams.get('q') ?? '').trim().toLowerCase().slice(0, 80)
     const [all, saved] = await Promise.all([

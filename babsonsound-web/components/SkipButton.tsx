@@ -1,0 +1,43 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { api, apiGet } from '@/lib/auth'
+import type { NowPlaying } from '@/lib/nowplaying'
+
+interface Skip { votes: number; needed: number; mine: boolean; eligible: boolean }
+
+/** Next-track button beside play/pause. Only shows when the station is playing its own music; shows "X/Y requested". */
+export default function SkipButton({ np }: { np: NowPlaying | null }) {
+  const { user } = useAuth()
+  const autoPlay = !!np?.title && !np.isLive && !np.isShow
+  const [skip, setSkip] = useState<Skip | null>(null)
+  const [err, setErr] = useState('')
+
+  useEffect(() => {
+    if (!user || !autoPlay) { queueMicrotask(() => setSkip(null)); return }
+    const load = () => { if (!document.hidden) apiGet<Skip>('/api/skip').then(setSkip).catch(() => {}) }
+    load()
+    const t = setInterval(load, 10_000)
+    return () => clearInterval(t)
+  }, [user, autoPlay, np?.playedAt, np?.title])
+
+  async function ask() {
+    setErr('')
+    try { setSkip(await api<Skip>('/api/skip', {})) }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Could not send your skip.') }
+  }
+
+  if (!skip?.eligible) return null
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <button type="button" onClick={ask} disabled={skip.mine}
+              aria-label={skip.mine ? 'You asked to skip this song' : 'Ask to skip this song'}
+              className="sk-key w-12 h-12 rounded-full flex items-center justify-center text-br-dk-text disabled:opacity-60">
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path d="M6 6l9 6-9 6V6zm10 0h2v12h-2V6z" /></svg>
+      </button>
+      <span className="text-[11px] text-br-dk-sub tabular-nums" role="status">{skip.votes}/{skip.needed} requested</span>
+      {err && <span role="alert" className="text-[11px] text-br-red max-w-[10rem] text-center">{err}</span>}
+    </div>
+  )
+}

@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     const db = adminDb()
     const now = Date.now()
     let s = await skipState(db, t.uid, now)
-    if (!s.eligible) throw new HttpError(409, 'Songs can only be skipped during the auto DJ, not during a live show.')
+    if (!s.eligible) throw new HttpError(409, 'Songs can only be skipped when the station is playing its own music, not during a live show.')
     const me = await db.collection('presence').doc(t.uid).get()
     const fresh = (me.get('updatedAt') as Timestamp | undefined)?.toMillis() ?? 0
     if (me.get('isListening') !== true || now - fresh > 240_000) throw new HttpError(403, 'Press play first. Only people listening can ask to skip.')

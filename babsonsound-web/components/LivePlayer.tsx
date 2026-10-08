@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useNowPlaying } from '@/lib/nowplaying'
 import Visualizer from '@/components/Visualizer'
 import LiveExtras from '@/components/LiveExtras'
+import SkipButton from '@/components/SkipButton'
 import { useArtColor } from '@/lib/artColor'
 import { useArtMain } from '@/components/ArtTheme'
 import { useWide } from '@/lib/useWide'
@@ -217,6 +218,8 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
                 </svg>
               )}
             </button>
+
+            <SkipButton np={np} />
 
             {/* EQ bars */}
             {isPlaying && (

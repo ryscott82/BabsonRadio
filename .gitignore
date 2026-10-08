@@ -14,3 +14,10 @@ node_modules/
 
 # Local scratch
 _to_delete/
+
+# script outputs
+metadata_backup.csv
+beats.csv
+azuracast_library.csv
+playlist_match.csv
+playlist_missing.csv

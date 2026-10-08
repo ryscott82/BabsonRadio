@@ -86,7 +86,7 @@ struct LibraryView: View {
 
     private var text: Color { scheme == .dark ? .brDkText : .brLtText }
     private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
-    private var canUse: Bool { auth.isSignedIn && !auth.isGuest }
+    private var canUse: Bool { auth.isSignedIn && auth.currentUser?.isGuest != true }
 
     var body: some View {
         NavigationStack {

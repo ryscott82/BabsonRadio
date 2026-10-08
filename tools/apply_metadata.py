@@ -44,7 +44,7 @@ def planned(rows, include_review):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", default="metadata_cleanup.csv")
+    ap.add_argument("--csv", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "metadata_cleanup.csv"))
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--include-review", action="store_true")
@@ -73,14 +73,37 @@ def main():
     if not a.apply:
         print("\nDry run only. Nothing was changed. Add --apply (try --limit 3 first)."); return
 
-    with open("metadata_backup.csv", "w", newline="", encoding="utf-8") as bf:
-        w = csv.writer(bf); w.writerow(["id", "path", *FIELDS])
-        done = 0
-        for r, ch in todo:
-            cur = call("GET", r["id"])
-            w.writerow([r["id"], r["path"], *[cur.get(f) or "" for f in FIELDS]]); bf.flush()
-            call("PUT", r["id"], ch)
-            done += 1; time.sleep(0.2)
-    print(f"\nChanged {done} songs. Old values are in metadata_backup.csv.")
+    import urllib.error
+    new_file = not os.path.exists("metadata_backup.csv")
+    done = skipped = 0
+    failed = []
+    with open("metadata_backup.csv", "a", newline="", encoding="utf-8") as bf:
+        w = csv.writer(bf)
+        if new_file:
+            w.writerow(["id", "path", *FIELDS])
+        for n, (r, ch) in enumerate(todo, 1):
+            try:
+                cur = call("GET", r["id"])
+                if all((cur.get(f) or "") == v for f, v in ch.items()):
+                    skipped += 1; continue
+                w.writerow([r["id"], r["path"], *[cur.get(f) or "" for f in FIELDS]]); bf.flush()
+                call("PUT", r["id"], ch)
+                chk = call("GET", r["id"])
+                if all((chk.get(f) or "") == v for f, v in ch.items()):
+                    done += 1
+                else:
+                    failed.append((r["path"], "not changed"))
+                    print(f"  AzuraCast said OK but did not change: {r['path']}")
+            except urllib.error.HTTPError as e:
+                msg = e.read().decode("utf-8", "replace")[:300]
+                failed.append((r["path"], f"HTTP {e.code} {msg}"))
+                print(f"  failed: {r['path']} -> HTTP {e.code} {msg}")
+            except Exception as e:
+                failed.append((r["path"], str(e)))
+                print(f"  failed: {r['path']} -> {e}")
+            if n % 10 == 0:
+                print(f"  ...{n}/{len(todo)}")
+            time.sleep(0.2)
+    print(f"\nChanged {done} songs, {skipped} already done, {len(failed)} failed. Old values are in metadata_backup.csv.")
 
 main()

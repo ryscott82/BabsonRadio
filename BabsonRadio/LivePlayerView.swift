@@ -100,7 +100,7 @@ struct LivePlayerView: View {
             .background {
                 ZStack {
                     (scheme == .dark ? Color.brDkBg : Color.brLtBg)
-                    LiveVisualizer(color: accent, playing: audio.isPlaying)
+                    LiveVisualizer(color: accent, playing: audio.isPlaying, beat: audio.beatClock)
                 }
                 .ignoresSafeArea()
             }
@@ -231,11 +231,11 @@ struct LivePlayerView: View {
     private var playControl: some View {
         Button(action: { if canPlay { audio.toggle() } }) {
             ZStack {
-                Circle()
-                    .fill(scheme == .dark ? Color.brGold : Color.brGreen)
+                let base = scheme == .dark ? Color.brGold : Color.brGreen
+                Color.clear
                     .frame(width: 72, height: 72)
-                    .shadow(color: (scheme == .dark ? Color.brGold : Color.brGreen).opacity(0.35),
-                            radius: 16, x: 0, y: 6)
+                    .brGlass(in: Circle(), tint: base.opacity(0.75), interactive: true, fallback: base.opacity(0.9))
+                    .shadow(color: base.opacity(0.35), radius: 16, x: 0, y: 6)
 
                 if audio.isBuffering {
                     ProgressView()
@@ -309,9 +309,7 @@ struct LivePlayerView: View {
             }
 
             HStack(spacing: 22) {
-                Link("About us", destination: BabsonLinks.about)
                 Link("Privacy", destination: BabsonLinks.privacy)
-                Link("Events", destination: BabsonLinks.events)
                 if let ig = BabsonLinks.instagram {
                     Link(destination: ig) {
                         HStack(spacing: 5) { Image(systemName: "camera"); Text("Instagram") }
@@ -572,6 +570,8 @@ struct SystemVolumeSlider: UIViewRepresentable {
 struct LiveVisualizer: View {
     let color: Color
     let playing: Bool
+    /// When set, the pulse follows the song's real tempo; otherwise a steady 118 BPM.
+    var beat: BeatClock? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
@@ -579,20 +579,26 @@ struct LiveVisualizer: View {
     @State private var changedAt = Date.distantPast
     @State private var wasPlaying = false
 
+    /// Tune these two to taste. Higher softness = blurrier, lower strength = fainter.
+    private static let softness: CGFloat = 40
+    private static let strength: Double = 0.75
+
     private var animated: Bool { !lowPower && !reduceMotion && scenePhase == .active }
 
     var body: some View {
         Group {
             if animated {
                 TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { tl in
-                    let c = color, p = playing, was = wasPlaying, at = changedAt
-                    Canvas { ctx, size in LiveVisualizer.draw(&ctx, size, tl.date, c, p, was, at) }
+                    let c = color, p = playing, was = wasPlaying, at = changedAt, bc = beat
+                    Canvas { ctx, size in LiveVisualizer.draw(&ctx, size, tl.date, c, p, was, at, bc) }
                 }
             } else {
                 LinearGradient(colors: [color.opacity(0.28), color.opacity(0.05), .clear],
                                startPoint: .top, endPoint: .bottom)
             }
         }
+        .blur(radius: Self.softness)
+        .opacity(Self.strength)
         .allowsHitTesting(false)
         .onAppear { wasPlaying = playing }
         .onChange(of: playing) { _, now in wasPlaying = !now; changedAt = Date() }
@@ -602,13 +608,15 @@ struct LiveVisualizer: View {
     }
 
     nonisolated private static func draw(_ ctx: inout GraphicsContext, _ size: CGSize, _ date: Date,
-                                         _ color: Color, _ playing: Bool, _ wasPlaying: Bool, _ changedAt: Date) {
+                                         _ color: Color, _ playing: Bool, _ wasPlaying: Bool, _ changedAt: Date, _ clock: BeatClock?) {
         let t = date.timeIntervalSinceReferenceDate
         // Ease between calm (paused) and lively (playing) over about a second.
         let k = min(max(date.timeIntervalSince(changedAt) / 1.2, 0), 1)
         let from = wasPlaying ? 1.0 : 0.25, to = playing ? 1.0 : 0.25
         let energy = from + (to - from) * k
-        let beat = pow(max(0, sin(t * 2 * .pi * 118 / 60)), 5)
+        // Follow the song's real beat when we know it, else a steady 118 BPM.
+        let beat = clock.map { pow(max(0, cos(2 * .pi * $0.phase(at: date))), 5) }
+            ?? pow(max(0, sin(t * 2 * .pi * 118 / 60)), 5)
         let w = size.width, h = size.height
 
         ctx.blendMode = .plusLighter

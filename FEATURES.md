@@ -12,7 +12,7 @@ Legend: [x] built, [ ] planned.
 ## Listener (school email or approved tester)
 - [x] Everything above
 - [x] Show reminders (push)
-- [x] Live reactions (🔥 ❤️ 🎉 👏): a handful rain down on your screen, and one falls on everyone else's screen for each reaction (web and iOS)
+- [x] Live reactions (🔥 ❤️ 🦫 🤘): a handful rain down on your screen, and one falls on everyone else's screen for each reaction (web and iOS)
 - [x] Upvote songs in a host's set list
 - [x] Rate the song that is playing (1 to 5 stars), saved per song
 - [x] Rate a whole show or hour of music (1 to 5 stars), saved per show

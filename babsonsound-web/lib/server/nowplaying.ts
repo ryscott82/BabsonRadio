@@ -3,6 +3,7 @@ import { adminDb } from './admin'
 import { currentOnAir, getNote, type LiveNote } from './live'
 import { listenerSample } from './taste'
 import { getAnnouncement, type Announcement } from './announcement'
+import { lookupBeat } from './beats'
 
 // Public "what is on air" feed for the website and the iOS app.
 // Reads AzuraCast's public now-playing endpoint (no API key). Env: AZURACAST_URL, AZURACAST_STATION_ID.
@@ -12,6 +13,10 @@ export interface NowPlayingInfo {
   configured: boolean
   title: string; artist: string; album: string; art: string
   elapsed: number; duration: number
+  /** Unix seconds when this song started on the stream (0 if unknown). */
+  playedAt: number
+  /** Tempo of this song and where its first beat falls, in seconds, from the AzuraCast custom field "beat" (0 = not analyzed). */
+  bpm: number; beatOffset: number
   isLive: boolean; streamer: string; listeners: number
   /** Name of the AzuraCast playlist the current song came from ('' when live or unknown). Staff only; listeners never see it. */
   playlist: string
@@ -33,20 +38,22 @@ export interface NowPlayingInfo {
   updatedAt: number
 }
 
+/** Set to false to go back to labelling auto-play by the schedule instead of the AzuraCast playlist name. */
+const USE_PLAYLIST_LABEL = true
 const TTL_MS = 8_000
 let lastSample = 0
 let cache: { at: number; value: Built } | null = null
 
 type Built = Omit<NowPlayingInfo, 'announcement'>
 const empty = (configured: boolean): Built => ({
-  configured, title: '', artist: '', album: '', art: '', elapsed: 0, duration: 0,
+  configured, title: '', artist: '', album: '', art: '', elapsed: 0, duration: 0, playedAt: 0, bpm: 0, beatOffset: 0,
   isLive: false, streamer: '', playlist: '', listeners: 0, next: null, showTitle: '', blockTitle: '', color: '',
   occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, updatedAt: Date.now(),
 })
 
-type Song = { text?: string; artist?: string; title?: string; album?: string; art?: string }
+type Song = { text?: string; artist?: string; title?: string; album?: string; art?: string; custom_fields?: Record<string, unknown> | unknown[] }
 type Raw = {
-  now_playing?: { song?: Song; elapsed?: number; duration?: number; playlist?: string }
+  now_playing?: { song?: Song; elapsed?: number; duration?: number; playlist?: string; played_at?: number }
   playing_next?: { song?: Song }
   live?: { is_live?: boolean; streamer_name?: string }
   listeners?: { current?: number; total?: number }
@@ -90,16 +97,27 @@ async function build(): Promise<Built> {
       const [a, ...t] = s.text.split(' - ')
       if (t.length) { artist = a; title = t.join(' - ') } else title = s.text
     }
+    // "beat" custom field looks like "123.5,0.34" (BPM, first beat in seconds).
+    const cf = s.custom_fields && !Array.isArray(s.custom_fields) ? s.custom_fields : {}
+    const [bpmRaw, offRaw] = String(cf.beat ?? '').split(',')
+    const known = lookupBeat(artist, title)
+    const bpm = known ? known.bpm : Number(bpmRaw) >= 50 && Number(bpmRaw) <= 220 ? Number(bpmRaw) : 0
+    const isLive = r.live?.is_live === true
+    const playlist = r.now_playing?.playlist ?? ''
     const value: Built = {
       configured: true, title, artist, album: s.album ?? '', art: s.art ?? '',
       elapsed: r.now_playing?.elapsed ?? 0, duration: r.now_playing?.duration ?? 0,
-      isLive: r.live?.is_live === true, streamer: r.live?.streamer_name ?? '',
-      playlist: r.now_playing?.playlist ?? '',
+      playedAt: r.now_playing?.played_at ?? 0, bpm, beatOffset: known ? known.offset : bpm ? Math.max(0, Number(offRaw) || 0) : 0,
+      isLive, streamer: r.live?.streamer_name ?? '',
+      playlist,
       listeners: r.listeners?.current ?? 0,
       next: n && (n.title || n.text) ? { title: n.title || n.text || '', artist: n.artist ?? '' } : null,
       ...(await onAir()),
       updatedAt: Date.now(),
     }
+    // When the schedule has only a genre block (not a show) and the station is on auto-play, what is really playing wins:
+    // use the AzuraCast playlist name so the label never disagrees with the music.
+    if (!value.isLive && !value.isShow && playlist && USE_PLAYLIST_LABEL) value.blockTitle = playlist
     cache = { at: Date.now(), value }
     // Remember how many people listen to what (once every 5 minutes) so the auto-scheduler can learn.
     if (Date.now() - lastSample > 300_000) {

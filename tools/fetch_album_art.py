@@ -10,7 +10,7 @@ Art comes from the free iTunes Search API (no key). Songs in the 'Copyright Free
 import argparse, csv, json, os, re, time, urllib.parse, urllib.request
 
 BASE = 'https://a12.asurahosting.com'
-STATION = 1  # numeric station id; the AzuraCast URL shows it. Change if yours differs.
+STATION = os.environ.get('AZURACAST_STATION', 'babson_radio')  # short name works in the API URL
 
 def get(url, binary=False):
     with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'BabsonRadio-art/1'}), timeout=20) as r:
@@ -27,7 +27,7 @@ def find_art(artist, title):
 
 def upload(row, img):
     import base64
-    key = os.environ['AZURACAST_KEY']
+    key = (os.environ.get('AZURACAST_API_KEY') or os.environ['AZURACAST_KEY'])
     body = json.dumps({'art': base64.b64encode(img).decode()}).encode()
     req = urllib.request.Request(f"{BASE}/api/station/{STATION}/file/{row['id']}", data=body, method='PUT',
         headers={'X-API-Key': key, 'Content-Type': 'application/json'})
@@ -36,7 +36,7 @@ def upload(row, img):
 ap = argparse.ArgumentParser(); ap.add_argument('--upload', action='store_true'); ap.add_argument('--limit', type=int, default=0)
 a = ap.parse_args()
 os.makedirs('art', exist_ok=True)
-rows = [r for r in csv.DictReader(open('metadata_cleanup.csv', encoding='utf-8')) if r['playlist'] != 'Copyright Free' and r['new_artist']]
+rows = [r for r in csv.DictReader(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'metadata_cleanup.csv'), encoding='utf-8')) if r['playlist'] != 'Copyright Free' and r['new_artist']]
 if a.limit: rows = rows[:a.limit]
 out = []
 for r in rows:

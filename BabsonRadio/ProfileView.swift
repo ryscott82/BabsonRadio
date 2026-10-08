@@ -1046,7 +1046,7 @@ class ContactsManager: ObservableObject {
     /// is still there. Guests never get this (the friends network is for students).
     func promptOnFirstOpen() {
         let auth = AuthManager.shared
-        guard auth.isSignedIn, !auth.isGuest else { return }
+        guard auth.isSignedIn, auth.currentUser?.isGuest != true else { return }
         switch CNContactStore.authorizationStatus(for: .contacts) {
         case .notDetermined:
             guard !UserDefaults.standard.bool(forKey: "br_contacts_asked") else { return }

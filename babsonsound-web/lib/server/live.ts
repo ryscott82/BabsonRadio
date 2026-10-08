@@ -38,7 +38,7 @@ export async function getNote(db: Firestore, occId: string, now = Date.now()): P
 }
 
 // ── Reactions ────────────────────────────────────────────────
-export const EMOJIS = ['🔥', '❤️', '🎉', '👏'] as const
+export const EMOJIS = ['🔥', '❤️', '🦫', '🤘'] as const
 export type Emoji = (typeof EMOJIS)[number]
 const minuteOf = (ms: number) => Math.floor(ms / 60_000)
 

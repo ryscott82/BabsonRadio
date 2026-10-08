@@ -31,7 +31,7 @@ struct RainDrop: Identifiable {
 @MainActor
 final class LiveExtrasModel: ObservableObject {
     static let shared = LiveExtrasModel()
-    static let emojis = ["🔥", "❤️", "🎉", "👏"]
+    static let emojis = ["🔥", "❤️", "🦫", "🤘"]
 
     @Published var drops: [RainDrop] = []
     @Published var message = ""

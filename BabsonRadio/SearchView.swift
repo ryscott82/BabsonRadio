@@ -9,7 +9,7 @@ struct SearchView: View {
     @ObservedObject private var lib = LibraryManager.shared
     @ObservedObject private var auth = AuthManager.shared
 
-    private var canUse: Bool { auth.isSignedIn && !auth.isGuest }
+    private var canUse: Bool { auth.isSignedIn && auth.currentUser?.isGuest != true }
 
     var searchResults: [LibEpisode] {
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }

@@ -9,7 +9,7 @@ import EmojiRain, { rain, rainBurst } from './EmojiRain'
 // Things around the live player: a pinned note from the host, quick reactions, the host's set list with upvotes,
 // and star ratings for the show. Everyone can see them; students (and developers) can take part.
 
-const EMOJIS = ['🔥', '❤️', '🎉', '👏']
+const EMOJIS = ['🔥', '❤️', '🦫', '🤘']
 const poll = (fn: () => void, ms: number) => {
   fn()
   const t = setInterval(() => { if (!document.hidden) fn() }, ms)

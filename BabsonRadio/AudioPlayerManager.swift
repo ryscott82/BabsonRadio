@@ -34,6 +34,21 @@ nonisolated struct NowPlayingInfo: Decodable, Equatable {
     /// A message for everyone, pushed from the station controls.
     struct Announcement: Decodable, Equatable { let text: String; let updatedAt: Double; let until: Double }
     let announcement: Announcement?
+    /// For the background pulse: when the song started (unix seconds), its tempo and where its first beat falls. Missing/0 = unknown.
+    let playedAt: Double?
+    let bpm: Double?
+    let beatOffset: Double?
+}
+
+/// Where the beat lands right now: `origin` is when a beat last (or first) fell, in seconds since the reference date.
+nonisolated struct BeatClock: Equatable {
+    var bpm: Double
+    var origin: TimeInterval
+    /// 0...1 through the current beat (0 = on the beat).
+    func phase(at date: Date) -> Double {
+        let beats = (date.timeIntervalSinceReferenceDate - origin) * bpm / 60
+        return beats - beats.rounded(.down)
+    }
 }
 
 class AudioPlayerManager: ObservableObject {
@@ -48,6 +63,19 @@ class AudioPlayerManager: ObservableObject {
 
     @Published var isPlaying = false
     @Published var nowPlayingTitle = "Babson Radio"
+    /// Tempo + beat position of the song on air, or nil (live DJ, or song not analyzed yet).
+    @Published var beatClock: BeatClock?
+
+    /// Seconds between the station sending a song and you hearing it (the player's buffer). Raise it if the pulse feels early, lower it if late.
+    static let streamDelay: Double = 6
+
+    private static func makeBeatClock(_ np: NowPlayingInfo) -> BeatClock? {
+        guard !np.isLive, let bpm = np.bpm, bpm > 0 else { return nil }
+        let start: Date
+        if let p = np.playedAt, p > 0 { start = Date(timeIntervalSince1970: p) }
+        else { start = Date().addingTimeInterval(-np.elapsed) }
+        return BeatClock(bpm: bpm, origin: start.timeIntervalSinceReferenceDate + (np.beatOffset ?? 0) + streamDelay)
+    }
     @Published var nowPlayingSubtitle = "Live Stream"
     @Published var isBuffering = false
     /// Latest song info (nil until the first successful fetch).
@@ -226,6 +254,7 @@ class AudioPlayerManager: ObservableObject {
         guard let np: NowPlayingInfo = try? await BackendAPI.get("/api/nowplaying"), np.configured else { return }
         let changed = np.title != nowPlaying?.title || np.artist != nowPlaying?.artist
         nowPlaying = np
+        beatClock = Self.makeBeatClock(np)
         nowPlayingFetchedAt = Date()
         if !np.title.isEmpty {
             nowPlayingTitle = np.title

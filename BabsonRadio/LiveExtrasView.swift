@@ -182,8 +182,7 @@ private struct RainDropView: View {
     @State private var faded = false
 
     var body: some View {
-        Text(drop.emoji)
-            .font(.system(size: drop.size))
+        ReactionGlyph(emoji: drop.emoji, size: drop.size)
             .rotationEffect(.degrees(fallen ? drop.spin : 0))
             .position(x: drop.x * width + (fallen ? drop.drift : 0), y: fallen ? height + 80 : -50)
             .opacity(faded ? 0 : 1)
@@ -279,7 +278,7 @@ struct LiveExtrasView: View {
                     HStack(spacing: 10) {
                         ForEach(model.emojis, id: \.self) { e in
                             Button { Task { await model.react(e) } } label: {
-                                Text(e).font(.system(size: 24)).frame(width: model.emojis.count > 5 ? 42 : 52, height: 44)
+                                ReactionGlyph(emoji: e, size: 24).frame(width: model.emojis.count > 5 ? 42 : 52, height: 44)
                                     .brGlass(in: Capsule(), interactive: true)
                             }
                             .buttonStyle(.plain)
@@ -349,6 +348,20 @@ struct LiveExtrasView: View {
                     .accessibilityLabel("\(n) star\(n == 1 ? "" : "s")")
                 }
             }
+        }
+    }
+}
+
+
+/// A reaction, drawn: normal emoji as text, the beaver logo (":br:") as the logo image.
+struct ReactionGlyph: View {
+    let emoji: String
+    let size: CGFloat
+    var body: some View {
+        if emoji == ":br:" {
+            Image("LaunchLogo").resizable().scaledToFit().frame(height: size * 1.15)
+        } else {
+            Text(emoji).font(.system(size: size))
         }
     }
 }

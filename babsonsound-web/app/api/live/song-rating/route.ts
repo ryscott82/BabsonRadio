@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireMember, requireUser, str } from '@/lib/server/http'
 import { currentOnAir, songId } from '@/lib/server/live'
 import { getNowPlaying } from '@/lib/server/nowplaying'
-import { noteStars } from '@/lib/server/earnedEmojis'
+import { bump, noteStars } from '@/lib/server/earnedEmojis'
 
 export const runtime = 'nodejs'
 
@@ -40,6 +40,7 @@ export async function POST(req: Request) {
       label: cur?.item.title ?? '', occId: cur?.occId ?? '', isShow: cur?.isShow ?? false, at: Timestamp.now(),
     })
     await noteStars(db, t.uid, `s:${keyOf(artist, title)}`, stars).catch(() => {})
+    await bump(db, t.uid)
     return { ok: true }
   })
 }

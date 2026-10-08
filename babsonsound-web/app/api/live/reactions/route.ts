@@ -2,7 +2,7 @@ import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/http'
 import { EMOJIS, bucketMinute, currentOnAir } from '@/lib/server/live'
-import { EARNED_EMOJIS, emojisFor } from '@/lib/server/earnedEmojis'
+import { EARNED_EMOJIS, bump, emojisFor } from '@/lib/server/earnedEmojis'
 
 export const runtime = 'nodejs'
 
@@ -81,6 +81,7 @@ export async function POST(req: Request) {
       // exp lets a Firestore TTL policy on the rxEvents collection group clean these up (optional).
       await ref.collection('rxEvents').add({ at: now, e: emoji, c: cid, exp: Timestamp.fromMillis(now + 24 * 3_600_000) })
     }
+    await bump(db, t.uid)
     return { ok: true }
   })
 }

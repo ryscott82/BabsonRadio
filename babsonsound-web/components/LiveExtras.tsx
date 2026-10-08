@@ -1,5 +1,6 @@
 'use client'
 
+import EmojiGlyph from '@/components/EmojiGlyph'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
@@ -164,7 +165,7 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
           {emojis.map(e => (
             <button key={e} type="button" onClick={() => react(e)} aria-label={`React ${e}`}
                     className="sk-key rounded-full h-9 w-10 flex items-center justify-center text-base active:scale-90 transition-transform">
-              {e}
+              <EmojiGlyph e={e} size="1.3rem" />
             </button>
           ))}
         </div>

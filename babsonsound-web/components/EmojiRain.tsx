@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
+import EmojiGlyph from '@/components/EmojiGlyph'
 
 // Emojis that fall from the top of the screen. Call rain('🔥', 5) from anywhere; mount <EmojiRain /> once on the page.
 interface P { id: number; e: string; left: number; dur: number; delay: number; size: number; dx: number; rot: number }
@@ -51,7 +52,7 @@ export default function EmojiRain() {
         <span key={p.id} className="br-rain-drop"
               onAnimationEnd={() => setPs(cur => cur.filter(x => x.id !== p.id))}
               style={{ left: `${p.left}%`, fontSize: p.size, animationDuration: `${p.dur}ms`, animationDelay: `${p.delay}ms`,
-                       ['--dx' as string]: `${p.dx}px`, ['--rot' as string]: `${p.rot}deg` }}>{p.e}</span>
+                       ['--dx' as string]: `${p.dx}px`, ['--rot' as string]: `${p.rot}deg` }}><EmojiGlyph e={p.e} size={p.size * 1.15} /></span>
       ))}
     </div>,
     host ?? document.body,

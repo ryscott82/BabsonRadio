@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, str } from '@/lib/server/http'
 import { requireLibrary } from '@/lib/server/guests'
 import { visibleFriends } from '@/lib/server/friends'
+import { bump } from '@/lib/server/earnedEmojis'
 
 export const runtime = 'nodejs'
 
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
     const episodeId = str(b.episodeId, 100)
     if (!ID.test(episodeId)) throw new HttpError(400, 'Bad episode.')
     const ref = adminDb().collection('likes').doc(`${episodeId}_${t.uid}`)
-    if (b.liked === true) await ref.set({ episodeId, uid: t.uid, createdAt: Timestamp.now() })
+    if (b.liked === true) { await ref.set({ episodeId, uid: t.uid, createdAt: Timestamp.now() }); await bump(adminDb(), t.uid) }
     else await ref.delete()
     return { ok: true }
   })

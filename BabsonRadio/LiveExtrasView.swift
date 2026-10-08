@@ -196,6 +196,9 @@ private struct RainDropView: View {
 // MARK: - Buttons and star rows under the player
 
 struct LiveExtrasView: View {
+    enum Mode { case reactions, rest }
+    /// `.reactions` is the emoji row that stays on the main screen; `.rest` is ratings and feedback, which live in the drawer.
+    var mode: Mode = .rest
     @ObservedObject private var audio = AudioPlayerManager.shared
     @ObservedObject private var model = LiveExtrasModel.shared
     @ObservedObject private var auth = AuthManager.shared
@@ -270,10 +273,10 @@ struct LiveExtrasView: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            if let occ = np?.occId, !occ.isEmpty, auth.isInvisible {
+            if mode == .reactions, let occ = np?.occId, !occ.isEmpty, auth.isInvisible {
                 Text("Reactions are off while Invisible mode is on.")
                     .font(.system(size: 12)).foregroundColor(sub).multilineTextAlignment(.center)
-            } else if let occ = np?.occId, !occ.isEmpty {
+            } else if mode == .reactions, let occ = np?.occId, !occ.isEmpty {
                 BRGlassGroup(spacing: 10) {
                     HStack(spacing: 10) {
                         ForEach(model.emojis, id: \.self) { e in
@@ -288,28 +291,34 @@ struct LiveExtrasView: View {
                 }
             }
 
+            if mode == .rest {
             if let np, !np.title.isEmpty {
-                starRow(label: "Rate this song", value: model.songStars) { n in
-                    Task { await model.rateSong(n, title: np.title, artist: np.artist) }
+                    starRow(label: "Rate this song", value: model.songStars) { n in
+                        Task { await model.rateSong(n, title: np.title, artist: np.artist) }
+                    }
+                }
+    
+                if let t = feedbackTarget {
+                    feedbackCard(t)
+                } else if let r = rateable {
+                    starRow(label: (r.isShow ? "Rate the whole show: " : "Rate this hour of music: ") + r.title, value: model.showStars) { n in
+                        Task { await model.rateShow(n, occId: r.occId, title: r.title) }
+                    }
                 }
             }
 
-            if let t = feedbackTarget {
-                feedbackCard(t)
-            } else if let r = rateable {
-                starRow(label: (r.isShow ? "Rate the whole show: " : "Rate this hour of music: ") + r.title, value: model.showStars) { n in
-                    Task { await model.rateShow(n, occId: r.occId, title: r.title) }
-                }
-            }
-
-            if !model.message.isEmpty {
+            if mode == .reactions, !model.message.isEmpty {
                 Text(model.message).font(.system(size: 12)).foregroundColor(gold).multilineTextAlignment(.center)
             }
         }
         .padding(.horizontal, 24)
-        .task { await model.pollLoop() }
-        .task(id: songKey) { await model.loadSongStars(title: np?.title ?? "", artist: np?.artist ?? "") }
-        .task(id: np?.occId ?? "") { await model.loadShowStars(occId: np?.occId ?? "") }
+        // The data loading rides on an always-present empty view (tasks on an empty container never run).
+        .background(
+            Color.clear.frame(width: 1, height: 1)
+                .task { if mode == .reactions { await model.pollLoop() } }
+                .task(id: songKey) { if mode == .reactions { await model.loadSongStars(title: np?.title ?? "", artist: np?.artist ?? "") } }
+                .task(id: np?.occId ?? "") { if mode == .reactions { await model.loadShowStars(occId: np?.occId ?? "") } }
+        )
         .onAppear { if np?.isShow == true, let o = np?.occId, !o.isEmpty { curShow = (o, showTitleNow) } }
         .onChange(of: np?.occId ?? "") { _, new in
             if let c = curShow, c.occId != new { prevShow = (c.occId, c.title, Date()); fbStars = 0; fbComment = "" }

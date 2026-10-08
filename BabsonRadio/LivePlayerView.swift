@@ -11,6 +11,7 @@ struct LivePlayerView: View {
     @Environment(\.colorScheme) var scheme
     @State private var showProfileSheet = false
     @State private var showVote = false
+    @State private var drawerOpen = false
     @Environment(\.verticalSizeClass) private var vSize
 
     /// Signed-out visitors can preview the stream.
@@ -30,86 +31,108 @@ struct LivePlayerView: View {
 
     var body: some View {
         GeometryReader { geo in
-            ScrollView(showsIndicators: false) {
+            let top = geo.safeAreaInsets.top
+            let small = geo.size.height < 700
+            // Everything the listener needs fits on one screen. The cover takes whatever height is left over.
+            let reserved: CGFloat = top + (small ? 410 : 470)
+            let side = max(120, min(geo.size.width - 72, geo.size.height - reserved))
+            let drawerH = min(geo.size.height * 0.72, 560)
+            ZStack(alignment: .bottom) {
                 VStack(spacing: 0) {
+                    if let a = audio.nowPlaying?.announcement, !a.text.isEmpty {
+                        Text(a.text)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                            .multilineTextAlignment(.center).lineLimit(2)
+                            .padding(8)
+                            .frame(maxWidth: .infinity)
+                            .brGlass(in: RoundedRectangle(cornerRadius: 14), tint: accent.opacity(0.3), fallback: accent.opacity(0.18))
+                            .padding(.horizontal, 20)
+                            .padding(.top, top + 4)
+                    }
 
-                if let a = audio.nowPlaying?.announcement, !a.text.isEmpty {
-                    Text(a.text)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                        .multilineTextAlignment(.center)
-                        .padding(12)
-                        .frame(maxWidth: .infinity)
-                        .brGlass(in: RoundedRectangle(cornerRadius: 16), tint: accent.opacity(0.3), fallback: accent.opacity(0.18))
+                    headerRow(topInset: top)
                         .padding(.horizontal, 20)
-                        .padding(.top, geo.safeAreaInsets.top + 8)
+                        .padding(.top, 6)
+                        .padding(.bottom, 10)
+
+                    PlayerArtCard()
+                        .frame(width: 340, height: 340)
+                        .scaleEffect(side / 340)
+                        .frame(width: side, height: side)
+
+                    nowPlayingInfo
+                        .padding(.horizontal, 24)
+                        .padding(.top, 12)
+
+                    playRow
+                        .padding(.top, 12)
+
+                    // Volume under the transport buttons, like Apple Music: quiet speaker, slider, loud speaker.
+                    volumeRow
+                        .padding(.horizontal, 36)
+                        .padding(.top, 6)
+
+                    // Reactions always stay on the main screen.
+                    LiveExtrasView(mode: .reactions)
+                        .padding(.top, 8)
+
+                    if !auth.isSignedIn {
+                        Text("Previewing the live stream. Sign in from the Profile tab for reminders, friends and more.")
+                            .font(.system(size: 11))
+                            .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                            .multilineTextAlignment(.center).lineLimit(2)
+                            .padding(.horizontal, 32)
+                            .padding(.top, 6)
+                    } else if !auth.canListenLive {
+                        Text(lockedMessage)
+                            .font(.system(size: 11))
+                            .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                            .multilineTextAlignment(.center).lineLimit(2)
+                            .padding(.horizontal, 32)
+                            .padding(.top, 6)
+                    }
+                    Spacer(minLength: 0)
                 }
+                .padding(.bottom, LiveDrawer<EmptyView>.handleHeight)
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
 
-                // ── Header ──────────────────────────────────────────
-                headerRow(topInset: geo.safeAreaInsets.top)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 24)
-
-                // ── Player Card ─────────────────────────────────────
-                PlayerArtCard()
-                    .padding(.horizontal, 20)
-
-                // ── Now Playing Info ────────────────────────────────
-                nowPlayingInfo
-                    .padding(.horizontal, 24)
-                    .padding(.top, 24)
-
-                // "3 people in your MKT 3500 class are listening"
-                if !presence.groups.isEmpty {
-                    VStack(spacing: 4) {
-                        ForEach(presence.groups.prefix(3)) { g in
-                            Text(g.text)
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(accent)
+                // Everything else lives in a drawer you pull up.
+                LiveDrawer(open: $drawerOpen, height: drawerH, tint: accent) {
+                    VStack(spacing: 18) {
+                        if let note = audio.nowPlaying?.note, !(note.headline.isEmpty && note.message.isEmpty) {
+                            VStack(spacing: 4) {
+                                if !note.headline.isEmpty { Text(note.headline).font(.system(size: 14, weight: .bold)) }
+                                if !note.message.isEmpty { Text(note.message).font(.system(size: 13)) }
+                            }
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                            .padding(12).frame(maxWidth: .infinity)
+                            .brGlass(in: RoundedRectangle(cornerRadius: 16), tint: accent.opacity(0.25), fallback: accent.opacity(0.15))
+                            .padding(.horizontal, 24)
                         }
+                        if !presence.groups.isEmpty {
+                            VStack(spacing: 4) {
+                                ForEach(presence.groups.prefix(3)) { g in
+                                    Text(g.text).font(.system(size: 12, weight: .semibold)).foregroundColor(accent)
+                                }
+                            }
+                        }
+                        LiveExtrasView(mode: .rest)
+                        if auth.isSignedIn && auth.canListenLive {
+                            Button { showVote = true } label: {
+                                Label("What would you like to hear?", systemImage: "hand.thumbsup")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(accent)
+                                    .padding(.horizontal, 18).padding(.vertical, 12)
+                                    .brGlass(in: Capsule(), tint: accent.opacity(0.25), fallback: accent.opacity(0.14))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        communitySection
+                            .padding(.bottom, 24)
                     }
-                    .padding(.top, 14)
-                }
-
-                // ── Play / Stop Control ─────────────────────────────
-                playRow
-                    .padding(.top, 28)
-
-                if !auth.isSignedIn {
-                    Text("You're previewing the live stream. Sign in or create a free account from the Profile tab for reminders, friends and more.")
-                        .font(.system(size: 13))
-                        .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                        .padding(.top, 12)
-                } else if !auth.canListenLive {
-                    Text(lockedMessage)
-                        .font(.system(size: 13))
-                        .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                        .padding(.top, 12)
-                }
-
-                LiveExtrasView()
-                    .padding(.top, 20)
-
-                if auth.isSignedIn && auth.canListenLive {
-                    Button { showVote = true } label: {
-                        Label("What would you like to hear?", systemImage: "hand.thumbsup")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(accent)
-                            .padding(.horizontal, 18).padding(.vertical, 12)
-                            .brGlass(in: Capsule(), tint: accent.opacity(0.25), fallback: accent.opacity(0.14))
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, 20)
-                }
-
-                communitySection
-                    .padding(.top, 36)
-                    .padding(.bottom, 40)
+                    .padding(.top, 8)
                 }
             }
             .background {
@@ -176,7 +199,7 @@ struct LivePlayerView: View {
     }
 
     private var nowPlayingInfo: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 3) {
             HStack {
                 BRTagChip(text: audio.nowPlaying?.isLive == true ? "LIVE DJ" : "LIVE", style: .gold)
                 BRTagChip(text: {
@@ -189,10 +212,10 @@ struct LivePlayerView: View {
 
             let song = audio.nowPlaying.flatMap { $0.title.isEmpty ? nil : $0 }
             Text(song?.title ?? "Babson Radio")
-                .font(BRFont.display(song == nil ? 34 : 28))
+                .font(BRFont.display(song == nil ? 30 : 26))
                 .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                 .kerning(1)
-                .lineLimit(2)
+                .lineLimit(1).minimumScaleFactor(0.65)
 
             Text(song.map { $0.artist.isEmpty ? "Babson Radio" : $0.artist } ?? "Live Stream")
                 .font(.system(size: 14, weight: .medium))
@@ -205,21 +228,8 @@ struct LivePlayerView: View {
             }
 
             if let note = audio.nowPlaying?.note, !(note.headline.isEmpty && note.message.isEmpty) {
-                VStack(spacing: 4) {
-                    if !note.headline.isEmpty {
-                        Text(note.headline)
-                            .font(.system(size: 14, weight: .bold))
-                    }
-                    if !note.message.isEmpty {
-                        Text(note.message)
-                            .font(.system(size: 13))
-                    }
-                }
-                .multilineTextAlignment(.center)
-                .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                .padding(12)
-                .frame(maxWidth: .infinity)
-                .brGlass(in: RoundedRectangle(cornerRadius: 16), tint: accent.opacity(0.25), fallback: accent.opacity(0.15))
+                Text(note.headline.isEmpty ? note.message : note.headline)
+                    .font(.system(size: 12, weight: .semibold)).foregroundColor(accent).lineLimit(1)
             }
 
             if let song, song.isLive, !song.streamer.isEmpty {
@@ -236,11 +246,6 @@ struct LivePlayerView: View {
                         .padding(.top, 6)
                 }
             }
-
- // Volume sits right under the song's progress bar.
-            volumeRow
-                .padding(.horizontal, 12)
-                .padding(.top, 4)
 
             if let next = audio.nowPlaying?.next {
                 Text("Next: \(next.title)\(next.artist.isEmpty ? "" : " · \(next.artist)")")
@@ -815,3 +820,51 @@ struct LiveBoardView: View {
     }
 }
 #endif
+
+
+// MARK: - Pull-up drawer
+
+/// A panel that peeks up from the bottom with a handle. Tap or drag the handle to open it; drag down or tap to close.
+struct LiveDrawer<Content: View>: View {
+    static var handleHeight: CGFloat { 40 }
+    @Binding var open: Bool
+    let height: CGFloat
+    let tint: Color
+    @ViewBuilder var content: () -> Content
+    @Environment(\.colorScheme) private var scheme
+    @GestureState private var drag: CGFloat = 0
+
+    var body: some View {
+        let closedOffset = height - Self.handleHeight
+        VStack(spacing: 0) {
+            VStack(spacing: 2) {
+                Capsule().fill((scheme == .dark ? Color.brDkSub : Color.brLtSub).opacity(0.5)).frame(width: 38, height: 5)
+                Text(open ? "CLOSE" : "RATE · VOTE · COMMUNITY")
+                    .font(BRFont.display(11)).kerning(3)
+                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+            }
+            .frame(maxWidth: .infinity).frame(height: Self.handleHeight)
+            .contentShape(Rectangle())
+            .onTapGesture { withAnimation(.spring(duration: 0.3)) { open.toggle() } }
+            .gesture(
+                DragGesture()
+                    .updating($drag) { v, state, _ in state = v.translation.height }
+                    .onEnded { v in
+                        withAnimation(.spring(duration: 0.3)) {
+                            if v.translation.height < -30 { open = true } else if v.translation.height > 30 { open = false }
+                        }
+                    }
+            )
+            ScrollView(showsIndicators: false) { content() }
+                .frame(height: height - Self.handleHeight)
+        }
+        .frame(height: height)
+        .background(
+            UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24)
+                .fill(.regularMaterial)
+                .overlay(UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24).fill(tint.opacity(0.06)))
+                .shadow(color: .black.opacity(0.18), radius: 14, y: -2)
+        )
+        .offset(y: max(open ? min(drag, height) : closedOffset + min(drag, 0), 0))
+    }
+}

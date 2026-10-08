@@ -9,6 +9,7 @@ import { useNowPlaying } from '@/lib/nowplaying'
 import Visualizer from '@/components/Visualizer'
 import LiveExtras from '@/components/LiveExtras'
 import { useArtColor } from '@/lib/artColor'
+import { useArtMain } from '@/components/ArtTheme'
 import { useWide } from '@/lib/useWide'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
@@ -30,7 +31,9 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   const hasSong = !!np?.configured && !!np.title
   // Color of the glow: the on-air event's color, else the cover's main color, else the station green.
   const artColor = useArtColor(np?.art || undefined)
-  const glow = np?.color || artColor || ''
+  const art = useArtMain()
+  // With the album-color theme on, the glow follows the page's fade (green first, then the cover's main color).
+  const glow = np?.color || (art.on ? art.main : artColor) || ''
 
   // Full screen board (for a screen on the wall): just the music, big, over the visualizer.
   const [board, setBoard] = useState(false)

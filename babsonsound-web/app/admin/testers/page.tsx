@@ -12,7 +12,7 @@ async function fetchPut(uid: string, decision: string) {
   const token = await getAuth().currentUser?.getIdToken()
   const res = await fetch('/api/admin/testers', {
     method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ uid, decision }),
+    body: JSON.stringify({ uid, decision, welcome: true }),
   })
   if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? 'Could not save.')
 }
@@ -24,6 +24,8 @@ export default function AdminTestersPage() {
   const [requests, setRequests] = useState<{ uid: string; email: string; name: string; joinedAt: number }[]>([])
   const [text, setText] = useState('')
   const [domain, setDomain] = useState<string>(BABSON_DOMAIN)
+  const [welcome, setWelcome] = useState(true)
+  const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -37,7 +39,12 @@ export default function AdminTestersPage() {
 
   async function change(list: string[], on: boolean) {
     setBusy(true); setError('')
-    try { setEmails((await api<{ emails: string[] }>('/api/admin/testers', { emails: list, on })).emails); if (on) setText('') }
+    setNote('')
+    try {
+      const r = await api<{ emails: string[]; mail?: string }>('/api/admin/testers', { emails: list, on, welcome })
+      setEmails(r.emails)
+      if (on) { setText(''); setNote(r.mail === 'not-set-up' ? 'Added. Email is not set up yet (RESEND_API_KEY), so nothing was sent.' : r.mail === 'sending' ? 'Added. Welcome emails are going out.' : '') }
+    }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not save.') }
     setBusy(false)
   }
@@ -88,6 +95,11 @@ export default function AdminTestersPage() {
             {SCHOOL_DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
         </label>
+        <label className="flex items-center gap-2 text-xs text-br-dk-sub">
+          <input type="checkbox" checked={welcome} onChange={e => setWelcome(e.target.checked)} />
+          Email them that they&apos;ve been selected (once per address)
+        </label>
+        {note && <p role="status" className="text-xs text-br-gold">{note}</p>}
         <ErrorText>{error}</ErrorText>
         <PrimaryButton type="button" busy={busy} onClick={() => parsed.length && change(parsed, true)}>
           {parsed.length > 1 ? `ADD ${parsed.length} TESTERS` : 'ADD TESTER'}

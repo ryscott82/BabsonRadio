@@ -14,3 +14,19 @@ export async function isTester(email: string | undefined | null): Promise<boolea
   if (!email) return false
   return (await testerEmails()).includes(normEmail(email))
 }
+
+/** Email the "you've been selected" note to anyone on this list who has not had it yet. Returns how many were sent. */
+export async function welcomeTesters(emails: string[]): Promise<{ sent: number; configured: boolean }> {
+  const { betaWelcome, mailConfigured, sendMail } = await import('./mailer')
+  if (!mailConfigured()) return { sent: 0, configured: false }
+  const ref = adminDb().collection('config').doc('betaTesters')
+  const done = new Set(((await ref.get()).get('welcomed') as string[] | undefined) ?? [])
+  const todo = [...new Set(emails.map(normEmail))].filter(e => !done.has(e))
+  const ok: string[] = []
+  for (const e of todo) {
+    const m = betaWelcome(e)
+    if (await sendMail(e, m.subject, m.text, m.html)) ok.push(e)
+  }
+  if (ok.length) await ref.set({ welcomed: (await import('firebase-admin/firestore')).FieldValue.arrayUnion(...ok) }, { merge: true })
+  return { sent: ok.length, configured: true }
+}

@@ -270,3 +270,19 @@ body::before {
 .ops .sk-btn, .ops .sk-key { background: var(--sk-btn-top); border: 1px solid var(--br-border2); border-radius: 3px; box-shadow: none; color: var(--sk-btn-ink); text-shadow: none; }
 .ops .sk-btn:hover:not(:disabled), .ops .sk-key:hover:not(:disabled) { border-color: var(--br-accent); }
 .ops .rounded-xl, .ops .rounded-2xl, .ops .rounded-lg { border-radius: 3px; }
+
+/* ── Album-color theme (components/ArtTheme.tsx) ─────────────────────────────────────────────
+   --art-1/2/3 start at the station green and fade to the cover's three colors.
+   1 = visualizer and glow, 2 = accents (stars, links, progress, equalizer), 3 = buttons. */
+@property --art-1 { syntax: '<color>'; inherits: true; initial-value: #2fb67c; }
+@property --art-2 { syntax: '<color>'; inherits: true; initial-value: #2fb67c; }
+@property --art-3 { syntax: '<color>'; inherits: true; initial-value: #2fb67c; }
+.art-ui {
+  transition: --art-1 12s ease-in-out, --art-2 12s ease-in-out, --art-3 12s ease-in-out;
+  --br-accent: var(--art-2);
+  --sk-btn-top: color-mix(in srgb, var(--art-3) 85%, #000);
+  --sk-btn-bot: color-mix(in srgb, var(--art-3) 55%, #000);
+  --sk-btn-edge: color-mix(in srgb, var(--art-3) 30%, #000);
+}
+.art-ui .sk-hero { border-color: color-mix(in srgb, var(--art-1) 45%, transparent); }
+@media (prefers-reduced-motion: reduce) { .art-ui { transition: none; } }

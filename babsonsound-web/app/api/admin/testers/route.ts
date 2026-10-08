@@ -2,7 +2,8 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { adminAuth } from '@/lib/server/admin'
 import { ANY_EMAIL, HttpError, handle, readJson, requireStaff, str } from '@/lib/server/http'
-import { normEmail, testerEmails } from '@/lib/server/testers'
+import { after } from 'next/server'
+import { normEmail, testerEmails, welcomeTesters } from '@/lib/server/testers'
 
 export const runtime = 'nodejs'
 
@@ -34,6 +35,7 @@ export async function PUT(req: Request) {
     const claims = (await adminAuth().getUser(uid)).customClaims ?? {}
     await adminAuth().setCustomUserClaims(uid, { ...claims, tester: true })
     await ref.update({ betaStatus: 'approved', betaTester: true, accountType: 'babson' })
+    if (b.welcome !== false) after(() => welcomeTesters([email]).catch(() => null))
     return { ok: true }
   })
 }
@@ -50,6 +52,12 @@ export async function POST(req: Request) {
     if (bad) throw new HttpError(400, `${bad} is not a valid email address.`)
     await adminDb().collection('config').doc('betaTesters').set(
       { emails: b.on ? FieldValue.arrayUnion(...emails) : FieldValue.arrayRemove(...emails) }, { merge: true })
+    // New testers get the "you've been selected" email unless the box was unticked. Each address is only ever emailed once.
+    if (b.on && b.welcome !== false) {
+      const { mailConfigured } = await import('@/lib/server/mailer')
+      after(() => welcomeTesters(emails).catch(() => null))
+      return { emails: await testerEmails(), mail: mailConfigured() ? 'sending' : 'not-set-up' }
+    }
     return { emails: await testerEmails() }
   })
 }

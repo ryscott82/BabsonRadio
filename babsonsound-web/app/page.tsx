@@ -7,6 +7,7 @@ import ShareFormButton from '@/components/ShareFormButton'
 import InterestFormCta from '@/components/InterestFormCta'
 import VoteCard from '@/components/VoteCard'
 import LiveExtrasPane from '@/components/LiveExtrasPane'
+import ArtTheme from '@/components/ArtTheme'
 import { getRecentEpisodes, getTodaySchedule, getFeaturedShows } from '@/lib/firestore'
 
 export const revalidate = 60 // re-fetch data every 60 seconds
@@ -19,7 +20,7 @@ export default async function HomePage() {
   ])
 
   return (
-    <div className="max-w-6xl lg:max-w-[1800px] mx-auto px-4 lg:px-8 xl:px-12 py-8 space-y-16">
+    <ArtTheme className="max-w-6xl lg:max-w-[1800px] mx-auto px-4 lg:px-8 xl:px-12 py-8 space-y-16">
 
       {/* ── Interest form (hidden for signed-in members) ───────── */}
       <InterestFormCta><section className="sk-raised rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
@@ -146,7 +147,7 @@ export default async function HomePage() {
           <p className="text-sm">Episodes and shows will appear here once published.</p>
         </div>
       )}
-    </div>
+    </ArtTheme>
   )
 }
 

@@ -88,7 +88,8 @@ def has_art_map():
         data = az('GET', f'files?page={page}&per_page=500')
         rows = data if isinstance(data, list) else data.get('rows') or data.get('data') or []
         for m in rows:
-            out[str(m.get('id'))] = bool(m.get('art_updated_at')) or ('/art/' in str(m.get('art', '')) and 'default' not in str(m.get('art', '')))
+            # AzuraCast always fills in an "art" link (it serves a default picture), so only art_updated_at tells us real art exists.
+            out[str(m.get('id'))] = bool(m.get('art_updated_at'))
         if isinstance(data, list) or len(rows) < 500 or page > 100:
             return out
         page += 1
@@ -123,7 +124,10 @@ def main():
     rows = [r for r in csv.DictReader(open(os.path.join(HERE, 'metadata_cleanup.csv'), encoding='utf-8'))
             if r['playlist'] != 'Copyright Free' and r['new_artist'] and (a.include_review or not r.get('needs_review'))]
     have = {} if a.redo else has_art_map() if os.environ.get('AZURACAST_API_KEY') or os.environ.get('AZURACAST_KEY') else {}
+    skipped = sum(1 for r in rows if have.get(r['id']))
     rows = [r for r in rows if not have.get(r['id'])]
+    if skipped:
+        print(f'Skipping {skipped} songs that already have art in AzuraCast (use --redo to replace them).')
     if a.limit:
         rows = rows[:a.limit]
     print(f'{len(rows)} songs to do.\n')

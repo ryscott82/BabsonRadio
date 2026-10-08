@@ -129,5 +129,6 @@ service cloud.firestore {
     match /voteOverrides/{id} { allow read, write: if false; }
     match /voteThresholds/{id} { allow read, write: if false; }
     match /songRequests/{id}  { allow read, write: if false; }
+    match /liveRequests/{id}  { allow read, write: if false; }
   }
 }

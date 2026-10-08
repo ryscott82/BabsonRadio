@@ -7,7 +7,7 @@ import { api, apiGet } from '@/lib/auth'
 interface State {
   blockStart: number; blockEnd: number; threshold: number
   options: { label: string; count: number }[]
-  myVote: string | null; winner: string | null; canVote: boolean
+  myVote: string | null; winner: string | null; canVote: boolean; requestsOpen?: boolean; requestsShow?: string
 }
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -69,9 +69,9 @@ export default function VoteCard() {
         ))}
       </div>
       {!s.canVote && <p className="text-xs text-br-dk-sub">Voting opens once a Babson student sponsors you or has you in their contacts.</p>}
-      {s.canVote && (
+      {s.canVote && s.requestsOpen && (
         <form onSubmit={sendRequest} className="flex gap-2">
-          <input value={text} onChange={e => setText(e.target.value)} maxLength={140} placeholder="Or request an artist or song"
+          <input value={text} onChange={e => setText(e.target.value)} maxLength={140} placeholder={`Request a song${s.requestsShow ? ` for ${s.requestsShow}` : ''}`}
                  className="sk-field flex-1 rounded-lg px-3 py-2 text-sm text-br-dk-text" />
           <button type="submit" disabled={busy || text.trim().length < 2} className="sk-btn font-display tracking-widest text-xs px-4 rounded-lg">SEND</button>
         </form>

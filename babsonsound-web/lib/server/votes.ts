@@ -40,11 +40,32 @@ export async function thresholdFor(db: Firestore, blockMs: number): Promise<numb
   return value
 }
 
-/** Genres people can pick: everything the auto-scheduler can play (quiet rules have none). */
-export async function voteOptions(db: Firestore): Promise<string[]> {
-  const cfg = await loadConfig(db)
-  const all = [...cfg.defaultFillers, ...cfg.rules.flatMap(r => (r.quiet ? [] : r.fillers))]
-  return [...new Set(all)]
+/**
+ * The broad genres listeners can vote on. Keep these general: each one needs a playlist in AzuraCast with the same name
+ * (or an entry in the auto-scheduler's playlist map). Staff can replace the list by saving { list: [...] } to the
+ * Firestore document config/voteGenres; until then this is used.
+ */
+export const DEFAULT_VOTE_GENRES = [
+  'Pop Hits', 'Hip-Hop & R&B', 'Indie & Alt', 'Throwback Hits',
+  'Dance Mix', 'Acoustic', 'Lofi Beats', 'Jazz House for Studying',
+]
+/** How many choices each hour shows, so votes bunch up instead of spreading thin. */
+export const OPTIONS_PER_HOUR = 5
+
+function seeded(n: number) { // small deterministic PRNG so everyone sees the same five for a given hour
+  let x = Math.floor(n) | 0
+  return () => { x = Math.imul(x ^ (x >>> 15), 0x2c1b3c6d); x ^= x >>> 12; x = Math.imul(x, 0x297a2d39); x ^= x >>> 15; return (x >>> 0) / 4294967296 }
+}
+
+/** The five genres on offer for this hour: the same for every listener, different from hour to hour. */
+export async function voteOptions(db: Firestore, blockMs: number): Promise<string[]> {
+  const saved = (await db.collection('config').doc('voteGenres').get()).get('list')
+  const pool = (Array.isArray(saved) && saved.length ? saved.map(String) : DEFAULT_VOTE_GENRES).filter((v, i, a) => v && a.indexOf(v) === i)
+  if (pool.length <= OPTIONS_PER_HOUR) return pool
+  const rnd = seeded(blockMs / HOUR)
+  const out = [...pool]
+  for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [out[i], out[j]] = [out[j], out[i]] }
+  return out.slice(0, OPTIONS_PER_HOUR)
 }
 
 export interface VoteState {
@@ -59,7 +80,7 @@ export interface VoteState {
 export async function voteState(db: Firestore, uid: string | null, now = Date.now()): Promise<VoteState> {
   const blockStart = targetBlock(now)
   const [opts, snap, ov, threshold] = await Promise.all([
-    voteOptions(db),
+    voteOptions(db, blockStart),
     db.collection('songVotes').where('blockMs', '==', blockStart).get(),
     db.collection('voteOverrides').doc(String(blockStart)).get(),
     thresholdFor(db, blockStart),
@@ -81,9 +102,9 @@ export async function voteState(db: Firestore, uid: string | null, now = Date.no
 
 /** Cast or change a vote, then hand the hour to the leader if it has 15 or more. */
 export async function castVote(db: Firestore, uid: string, genre: string, now = Date.now()): Promise<VoteState> {
-  const opts = await voteOptions(db)
-  if (!opts.includes(genre)) throw Object.assign(new Error('Pick one of the options.'), { status: 400 })
   const blockMs = targetBlock(now)
+  const opts = await voteOptions(db, blockMs)
+  if (!opts.includes(genre)) throw Object.assign(new Error('Pick one of the options.'), { status: 400 })
   await db.collection('songVotes').doc(`${blockMs}_${uid}`).set({ blockMs, uid, genre, at: Timestamp.fromMillis(now) })
   let st = await voteState(db, uid, now)
   const leader = [...st.options].sort((a, b) => b.count - a.count)[0]

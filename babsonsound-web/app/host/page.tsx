@@ -10,6 +10,7 @@ import ImagePicker from '@/components/ImagePicker'
 interface HShow { id: string; key: string; kind: 'weekly' | 'slot'; refId: string; title: string; startAt: number; endAt: number; open: boolean }
 interface NowPlaying { song: string; elapsed: number; duration: number; isLive: boolean; streamer: string; listeners: number }
 interface Insight {
+  requestsOpen?: boolean; requests?: { id: string; text: string; name: string; at: number }[]
   note: { headline: string; message: string } | null
   reactions: Record<string, number>; recentReactions: Record<string, number>
   ratingCount: number; ratingAvg: number
@@ -68,7 +69,7 @@ export default function HostPage() {
                       className={`font-display tracking-widest text-sm px-4 py-2 -mb-px border-b-2 ${tab === k ? 'border-br-gold text-br-gold' : 'border-transparent text-br-dk-sub hover:text-br-dk-text'}`}>{l}</button>
             ))}
           </div>
-          {tab === 'live' && (<><Controls st={st} /><LiveNote st={st} reload={load} /><Insights st={st} /></>)}
+          {tab === 'live' && (<><Controls st={st} /><LiveNote st={st} reload={load} /><SongRequests st={st} reload={load} /><Insights st={st} /></>)}
           {tab === 'stats' && <Stats />}
           {tab === 'setlist' && <SetList st={st} />}
           {tab === 'shows' && (<><Shows st={st} /><ChangeRequest st={st} reload={load} /></>)}
@@ -179,6 +180,34 @@ function LiveNote({ st, reload }: { st: Status; reload: () => void }) {
         <button type="button" onClick={() => save(true)} className="text-sm text-br-dk-sub">Clear</button>
       </div>
       <p className="text-xs text-br-dk-sub">It shows under the player on the website and in the app, and disappears shortly after your show ends.</p>
+    </section>
+  )
+}
+
+// Let listeners type song or artist requests during this show. Off by default; never available for the auto DJ.
+function SongRequests({ st, reload }: { st: Status; reload: () => void }) {
+  const choices = st.shows.filter(s => s.open && st.insights[s.id])
+  const sel = choices.find(s => s.startAt <= st.now && s.endAt >= st.now) ?? choices[0]
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  if (!sel) return null
+  const i = st.insights[sel.id]
+  const open = i.requestsOpen === true
+  async function toggle() {
+    setBusy(true); setErr('')
+    try { await api('/api/live/requests', { occId: sel!.id, open: !open }); reload() }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Could not save.') }
+    setBusy(false)
+  }
+  return (
+    <section className="sk-raised rounded-2xl p-5 space-y-3">
+      <h2 className="font-display text-br-gold tracking-widest text-sm">SONG REQUESTS · {sel.title.toUpperCase()}</h2>
+      <p className="text-xs text-br-dk-sub">Turn this on to let listeners type in an artist or song. It turns itself off when your show ends.</p>
+      <ErrorText>{err}</ErrorText>
+      <PrimaryButton type="button" busy={busy} onClick={toggle}>{open ? 'STOP TAKING REQUESTS' : 'TAKE REQUESTS'}</PrimaryButton>
+      {open && (i.requests?.length
+        ? <ul className="text-sm text-br-dk-text divide-y divide-br-dk-border">{i.requests.map(r => <li key={r.id} className="py-1.5">{r.text} <span className="text-xs text-br-dk-sub">· {r.name}</span></li>)}</ul>
+        : <p className="text-xs text-br-dk-sub">No requests yet.</p>)}
     </section>
   )
 }

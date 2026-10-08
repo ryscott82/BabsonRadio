@@ -37,6 +37,20 @@ export async function getNote(db: Firestore, occId: string, now = Date.now()): P
   return { headline, message, updatedAt: (d.get('updatedAt') as Timestamp).toMillis(), by: String(d.get('byName') ?? '') }
 }
 
+// ── Song requests: only when the DJ of a live show turns them on. Never for the auto DJ. ──
+
+export interface RequestsStatus { open: boolean; occId: string; showTitle: string }
+
+export async function requestsStatus(db: Firestore, now = Date.now()): Promise<RequestsStatus> {
+  const none = { open: false, occId: '', showTitle: '' }
+  const cur = await currentOnAir(db, now)
+  if (!cur || !cur.isShow) return none
+  const d = await db.collection('liveRequests').doc(cur.occId).get()
+  const exp = (d.get('expiresAt') as Timestamp | undefined)?.toMillis() ?? 0
+  if (!d.exists || d.get('open') !== true || exp < now) return none
+  return { open: true, occId: cur.occId, showTitle: cur.item.title }
+}
+
 // ── Reactions ────────────────────────────────────────────────
 export const EMOJIS = ['🔥', '❤️', '🦫', '🤘'] as const
 export type Emoji = (typeof EMOJIS)[number]

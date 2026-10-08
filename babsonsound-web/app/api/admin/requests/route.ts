@@ -8,7 +8,7 @@ export async function GET(req: Request) {
     await requireStaff(req)
     const snap = await adminDb().collection('songRequests').orderBy('at', 'desc').limit(200).get()
     return {
-      requests: snap.docs.map(d => ({ id: d.id, name: d.get('name') ?? '', text: d.get('text') ?? '', at: d.get('at').toMillis(), done: d.get('done') === true })),
+      requests: snap.docs.map(d => ({ id: d.id, name: d.get('name') ?? '', text: d.get('text') ?? '', at: d.get('at').toMillis(), done: d.get('done') === true, show: d.get('showTitle') ?? '' })),
     }
   })
 }

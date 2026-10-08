@@ -15,6 +15,8 @@ nonisolated struct VoteState: Decodable {
     let myVote: String?
     let winner: String?
     let canVote: Bool?
+    let requestsOpen: Bool?
+    let requestsShow: String?
 }
 
 struct VoteView: View {
@@ -71,8 +73,8 @@ struct VoteView: View {
                         if s.canVote == false {
                             Text("Voting opens once a Babson student sponsors you or has you in their contacts.")
                                 .font(.system(size: 12)).foregroundColor(sub)
-                        } else {
-                            Text("Or request an artist or song")
+                        } else if s.requestsOpen == true {
+                            Text(s.requestsShow.map { "Request a song for \($0)" } ?? "Request a song")
                                 .font(.system(size: 13, weight: .semibold)).foregroundColor(text).padding(.top, 8)
                             HStack {
                                 BRTextField(placeholder: "Artist or song", text: $request, icon: "music.note")

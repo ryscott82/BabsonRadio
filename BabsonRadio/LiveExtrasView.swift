@@ -12,6 +12,7 @@ nonisolated private struct ReactionFeed: Decodable {
 }
 nonisolated private struct MineReply: Decodable { let mine: Int }
 nonisolated private struct ShowRatingReply: Decodable { let mine: Int }
+nonisolated struct SkipReply: Decodable { let eligible: Bool; let votes: Int; let needed: Int; let mine: Bool }
 
 private func enc(_ s: String) -> String {
     s.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&+=?#"))) ?? s
@@ -37,6 +38,7 @@ final class LiveExtrasModel: ObservableObject {
     @Published var message = ""
     @Published var songStars = 0
     @Published var showStars = 0
+    @Published var skip: SkipReply? = nil
 
     private let cid = UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(10).lowercased()
     private var since: Double = 0
@@ -97,6 +99,16 @@ final class LiveExtrasModel: ObservableObject {
         songStars = n
         do { let _: EmptyResponse = try await BackendAPI.post("/api/live/song-rating", ["title": title, "artist": artist, "stars": n]) }
         catch { songStars = before; flash(error.localizedDescription) }
+    }
+
+    /// Skip the song (auto DJ only): it skips when 90% of listeners ask.
+    func loadSkip() async {
+        skip = try? await BackendAPI.get("/api/skip")
+    }
+
+    func askSkip() async {
+        do { skip = try await BackendAPI.post("/api/skip", [:]) }
+        catch { flash((error as? BackendError)?.message ?? error.localizedDescription) }
     }
 
     func loadShowStars(occId: String) async {
@@ -271,6 +283,20 @@ struct LiveExtrasView: View {
                 }
             }
 
+            if auth.isSignedIn, let sk = model.skip, sk.eligible {
+                VStack(spacing: 4) {
+                    Button { Task { await model.askSkip() } } label: {
+                        Label(sk.mine ? "You asked to skip" : "Skip this song", systemImage: "forward.fill")
+                            .font(.system(size: 14, weight: .semibold)).foregroundColor(gold)
+                            .padding(.horizontal, 18).padding(.vertical, 10)
+                            .brGlass(in: Capsule(), interactive: true)
+                    }
+                    .buttonStyle(.plain).disabled(sk.mine)
+                    Text("\(sk.votes) of \(sk.needed) needed. It skips when 90% of listeners ask.")
+                        .font(.system(size: 11)).foregroundColor(sub)
+                }
+            }
+
             if let t = feedbackTarget {
                 feedbackCard(t)
             } else if let r = rateable {
@@ -287,6 +313,11 @@ struct LiveExtrasView: View {
         .task { await model.pollLoop() }
         .task(id: songKey) { await model.loadSongStars(title: np?.title ?? "", artist: np?.artist ?? "") }
         .task(id: np?.occId ?? "") { await model.loadShowStars(occId: np?.occId ?? "") }
+        .task(id: "\(songKey)|\(auth.isSignedIn)") {
+            // Check the skip count every 10 seconds while a song from the auto DJ is playing.
+            guard auth.isSignedIn, np?.isLive != true, np?.isShow != true else { model.skip = nil; return }
+            while !Task.isCancelled { await model.loadSkip(); try? await Task.sleep(nanoseconds: 10_000_000_000) }
+        }
         .onAppear { if np?.isShow == true, let o = np?.occId, !o.isEmpty { curShow = (o, showTitleNow) } }
         .onChange(of: np?.occId ?? "") { _, new in
             if let c = curShow, c.occId != new { prevShow = (c.occId, c.title, Date()); fbStars = 0; fbComment = "" }

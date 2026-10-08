@@ -110,3 +110,9 @@ Legend: [x] built, [ ] planned.
 
 ## Notifications to everyone
 - Admin > Send a notification pushes a title and message to every phone that turned on "Station announcements" (Profile > Notifications in the app). Push through Firebase/Apple is free. People must allow notifications once; nothing needs to be pre-loaded. One send per 2 minutes. History is kept in the `broadcasts` collection.
+
+## Skip votes and right pane
+- On the desktop two-pane layout, reactions, ratings, set list and the skip button sit in the right pane. On narrow screens they stay under the player.
+- Any signed-in listener can ask to skip the current track while the automatic playlist is running. The track skips when requests reach 90 percent of the people listening.
+- Only people who are tuned in right now count. The total is the larger of the AzuraCast listener count and the app's own listening count.
+- Not available during live shows.

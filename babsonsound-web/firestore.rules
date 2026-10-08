@@ -130,6 +130,7 @@ service cloud.firestore {
     match /voteThresholds/{id} { allow read, write: if false; }
     match /songRequests/{id}  { allow read, write: if false; }
     match /liveRequests/{id}  { allow read, write: if false; }
+    match /skipVotes/{id}     { allow read, write: if false; }
     match /broadcasts/{id}    { allow read, write: if false; }
   }
 }

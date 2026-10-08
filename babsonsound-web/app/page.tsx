@@ -6,6 +6,7 @@ import { LINKS } from '@/lib/links'
 import ShareFormButton from '@/components/ShareFormButton'
 import InterestFormCta from '@/components/InterestFormCta'
 import VoteCard from '@/components/VoteCard'
+import LiveExtrasPane from '@/components/LiveExtrasPane'
 import { getRecentEpisodes, getTodaySchedule, getFeaturedShows } from '@/lib/firestore'
 
 export const revalidate = 60 // re-fetch data every 60 seconds
@@ -43,7 +44,10 @@ export default async function HomePage() {
         </section>
       </div>
       <div className="space-y-16 min-w-0">
-        <VoteCard />
+        <div className="space-y-6 empty:hidden">
+          <LiveExtrasPane />
+          <VoteCard />
+        </div>
 
       {/* ── Today's Schedule ─────────────────────────────────── */}
       {schedule.length > 0 && (

@@ -9,6 +9,7 @@ import { useNowPlaying } from '@/lib/nowplaying'
 import Visualizer from '@/components/Visualizer'
 import LiveExtras from '@/components/LiveExtras'
 import { useArtColor } from '@/lib/artColor'
+import { useWide } from '@/lib/useWide'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 
@@ -25,6 +26,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   const canListenLive = memberListen || previewing
   const [prompt, setPrompt] = useState(false)
   const np = useNowPlaying()
+  const wide = useWide()
   const hasSong = !!np?.configured && !!np.title
   // Color of the glow: the on-air event's color, else the cover's main color, else the station green.
   const artColor = useArtColor(np?.art || undefined)
@@ -256,7 +258,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
         </div>
       )}
     </div>
-    <LiveExtras np={np} />
+    {!(pane && wide) && <LiveExtras np={np} />}
     {board && createPortal(
       <div ref={boardRef} onMouseMove={() => setAwake(true)} onClick={() => setAwake(true)}
            className={`fixed inset-0 z-[100] bg-black overflow-hidden flex items-center justify-center ${awake ? '' : 'cursor-none'}`}>

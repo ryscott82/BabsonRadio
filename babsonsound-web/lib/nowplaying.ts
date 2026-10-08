@@ -6,6 +6,7 @@ export interface NowPlaying {
   configured: boolean
   title: string; artist: string; album: string; art: string
   elapsed: number; duration: number
+  playedAt: number
   isLive: boolean; streamer: string; listeners: number
   next: { title: string; artist: string } | null
   showTitle: string

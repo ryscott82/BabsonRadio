@@ -131,6 +131,18 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
     catch (err) { setMsg(err instanceof Error ? err.message : 'Could not save your rating.') }
   }
 
+  // ── skip the song (auto DJ only; at 90% of listeners it skips) ──
+  const autoDj = !!np?.title && !np.isLive && !np.isShow
+  const [skip, setSkip] = useState<{ votes: number; needed: number; mine: boolean; eligible: boolean } | null>(null)
+  useEffect(() => {
+    if (!user || !autoDj) { queueMicrotask(() => setSkip(null)); return }
+    return poll(() => { apiGet<{ votes: number; needed: number; mine: boolean; eligible: boolean }>('/api/skip').then(setSkip).catch(() => {}) }, 10_000)
+  }, [user, autoDj, np?.playedAt, np?.title])
+  async function askSkip() {
+    try { setSkip(await api<{ votes: number; needed: number; mine: boolean; eligible: boolean }>('/api/skip', {})) }
+    catch (err) { setMsg(err instanceof Error ? err.message : 'Could not send your skip.') }
+  }
+
   const sorted = [...songs].sort((a, b) => b.votes - a.votes)
   const accent = np?.color || undefined
 
@@ -219,6 +231,15 @@ export default function LiveExtras({ np }: { np: NowPlaying | null }) {
             ))}
           </span>
           {rating.count > 0 && <span className="text-xs text-br-dk-sub">{rating.avg} average · {rating.count} rating{rating.count === 1 ? '' : 's'}</span>}
+        </div>
+      )}
+      {skip?.eligible && (
+        <div className="sk-raised rounded-2xl p-4 flex flex-wrap items-center gap-3">
+          <button type="button" onClick={askSkip} disabled={skip.mine}
+                  className="sk-key rounded-lg h-9 px-4 text-xs font-semibold text-br-dk-text disabled:opacity-60">
+            {skip.mine ? 'You asked to skip' : 'Skip this song'}
+          </button>
+          <span className="text-xs text-br-dk-sub">{skip.votes} of {skip.needed} needed. It skips when 90% of listeners ask.</span>
         </div>
       )}
       {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}

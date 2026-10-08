@@ -21,3 +21,6 @@ beats.csv
 azuracast_library.csv
 playlist_match.csv
 playlist_missing.csv
+
+tools/art/
+tools/art_report.csv

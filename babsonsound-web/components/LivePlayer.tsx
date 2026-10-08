@@ -1,16 +1,18 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { fetchPresence, friendsLine, sendHeartbeat } from '@/lib/presence'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNowPlaying } from '@/lib/nowplaying'
 import Visualizer from '@/components/Visualizer'
 import LiveExtras from '@/components/LiveExtras'
+import { useArtColor } from '@/lib/artColor'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 
-export default function LivePlayer() {
+export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   const [isPlaying, setIsPlaying]     = useState(false)
   const [isBuffering, setIsBuffering] = useState(false)
   const [listenerCount, setListenerCount] = useState(0)
@@ -24,6 +26,36 @@ export default function LivePlayer() {
   const [prompt, setPrompt] = useState(false)
   const np = useNowPlaying()
   const hasSong = !!np?.configured && !!np.title
+  // Color of the glow: the on-air event's color, else the cover's main color, else the station green.
+  const artColor = useArtColor(np?.art || undefined)
+  const glow = np?.color || artColor || ''
+
+  // Full screen board (for a screen on the wall): just the music, big, over the visualizer.
+  const [board, setBoard] = useState(false)
+  const [awake, setAwake] = useState(true)
+  const boardRef = useRef<HTMLDivElement | null>(null)
+  const openBoard = useCallback(() => {
+    setBoard(true); setAwake(true)
+    queueMicrotask(() => boardRef.current?.requestFullscreen?.().catch(() => {}))
+  }, [])
+  const closeBoard = useCallback(() => {
+    setBoard(false)
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+  }, [])
+  useEffect(() => {
+    if (!board) return
+    const onFs = () => { if (!document.fullscreenElement) setBoard(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeBoard() }
+    document.addEventListener('fullscreenchange', onFs)
+    window.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('fullscreenchange', onFs); window.removeEventListener('keydown', onKey) }
+  }, [board, closeBoard])
+  // Controls fade away a few seconds after the mouse stops, so the board stays clean.
+  useEffect(() => {
+    if (!board || !awake) return
+    const t = setTimeout(() => setAwake(false), 3500)
+    return () => clearTimeout(t)
+  }, [board, awake])
   const [clock, setClock] = useState(0)
   useEffect(() => { const t = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(t) }, [])
   // Progress between polls: elapsed at the time of the last poll plus the seconds since.
@@ -88,9 +120,9 @@ export default function LivePlayer() {
     <>
     <div className="relative overflow-hidden rounded-2xl sk-hero grain">
       {/* Animated background, tinted with the on-air event's color */}
-      <Visualizer color={np?.color ?? ''} playing={isPlaying} />
+      {!board && <Visualizer color={glow} playing={isPlaying} />}
 
-      <div className="relative p-8 md:p-12 flex flex-col md:flex-row items-center gap-8">
+      <div className={`relative p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 ${pane ? 'lg:flex-col lg:p-8' : ''}`}>
 
         {/* Art block */}
         <div className={`relative shrink-0 w-44 h-44 md:w-56 md:h-56 rounded-xl overflow-hidden grain flex items-center justify-center ${np?.color ? '' : 'bg-gradient-to-br from-[#003D27] to-[#006644]'}`}
@@ -114,7 +146,7 @@ export default function LivePlayer() {
         </div>
 
         {/* Info + controls */}
-        <div className="flex-1 text-center md:text-left">
+        <div className={`flex-1 text-center md:text-left ${pane ? 'lg:text-center' : ''}`}>
           {/* ON AIR badge */}
           <div className="inline-flex items-center gap-1.5 bg-br-red px-3 py-1 rounded mb-4">
             <span className="w-1.5 h-1.5 rounded-full bg-white/70" />
@@ -158,7 +190,7 @@ export default function LivePlayer() {
           )}
 
           {/* EQ animation + play button */}
-          <div className="flex items-center gap-5 justify-center md:justify-start">
+          <div className={`flex items-center gap-5 justify-center md:justify-start ${pane ? 'lg:justify-center' : ''}`}>
             <button
               onClick={togglePlay}
               disabled={!canListenLive}
@@ -202,6 +234,9 @@ export default function LivePlayer() {
               </span>
             )}
           </div>
+          <button onClick={openBoard} className="hidden lg:inline-block mt-4 text-xs text-br-dk-sub hover:text-br-gold font-display tracking-[0.2em]">
+            FULL SCREEN
+          </button>
           {groups.length > 0 && (
             <ul className="mt-3 space-y-0.5 text-xs text-br-gold">
               {groups.slice(0, 3).map(g => <li key={g.text}>{g.text}</li>)}
@@ -222,6 +257,35 @@ export default function LivePlayer() {
       )}
     </div>
     <LiveExtras np={np} />
+    {board && createPortal(
+      <div ref={boardRef} onMouseMove={() => setAwake(true)} onClick={() => setAwake(true)}
+           className={`fixed inset-0 z-[100] bg-black overflow-hidden flex items-center justify-center ${awake ? '' : 'cursor-none'}`}>
+        <Visualizer inline color={glow} playing={isPlaying} className="absolute inset-0 w-full h-full pointer-events-none scale-110 blur-[8px]" />
+        <div className="relative flex flex-col md:flex-row items-center gap-10 md:gap-16 px-10 max-w-[1600px] w-full">
+          <div className="shrink-0 w-[min(70vw,46vh)] aspect-square rounded-2xl overflow-hidden shadow-[0_0_120px_var(--glow)]"
+               style={{ ['--glow' as string]: (glow || '#2fb67c') + '88', background: glow ? `linear-gradient(135deg, ${glow}, #000000aa)` : '#003D27' }}>
+            {np?.art
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={np.art} alt="" className="w-full h-full object-cover" />
+              : <div className="w-full h-full flex flex-col items-center justify-center"><p className="font-display text-br-brass/80 tracking-[0.4em]">BABSON</p><p className="font-display text-white text-6xl tracking-[0.2em]">RADIO</p></div>}
+          </div>
+          <div className="text-center md:text-left min-w-0">
+            <h2 className="font-display text-white text-[clamp(2.5rem,6vw,6rem)] leading-[1.05] tracking-wide">{hasSong ? np!.title : 'Babson Radio'}</h2>
+            <p className="text-white/80 text-[clamp(1.25rem,2.6vw,2.75rem)] mt-3">{hasSong ? (np!.artist || '') : 'Live from campus'}</p>
+            {np?.showTitle && <p className="mt-6 text-[clamp(1rem,1.8vw,1.75rem)] font-display tracking-[0.2em]" style={{ color: glow || '#fff' }}>{np.showTitle}</p>}
+            {hasSong && np!.next && <p className="mt-8 text-white/50 text-[clamp(0.9rem,1.4vw,1.4rem)]">Next: {np!.next.title}{np!.next.artist ? ` · ${np!.next.artist}` : ''}</p>}
+          </div>
+        </div>
+        <p className="absolute bottom-6 left-8 font-display tracking-[0.4em] text-white/40 text-sm">BABSON RADIO</p>
+        <div className={`absolute top-5 right-5 flex gap-3 transition-opacity duration-500 ${awake ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+          <button onClick={togglePlay} disabled={!canListenLive} className="text-white/80 hover:text-white text-xs font-display tracking-[0.2em] border border-white/30 rounded px-3 py-1.5">
+            {isPlaying ? 'PAUSE' : 'PLAY'}
+          </button>
+          <button onClick={closeBoard} className="text-white/80 hover:text-white text-xs font-display tracking-[0.2em] border border-white/30 rounded px-3 py-1.5">EXIT</button>
+        </div>
+      </div>,
+      document.body,
+    )}
     </>
   )
 }

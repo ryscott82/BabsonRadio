@@ -9,10 +9,12 @@ struct SplashView: View {
     @State private var appeared = false
 
     private var night: Bool { scheme == .dark }
+    /// Same cream as the system launch screen (LaunchBackground in the asset catalog).
+    private static let cream = Color(red: 0.953, green: 0.914, blue: 0.824)
 
     var body: some View {
         ZStack {
-            (night ? Color.black : Color.brLtBg).ignoresSafeArea()
+            (night ? Color.black : Self.cream).ignoresSafeArea()
 
             if night {
                 ClubLights(animated: !reduceMotion).ignoresSafeArea()
@@ -22,7 +24,7 @@ struct SplashView: View {
             Image("LaunchLogo")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 150)
+                .frame(width: 167.67)
                 .scaleEffect(appeared && !reduceMotion ? 1.0 : 0.98)
                 .shadow(color: night ? Color.white.opacity(0.18) : Color.clear, radius: 30)
                 .overlay(alignment: .top) {

@@ -20,7 +20,8 @@ const css = (c: [number, number, number], a: number) => `rgba(${c[0] | 0},${c[1]
 
 const subscribe = () => () => {}
 
-export default function Visualizer({ color, playing }: { color: string; playing: boolean }) {
+/** `inline` draws the canvas where it is placed (used by the full screen board) instead of behind the whole page. */
+export default function Visualizer({ color, playing, inline = false, className }: { color: string; playing: boolean; inline?: boolean; className?: string }) {
   const ref = useRef<HTMLCanvasElement>(null)
   // Full viewport, behind everything, so it spans the whole page rather than one panel.
   const host = useSyncExternalStore(subscribe, () => document.body, () => null)
@@ -103,6 +104,7 @@ export default function Visualizer({ color, playing }: { color: string; playing:
     return () => { cancelAnimationFrame(raf); ro.disconnect() }
   }, [host])
 
+  if (inline) return <canvas ref={ref} aria-hidden className={className ?? 'absolute inset-0 w-full h-full pointer-events-none'} />
   if (!host) return null
   return createPortal(
     <canvas ref={ref} aria-hidden className="fixed inset-0 w-full h-full pointer-events-none z-0 scale-110 opacity-90 blur-[14px]" />,

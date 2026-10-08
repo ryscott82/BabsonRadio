@@ -35,12 +35,15 @@ export default async function HomePage() {
         </div>
       </section></InterestFormCta>
 
-      {/* ── Live Player ──────────────────────────────────────── */}
-      <section>
-        <LivePlayer />
-      </section>
-
-      <VoteCard />
+      {/* Two panes on desktop: the player stays on the left, everything else scrolls on the right. */}
+      <div className="lg:grid lg:grid-cols-[minmax(380px,460px)_minmax(0,1fr)] lg:gap-10 lg:items-start space-y-16 lg:space-y-0">
+      <div className="space-y-6 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+        <section>
+          <LivePlayer pane />
+        </section>
+        <VoteCard />
+      </div>
+      <div className="space-y-16 min-w-0">
 
       {/* ── Today's Schedule ─────────────────────────────────── */}
       {schedule.length > 0 && (
@@ -119,6 +122,9 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      </div>
+      </div>
 
       {/* Empty state when no content in Firestore yet */}
       {episodes.length === 0 && shows.length === 0 && schedule.length === 0 && (

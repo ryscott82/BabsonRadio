@@ -302,8 +302,9 @@ class AudioPlayerManager: ObservableObject {
     private func updateNowPlayingInfo() {
         var info = [String: Any]()
         info[MPMediaItemPropertyTitle]  = nowPlayingTitle
-        info[MPMediaItemPropertyArtist] = nowPlayingSubtitle.isEmpty ? "Babson Radio" : nowPlayingSubtitle
-        if let album = nowPlaying?.album, !album.isEmpty { info[MPMediaItemPropertyAlbumTitle] = album }
+        // Lock screen and Control Center: the station is always the "artist"; the song's real artist goes in the album line.
+        info[MPMediaItemPropertyArtist] = "Babson Radio"
+        if !nowPlayingSubtitle.isEmpty && nowPlayingSubtitle != "Babson Radio" { info[MPMediaItemPropertyAlbumTitle] = nowPlayingSubtitle }
         if let art = artwork as? MPMediaItemArtwork { info[MPMediaItemPropertyArtwork] = art }
         info[MPNowPlayingInfoPropertyIsLiveStream] = true
         info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0

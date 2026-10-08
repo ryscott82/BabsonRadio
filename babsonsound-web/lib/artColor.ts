@@ -72,7 +72,7 @@ function skinLike(h: number, s: number, l: number) { return h >= 5 && h <= 45 &&
  * center are skipped. Each color is nudged to a middle brightness so it reads on both the light and dark themes.
  * Returns [] while loading or when the picture can't be read.
  */
-/** A green that sits well next to a cover's main hue: warm covers get emerald, yellows leaf green, greens a deep Babson-like green, blues sea green, purples a fresher green. */
+/** The fallback green when the cover has none: a green that sits well next to its main hue: warm covers get emerald, yellows leaf green, greens a deep Babson-like green, blues sea green, purples a fresher green. */
 export function pairedGreen(h: number): string {
   const g = h >= 345 || h < 45 ? 152 : h < 75 ? 125 : h < 165 ? 158 : h < 255 ? 150 : 138
   return hexOf(g, 0.72, 0.31)
@@ -119,7 +119,11 @@ export function useArtPalette(url: string | undefined): string[] {
         }
         const covers = picked.map(p => hexOf(p.h, Math.max(0.55, Math.min(0.9, p.s)), Math.max(0.42, Math.min(0.58, p.l))))
         // [dominant cover color, a green that pairs with it, second cover color]
-        const colors = [covers[0], pairedGreen(picked[0].h), covers[1]]
+        // Green: the cover's own green when it has a real amount of one (at least 10% of the colorful pixels), else a complementary shade.
+        const total = ranked.reduce((a, r) => a + r.w, 0)
+        const own = ranked.find(r => r.h >= 75 && r.h <= 170 && r.w / total >= 0.1)
+        const green = own ? hexOf(own.h, Math.max(0.4, Math.min(0.75, own.s)), 0.31) : pairedGreen(picked[0].h)
+        const colors = [covers[0], green, covers[1]]
         if (alive) setState({ url, colors })
       } catch { if (alive) setState({ url, colors: [] }) }
     }

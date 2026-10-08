@@ -159,20 +159,26 @@ final class ArtTheme: ObservableObject {
             w[b] += weight; x[b] += cos(h * .pi / 180) * weight; y[b] += sin(h * .pi / 180) * weight
             sat[b] += s * weight; lit[b] += l * weight
         }
-        let ranked = (0..<bins).filter { w[$0] > 0 }.sorted { w[$0] > w[$1] }.map { i -> (h: Double, s: Double, l: Double) in
+        let ranked = (0..<bins).filter { w[$0] > 0 }.sorted { w[$0] > w[$1] }.map { i -> (h: Double, s: Double, l: Double, w: Double) in
             var h = atan2(y[i], x[i]) * 180 / .pi; if h < 0 { h += 360 }
-            return (h, sat[i] / w[i], lit[i] / w[i])
+            return (h, sat[i] / w[i], lit[i] / w[i], w[i])
         }
-        var picked: [(h: Double, s: Double, l: Double)] = []
+        var picked: [(h: Double, s: Double, l: Double, w: Double)] = []
         for r in ranked where picked.count < 2 {
             if picked.allSatisfy({ hueGap($0.h, r.h) >= 40 }) { picked.append(r) }
         }
         guard let first = picked.first else { return nil }
-        if picked.count < 2 { picked.append(((first.h + 35).truncatingRemainder(dividingBy: 360), first.s, first.l)) }
-        func cover(_ p: (h: Double, s: Double, l: Double)) -> ArtRGB {
+        // Green: the cover's own green when it has a real amount of one (10% or more of the colorful pixels), else a complementary shade.
+        let total = ranked.reduce(0.0) { $0 + $1.w }
+        var green = pairedGreen(first.h)
+        if let own = ranked.first(where: { $0.h >= 75 && $0.h <= 170 && $0.w / total >= 0.1 }) {
+            green = ArtRGB.hsl(own.h, min(max(own.s, 0.4), 0.75), 0.31)
+        }
+        if picked.count < 2 { picked.append(((first.h + 35).truncatingRemainder(dividingBy: 360), first.s, first.l, 0)) }
+        func cover(_ p: (h: Double, s: Double, l: Double, w: Double)) -> ArtRGB {
             ArtRGB.hsl(p.h, min(max(p.s, 0.55), 0.9), min(max(p.l, 0.42), 0.58))
         }
-        return (cover(picked[0]), pairedGreen(first.h), cover(picked[1]))
+        return (cover(picked[0]), green, cover(picked[1]))
     }
     #endif
 }

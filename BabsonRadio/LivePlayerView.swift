@@ -135,7 +135,18 @@ struct LivePlayerView: View {
                     .padding(.top, 8)
                 }
             }
-            .clipped()
+            .overlay(alignment: .bottom) {
+                // Carry the lip's color down to the tab bar so there is no gap under the closed shelf.
+                if !drawerOpen {
+                    Rectangle()
+                        .fill(theme.lipDeep)
+                        .frame(height: geo.safeAreaInsets.bottom + 1)
+                        .offset(y: geo.safeAreaInsets.bottom)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
+            }
+            .mask(Rectangle().padding(.bottom, -geo.safeAreaInsets.bottom))
             .background {
                 ZStack {
                     (scheme == .dark ? Color.brDkBg : Color.brLtBg)
@@ -212,15 +223,23 @@ struct LivePlayerView: View {
             }
 
             let song = audio.nowPlaying.flatMap { $0.title.isEmpty ? nil : $0 }
-            Text(song?.title ?? "Babson Radio")
-                .font(BRFont.display(song == nil ? 30 : 26))
-                .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                .kerning(1)
-                .lineLimit(1).minimumScaleFactor(0.65)
-
-            Text(song.map { $0.artist.isEmpty ? "Babson Radio" : $0.artist } ?? "Live Stream")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+            // Short title and artist share one line; long ones drop to two.
+            let titleText = song?.title ?? "Babson Radio"
+            let artistText = song.map { $0.artist.isEmpty ? "Babson Radio" : $0.artist } ?? "Live Stream"
+            let titleFont = BRFont.display(song == nil ? 30 : 26)
+            let titleColor: Color = scheme == .dark ? .brDkText : .brLtText
+            let artistColor: Color = scheme == .dark ? .brDkSub : .brLtSub
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(titleText).font(titleFont).foregroundColor(titleColor).kerning(1).lineLimit(1).fixedSize()
+                    Text(artistText).font(.system(size: 14, weight: .medium)).foregroundColor(artistColor).lineLimit(1).fixedSize()
+                    Spacer(minLength: 0)
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(titleText).font(titleFont).foregroundColor(titleColor).kerning(1).lineLimit(1).minimumScaleFactor(0.65)
+                    Text(artistText).font(.system(size: 14, weight: .medium)).foregroundColor(artistColor).lineLimit(1)
+                }
+            }
 
             if let title = audio.nowPlaying?.showTitle, !title.isEmpty {
                 Text("On air: \(title)")
@@ -891,10 +910,23 @@ struct LiveDrawer<Content: View>: View {
             // The panel
             ScrollView(showsIndicators: false) { content() }
                 .frame(height: height - Self.handleHeight)
-                .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
-                // The shadow the lip casts into the shelf: the panel sits in behind it
+                .background(
+                    // The inside of the shelf: darker at the back (top), lighter toward you
+                    LinearGradient(colors: scheme == .dark ? [Color.brDkBg, Color.brDkSurface] : [Color.brLtSurface2, Color.brLtSurface],
+                                   startPoint: .top, endPoint: .bottom)
+                )
                 .overlay(alignment: .top) {
-                    LinearGradient(colors: [.black.opacity(0.28), .clear], startPoint: .top, endPoint: .bottom).frame(height: 16).allowsHitTesting(false)
+                    // The shadow the lip casts into the shelf
+                    LinearGradient(colors: [.black.opacity(0.35), .clear], startPoint: .top, endPoint: .bottom).frame(height: 22).allowsHitTesting(false)
+                }
+                .overlay {
+                    // Shadowed side walls, so it reads as a recessed box
+                    HStack(spacing: 0) {
+                        LinearGradient(colors: [.black.opacity(0.22), .clear], startPoint: .leading, endPoint: .trailing).frame(width: 16)
+                        Spacer(minLength: 0)
+                        LinearGradient(colors: [.clear, .black.opacity(0.22)], startPoint: .leading, endPoint: .trailing).frame(width: 16)
+                    }
+                    .allowsHitTesting(false)
                 }
         }
         .frame(height: height)

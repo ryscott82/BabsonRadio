@@ -152,13 +152,6 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
               <p className="font-display text-white text-4xl tracking-[0.2em]">RADIO</p>
             </div>
           )}
-          {/* Gold stripe */}
-          <div className="absolute bottom-8 inset-x-0 h-px bg-br-brass/50" />
-          {/* LED */}
-          <div className="absolute bottom-3 left-3 flex items-center gap-1.5">
-            <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-br-green shadow-[0_0_6px_#006644]' : 'bg-br-dk-muted'}`} />
-            <span className="font-display text-[9px] tracking-[0.2em] text-white/40">INTERNET RADIO</span>
-          </div>
         </div>
 
         {/* Info + controls */}

@@ -331,3 +331,20 @@ struct DesignedByCredit: View {
             .padding(.vertical, 12)
     }
 }
+
+
+/// Instagram glyph: rounded square, lens, flash dot. Takes the surrounding text color.
+struct InstagramGlyph: View {
+    var size: CGFloat = 16
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
+                .stroke(lineWidth: size * 0.11)
+            Circle().stroke(lineWidth: size * 0.11).frame(width: size * 0.46, height: size * 0.46)
+            Circle().frame(width: size * 0.1, height: size * 0.1).offset(x: size * 0.26, y: -size * 0.26)
+        }
+        .frame(width: size * 0.92, height: size * 0.92)
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}

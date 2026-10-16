@@ -122,7 +122,7 @@ private struct SignedInProfileView: View {
 
                     if let ig = BabsonLinks.instagram {
                         Link(destination: ig) {
-                            Label("Follow Babson Sound on Instagram", systemImage: "camera")
+                            Label { Text("Follow Babson Sound on Instagram") } icon: { InstagramGlyph(size: 18) }
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(scheme == .dark ? .brGold : .brGreen)
                         }

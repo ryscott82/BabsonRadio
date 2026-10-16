@@ -493,8 +493,9 @@ struct PhoneField: View {
 
     /// Formats a raw digit string as (XXX) XXX-XXXX while typing
     static func format(_ raw: String) -> String {
-        let digits = raw.filter(\.isNumber)
-        // Cap at 10 digits (US numbers)
+        var digits = raw.filter(\.isNumber)
+        // Autofill and paste add the US country code (+1 617…); it isn't part of the 10 digits.
+        if digits.count > 10, digits.hasPrefix("1") { digits.removeFirst() }
         let capped = String(digits.prefix(10))
         switch capped.count {
         case 0:        return ""
@@ -513,7 +514,9 @@ struct PhoneField: View {
 
     /// Strips formatting back to raw digits for storage/Firebase
     static func digits(_ formatted: String) -> String {
-        formatted.filter(\.isNumber)
+        var d = formatted.filter(\.isNumber)
+        if d.count > 10, d.hasPrefix("1") { d.removeFirst() }
+        return String(d.prefix(10))
     }
 }
 

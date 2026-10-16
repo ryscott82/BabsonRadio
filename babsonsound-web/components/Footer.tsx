@@ -25,7 +25,10 @@ export default function Footer() {
           <a href="/terms" className={link}>Terms</a>
           <span className="text-br-dk-sub">Contact: <ContactEmail className="text-br-dk-sub hover:text-br-dk-text underline underline-offset-4" /></span>
           <TesterFeedback />
-          {INSTAGRAM_URL && <a href={INSTAGRAM_URL} {...ext} className={link}>Instagram</a>}
+          {INSTAGRAM_URL && <a href={INSTAGRAM_URL} {...ext} className={`${link} inline-flex items-center gap-1.5`}>
+            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="5.5" /><circle cx="12" cy="12" r="4.2" /><circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none" />
+            </svg>Instagram</a>}
         </nav>
         <p className="text-br-dk-sub shrink-0">
           Designed by <a href="https://ryanedwardmediagroup.com" {...ext} className="underline underline-offset-4 hover:text-br-dk-text transition-colors">Ryan Edward Media Group</a>

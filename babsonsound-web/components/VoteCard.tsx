@@ -51,7 +51,7 @@ export default function VoteCard() {
       <div>
         <h2 className="font-display text-br-dk-text text-lg tracking-wide">WHAT WOULD YOU LIKE TO HEAR?</h2>
         <p className="text-xs text-br-dk-sub mt-0.5">
-          Vote for {clock(s.blockStart)} – {clock(s.blockEnd)}. Voting closes 10 minutes before the hour; the genre with the most votes (at least {s.threshold}, no tie) takes it.
+          Select the next hour of music
         </p>
         {s.upNext && (
           <p className="text-xs text-br-gold mt-1">

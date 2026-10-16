@@ -44,7 +44,7 @@ struct VotePanel: View {
     var body: some View {
                 VStack(alignment: .leading, spacing: 14) {
                     if let s = state {
-                        Text("Vote closes at \(time(s.blockEnd - 600_000))")
+                        Text("Select the next hour of music")
                             .font(.system(size: 13, weight: .semibold)).foregroundColor(sub)
                         if let u = s.upNext {
                             Text(u.label.isEmpty ? "\(time(u.blockStart)): no clear winner, so the auto DJ picks." : "\(u.label) won \(time(u.blockStart)).")

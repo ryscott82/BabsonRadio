@@ -375,12 +375,6 @@ struct LivePlayerView: View {
 
             Spacer()
 
-            // ON AIR badge (visible when playing)
-            if audio.isPlaying {
-                OnAirBadge()
-                    .transition(.scale.combined(with: .opacity))
-            }
-
             if !profileFirst && showProfile { ProfileCircleButton() }
         }
         .animation(.easeInOut(duration: 0.25), value: audio.isPlaying)
@@ -390,7 +384,11 @@ struct LivePlayerView: View {
     private var nowPlayingInfo: some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack {
-                BRTagChip(text: audio.nowPlaying?.isLive == true ? "LIVE DJ" : "LIVE", style: .gold)
+                if audio.isPlaying {
+                    OnAirBadge()
+                } else {
+                    BRTagChip(text: audio.nowPlaying?.isLive == true ? "LIVE DJ" : "LIVE", style: .gold)
+                }
                 BRTagChip(text: {
                     let t = audio.nowPlaying?.showTitle ?? ""
                     let b = audio.nowPlaying?.blockTitle ?? ""
@@ -464,7 +462,7 @@ struct LivePlayerView: View {
 
     /// Equalizer on the left while playing, play/stop in the middle, skip on the right (same as the website).
     private var playRow: some View {
-        HStack(alignment: .top, spacing: 16) {
+        HStack(alignment: .top, spacing: 14) {
             ZStack(alignment: .trailing) {
                 Color.clear
                 if audio.isPlaying { EqualizerBars(color: theme.accent(scheme)) }
@@ -545,7 +543,7 @@ struct LivePlayerView: View {
                 Link("Privacy", destination: BabsonLinks.privacy)
                 if let ig = BabsonLinks.instagram {
                     Link(destination: ig) {
-                        HStack(spacing: 5) { Image(systemName: "camera"); Text("Instagram") }
+                        HStack(spacing: 6) { InstagramGlyph(size: 16); Text("Instagram") }
                     }
                 }
             }

@@ -74,7 +74,10 @@ export function Card({ title, subtitle, children }: { title: string; subtitle?: 
 
 /** (XXX) XXX-XXXX while typing */
 export function formatPhone(raw: string): string {
-  const d = raw.replace(/\D/g, '').slice(0, 10)
+  let d = raw.replace(/\D/g, '')
+  // Autofill and paste add the US country code (+1 617…); it isn't part of the 10 digits.
+  if (d.length > 10 && d.startsWith('1')) d = d.slice(1)
+  d = d.slice(0, 10)
   if (d.length === 0) return ''
   if (d.length <= 3) return `(${d}`
   if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`

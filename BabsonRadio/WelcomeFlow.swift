@@ -232,7 +232,7 @@ struct OnboardingView: View {
     }
     private var isMinor: Bool { (age ?? 99) >= 13 && (age ?? 99) < 18 }
     private var isUnder13: Bool { (age ?? 99) < 13 }
-    private var phoneDigits: String { phone.filter(\.isNumber) }
+    private var phoneDigits: String { PhoneField.digits(phone) }
     private var canContinue: Bool {
         !firstName.trimmingCharacters(in: .whitespaces).isEmpty && !lastName.trimmingCharacters(in: .whitespaces).isEmpty
             && phoneDigits.count == 10 && !gradYear.isEmpty && age != nil && (!isMinor || parentOK) && !saving
@@ -252,7 +252,7 @@ struct OnboardingView: View {
                     TextField("Last name", text: $lastName).textContentType(.familyName)
                     TextField("Phone number (10 digits)", text: $phone)
                         .keyboardType(.phonePad).textContentType(.telephoneNumber)
-                        .onChange(of: phone) { _, v in phone = String(v.filter(\.isNumber).prefix(10)) }
+                        .onChange(of: phone) { _, v in phone = PhoneField.digits(v) }
                     Picker("Graduation year", selection: $gradYear) {
                         Text("Graduation year").tag("")
                         ForEach(Terms.gradYearOptions(), id: \.value) { Text($0.label).tag($0.value) }
@@ -318,7 +318,7 @@ struct OnboardingView: View {
             if let u = auth.currentUser {
                 if firstName.isEmpty { firstName = u.displayName }
                 if lastName.isEmpty { lastName = u.lastName }
-                if phone.isEmpty { phone = u.phoneNumber.filter(\.isNumber) }
+                if phone.isEmpty { phone = PhoneField.digits(u.phoneNumber) }
             }
             if let me: MeResponse = try? await BackendAPI.get("/api/me") {
                 if gradYear.isEmpty { gradYear = me.gradYear ?? "" }

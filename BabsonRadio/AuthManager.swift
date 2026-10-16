@@ -294,7 +294,7 @@ class AuthManager: ObservableObject {
             errorMessage = "Password must be at least 8 characters. (BR-ACC-005)"
             return
         }
-        let digits = phoneNumber.filter(\.isNumber)
+        let digits = PhoneField.digits(phoneNumber)
         guard digits.count == 10 else {
             errorMessage = "Please enter a valid 10-digit US phone number. (BR-ACC-004)"
             return

@@ -34,26 +34,14 @@ struct LivePlayerView: View {
         GeometryReader { geo in
             let top = geo.safeAreaInsets.top
             let small = geo.size.height < 700
-            // Roomy screens (an open foldable, an iPad, a resized window) get a big clock so the screen never looks empty.
-            // Apple's advice: decide from the size class and the space available, never from the device or a fixed width.
-            let wide = hSize == .regular
-            let landscape = geo.size.width > geo.size.height
-            let clockOnTop = wide && !landscape
-            let clockLeft = wide && landscape
-            let leftPane: CGFloat = clockLeft ? geo.size.width * 0.42 : 0
-            let clockSize: CGFloat = clockOnTop ? min(geo.size.width * 0.22, 200) : (clockLeft ? min(geo.size.width * 0.15, 180) : 0)
-            let clockBand: CGFloat = clockOnTop ? clockSize * 1.45 + 24 : 0
             // Everything the listener needs fits on one screen. The cover takes whatever height is left over.
-            let reserved: CGFloat = top + (small ? 410 : 470) + clockBand
-            let side = max(120, min(geo.size.width - leftPane - 72, geo.size.height - reserved))
+            let reserved: CGFloat = top + (small ? 410 : 470)
+            let side = max(120, min(geo.size.width - 72, geo.size.height - reserved))
             let drawerH = min(geo.size.height * 0.72, 560)
             ZStack(alignment: .bottom) {
-                if clockLeft {
-                    BigClock(size: clockSize, alignment: .center, accent: accent, show: audio.nowPlaying?.showTitle ?? "")
-                        .frame(width: leftPane)
-                        .frame(width: geo.size.width, height: geo.size.height, alignment: .leading)
-                        .allowsHitTesting(false)
-                }
+                if hSize == .regular {
+                    duoContent(top: top)
+                } else {
                 VStack(spacing: 0) {
                     if let a = audio.nowPlaying?.announcement, !a.text.isEmpty {
                         Text(a.text)
@@ -72,12 +60,6 @@ struct LivePlayerView: View {
                         .padding(.top, 6)
                         .padding(.bottom, 10)
 
-                    if clockOnTop {
-                        BigClock(size: clockSize, alignment: .center, accent: accent, show: audio.nowPlaying?.showTitle ?? "")
-                            .padding(.bottom, 8)
-                    }
-
-                    VStack(spacing: 0) {
                     PlayerArtCard()
                         .frame(width: 340, height: 340)
                         .scaleEffect(side / 340)
@@ -115,54 +97,19 @@ struct LivePlayerView: View {
                             .padding(.top, 6)
                     }
                     Spacer(minLength: 0)
-                    }
-                    .padding(.leading, leftPane)
-                    Spacer(minLength: 0)
                 }
                 .padding(.bottom, LiveDrawer<EmptyView>.handleHeight)
                 .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
 
                 // Everything else lives in a drawer you pull up.
                 LiveDrawer(open: $drawerOpen, height: drawerH, tint: accent) {
-                    VStack(spacing: 18) {
-                        if let note = audio.nowPlaying?.note, !(note.headline.isEmpty && note.message.isEmpty) {
-                            VStack(spacing: 4) {
-                                if !note.headline.isEmpty { Text(note.headline).font(.system(size: 14, weight: .bold)) }
-                                if !note.message.isEmpty { Text(note.message).font(.system(size: 13)) }
-                            }
-                            .multilineTextAlignment(.center)
-                            .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                            .padding(12).frame(maxWidth: .infinity)
-                            .brGlass(in: RoundedRectangle(cornerRadius: 16), tint: accent.opacity(0.25), fallback: accent.opacity(0.15))
-                            .padding(.horizontal, 24)
-                        }
-                        if !presence.groups.isEmpty {
-                            VStack(spacing: 4) {
-                                ForEach(presence.groups.prefix(3)) { g in
-                                    Text(g.text).font(.system(size: 12, weight: .semibold)).foregroundColor(accent)
-                                }
-                            }
-                        }
-                        LiveExtrasView(mode: .rest)
-                        if auth.isSignedIn && auth.canListenLive {
-                            Button { showVote = true } label: {
-                                Label("What would you like to hear?", systemImage: "hand.thumbsup")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(accent)
-                                    .padding(.horizontal, 18).padding(.vertical, 12)
-                                    .brGlass(in: Capsule(), tint: accent.opacity(0.25), fallback: accent.opacity(0.14))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        communitySection
-                            .padding(.bottom, 24)
-                    }
-                    .padding(.top, 8)
+                    roomContent
+                }
                 }
             }
             .overlay(alignment: .bottom) {
                 // Carry the lip's color down to the tab bar so there is no gap under the closed shelf.
-                if !drawerOpen {
+                if !drawerOpen && hSize != .regular {
                     Rectangle()
                         .fill(theme.lipDeep)
                         .frame(height: geo.safeAreaInsets.bottom + 1)
@@ -203,6 +150,114 @@ struct LivePlayerView: View {
         .sheet(isPresented: $showVote) { VoteView() }
         .onAppear { audio.startPolling(); ArtTheme.shared.start() }
         .onDisappear { audio.stopPolling() }
+    }
+
+    // MARK: - Roomy layout (open foldable, iPad, wide windows)
+
+    /// Two pages, like an open book. Left: "On Air" (the clock, the cover, what is playing). Right: "The Room" (controls,
+    /// reactions, the host's note, set list, vote, community). ArrangementView puts them side by side, and stacks them
+    /// top and bottom when the device is propped up like a tabletop: the show on top, the touch controls on the stable half.
+    @ViewBuilder private func duoContent(top: CGFloat) -> some View {
+        NavigationStack {
+            ArrangementView {
+                onAirPage
+            } secondary: {
+                roomPage(top: top)
+            }
+            .toolbar(.hidden, for: .navigationBar)
+            .containerBackground(.clear, for: .navigation)
+        }
+    }
+
+    private var onAirPage: some View {
+        GeometryReader { g in
+            let clockSize = max(56, min(g.size.width * 0.3, g.size.height * 0.2, 190))
+            let side = max(110, min(g.size.width - 72, g.size.height - clockSize * 1.7 - 170))
+            VStack(spacing: 14) {
+                Spacer(minLength: 0)
+                BigClock(size: clockSize, alignment: .center, accent: accent, show: audio.nowPlaying?.showTitle ?? "")
+                PlayerArtCard()
+                    .frame(width: 340, height: 340)
+                    .scaleEffect(side / 340)
+                    .frame(width: side, height: side)
+                nowPlayingInfo
+                    .padding(.horizontal, 24)
+                Spacer(minLength: 0)
+            }
+            .frame(width: g.size.width, height: g.size.height)
+        }
+    }
+
+    private func roomPage(top: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            headerRow(topInset: top)
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 10)
+            playRow
+            volumeRow
+                .padding(.horizontal, 36)
+                .padding(.top, 6)
+            LiveExtrasView(mode: .reactions)
+                .padding(.top, 8)
+            if !auth.isSignedIn {
+                Text("Previewing the live stream. Sign in from the Profile tab for reminders, friends and more.")
+                    .font(.system(size: 11))
+                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                    .multilineTextAlignment(.center).lineLimit(2)
+                    .padding(.horizontal, 32).padding(.top, 6)
+            } else if !auth.canListenLive {
+                Text(lockedMessage)
+                    .font(.system(size: 11))
+                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                    .multilineTextAlignment(.center).lineLimit(2)
+                    .padding(.horizontal, 32).padding(.top, 6)
+            }
+            ScrollView {
+                roomContent.padding(.bottom, 24)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    /// The host's note, who is tuned in, set list, vote and community. Shown in the pull-up drawer on a phone, and inline on "The Room" page.
+    private var roomContent: some View {
+
+                    VStack(spacing: 18) {
+                        if let note = audio.nowPlaying?.note, !(note.headline.isEmpty && note.message.isEmpty) {
+                            VStack(spacing: 4) {
+                                if !note.headline.isEmpty { Text(note.headline).font(.system(size: 14, weight: .bold)) }
+                                if !note.message.isEmpty { Text(note.message).font(.system(size: 13)) }
+                            }
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                            .padding(12).frame(maxWidth: .infinity)
+                            .brGlass(in: RoundedRectangle(cornerRadius: 16), tint: accent.opacity(0.25), fallback: accent.opacity(0.15))
+                            .padding(.horizontal, 24)
+                        }
+                        if !presence.groups.isEmpty {
+                            VStack(spacing: 4) {
+                                ForEach(presence.groups.prefix(3)) { g in
+                                    Text(g.text).font(.system(size: 12, weight: .semibold)).foregroundColor(accent)
+                                }
+                            }
+                        }
+                        LiveExtrasView(mode: .rest)
+                        if auth.isSignedIn && auth.canListenLive {
+                            Button { showVote = true } label: {
+                                Label("What would you like to hear?", systemImage: "hand.thumbsup")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(accent)
+                                    .padding(.horizontal, 18).padding(.vertical, 12)
+                                    .brGlass(in: Capsule(), tint: accent.opacity(0.25), fallback: accent.opacity(0.14))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        communitySection
+                            .padding(.bottom, 24)
+                    }
+                    .padding(.top, 8)
     }
 
     // MARK: - Sub-views
@@ -867,7 +922,6 @@ struct LiveBoardView: View {
     }
 }
 #endif
-
 
 
 // MARK: - Big clock

@@ -124,7 +124,7 @@ struct WelcomeView: View {
                     if let error = auth.errorMessage {
                         Text(error).font(.system(size: 13)).foregroundColor(.brRed).multilineTextAlignment(.center)
                     }
-                    Text("Students: you'll add your Babson, Olin or Wellesley email and verify it within 7 days.")
+                    Text("Students: add your school email and verify it within 7 days.")
                         .font(.system(size: 12)).foregroundColor(style.sub).multilineTextAlignment(.center)
                         .padding(.top, 4)
                     Button("Just listen for now", action: onSkip)
@@ -156,7 +156,7 @@ struct AppleSchoolEmailView: View {
             VStack(spacing: 18) {
                 Image(systemName: "graduationcap").font(.system(size: 38)).foregroundColor(style.accent).padding(.top, 70)
                 Text("ADD YOUR SCHOOL EMAIL").font(BRFont.display(30)).kerning(3).foregroundColor(style.text)
-                Text("Babson Radio is for Babson, Olin and Wellesley students. Add your school email, then open the link we send to it within 7 days.")
+                Text("Add your school email and verify it within 7 days.")
                     .font(.system(size: 14)).foregroundColor(style.sub).multilineTextAlignment(.center)
 
                 HStack(spacing: 6) {
@@ -242,7 +242,7 @@ struct OnboardingView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("ABOUT YOU").font(BRFont.display(32)).kerning(3).foregroundColor(style.text).padding(.top, 56)
-                Text("A few details to finish setting up.").font(.system(size: 14)).foregroundColor(style.sub)
+                Text("Almost done.").font(.system(size: 14)).foregroundColor(style.sub)
                 if let info = auth.infoMessage {
                     Text(info).font(.system(size: 13)).foregroundColor(style.accent)
                 }
@@ -290,7 +290,7 @@ struct OnboardingView: View {
                         withAnimation { useRange.toggle() }
                     }
                     .font(.system(size: 12)).foregroundColor(style.sub).underline()
-                    Text("Stored encrypted. Never shown to other listeners.")
+                    Text("Never shown to others.")
                         .font(.system(size: 11)).foregroundColor(style.sub)
                 }
 

@@ -102,7 +102,7 @@ function SchoolEmailForm() {
   if (!open) return (
     <div className="rounded-xl border border-br-dk-border p-4 space-y-2">
       <p className="text-sm text-br-dk-text">Are you a Babson, Olin or Wellesley student?</p>
-      <p className="text-xs text-br-dk-sub">Add your school email to unlock everything: the Library, ratings, reactions and friends.</p>
+      <p className="text-xs text-br-dk-sub">Add your school email to unlock everything.</p>
       <button className="text-sm text-br-gold" onClick={() => setOpen(true)}>Add my school email</button>
     </div>
   )
@@ -181,7 +181,7 @@ function GuestHome() {
         ) : hasLibraryAccess ? (
           <p className="text-br-dk-text">The Library is open for you.</p>
         ) : (
-          <p className="text-br-dk-sub text-sm">Ask a Babson student to sponsor you to unlock the Library.</p>
+          <p className="text-br-dk-sub text-sm">Ask a Babson student to sponsor you.</p>
         )}
         <p className="text-br-dk-sub text-xs">Live radio is open to everyone who is signed in.</p>
         <div className="flex justify-center gap-5">
@@ -195,14 +195,14 @@ function GuestHome() {
       <div className="mt-6 space-y-4">
         {!verified ? (
           <>
-            <p className="text-sm text-br-dk-sub">Verify your email to ask a student to sponsor you. We sent a link to {user?.email}.</p>
+            <p className="text-sm text-br-dk-sub">Verify your email. We sent a link to {user?.email}.</p>
             <div className="flex gap-3">
               <PrimaryButton busy={busy} onClick={() => run(resendVerification, 'Sent. Check your inbox.')}>RESEND LINK</PrimaryButton>
               <GhostButton onClick={() => run(refresh, 'Checked.')}>I&apos;VE VERIFIED</GhostButton>
             </div>
           </>
         ) : latest?.status === 'pending' ? (
-          <p className="text-sm text-br-dk-sub">Waiting for your Babson contact to approve. This updates automatically.</p>
+          <p className="text-sm text-br-dk-sub">Waiting for your Babson contact to approve.</p>
         ) : (
           <form onSubmit={e => { e.preventDefault(); run(async () => {
             await api('/api/guest/request', { sponsorEmail: `${sponsorEmail.toLowerCase()}@babson.edu`, name: user?.displayName ?? 'Guest' }); setSponsorEmail('')

@@ -243,7 +243,7 @@ private struct SignedInProfileView: View {
                     BRTagChip(text: "DEVELOPER", style: .gold)
                 }
                 if let by = auth.verifyDeadline {
-                    Text("Verify your email by \(by.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())). Check your inbox and spam.")
+                    Text("Verify your email by \(by.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())).")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.brRed)
                 }
@@ -311,7 +311,7 @@ private struct SignedInProfileView: View {
                     Text("Admin")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                    Text("Reports, station controls and notifications.")
+                    Text("Station tools")
                         .font(.system(size: 13))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .multilineTextAlignment(.leading)
@@ -341,7 +341,7 @@ private struct SignedInProfileView: View {
                     Text("Host panel")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                    Text("Your live feed and set list, open around your show.")
+                    Text("Live feed and set list")
                         .font(.system(size: 13))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .multilineTextAlignment(.leading)
@@ -371,7 +371,7 @@ private struct SignedInProfileView: View {
                     Text("Go on air")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                    Text("Request a spot on the radio and track your requests.")
+                    Text("Request airtime")
                         .font(.system(size: 13))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .multilineTextAlignment(.leading)
@@ -435,7 +435,7 @@ private struct SignedInProfileView: View {
             .brCard()
             .padding(.horizontal, 20)
 
-            Text("You only see the names of people you know who are connected with you. Everyone else is anonymous.")
+            Text("You only see names of people you know.")
                 .font(.system(size: 11))
                 .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
                 .padding(.horizontal, 24)
@@ -450,7 +450,7 @@ private struct SignedInProfileView: View {
                 Text("Invisible mode")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                Text("Friends won't see you tuned in, your likes won't show as \"your friend liked this\", live reactions are off, and your contacts aren't used for suggestions.")
+                Text("Friends can't see you tuned in. Reactions and contact suggestions are off.")
                     .font(.system(size: 12))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             }
@@ -471,7 +471,7 @@ private struct SignedInProfileView: View {
             VStack(spacing: 0) {
                 // ── Form ───────────────────────────────────────────
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Grant temporary access to anyone — even without a Babson email.")
+                    Text("Give anyone temporary access.")
                         .font(.system(size: 13))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
 
@@ -588,7 +588,7 @@ private struct SignedInProfileView: View {
             .brCard()
             .padding(.horizontal, 20)
 
-            Text("Invites expire automatically. You can revoke access at any time.")
+            Text("Invites expire on their own.")
                 .font(.system(size: 11))
                 .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
                 .padding(.horizontal, 24)
@@ -648,7 +648,7 @@ private struct SignedInProfileView: View {
                         Text("Know someone who should listen?")
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                        Text("Pick a contact and we'll draft the message for you.")
+                        Text("Pick a contact.")
                             .font(.system(size: 13))
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                     }
@@ -685,7 +685,7 @@ private struct SignedInProfileView: View {
                                 }
                             }
                             if contacts.babson.isEmpty {
-                                Text("No suggestions yet. You can still pick anyone below.")
+                                Text("No suggestions yet.")
                                     .font(.system(size: 13))
                                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -699,9 +699,9 @@ private struct SignedInProfileView: View {
 
                         // Shared-contact suggestions are on for everyone; Invisible mode is the way out.
                         Text(auth.isInvisible
-                             ? "Invisible mode is on, so suggestions from shared contacts are off."
+                             ? "Shared-contact suggestions are off in Invisible mode."
                              : (contacts.suggestionsNote.isEmpty
-                                ? "Suggestions also use how many members saved the same contacts. Invisible mode turns this off."
+                                ? "Partly based on contacts other members saved."
                                 : contacts.suggestionsNote))
                             .font(.system(size: 12))
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
@@ -752,7 +752,7 @@ private struct SignedInProfileView: View {
             .brCard()
             .padding(.horizontal, 20)
 
-            Text("Spotting a school email or Babson in a contact happens on your phone. Shared-contact suggestions send scrambled phone numbers, never names. Invisible mode turns that off.")
+            Text("Suggestions use scrambled phone numbers, never names. Invisible mode turns them off.")
                 .font(.system(size: 11))
                 .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
                 .padding(.horizontal, 24)
@@ -1045,7 +1045,7 @@ class ContactsManager: ObservableObject {
             if let data = try? JSONEncoder().encode(byContact) { UserDefaults.standard.set(data, forKey: "br_saved_by") }
             UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "br_contact_sync_at")
             applySaved(byContact)
-            suggestionsNote = byContact.isEmpty ? "No one is saved by enough members yet. Check back as more people join." : ""
+            suggestionsNote = byContact.isEmpty ? "No suggestions yet." : ""
         } catch {
             let m = (error as? BackendError)?.message ?? error.localizedDescription
             if m.contains("BR-CON-003") { UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "br_contact_sync_at") }
@@ -1356,10 +1356,10 @@ struct HostPanelView: View {
                 Text((np?.song ?? "").isEmpty ? "Nothing reported right now" : np!.song)
                     .font(.system(size: 18, weight: .semibold)).foregroundColor(text)
                 if let np { Text("\(np.listeners) listening").font(.system(size: 12)).foregroundColor(sub) }
-                Text("Open from \(s.windowHours) hours before your show until \(s.windowHours) hours after. Station controls are with the admins.")
+                Text("Open \(s.windowHours) hours before to \(s.windowHours) hours after your show.")
                     .font(.system(size: 11)).foregroundColor(sub)
             } else if let next = s.shows.first(where: { $0.startAt.timeIntervalSinceNow > Double(s.windowHours) * 3600 }) {
-                Text("Controls open \(s.windowHours) hours before \(next.title), which starts \(next.startAt.formatted(.dateTime.weekday(.wide).hour().minute())).")
+                Text("Opens \(s.windowHours) hours before \(next.title).")
                     .font(.system(size: 14)).foregroundColor(sub)
             } else {
                 Text("You have no upcoming shows this week.").font(.system(size: 14)).foregroundColor(sub)
@@ -1410,10 +1410,10 @@ struct HostPanelView: View {
                 }
                 .disabled(saving)
                 if let m = setlistMessage { Text(m).font(.system(size: 12)).foregroundColor(sub) }
-                Text("Type it as you go or paste the whole list at the end. You can edit it until \(s.windowHours) hours after your show.")
+                Text("Type as you go or paste the list at the end.")
                     .font(.system(size: 11)).foregroundColor(sub)
             } else {
-                Text("The set list opens \(s.windowHours) hours before your show.").font(.system(size: 14)).foregroundColor(sub)
+                Text("Opens \(s.windowHours) hours before your show.").font(.system(size: 14)).foregroundColor(sub)
             }
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
@@ -1459,7 +1459,7 @@ struct HostPanelView: View {
                             let _: EmptyResponse = try await BackendAPI.post("/api/host/update-request",
                                 ["scheduleId": id, "showName": newName, "description": newDescription])
                             newName = ""; newDescription = ""
-                            changeMessage = "Sent. Staff will review it and it goes live when approved."
+                            changeMessage = "Sent. It goes live when approved."
                         } catch { changeMessage = (error as? BackendError)?.message ?? error.localizedDescription }
                     }
                 } label: {
@@ -1470,7 +1470,7 @@ struct HostPanelView: View {
                 }
                 .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty && newDescription.trimmingCharacters(in: .whitespaces).isEmpty)
                 if let m = changeMessage { Text(m).font(.system(size: 12)).foregroundColor(sub) }
-                Text("To change your show's picture, use the website.").font(.system(size: 11)).foregroundColor(sub)
+                Text("Change the picture on the website.").font(.system(size: 11)).foregroundColor(sub)
             }
             .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
         }
@@ -1563,7 +1563,7 @@ struct AboutYouSection: View {
                 }
                 .pickerStyle(.menu)
                 .tint(scheme == .dark ? .brGold : .brGreen)
-                Text("Birthdays are only used to send you a notification and to let the DJ know when it's your birthday. We never ask for the year.")
+                Text("Only used for a birthday notification and so the DJ knows. We never ask for the year.")
                     .font(.system(size: 12))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             }
@@ -1659,7 +1659,7 @@ private struct BeatDelayRow: View {
             }
             Slider(value: $audio.beatDelay, in: 0...12, step: 0.25)
                 .tint(scheme == .dark ? .brGold : .brGreen)
-            Text("Lower it if the pulse lands after the beat, raise it if it lands before. Needs a song that has been analyzed.")
+            Text("Lower if the pulse lands late, raise if early.")
                 .font(.system(size: 12))
                 .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
         }

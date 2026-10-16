@@ -252,7 +252,7 @@ struct LiveExtrasView: View {
         VStack(spacing: 8) {
             Text("How was \(t.title)?").font(.system(size: 14, weight: .semibold)).foregroundColor(text).multilineTextAlignment(.center)
             if fbSent == t.occId {
-                Text("Thanks! Your feedback goes to the host.").font(.system(size: 13)).foregroundColor(gold)
+                Text("Thanks! Sent to the host.").font(.system(size: 13)).foregroundColor(gold)
             } else {
                 HStack(spacing: 6) {
                     ForEach(1...5, id: \.self) { n in
@@ -283,7 +283,7 @@ struct LiveExtrasView: View {
     var body: some View {
         VStack(spacing: 14) {
             if mode != .rest, let occ = np?.occId, !occ.isEmpty, auth.isInvisible {
-                Text("Reactions are off while Invisible mode is on.")
+                Text("Reactions are off in Invisible mode.")
                     .font(.system(size: 12)).foregroundColor(sub).multilineTextAlignment(.center)
             } else if mode != .rest, let occ = np?.occId, !occ.isEmpty {
                 BRGlassGroup(spacing: 10) {
@@ -302,7 +302,7 @@ struct LiveExtrasView: View {
 
             if mode != .reactions {
             if let np, !np.title.isEmpty, np.showOnly != true {
-                    starRow(label: "Rate this song (it counts toward the show too)", value: model.songStars) { n in
+                    starRow(label: "Rate this song", value: model.songStars) { n in
                         Task { await model.rateSong(n, title: np.title, artist: np.artist) }
                     }
                 }

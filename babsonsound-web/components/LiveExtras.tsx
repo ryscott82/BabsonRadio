@@ -160,7 +160,7 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
       )}
 
       {occId && invisible && (
-        <p className="text-xs text-br-dk-sub text-center">Reactions are off while Invisible mode is on. Turn it off in your profile to join in.</p>
+        <p className="text-xs text-br-dk-sub text-center">Reactions are off in Invisible mode.</p>
       )}
       {occId && !invisible && (
         <div className={`${card} flex flex-wrap items-center gap-3`}>

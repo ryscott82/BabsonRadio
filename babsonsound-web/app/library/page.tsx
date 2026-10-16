@@ -35,7 +35,7 @@ function LibraryBody() {
       <section className="space-y-3">
         <h2 className="font-display text-br-dk-text text-xl tracking-widest">SAVED</h2>
         {d.saved.length === 0
-          ? <p className="text-sm text-br-dk-sub">Nothing saved yet. Tap the star on an episode to keep it here. <Link href="/browse" className="text-br-gold">Find episodes</Link></p>
+          ? <p className="text-sm text-br-dk-sub">Nothing saved yet. <Link href="/browse" className="text-br-gold">Find episodes</Link></p>
           : d.saved.map(e => <EpisodeRow key={e.id} ep={e} saved onSave={toggle} onPlay={setPlaying} />)}
       </section>
       {d.forYou.items.length > 0 && (

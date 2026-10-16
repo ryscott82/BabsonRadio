@@ -29,7 +29,7 @@ export default function MyRecordings() {
   return (
     <section className="sk-raised rounded-2xl p-5 space-y-3">
       <h2 className="font-display text-br-gold tracking-widest text-sm">MY RECORDINGS</h2>
-      <p className="text-xs text-br-dk-sub">Recordings are for Babson students only unless you choose to share one publicly.</p>
+      <p className="text-xs text-br-dk-sub">For Babson students unless shared publicly.</p>
       <ErrorText>{err}</ErrorText>
       <ul className="space-y-3">
         {data.items.map(ep => (

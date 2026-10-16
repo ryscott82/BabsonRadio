@@ -89,7 +89,7 @@ struct LivePlayerView: View {
                         .padding(.top, 8)
 
                     if !auth.isSignedIn {
-                        Text("Previewing the live stream. Sign in from the Profile tab for reminders, friends and more.")
+                        Text("Sign in for reminders and more.")
                             .font(.system(size: 11))
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                             .multilineTextAlignment(.center).lineLimit(2)
@@ -143,22 +143,25 @@ struct LivePlayerView: View {
                 LiveBoardView(canPlay: canPlay, glow: glowColor, stacked: true).ignoresSafeArea().transition(.opacity)
             }
         }
-        // The same corner button opens and closes the full screen board.
-        .overlay(alignment: .bottomLeading) {
-            if hSize == .regular && (!folded || showBoard) {
-                Button { withAnimation(.easeInOut(duration: 0.25)) { showBoard.toggle() } } label: {
-                    Image(systemName: showBoard ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(showBoard ? .white : (scheme == .dark ? .brDkText : .brLtText))
-                        .frame(width: 40, height: 40)
-                        .brGlass(in: Circle(), interactive: true)
+        // The same corner button opens and closes the full screen board. The overlay itself ignores the safe area, so it spans
+        // the whole screen and the button sits 22 points from the real corner, clear of the rounded bezel.
+        .overlay {
+            ZStack {
+                if hSize == .regular && (!folded || showBoard) {
+                    Button { withAnimation(.easeInOut(duration: 0.25)) { showBoard.toggle() } } label: {
+                        Image(systemName: showBoard ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(showBoard ? .white : (scheme == .dark ? .brDkText : .brLtText))
+                            .frame(width: 40, height: 40)
+                            .brGlass(in: Circle(), interactive: true)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(showBoard ? "Exit full screen" : "Full screen")
+                    .padding(.leading, 22).padding(.bottom, 22)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(showBoard ? "Exit full screen" : "Full screen")
-                // Right in the corner: measured from the screen edge, not the safe area.
-                .padding(.leading, 12).padding(.bottom, 12)
-                .ignoresSafeArea()
             }
+            .ignoresSafeArea()
         }
 #if os(iOS)
         // Turned sideways on an iPhone: a clean full screen board with just the music, like the website's full screen mode.
@@ -174,7 +177,7 @@ struct LivePlayerView: View {
             Button("Create account or sign in") { showProfileSheet = true }
             Button("Keep listening", role: .cancel) {}
         } message: {
-            Text("Create a free account to get show reminders and see who is tuned in. The music keeps playing.")
+            Text("Create a free account for show reminders.")
         }
         .sheet(isPresented: $showProfileSheet) { ProfileView() }
         .sheet(isPresented: $showVote) { VoteView() }
@@ -226,7 +229,7 @@ struct LivePlayerView: View {
 
     @ViewBuilder private var controlNotes: some View {
         if !auth.isSignedIn {
-            Text("Previewing the live stream. Sign in from the Profile tab for reminders, friends and more.")
+            Text("Sign in for reminders and more.")
                 .font(.system(size: 11))
                 .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 .multilineTextAlignment(.center).lineLimit(2)
@@ -435,10 +438,10 @@ struct LivePlayerView: View {
 
     private var lockedMessage: String {
         guard auth.isSignedIn, let u = auth.currentUser else {
-            return "Sign in from the Profile tab to listen — or start a free 3-day guest trial."
+            return "Sign in to listen, or start a free 3-day guest trial."
         }
         return u.isGuest
-            ? "Your guest access has ended. Ask a Babson student to sponsor you from the Profile tab."
+            ? "Your guest access has ended. Ask a student to sponsor you."
             : "Listening isn't available right now."
     }
 

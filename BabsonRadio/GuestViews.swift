@@ -26,7 +26,7 @@ struct GuestAuthView: View {
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                     .kerning(4)
                     .padding(.top, 56)
-                Text("Live radio is free. A Babson student can unlock the Library for you.")
+                Text("Live radio is free. A student can unlock the rest.")
                     .font(.system(size: 13))
                     .foregroundColor(sub)
                     .multilineTextAlignment(.center)
@@ -130,7 +130,7 @@ struct GuestProfileView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(statusTitle).font(.system(size: 16, weight: .semibold)).foregroundColor(text)
                         Text(statusDetail).font(.system(size: 13)).foregroundColor(sub)
-                        Text("Live radio is open to everyone who is signed in.")
+                        Text("Live radio is open to everyone.")
                             .font(.system(size: 12)).foregroundColor(sub).padding(.top, 4)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -140,7 +140,7 @@ struct GuestProfileView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Are you a Babson, Olin or Wellesley student?").font(.system(size: 15, weight: .semibold)).foregroundColor(text)
-                        Text("Add your school email to unlock the Library, ratings, reactions and friends.")
+                        Text("Add your school email to unlock the rest.")
                             .font(.system(size: 13)).foregroundColor(sub)
                         Button("Add my school email") { showSchoolEmail = true }
                             .font(.system(size: 13, weight: .semibold)).foregroundColor(accent)
@@ -152,7 +152,7 @@ struct GuestProfileView: View {
 
                     if auth.guestStatus?.emailVerified != true && !user.emailVerifiedHint {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("Verify your email to ask a student for more time.")
+                            Text("Verify your email to ask for more time.")
                                 .font(.system(size: 13)).foregroundColor(sub)
                             HStack(spacing: 12) {
                                 Button("Resend link") { auth.resendVerification() }
@@ -212,8 +212,8 @@ struct GuestProfileView: View {
 
     private var statusDetail: String {
         if let p = auth.guestStatus?.pass, p.expiresAt > Date() { return "Expires \(Self.fmt.string(from: p.expiresAt))." }
-        if auth.canAccessLibrary { return "Your access is checked again at the end of the semester." }
-        return "Ask a Babson student to sponsor you to unlock the Library."
+        if auth.canAccessLibrary { return "Checked again at the end of the semester." }
+        return "Ask a Babson student to sponsor you."
     }
 }
 
@@ -234,7 +234,7 @@ struct DeleteAccountButton: View {
         .sheet(isPresented: $confirmingApple) {
             VStack(spacing: 16) {
                 Text("DELETE YOUR ACCOUNT?").font(BRFont.display(24)).kerning(2)
-                Text("This permanently removes your account and data. Confirm with Apple to continue.")
+                Text("This permanently deletes your account. Confirm with Apple.")
                     .font(.system(size: 14)).multilineTextAlignment(.center)
                 AppleSignInButton(purpose: .confirmDelete)
                 Button("Cancel") { confirmingApple = false }.font(.system(size: 13))
@@ -249,7 +249,7 @@ struct DeleteAccountButton: View {
             }
             Button("Cancel", role: .cancel) { password = "" }
         } message: {
-            Text("This permanently removes your account and data. Enter your password to confirm.")
+            Text("This permanently deletes your account. Enter your password.")
         }
     }
 }
@@ -296,13 +296,13 @@ struct AddSchoolEmailView: View {
                 VStack(spacing: 14) {
                     if let sent = auth.schoolEmailSentTo {
                         Text("Check \(sent)").font(BRFont.display(22)).foregroundColor(scheme == .dark ? .brDkText : .brLtText).padding(.top, 24)
-                        Text("Open the link we sent. Then sign out and sign back in with your school email and the same password you use now.")
+                        Text("Open the link we sent, then sign back in with your school email.")
                             .font(.system(size: 14)).foregroundColor(sub).multilineTextAlignment(.center)
                         Button("Sign out now") { auth.schoolEmailSentTo = nil; auth.signOut(); dismiss() }
                             .font(.system(size: 14, weight: .semibold)).foregroundColor(accent).padding(.top, 8)
                     } else {
                         Text("Add your school email").font(BRFont.display(22)).foregroundColor(scheme == .dark ? .brDkText : .brLtText).padding(.top, 24)
-                        Text("We will send a confirmation link to it. Your account keeps working until then.")
+                        Text("We'll send you a confirmation link.")
                             .font(.system(size: 13)).foregroundColor(sub).multilineTextAlignment(.center)
                         BRTextField(placeholder: "School username", text: $username, icon: "envelope",
                                     keyboardType: .emailAddress, autocapitalization: .never,

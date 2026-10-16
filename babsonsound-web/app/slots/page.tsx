@@ -124,7 +124,7 @@ export default function SlotsPage() {
       {ready && !ready.trained && (
         <div className="sk-raised rounded-2xl p-5 space-y-3">
           <p className="font-display text-br-gold tracking-widest text-sm">TRAINING COMES FIRST</p>
-          <p className="text-sm text-br-dk-text">Everyone who hosts has to be certified. It takes about ten minutes: a short quiz on the clean hours, our conduct rules and what to do when something goes wrong.</p>
+          <p className="text-sm text-br-dk-text">Hosts must be certified. It takes about ten minutes.</p>
           <div className="flex flex-wrap gap-3 items-center">
             <Link href="/training" className="rounded-lg bg-br-gold text-black text-xs font-semibold px-4 py-2">Take the quiz</Link>
             {ready.trainingRequested
@@ -168,11 +168,11 @@ export default function SlotsPage() {
           </label>
           {adult !== 'adult' && <PublicAgreement status={adult} onChange={() => {}} />}
           {sharePublic && adult === 'adult' && <PublicAgreement status={adult} onChange={setSig} />}
-          {!sharePublic && adult === 'adult' && <p className="text-xs text-br-dk-muted">Left off, your recordings are for Babson students only.</p>}
+          {!sharePublic && adult === 'adult' && <p className="text-xs text-br-dk-muted">Off: Babson students only.</p>}
         </div>
         {daytime && <SignBox title="CLEAN-HOURS PLEDGE" intro="Your slot overlaps 6 AM to 10 PM Eastern. Daytime shows must be completely clean." clauses={CLEAN_CLAUSES} version={CLEAN_VERSION} onChange={setCleanSig} />}
         {ready && !ready.conductSigned && <SignBox title="CONDUCT AGREEMENT (ONCE, FOR ALL HOURS)" intro={SLUR_DEFINITION} clauses={CONDUCT_CLAUSES} version={CONDUCT_VERSION} onChange={setConductSig} />}
-        <p className="text-xs text-br-dk-muted">The title, description and picture are shown to listeners only if your request is approved.</p>
+        <p className="text-xs text-br-dk-muted">Shown to listeners if approved.</p>
         <ErrorText>{error}</ErrorText>
         {notice && <p className="text-sm text-br-gold">{notice}</p>}
         <PrimaryButton type="submit" busy={busy}>REQUEST A SLOT</PrimaryButton>

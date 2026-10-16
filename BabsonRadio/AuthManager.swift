@@ -563,7 +563,7 @@ class AuthManager: ObservableObject {
         Task {
             do {
                 try await Auth.auth().currentUser?.sendEmailVerification()
-                infoMessage = "Sent again. Check your inbox and spam folder."
+                infoMessage = "Sent again."
             } catch {
                 errorMessage = "Please wait a minute and try again. (BR-AUTH-006)"
             }
@@ -578,7 +578,7 @@ class AuthManager: ObservableObject {
             _ = try? await user.getIDToken(forcingRefresh: true)
             await apply(Auth.auth().currentUser)
             if needsEmailVerification {
-                infoMessage = "Still waiting. Open the link in the email first."
+                infoMessage = "Open the link in the email first."
             }
         }
     }
@@ -630,7 +630,7 @@ class AuthManager: ObservableObject {
                 _ = try await user.getIDToken(forcingRefresh: true)
                 try? await user.sendEmailVerification()
                 await apply(Auth.auth().currentUser)
-                infoMessage = "We sent a link to \(Self.cleaned(email)). Open it within 7 days to keep your account."
+                infoMessage = "We sent a link to \(Self.cleaned(email)). Open it within 7 days."
             } catch {
                 errorMessage = (error as? BackendError)?.message ?? Self.authMessage(error)
             }

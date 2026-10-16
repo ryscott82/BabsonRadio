@@ -40,7 +40,7 @@ struct SlotsView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
                 if auth.currentUser?.isGuest == true {
-                    GuestLockedNote(text: "Requesting air time is for Babson students. Ask a student to feature your show.")
+                    GuestLockedNote(text: "Requesting airtime is for Babson students.")
                 } else if auth.isSignedIn {
                     signedInContent
                 } else {
@@ -64,7 +64,7 @@ struct SlotsView: View {
                     .font(BRFont.display(34))
                     .kerning(3)
                     .foregroundColor(textColor)
-                Text("Have a podcast, a mix or a show idea? Request a time on the radio. Staff review every request, and you'll see the answer here.")
+                Text("Have a show idea? Request a time on the radio.")
                     .font(.system(size: 14))
                     .foregroundColor(subColor)
 
@@ -124,7 +124,7 @@ struct SlotsView: View {
                 .font(BRFont.display(22))
                 .kerning(2)
                 .foregroundColor(textColor)
-            Text("Sign in with your Babson email from the Profile tab to request airtime.")
+            Text("Sign in with your Babson email to request airtime.")
                 .font(.system(size: 14))
                 .foregroundColor(subColor)
                 .multilineTextAlignment(.center)
@@ -353,7 +353,7 @@ struct RequestSlotForm: View {
                             Button("Remove", role: .destructive) { photoItem = nil; photoPreview = nil; uploaded = nil }
                         }
                     }
-                    Text("Shown to listeners only if your request is approved.")
+                    Text("Shown to listeners if approved.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
 
@@ -369,11 +369,11 @@ struct RequestSlotForm: View {
                             .keyboardType(.URL)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
-                        Text("Share a link (Drive, Dropbox, etc.). Staff will schedule it for your slot.")
+                        Text("Link to your recording.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     } else {
-                        Text("If approved, staff will send you what you need to connect your broadcast software at your start time.")
+                        Text("We'll send connection details if approved.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -394,7 +394,7 @@ struct RequestSlotForm: View {
                             .foregroundStyle(.red)
                     }
                     if tooSoon {
-                        Text("Requests need at least 24 hours' notice.")
+                        Text("Requests need 24 hours' notice.")
                             .font(.footnote)
                             .foregroundStyle(.red)
                     }

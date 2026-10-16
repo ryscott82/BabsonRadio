@@ -94,8 +94,8 @@ struct LibraryView: View {
                 VStack(alignment: .leading, spacing: 28) {
                     if !canUse {
                         Text(auth.isSignedIn
-                             ? "The Library opens when a Babson student sponsors you. Ask one from your Profile."
-                             : "Sign in with your Babson email to save episodes. Use the profile button in the top corner.")
+                             ? "Ask a Babson student to sponsor you."
+                             : "Sign in with your Babson email to save episodes.")
                             .font(.system(size: 14)).foregroundColor(sub)
                     } else {
                         if let e = lib.error { Text(e).font(.system(size: 13)).foregroundColor(.brRed) }
@@ -103,7 +103,7 @@ struct LibraryView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             BRSectionHeader(title: "SAVED")
                             if lib.saved.isEmpty {
-                                Text(lib.loaded ? "Nothing saved yet. Tap the star on an episode to keep it here." : "Loading…")
+                                Text(lib.loaded ? "Nothing saved yet." : "Loading…")
                                     .font(.system(size: 14)).foregroundColor(sub)
                             }
                             ForEach(lib.saved) { EpisodeListRow(ep: $0) }

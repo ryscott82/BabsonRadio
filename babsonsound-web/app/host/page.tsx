@@ -36,7 +36,7 @@ function PlaylistRequests({ st, reload }: { st: Status; reload: () => void }) {
             </li>
           ))}
         </ul>
-      ) : <p className="text-xs text-br-dk-sub">No playlist requests during this show yet. Requests made while the auto DJ is on go to the station admins.</p>}
+      ) : <p className="text-xs text-br-dk-sub">No playlist requests yet.</p>}
     </section>
   )
 }
@@ -83,7 +83,7 @@ export default function HostPage() {
   }, [user, isBabson, isDeveloper, load])
 
   if (!user) return null
-  if (!isBabson && !isDeveloper) return <p className="max-w-2xl mx-auto px-4 py-10 text-sm text-br-dk-sub">The host panel is for students. Verify your school email first.</p>
+  if (!isBabson && !isDeveloper) return <p className="max-w-2xl mx-auto px-4 py-10 text-sm text-br-dk-sub">The host panel is for students.</p>
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
@@ -95,7 +95,7 @@ export default function HostPage() {
       {!st && !error && <p className="text-sm text-br-dk-sub">Loading…</p>}
       {st && !st.staff && st.shows.length === 0 && (
         <p className="text-sm text-br-dk-sub">
-          You are not listed as a host on any show yet. Once a station admin adds you to a weekly show, or a show you requested is approved, it appears here.
+          You aren&apos;t hosting a show yet.
         </p>
       )}
       {st && (st.staff || st.shows.length > 0) && (
@@ -224,7 +224,6 @@ function LiveNote({ st, reload }: { st: Status; reload: () => void }) {
         <PrimaryButton type="button" busy={busy} onClick={() => save(false)}>SHOW TO LISTENERS</PrimaryButton>
         <button type="button" onClick={() => save(true)} className="text-sm text-br-dk-sub">Clear</button>
       </div>
-      <p className="text-xs text-br-dk-sub">It shows under the player on the website and in the app, and disappears shortly after your show ends.</p>
       <label className="flex items-center gap-3 text-sm text-br-dk-text pt-2 border-t border-br-dk-border">
         <input type="checkbox" checked={colorOn} disabled={busy} onChange={e => toggleColor(e.target.checked)} />
         Color-changing background for this set (night only, 7pm to 6am)
@@ -251,7 +250,7 @@ function SongRequests({ st, reload }: { st: Status; reload: () => void }) {
   return (
     <section className="sk-raised rounded-2xl p-5 space-y-3">
       <h2 className="font-display text-br-gold tracking-widest text-sm">SONG REQUESTS · {sel.title.toUpperCase()}</h2>
-      <p className="text-xs text-br-dk-sub">Turn this on to let listeners type in an artist or song. It turns itself off when your show ends.</p>
+      <p className="text-xs text-br-dk-sub">Let listeners type in a song or artist.</p>
       <ErrorText>{err}</ErrorText>
       <PrimaryButton type="button" busy={busy} onClick={toggle}>{open ? 'STOP TAKING REQUESTS' : 'TAKE REQUESTS'}</PrimaryButton>
       {open && (i.requests?.length
@@ -348,7 +347,7 @@ function SetList({ st }: { st: Status }) {
             <PrimaryButton type="button" busy={busy} onClick={save}>SAVE SET LIST</PrimaryButton>
             {saved && <span role="status" className="text-xs text-br-dk-sub">Saved {clock(saved)}</span>}
           </div>
-          <p className="text-xs text-br-dk-sub">Type it as you go or paste the whole list at the end. You can edit it until {st.windowHours} hours after your show.</p>
+          <p className="text-xs text-br-dk-sub">Type as you go or paste the list at the end.</p>
         </>
       )}
     </section>
@@ -463,7 +462,7 @@ function Stats() {
         {Object.entries(s.reactions).map(([e, n]) => <span key={e}>{e} <span className="tabular-nums text-base">{n}</span></span>)}
         <span className="text-xs text-br-dk-sub self-center">reactions, all time</span>
       </div>
-      {empty ? <p className="text-sm text-br-dk-sub">Nothing recorded for this show yet. Numbers appear once it has aired with listeners.</p> : (
+      {empty ? <p className="text-sm text-br-dk-sub">Nothing recorded for this show yet.</p> : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-br-dk-text">
             <thead className="text-xs text-br-dk-sub text-left"><tr><th className="py-2 pr-3">Aired</th><th className="pr-3">Avg</th><th className="pr-3">Peak</th><th className="pr-3">Tuned in</th><th className="pr-3">Reactions</th><th>Rating</th></tr></thead>
@@ -477,7 +476,6 @@ function Stats() {
               ))}
             </tbody>
           </table>
-          <p className="text-xs text-br-dk-muted mt-2">&ldquo;Tuned in&rdquo; counts signed-in listeners who started listening during your show.</p>
         </div>
       )}
       {s.bestSongs.length > 0 && (

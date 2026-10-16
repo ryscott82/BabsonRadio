@@ -71,11 +71,11 @@ final class PushManager: ObservableObject {
         defer { busy = false }
         if birthday == true || announcements == true {
             let granted = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
-            guard granted else { status = "Notifications are off for Babson Radio. Turn them on in Settings."; return }
+            guard granted else { status = "Turn on notifications in Settings."; return }
             UIApplication.shared.registerForRemoteNotifications()
         }
         if token.isEmpty { token = await fetchToken() ?? "" }
-        guard !token.isEmpty else { status = "Could not reach the notification service. Try again in a minute."; return }
+        guard !token.isEmpty else { status = "Couldn't reach notifications. Try again."; return }
         var body: [String: Any] = ["token": token]
         if let birthday { body["birthday"] = birthday }
         if let announcements { body["announcements"] = announcements }
@@ -113,12 +113,12 @@ final class PushManager: ObservableObject {
         defer { busy = false }
         if !next.isEmpty {
             let granted = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
-            guard granted else { status = "Notifications are off for Babson Radio. Turn them on in Settings."; return }
+            guard granted else { status = "Turn on notifications in Settings."; return }
             UIApplication.shared.registerForRemoteNotifications()
         }
         if token.isEmpty { token = await fetchToken() ?? "" }
         guard !token.isEmpty else {
-            status = "Could not reach the notification service. Check push setup and try again."
+            status = "Couldn't reach notifications. Try again."
             return
         }
         do {

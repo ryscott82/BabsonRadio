@@ -44,7 +44,7 @@ struct ContentView: View {
             Button("Add my school email") { showSchoolEmailSheet = true }
             Button("Not now", role: .cancel) {}
         } message: {
-            Text("Add your Babson, Olin or Wellesley email to unlock the Library, ratings, reactions and friends.")
+            Text("Add your school email to unlock the rest.")
         }
         .sheet(isPresented: $showSchoolEmailSheet) { AddSchoolEmailView() }
         .onChange(of: splashDone) { _, done in maybeAskSchoolEmail(done) }

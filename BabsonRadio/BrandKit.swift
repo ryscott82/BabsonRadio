@@ -320,14 +320,13 @@ struct BRGlassGroup<Content: View>: View {
 }
 
 
-/// "Designed by Ryan Edward Media Group" credit line; the name opens the site.
+/// "Ryan Edward Media Group" credit at the bottom of the profile pages; tapping it opens the site.
 struct DesignedByCredit: View {
     @Environment(\.colorScheme) private var scheme
     var body: some View {
-        Text("Designed by [Ryan Edward Media Group](https://ryanedwardmediagroup.com)")
-            .font(.system(size: 12))
+        Link("Ryan Edward Media Group", destination: URL(string: "https://ryanedwardmediagroup.com")!)
+            .font(.system(size: 12, weight: .medium))
             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-            .tint(scheme == .dark ? .brGold : .brGreen)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
     }

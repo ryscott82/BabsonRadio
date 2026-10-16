@@ -78,7 +78,7 @@ struct VotePanel: View {
                         }
                         }
                         if s.canVote == false {
-                            Text("Voting opens once a Babson student sponsors you or has you in their contacts.")
+                            Text("Voting opens once a Babson student sponsors you.")
                                 .font(.system(size: 12)).foregroundColor(sub)
                         } else if !compact, s.requestsOpen == true {
                             Text(s.requestsShow.map { "Request a song for \($0)" } ?? "Request a song")
@@ -197,7 +197,7 @@ struct PlaylistRequestForm: View {
             defer { busy = false }
             do {
                 let _: EmptyResponse = try await BackendAPI.post("/api/playlist-request", body)
-                title = ""; artist = ""; message = "Sent. The station will take a look."
+                title = ""; artist = ""; message = "Sent."
             } catch { message = (error as? BackendError)?.message ?? "Try again." }
         }
     }

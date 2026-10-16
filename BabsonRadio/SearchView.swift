@@ -94,11 +94,11 @@ struct SearchView: View {
                     .padding(.horizontal, 20)
 
                 if !canUse {
-                    Text(auth.isSignedIn ? "The Library opens when a Babson student sponsors you. Ask one from your Profile." : "Sign in with your Babson email to browse episodes.")
+                    Text(auth.isSignedIn ? "Ask a Babson student to sponsor you." : "Sign in with your Babson email to browse episodes.")
                         .font(.system(size: 14)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .padding(.horizontal, 20)
                 } else if lib.all.isEmpty {
-                    Text(lib.loaded ? "No episodes yet. They show up here as soon as the station adds them." : "Loading…")
+                    Text(lib.loaded ? "No episodes yet." : "Loading…")
                         .font(.system(size: 14)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .padding(.horizontal, 20)
                 }
@@ -155,7 +155,7 @@ struct SearchView: View {
                 .kerning(1)
                 .multilineTextAlignment(.center)
 
-            Text("Try searching for a show name, episode title, or category.")
+            Text("Try a show, episode or category.")
                 .font(.system(size: 14))
                 .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 .multilineTextAlignment(.center)

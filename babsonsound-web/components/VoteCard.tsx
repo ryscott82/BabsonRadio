@@ -71,7 +71,7 @@ export default function VoteCard() {
           </button>
         ))}
       </div>
-      {!s.canVote && <p className="text-xs text-br-dk-sub">Voting opens once a Babson student sponsors you or has you in their contacts.</p>}
+      {!s.canVote && <p className="text-xs text-br-dk-sub">Voting opens once a Babson student sponsors you.</p>}
       {s.canVote && s.requestsOpen && (
         <form onSubmit={sendRequest} className="flex gap-2">
           <input value={text} onChange={e => setText(e.target.value)} maxLength={140} placeholder={`Request a song${s.requestsShow ? ` for ${s.requestsShow}` : ''}`}

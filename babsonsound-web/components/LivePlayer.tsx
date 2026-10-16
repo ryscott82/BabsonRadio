@@ -267,7 +267,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
           <div role="dialog" aria-modal="true" aria-label="Create an account" onClick={e => e.stopPropagation()}
                className="sk-raised rounded-2xl p-6 w-full max-w-sm space-y-4 text-center">
             <h3 className="font-display text-br-dk-text text-2xl tracking-wide">Enjoying Babson Radio?</h3>
-            <p className="text-sm text-br-dk-sub">Create a free account to get show reminders, see who is tuned in, and keep your place. The music keeps playing.</p>
+            <p className="text-sm text-br-dk-sub">Create a free account for show reminders.</p>
             <Link href="/auth" className="sk-btn block rounded-xl py-3 text-sm font-display tracking-[0.2em]">CREATE ACCOUNT OR SIGN IN</Link>
             <button onClick={() => setPrompt(false)} className="text-sm text-br-dk-sub">Keep listening</button>
           </div>

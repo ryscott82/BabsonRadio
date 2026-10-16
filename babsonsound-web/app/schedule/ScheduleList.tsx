@@ -125,8 +125,7 @@ export default function ScheduleList() {
   return (
     <>
       <div className="sk-field rounded-xl px-4 py-2.5 text-xs text-br-dk-sub">
-        <strong className="text-br-dk-text">How reminders work:</strong> tap the bell on a show and we send a notification to your <strong className="text-br-dk-text">iPhone</strong> 5 minutes before it starts.
-        Your computer or browser will not show a pop-up. Install the Babson Radio iPhone app, sign in with this same account and allow notifications. No iPhone? Add the schedule to your calendar instead (link above).
+        Tap the bell on a show for an iPhone reminder 5 minutes before. Install the app and sign in. No iPhone? Use the calendar link above.
       </div>
       <ErrorText>{error}</ErrorText>
       {note && <p role="status" className="text-sm text-br-gold">{note}</p>}

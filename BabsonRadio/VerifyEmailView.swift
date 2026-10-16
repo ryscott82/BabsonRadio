@@ -21,7 +21,7 @@ struct VerifyEmailView: View {
                 .kerning(3)
                 .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
 
-            Text("We sent a link to \(auth.pendingEmail). Open it, then come back here.")
+            Text("We sent a link to \(auth.pendingEmail).")
                 .font(.system(size: 14))
                 .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 .multilineTextAlignment(.center)

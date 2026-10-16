@@ -107,7 +107,7 @@ function AboutYou() {
             {Array.from({ length: 31 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
           </select>
         </div>
-        <p className="text-xs text-br-dk-sub mt-1.5">Birthdays are only used to send you a notification and to let the DJ know when it&apos;s your birthday. We never ask for the year.</p>
+        <p className="text-xs text-br-dk-sub mt-1.5">Only used for a birthday notification and so the DJ knows. We never ask for the year.</p>
       </div>
       {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}
       <PrimaryButton type="submit" busy={busy}>SAVE DETAILS</PrimaryButton>
@@ -165,14 +165,14 @@ export default function ProfilePage() {
         {(isBabson || isDeveloper) && (
           <Link href="/slots" className="block sk-raised rounded-2xl p-5">
             <p className="text-br-dk-text text-sm font-medium">Request a spot</p>
-            <p className="text-br-dk-sub text-xs mt-1">Ask for an hour on air. See your requests and approved shows too.</p>
+            <p className="text-br-dk-sub text-xs mt-1">Ask for an hour on air.</p>
           </Link>
         )}
 
         {hosts && (
           <Link href="/host" className="block sk-raised rounded-2xl p-5">
             <p className="text-br-dk-text text-sm font-medium">Host panel</p>
-            <p className="text-br-dk-sub text-xs mt-1">Your live feed, a message for listeners and your set list (open around your show), plus changes to your show page.</p>
+            <p className="text-br-dk-sub text-xs mt-1">Live feed, listener message and set list.</p>
           </Link>
         )}
 
@@ -182,7 +182,7 @@ export default function ProfilePage() {
               <div>
                 <p className="text-br-dk-text text-sm font-medium">Invisible mode</p>
                 <p className="text-br-dk-sub text-xs mt-1">
-                  Friends won&apos;t see you tuned in, your likes won&apos;t show up as &ldquo;your friend liked this,&rdquo; live reactions are off (sending and seeing), and your contacts aren&apos;t used for suggestions.
+                  Friends can&apos;t see you tuned in. Reactions and contact suggestions are off.
                 </p>
               </div>
               <button role="switch" aria-checked={invisible} disabled={saving} onClick={toggle}

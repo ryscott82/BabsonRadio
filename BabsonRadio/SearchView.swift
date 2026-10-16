@@ -29,9 +29,6 @@ struct SearchView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
-                        // Spacer for search bar height
-                        Color.clear.frame(height: 60)
-
                         if query.trimmingCharacters(in: .whitespaces).isEmpty {
                             browseContent
                         } else {

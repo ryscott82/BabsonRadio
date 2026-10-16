@@ -111,54 +111,45 @@ export default function AutoSchedulePage() {
 
   const box = 'sk-field rounded-lg px-3 py-2 text-sm text-br-dk-text focus:outline-none'
   const lab = 'block text-xs text-br-dk-sub mb-1 font-display tracking-widest'
+  const btn = 'sk-key rounded-lg px-4 py-2 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-50'
+  // Every genre that appears in any rule, so each rule can switch them on and off with one tap.
+  const allGenres = Array.from(new Set([...cfg.defaultFillers, ...cfg.rules.flatMap(r => r.fillers)]))
+  const toggleGenre = (i: number, g: string) => {
+    const f = cfg.rules[i].fillers
+    setRule(i, { fillers: f.includes(g) ? f.filter(x => x !== g) : [...f, g] })
+  }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-10">
+    <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">AUTO-SCHEDULER</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">AUTO DJ</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
-      <p className="text-sm text-br-dk-sub max-w-2xl">
-        Real bookings always win: approved slots and the weekly show grid are never touched. The scheduler only
-        fills the gaps, using the first rule that matches the time of day (highest priority first), and rotates
-        through that rule&apos;s fillers so the same thing never plays twice in a row.
-      </p>
 
-      <section className="sk-raised rounded-2xl p-5 space-y-4">
+      {/* The few things most people ever change */}
+      <section className="sk-raised rounded-2xl p-5 space-y-3">
         <label className="flex items-center gap-3 text-sm text-br-dk-text">
           <input type="checkbox" checked={cfg.enabled} onChange={e => update({ enabled: e.target.checked })} />
-          Auto-scheduler is on
+          Auto DJ is on
         </label>
-        <div className="grid sm:grid-cols-4 gap-4">
-          <label><span className={lab}>TIME ZONE</span>
-            <input className={`${box} w-full`} value={cfg.timezone} onChange={e => update({ timezone: e.target.value })} /></label>
-          <label><span className={lab}>FILL AHEAD (HOURS)</span>
-            <input type="number" min={6} max={168} className={`${box} w-full`} value={cfg.horizonHours}
-                   onChange={e => update({ horizonHours: Number(e.target.value) })} /></label>
-          <label><span className={lab}>LONGEST BLOCK (MIN)</span>
-            <input type="number" min={30} max={360} step={30} className={`${box} w-full`} value={cfg.maxBlockMinutes}
-                   onChange={e => update({ maxBlockMinutes: Number(e.target.value) })} /></label>
-          <label><span className={lab}>LOCK NEXT (MIN)</span>
-            <input type="number" min={0} max={360} step={15} className={`${box} w-full`} value={cfg.lockMinutes}
-                   onChange={e => update({ lockMinutes: Number(e.target.value) })} /></label>
-        </div>
-        <label className="block"><span className={lab}>DEFAULT FILLERS (WHEN NO RULE MATCHES, COMMA SEPARATED)</span>
-          <input className={`${box} w-full`} defaultValue={cfg.defaultFillers.join(', ')}
-                 onBlur={e => update({ defaultFillers: lines(e.target.value) })} /></label>
+        <label className="flex items-center gap-3 text-sm text-br-dk-text">
+          <input type="checkbox" checked={cfg.learn !== false} onChange={e => update({ learn: e.target.checked })} />
+          Play more of what listeners like <a href="/admin/insights" className="underline text-br-dk-sub">what it learned</a>
+        </label>
+        <label className="flex items-center gap-3 text-sm text-br-dk-text">
+          <input type="checkbox" checked={cfg.colorChanging === true} onChange={e => update({ colorChanging: e.target.checked })} />
+          Color-changing background at night
+        </label>
       </section>
 
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-br-gold tracking-widest text-sm">RULES</h2>
-          <button className="sk-key rounded-lg px-3 py-1.5 text-xs font-display tracking-widest text-br-dk-text"
-                  onClick={() => { if (window.confirm('Replace all rules with the suggested schedule? Nothing is saved until you press Save.')) update({ rules: DEFAULT_CONFIG.rules.map(r => ({ ...r })) }) }}>
-            LOAD SUGGESTED SCHEDULE
-          </button>
-          <button className="sk-key rounded-lg px-3 py-1.5 text-xs font-display tracking-widest text-br-dk-text"
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display text-br-gold tracking-widest text-sm">WHEN AND WHAT</h2>
+          <button className={btn}
                   onClick={() => update({ rules: [...cfg.rules, {
-                    id: `rule-${Date.now().toString(36)}`, name: 'New rule', days: [1, 2, 3, 4, 5],
-                    start: '12:00', end: '14:00', fillers: ['Indie & alt'], priority: 10 }] })}>
-            ADD RULE
+                    id: `rule-${Date.now().toString(36)}`, name: 'New block', days: [1, 2, 3, 4, 5],
+                    start: '12:00', end: '14:00', fillers: allGenres.slice(0, 2), priority: 10 }] })}>
+            ADD
           </button>
         </div>
         {cfg.rules.map((r, i) => (
@@ -170,11 +161,6 @@ export default function AutoSchedulePage() {
                 <input type="time" className={box} value={r.start} onChange={e => setRule(i, { start: e.target.value })} /></label>
               <label><span className={lab}>TO</span>
                 <input className={`${box} w-20`} value={r.end} onChange={e => setRule(i, { end: e.target.value })} placeholder="24:00" /></label>
-              <label><span className={lab}>PRIORITY</span>
-                <input type="number" min={0} max={100} className={`${box} w-20`} value={r.priority}
-                       onChange={e => setRule(i, { priority: Number(e.target.value) })} /></label>
-              <button className="text-xs text-br-dk-sub hover:text-br-red pb-2"
-                      onClick={() => update({ rules: cfg.rules.filter((_, j) => j !== i) })}>Delete</button>
             </div>
             <div className="flex flex-wrap gap-1.5">
               {DAYS.map((d, n) => (
@@ -182,105 +168,58 @@ export default function AutoSchedulePage() {
                         className="sk-key rounded-md px-2.5 py-1 text-xs font-display tracking-widest text-br-dk-text">{d}</button>
               ))}
             </div>
-            <label className="flex items-center gap-3 text-sm text-br-dk-text">
-              <input type="checkbox" checked={r.quiet === true} onChange={e => setRule(i, { quiet: e.target.checked })} />
-              Nothing scheduled (AzuraCast&apos;s default playlist plays, like overnight)
-            </label>
             {!r.quiet && (
-              <>
-                <label className="flex items-center gap-3 text-sm text-br-dk-text">
-                  <input type="checkbox" checked={r.oneGenre === true} onChange={e => setRule(i, { oneGenre: e.target.checked })} />
-                  One genre for this whole window each day (good for studying); a different one the next day
-                </label>
-                <label className="block"><span className={lab}>FILLERS (COMMA SEPARATED)</span>
-                  <input className={`${box} w-full`} defaultValue={r.fillers.join(', ')}
-                         onBlur={e => setRule(i, { fillers: lines(e.target.value) })} /></label>
-                <label className="block"><span className={lab}>LONGEST BLOCK (MINUTES, LEAVE EMPTY FOR THE GLOBAL SETTING)</span>
-                  <input type="number" min={30} max={720} step={30} className={`${box} w-32`} value={r.blockMinutes ?? ''}
-                         placeholder={String(cfg.maxBlockMinutes)}
-                         onChange={e => setRule(i, { blockMinutes: e.target.value ? Number(e.target.value) : undefined })} /></label>
-              </>
+              <div className="flex flex-wrap gap-1.5 items-center">
+                {allGenres.map(g => (
+                  <button key={g} type="button" aria-pressed={r.fillers.includes(g)} onClick={() => toggleGenre(i, g)}
+                          className="sk-key rounded-full px-3 py-1 text-xs text-br-dk-text">{g}</button>
+                ))}
+                <input className={`${box} w-32 !py-1 text-xs`} placeholder="+ genre"
+                       onKeyDown={e => {
+                         if (e.key !== 'Enter') return
+                         e.preventDefault()
+                         const v = e.currentTarget.value.trim()
+                         if (v && !r.fillers.includes(v)) setRule(i, { fillers: [...r.fillers, v] })
+                         e.currentTarget.value = ''
+                       }} />
+              </div>
             )}
-            <p className="text-xs text-br-dk-muted">A rule that ends before it starts (like 22:00 to 06:00) runs past midnight, on the days ticked for when it starts.</p>
+            <details className="text-xs text-br-dk-sub">
+              <summary className="cursor-pointer select-none">More</summary>
+              <div className="pt-3 space-y-3">
+                <label className="flex items-center gap-3 text-sm text-br-dk-text">
+                  <input type="checkbox" checked={r.quiet === true} onChange={e => setRule(i, { quiet: e.target.checked })} />
+                  Nothing scheduled (AzuraCast&apos;s default playlist plays)
+                </label>
+                {!r.quiet && (
+                  <label className="flex items-center gap-3 text-sm text-br-dk-text">
+                    <input type="checkbox" checked={r.oneGenre === true} onChange={e => setRule(i, { oneGenre: e.target.checked })} />
+                    One genre per night
+                  </label>
+                )}
+                <div className="flex flex-wrap gap-3 items-end">
+                  <label><span className={lab}>PRIORITY</span>
+                    <input type="number" min={0} max={100} className={`${box} w-20`} value={r.priority}
+                           onChange={e => setRule(i, { priority: Number(e.target.value) })} /></label>
+                  <label><span className={lab}>LONGEST BLOCK (MIN)</span>
+                    <input type="number" min={30} max={720} step={30} className={`${box} w-28`} value={r.blockMinutes ?? ''}
+                           placeholder={String(cfg.maxBlockMinutes)}
+                           onChange={e => setRule(i, { blockMinutes: e.target.value ? Number(e.target.value) : undefined })} /></label>
+                  <button className="text-xs text-br-dk-sub hover:text-br-red pb-2"
+                          onClick={() => update({ rules: cfg.rules.filter((_, j) => j !== i) })}>Delete block</button>
+                </div>
+              </div>
+            </details>
           </div>
         ))}
       </section>
 
-      <section className="sk-raised rounded-2xl p-5 space-y-4">
-        <h2 className="font-display text-br-gold tracking-widest text-sm">AZURACAST</h2>
-        <p className="text-sm text-br-dk-sub">
-          The scheduler turns each genre into a scheduled playlist in AzuraCast, so the station switches on its own.
-          Create one playlist per genre there, named exactly like the filler (or map different names below).
-          Keep AzuraCast&apos;s station time zone the same as the one above.
-        </p>
-        <label className="flex items-center gap-3 text-sm text-br-dk-text">
-          <input type="checkbox" checked={cfg.learn !== false} onChange={e => update({ learn: e.target.checked })} />
-          Learn from listeners: play genres people listen to, rate and react to more often (every genre still gets airtime). <a href="/admin/insights" className="underline">See what it learned</a>
-        </label>
-        <label className="flex items-center gap-3 text-sm text-br-dk-text">
-          <input type="checkbox" checked={cfg.colorChanging === true} onChange={e => update({ colorChanging: e.target.checked })} />
-          Color-changing background while the auto DJ plays (night only, 7pm to 6am). Otherwise the site stays green.
-        </label>
-        <label className="flex items-center gap-3 text-sm text-br-dk-text">
-          <input type="checkbox" checked={cfg.syncToAzuraCast} onChange={e => update({ syncToAzuraCast: e.target.checked })} />
-          Send the schedule to AzuraCast automatically after every rebuild
-        </label>
-        <div className="flex flex-wrap gap-3">
-          <button className="sk-key rounded-lg px-4 py-2 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-50"
-                  disabled={!!busy} onClick={check}>{busy === 'check' ? 'CHECKING…' : 'CHECK CONNECTION'}</button>
-          <button className="sk-key rounded-lg px-4 py-2 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-50"
-                  disabled={!!busy} onClick={syncNow}>{busy === 'sync' ? 'SENDING…' : 'SEND TO AZURACAST NOW'}</button>
-        </div>
-        {status && !status.configured && (
-          <p className="text-sm text-br-red">Not connected yet. In Vercel set AZURACAST_URL, AZURACAST_API_KEY and AZURACAST_STATION_ID, then redeploy.</p>
-        )}
-        {status?.configured && !status.ok && <p className="text-sm text-br-red break-words">{status.error}</p>}
-        {status?.ok && (
-          <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
-            {status.genres.map(g => (
-              <li key={g.genre} className="flex items-center gap-2">
-                <span className={g.found ? 'text-br-green' : 'text-br-red'}>{g.found ? '✓' : '✗'}</span>
-                <span className="text-br-dk-text">{g.genre}</span>
-                {!g.found && <span className="text-xs text-br-dk-sub">needs a playlist named &ldquo;{g.playlist}&rdquo;</span>}
-              </li>
-            ))}
-          </ul>
-        )}
-        {sync && !sync.error && (
-          <div className="text-sm text-br-dk-sub">
-            Updated {sync.updated.length} playlist{sync.updated.length === 1 ? '' : 's'}.
-            {sync.missing.length > 0 && <span className="text-br-red"> Missing in AzuraCast: {sync.missing.join(', ')}.</span>}
-          </div>
-        )}
-      </section>
-
-      <CorrectSchedule box={box} lab={lab} />
-
-      <section className="sk-raised rounded-2xl p-5 space-y-3">
-        <h2 className="font-display text-br-gold tracking-widest text-sm">CALENDAR FEED</h2>
-        <p className="text-sm text-br-dk-sub">
-          Weekly shows, approved student slots and the genre blocks above, as a calendar people can subscribe to.
-          Add the link as &ldquo;from URL&rdquo; in Google Calendar, Apple Calendar or Outlook. It updates itself.
-        </p>
-        <input readOnly value={calendarUrl} onFocus={e => e.currentTarget.select()}
-               className="sk-field w-full rounded-lg px-3 py-2 text-xs text-br-dk-text" />
-        <div className="flex flex-wrap gap-3">
-          <button className="sk-key rounded-lg px-4 py-2 text-xs font-display tracking-widest text-br-dk-text"
-                  onClick={() => navigator.clipboard?.writeText(calendarUrl).then(() => setNotice('Calendar link copied.'))}>COPY LINK</button>
-          <a className="sk-key rounded-lg px-4 py-2 text-xs font-display tracking-widest text-br-dk-text"
-             href={calendarUrl.replace(/^https?:/, 'webcal:')}>OPEN IN CALENDAR APP</a>
-        </div>
-        <p className="text-xs text-br-dk-muted">Before launch this link includes a private key so calendar apps can read it. After launch the plain link works.</p>
-      </section>
-
       <ErrorText>{error}</ErrorText>
       {notice && <p className="text-sm text-br-gold">{notice}</p>}
-      <div className="grid sm:grid-cols-3 gap-3">
-        <PrimaryButton busy={busy === 'save'} onClick={save}>SAVE SETTINGS</PrimaryButton>
+      <div className="grid grid-cols-2 gap-3">
+        <PrimaryButton busy={busy === 'rebuild'} onClick={() => runNow(false)}>SAVE &amp; APPLY</PrimaryButton>
         <button className="sk-key rounded-xl py-3.5 text-sm font-display tracking-[0.2em] text-br-dk-text disabled:opacity-50"
                 disabled={!!busy} onClick={() => runNow(true)}>{busy === 'preview' ? 'ONE MOMENT…' : 'PREVIEW'}</button>
-        <button className="sk-key rounded-xl py-3.5 text-sm font-display tracking-[0.2em] text-br-dk-text disabled:opacity-50"
-                disabled={!!busy} onClick={() => runNow(false)}>{busy === 'rebuild' ? 'ONE MOMENT…' : 'SAVE & REBUILD NOW'}</button>
       </div>
 
       {preview && (
@@ -288,7 +227,7 @@ export default function AutoSchedulePage() {
           <h2 className="font-display text-br-gold tracking-widest text-sm">
             {preview.written ? 'SCHEDULED' : 'PREVIEW'} · {preview.blocks.length} NEW BLOCKS{preview.kept ? ` (+${preview.kept} LOCKED)` : ''}
           </h2>
-          {preview.blocks.length === 0 && <p className="text-sm text-br-dk-sub">Nothing to fill. Every gap is already booked or locked.</p>}
+          {preview.blocks.length === 0 && <p className="text-sm text-br-dk-sub">Nothing to fill.</p>}
           <div className="sk-raised rounded-xl divide-y divide-br-dk-border">
             {preview.blocks.map(b => (
               <div key={b.startMs} className="flex justify-between gap-4 px-4 py-2.5 text-sm">
@@ -299,6 +238,84 @@ export default function AutoSchedulePage() {
           </div>
         </section>
       )}
+
+      {/* Everything else, out of the way */}
+      <details className="sk-raised rounded-2xl p-5">
+        <summary className="cursor-pointer select-none font-display text-br-gold tracking-widest text-sm">ADVANCED</summary>
+        <div className="pt-5 space-y-8">
+          <div className="space-y-4">
+            <div className="grid sm:grid-cols-4 gap-4">
+              <label><span className={lab}>TIME ZONE</span>
+                <input className={`${box} w-full`} value={cfg.timezone} onChange={e => update({ timezone: e.target.value })} /></label>
+              <label><span className={lab}>FILL AHEAD (HOURS)</span>
+                <input type="number" min={6} max={168} className={`${box} w-full`} value={cfg.horizonHours}
+                       onChange={e => update({ horizonHours: Number(e.target.value) })} /></label>
+              <label><span className={lab}>LONGEST BLOCK (MIN)</span>
+                <input type="number" min={30} max={360} step={30} className={`${box} w-full`} value={cfg.maxBlockMinutes}
+                       onChange={e => update({ maxBlockMinutes: Number(e.target.value) })} /></label>
+              <label><span className={lab}>LOCK NEXT (MIN)</span>
+                <input type="number" min={0} max={360} step={15} className={`${box} w-full`} value={cfg.lockMinutes}
+                       onChange={e => update({ lockMinutes: Number(e.target.value) })} /></label>
+            </div>
+            <label className="block"><span className={lab}>FALLBACK GENRES (COMMA SEPARATED)</span>
+              <input className={`${box} w-full`} defaultValue={cfg.defaultFillers.join(', ')}
+                     onBlur={e => update({ defaultFillers: lines(e.target.value) })} /></label>
+            <button className={btn}
+                    onClick={() => { if (window.confirm('Replace all blocks with the suggested schedule? Nothing is saved until you press Save.')) update({ rules: DEFAULT_CONFIG.rules.map(r => ({ ...r })) }) }}>
+              LOAD SUGGESTED SCHEDULE
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <h2 className="font-display text-br-gold tracking-widest text-sm">AZURACAST</h2>
+            <label className="flex items-center gap-3 text-sm text-br-dk-text">
+              <input type="checkbox" checked={cfg.syncToAzuraCast} onChange={e => update({ syncToAzuraCast: e.target.checked })} />
+              Send to AzuraCast after every rebuild
+            </label>
+            <div className="flex flex-wrap gap-3">
+              <button className={btn} disabled={!!busy} onClick={check}>{busy === 'check' ? 'CHECKING…' : 'CHECK CONNECTION'}</button>
+              <button className={btn} disabled={!!busy} onClick={syncNow}>{busy === 'sync' ? 'SENDING…' : 'SEND NOW'}</button>
+            </div>
+            {status && !status.configured && (
+              <p className="text-sm text-br-red">Not connected. Set AZURACAST_URL, AZURACAST_API_KEY and AZURACAST_STATION_ID in Vercel.</p>
+            )}
+            {status?.configured && !status.ok && <p className="text-sm text-br-red break-words">{status.error}</p>}
+            {status?.ok && (
+              <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                {status.genres.map(g => (
+                  <li key={g.genre} className="flex items-center gap-2">
+                    <span className={g.found ? 'text-br-green' : 'text-br-red'}>{g.found ? '✓' : '✗'}</span>
+                    <span className="text-br-dk-text">{g.genre}</span>
+                    {!g.found && <span className="text-xs text-br-dk-sub">needs a playlist named &ldquo;{g.playlist}&rdquo;</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {sync && !sync.error && (
+              <div className="text-sm text-br-dk-sub">
+                Updated {sync.updated.length} playlist{sync.updated.length === 1 ? '' : 's'}.
+                {sync.missing.length > 0 && <span className="text-br-red"> Missing in AzuraCast: {sync.missing.join(', ')}.</span>}
+              </div>
+            )}
+          </div>
+
+          <CorrectSchedule box={box} lab={lab} />
+
+          <div className="space-y-3">
+            <h2 className="font-display text-br-gold tracking-widest text-sm">CALENDAR FEED</h2>
+            <input readOnly value={calendarUrl} onFocus={e => e.currentTarget.select()}
+                   className="sk-field w-full rounded-lg px-3 py-2 text-xs text-br-dk-text" />
+            <div className="flex flex-wrap gap-3">
+              <button className={btn}
+                      onClick={() => navigator.clipboard?.writeText(calendarUrl).then(() => setNotice('Calendar link copied.'))}>COPY LINK</button>
+              <a className={btn} href={calendarUrl.replace(/^https?:/, 'webcal:')}>OPEN IN CALENDAR APP</a>
+            </div>
+          </div>
+          <div>
+            <button className={btn} disabled={!!busy} onClick={save}>{busy === 'save' ? 'SAVING…' : 'SAVE WITHOUT REBUILDING'}</button>
+          </div>
+        </div>
+      </details>
     </div>
   )
 }

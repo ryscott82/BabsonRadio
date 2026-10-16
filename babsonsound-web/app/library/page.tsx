@@ -29,6 +29,8 @@ function LibraryBody() {
   if (err && !d) return <p className="text-sm text-red-400">{err}</p>
   if (!d) return <p className="text-sm text-br-dk-sub">Loading…</p>
   const ids = new Set(d.savedIds)
+  // Starring an episode moves it to Saved right away, so it leaves this list.
+  const fresh = d.forYou.items.filter(e => !ids.has(e.id))
   return (
     <div className="space-y-10">
       {err && <p className="text-sm text-red-400">{err}</p>}
@@ -38,10 +40,10 @@ function LibraryBody() {
           ? <p className="text-sm text-br-dk-sub">Nothing saved yet. <Link href="/browse" className="text-br-gold">Find episodes</Link></p>
           : d.saved.map(e => <EpisodeRow key={e.id} ep={e} saved onSave={toggle} onPlay={setPlaying} />)}
       </section>
-      {d.forYou.items.length > 0 && (
+      {fresh.length > 0 && (
         <section className="space-y-3">
           <h2 className="font-display text-br-dk-text text-xl tracking-widest">{d.forYou.basedOnInterests ? 'BASED ON YOUR INTERESTS' : 'NEW EPISODES'}</h2>
-          {d.forYou.items.map(e => <EpisodeRow key={e.id} ep={e} saved={ids.has(e.id)} onSave={toggle} onPlay={setPlaying} />)}
+          {fresh.map(e => <EpisodeRow key={e.id} ep={e} saved={ids.has(e.id)} onSave={toggle} onPlay={setPlaying} />)}
         </section>
       )}
       <PlayerDialog ep={playing} onClose={() => setPlaying(null)} />

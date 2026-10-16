@@ -199,7 +199,8 @@ private struct RainDropView: View {
 // MARK: - Buttons and star rows under the player
 
 struct LiveExtrasView: View {
-    enum Mode { case reactions, rest, board }
+    enum Mode { case reactions, rest, board, emojis }
+    /// `.emojis` is just the emoji row (a second copy that does no polling of its own).
     /// `.board` is the emoji row plus the song rating, for the full screen board.
     /// `.reactions` is the emoji row that stays on the main screen; `.rest` is ratings and feedback, which live in the drawer.
     var mode: Mode = .rest
@@ -304,7 +305,7 @@ struct LiveExtrasView: View {
                 }
             }
 
-            if mode != .reactions {
+            if mode == .rest || mode == .board {
             if ratingsOn, let np, !np.title.isEmpty, np.showOnly != true {
                     starRow(label: "Rate this song", value: model.songStars) { n in
                         Task { await model.rateSong(n, title: np.title, artist: np.artist) }

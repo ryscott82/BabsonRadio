@@ -42,7 +42,7 @@ struct LivePlayerView: View {
             let top = geo.safeAreaInsets.top
             let small = geo.size.height < 700
             // Everything the listener needs fits on one screen. The cover takes whatever height is left over.
-            let reserved: CGFloat = top + (small ? 410 : 470)
+            let reserved: CGFloat = top + (small ? 410 : 470) + (LiveDrawer<EmptyView>.handleHeight - 46)
             let side = max(120, min(geo.size.width - 72, geo.size.height - reserved))
             let drawerH = min(geo.size.height * 0.72, 560)
             ZStack(alignment: .bottom) {
@@ -110,7 +110,7 @@ struct LivePlayerView: View {
 
                 // Everything else lives in a drawer you pull up.
                 LiveDrawer(open: $drawerOpen, height: drawerH, tint: accent) {
-                    roomContent
+                    drawerContent
                 }
                 }
             }
@@ -298,6 +298,19 @@ struct LivePlayerView: View {
 
     /// The host's note, who is tuned in, set list, vote and community. Shown in the pull-up drawer on a phone, and on the right page of an open foldable.
     private var roomContent: some View { roomBody(community: true) }
+
+    /// What the pull-up drawer holds, top to bottom: the poll (already open), the rating, the host's note, reactions, and the credit.
+    private var drawerContent: some View {
+        VStack(spacing: 18) {
+            if auth.isSignedIn && auth.canListenLive {
+                VotePanel(compact: true).padding(.horizontal, 20)
+            }
+            roomBody(community: !auth.isSignedIn, voteButton: false)
+            LiveExtrasView(mode: .emojis)
+            DesignedByCredit()
+        }
+        .padding(.top, 4)
+    }
 
     private func roomBody(community: Bool, voteButton: Bool = true) -> some View {
 
@@ -621,32 +634,21 @@ struct PlayerArtCard: View {
                     .aspectRatio(1, contentMode: .fit)
                     .overlay(
                         AsyncImage(url: url) { phase in
-                            if let image = phase.image { image.resizable().scaledToFill() } else { Color.clear }
+                            if let image = phase.image { image.resizable().scaledToFill().modifier(DaytimeCover(on: !ArtTheme.full(scheme))) } else { Color.clear }
                         }
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 20))
             }
-
-            // Bottom-left: indicator light + freq label
-            HStack(spacing: 8) {
-                // Green indicator LED
-                ZStack {
-                    Circle()
-                        .fill(Color.brGreen)
-                        .frame(width: 8, height: 8)
-                    Circle()
-                        .fill(Color.brGreen.opacity(0.3))
-                        .frame(width: 16, height: 16)
-                }
-
-                Text("INTERNET RADIO")
-                    .font(BRFont.display(10))
-                    .foregroundColor(Color.white.opacity(0.45))
-                    .kerning(2.5)
-            }
-            .padding(18)
         }
         .shadow(color: Color.black.opacity(0.55), radius: 24, x: 0, y: 10)
+    }
+}
+
+/// In the daytime the cover is pulled in a touch (6% less saturation, a hair warmer) so it sits in the muted, warm page.
+struct DaytimeCover: ViewModifier {
+    let on: Bool
+    func body(content: Content) -> some View {
+        if on { content.saturation(0.94).colorMultiply(Color(red: 1.0, green: 0.99, blue: 0.965)) } else { content }
     }
 }
 
@@ -1124,91 +1126,84 @@ struct BigClock: View {
 /// A shelf that peeks up from the bottom: a green lip with a grip and "Swipe up to rate!", and a panel behind it.
 /// Tap or drag the lip to open it; drag down or tap to close.
 struct LiveDrawer<Content: View>: View {
-    static var handleHeight: CGFloat { 46 }
+    /// What shows when closed: the grab tab plus a blurred peek of what is inside.
+    static var handleHeight: CGFloat { 96 }
+    private static var bottomGap: CGFloat { 8 }
+    private static var tabHeight: CGFloat { 44 }
     @Binding var open: Bool
     let height: CGFloat
     let tint: Color
     @ViewBuilder var content: () -> Content
     @Environment(\.colorScheme) private var scheme
     @GestureState private var drag: CGFloat = 0
-    @State private var nudge = false
-    @ObservedObject private var theme = ArtTheme.shared
 
-    private var corner: CGFloat { 22 }
+    /// Babson green, unless the whole UI is following the album art.
+    private var base: Color { ArtTheme.full(scheme) ? tint : .brGreen }
+    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: 28, style: .continuous) }
 
     var body: some View {
         let closedOffset = height - Self.handleHeight
-        VStack(spacing: 0) {
-            // The lip
-            ZStack {
-                UnevenRoundedRectangle(topLeadingRadius: corner, topTrailingRadius: corner)
-                    .fill(LinearGradient(colors: [theme.lip, theme.lipDeep], startPoint: .top, endPoint: .bottom))
-                    .overlay(alignment: .bottom) {
-                        // A darker lower edge, so the lip has thickness
-                        Rectangle().fill(.black.opacity(0.28)).frame(height: 3)
-                    }
-                    .shadow(color: .black.opacity(0.3), radius: 8, y: -2)
-                    .overlay(alignment: .top) {
-                        // A lit top edge, like a real shelf
-                        UnevenRoundedRectangle(topLeadingRadius: corner, topTrailingRadius: corner)
-                            .stroke(Color.white.opacity(0.35), lineWidth: 1)
-                            .mask(LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: .center))
-                    }
-                VStack(spacing: 3) {
-                    // Grip
-                    HStack(spacing: 4) { ForEach(0..<3, id: \.self) { _ in Capsule().fill(.white.opacity(0.55)).frame(width: 14, height: 3) } }
-                    HStack(spacing: 6) {
-                        Image(systemName: open ? "chevron.down" : "chevron.up").font(.system(size: 10, weight: .bold))
-                            .offset(y: (!open && nudge) ? -2 : 0)
-                        Text(open ? "Swipe down to close" : "Swipe up to rate!")
-                            .font(BRFont.display(14)).kerning(2)
-                    }
-                    .foregroundColor(.white)
-                    .shadow(color: .black.opacity(0.35), radius: 1, y: 1)
-                }
-            }
-            .frame(height: Self.handleHeight)
-            // Tipped back a little, so the shelf looks like it recedes into the screen.
-            .rotation3DEffect(.degrees(open ? 0 : -14), axis: (x: 1, y: 0, z: 0), anchor: .bottom, perspective: 0.5)
-            .animation(.spring(duration: 0.3), value: open)
-            .contentShape(Rectangle())
-            .onTapGesture { withAnimation(.spring(duration: 0.3)) { open.toggle() } }
-            // Global coordinates: the lip moves while you drag it, so measuring in its own space makes the drag jitter.
-            .gesture(
-                DragGesture(minimumDistance: 4, coordinateSpace: .global)
-                    .updating($drag) { v, state, _ in state = v.translation.height }
-                    .onEnded { v in
-                        withAnimation(.spring(duration: 0.3)) {
-                            if v.translation.height < -30 { open = true } else if v.translation.height > 30 { open = false }
-                        }
-                    }
-            )
+        ZStack(alignment: .top) {
+            // Frosted glass in the drawer's color
+            shape.fill(.ultraThinMaterial)
+                .overlay(shape.fill(LinearGradient(colors: [base.opacity(0.38), base.opacity(0.18)], startPoint: .top, endPoint: .bottom)))
+                .overlay(shape.stroke(Color.white.opacity(0.3), lineWidth: 1))
+                .shadow(color: base.opacity(0.35), radius: 18, y: -4)
 
-            // The panel
-            ScrollView(showsIndicators: false) { content() }
-                .frame(height: height - Self.handleHeight)
-                .background(
-                    // The inside of the shelf: darker at the back (top), lighter toward you
-                    LinearGradient(colors: scheme == .dark ? [Color.brDkBg, Color.brDkSurface] : [Color.brLtSurface2, Color.brLtSurface],
-                                   startPoint: .top, endPoint: .bottom)
+            VStack(spacing: 0) {
+                Color.clear.frame(height: Self.tabHeight)
+                // The contents. Closed, they are a soft blur you can half read; open, they come into focus.
+                ScrollView(showsIndicators: false) {
+                    content()
+                        .padding(.bottom, 24)
+                }
+                .scrollDisabled(!open)
+                .blur(radius: open ? 0 : 14)
+                .opacity(open ? 1 : 0.85)
+                .allowsHitTesting(open)
+                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: open ? 1 : 0.35), .init(color: open ? .black : .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+                .animation(.easeInOut(duration: 0.3), value: open)
+            }
+            .clipShape(shape)
+
+            // The grab tab: no words, just a handle and a chevron that bobs a little while it is closed.
+            VStack(spacing: 0) {
+                Capsule().fill(Color.white.opacity(0.75)).frame(width: 40, height: 5).padding(.top, 9)
+                TimelineView(.animation) { tl in
+                    let t = tl.date.timeIntervalSinceReferenceDate
+                    Image(systemName: open ? "chevron.compact.down" : "chevron.compact.up")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.9))
+                        .offset(y: open ? 0 : CGFloat(sin(t * 3.2)) * -2.5)
+                }
+                .frame(height: 24)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: Self.tabHeight, alignment: .top)
+
+            // Tap or drag the tab. Closed, the whole peek works too.
+            Color.clear
+                .contentShape(Rectangle())
+                .frame(height: open ? Self.tabHeight : Self.handleHeight)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .onTapGesture { withAnimation(.spring(duration: 0.35)) { open.toggle() } }
+                // Global coordinates: the drawer moves while you drag it, so measuring in its own space makes the drag jitter.
+                .gesture(
+                    DragGesture(minimumDistance: 4, coordinateSpace: .global)
+                        .updating($drag) { v, state, _ in state = v.translation.height }
+                        .onEnded { v in
+                            withAnimation(.spring(duration: 0.35)) {
+                                if v.translation.height < -30 { open = true } else if v.translation.height > 30 { open = false }
+                            }
+                        }
                 )
-                .overlay(alignment: .top) {
-                    // The shadow the lip casts into the shelf
-                    LinearGradient(colors: [.black.opacity(0.35), .clear], startPoint: .top, endPoint: .bottom).frame(height: 22).allowsHitTesting(false)
-                }
-                .overlay {
-                    // Shadowed side walls, so it reads as a recessed box
-                    HStack(spacing: 0) {
-                        LinearGradient(colors: [.black.opacity(0.22), .clear], startPoint: .leading, endPoint: .trailing).frame(width: 16)
-                        Spacer(minLength: 0)
-                        LinearGradient(colors: [.clear, .black.opacity(0.22)], startPoint: .leading, endPoint: .trailing).frame(width: 16)
-                    }
-                    .allowsHitTesting(false)
-                }
         }
-        .frame(height: height)
+        .frame(height: height - Self.bottomGap)
+        .padding(.horizontal, 10)
+        .padding(.bottom, Self.bottomGap)
+        .frame(height: height, alignment: .top)
         .offset(y: offset(closedOffset))
-        .onAppear { withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { nudge = true } }
+        .animation(.spring(duration: 0.35), value: open)
     }
 
     private func offset(_ closed: CGFloat) -> CGFloat {

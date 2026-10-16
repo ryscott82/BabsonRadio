@@ -109,15 +109,18 @@ struct LibraryView: View {
                             ForEach(lib.saved) { EpisodeListRow(ep: $0) }
                         }
 
-                        if !lib.forYou.isEmpty {
+                        // Anything you star moves up to Saved right away, so it leaves this list.
+                        let fresh = lib.forYou.filter { !lib.savedIds.contains($0.id) }
+                        if !fresh.isEmpty {
                             VStack(alignment: .leading, spacing: 12) {
                                 BRSectionHeader(title: lib.basedOnInterests ? "BASED ON YOUR INTERESTS" : "NEW EPISODES")
-                                ForEach(lib.forYou) { EpisodeListRow(ep: $0) }
+                                ForEach(fresh) { EpisodeListRow(ep: $0) }
                             }
                         }
                     }
                 }
                 .padding(20)
+                .animation(.easeInOut(duration: 0.25), value: lib.savedIds)
             }
             .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
             .navigationTitle("Library")

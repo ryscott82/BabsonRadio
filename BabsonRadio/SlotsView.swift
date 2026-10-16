@@ -542,6 +542,8 @@ struct ScheduleView: View {
     @StateObject private var slots = SlotsManager()
     @Environment(\.colorScheme) var scheme
     @State private var selected: ScheduleEntry?
+    @State private var calSelected: ScheduleEntry?   // a show opened from inside the auto DJ calendar
+    @State private var showAuto = false
     @State private var first = Calendar.current.startOfDay(for: Date())   // first of the three days shown
     @ObservedObject private var reminders = ReminderManager.shared
 
@@ -573,7 +575,75 @@ struct ScheduleView: View {
         return "\(a.formatted(.dateTime.month(.abbreviated).day())) – \(b.formatted(.dateTime.month(.abbreviated).day()))".uppercased()
     }
 
+    // The live lineup: everything that is not the auto DJ, soonest first, grouped by day.
+    private var lineup: [(day: Date, items: [ScheduleEntry])] {
+        let items = slots.feed.filter { $0.source != "auto" && $0.endAt > Date() }.sorted { $0.startAt < $1.startAt }
+        let groups = Dictionary(grouping: items) { cal.startOfDay(for: $0.startAt) }
+        return groups.keys.sorted().map { ($0, groups[$0] ?? []) }
+    }
+
+    private func dayTitle(_ d: Date) -> String {
+        if cal.isDateInToday(d) { return "TODAY" }
+        if cal.isDateInTomorrow(d) { return "TOMORROW" }
+        return d.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()).uppercased()
+    }
+
     var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 24) {
+                    if lineup.isEmpty {
+                        Text(slots.isLoading ? "Loading…" : "No live shows coming up.")
+                            .font(.system(size: 14)).foregroundColor(subColor)
+                    }
+                    ForEach(lineup, id: \.day) { group in
+                        VStack(alignment: .leading, spacing: 10) {
+                            BRSectionHeader(title: dayTitle(group.day))
+                            ForEach(group.items) { e in ScheduleEntryRow(entry: e) { selected = e } }
+                        }
+                    }
+                    // The auto DJ calendar is a tap away, so the shows with people in them come first.
+                    Button { showAuto = true } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "music.note.list")
+                            Text("AUTO DJ SCHEDULE").font(BRFont.display(14)).kerning(2)
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
+                        }
+                        .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                        .padding(14)
+                        .frame(maxWidth: .infinity)
+                        .brCard()
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(20)
+            }
+            .refreshable { await slots.loadFeed() }
+            .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+            .navigationTitle("")
+            .profileButton()
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 0) {
+                        Text("BABSON ").font(BRFont.display(18))
+                            .foregroundColor(scheme == .dark ? .brGold : .brGreen).kerning(3)
+                        Text("RADIO").font(BRFont.display(18)).foregroundColor(textColor).kerning(3)
+                    }
+                }
+            }
+        }
+        .sheet(item: $selected) { ScheduleDetailView(entry: $0) }
+        .sheet(isPresented: $showAuto) { calendarSheet }
+        .alert("Reminders", isPresented: Binding(get: { reminders.notice != nil }, set: { if !$0 { reminders.notice = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: { Text(reminders.notice ?? "") }
+        .task(id: auth.currentUser?.id) { await slots.loadFeed() }
+    }
+
+    /// The full 24 hour calendar, with the auto DJ's blocks, for people who want it.
+    private var calendarSheet: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 controls
@@ -591,28 +661,14 @@ struct ScheduleView: View {
                     .refreshable { await slots.loadFeed() }
                     .onAppear { scrollToNow(proxy) }
                     .onChange(of: first) { _, _ in scrollToNow(proxy) }
-                    .onChange(of: slots.feed.count) { _, _ in scrollToNow(proxy) }
                 }
             }
             .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
-            .navigationTitle("")
-            .profileButton()
+            .navigationTitle("Auto DJ schedule")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    HStack(spacing: 0) {
-                        Text("BABSON ").font(BRFont.display(18))
-                            .foregroundColor(scheme == .dark ? .brGold : .brGreen).kerning(3)
-                        Text("RADIO").font(BRFont.display(18)).foregroundColor(textColor).kerning(3)
-                    }
-                }
-            }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showAuto = false } } }
         }
-        .sheet(item: $selected) { ScheduleDetailView(entry: $0) }
-        .alert("Reminders", isPresented: Binding(get: { reminders.notice != nil }, set: { if !$0 { reminders.notice = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: { Text(reminders.notice ?? "") }
-        .task(id: auth.currentUser?.id) { await slots.loadFeed() }
+        .sheet(item: $calSelected) { ScheduleDetailView(entry: $0) }
     }
 
     private func scrollToNow(_ proxy: ScrollViewProxy) {
@@ -692,7 +748,7 @@ struct ScheduleView: View {
                 ForEach(items) { e in
                     let top = max(e.startAt, start).timeIntervalSince(start) / 3600 * hourH
                     let height = max(min(e.endAt, end).timeIntervalSince(max(e.startAt, start)) / 3600 * hourH - 2, 22)
-                    CalendarBlock(entry: e, height: height, onOpen: { selected = e })
+                    CalendarBlock(entry: e, height: height, onOpen: { calSelected = e })
                         .opacity(e.endAt <= Date() ? 0.55 : 1)
                         .frame(width: geo.size.width - 4, height: height)
                         .offset(x: 2, y: top + 1)

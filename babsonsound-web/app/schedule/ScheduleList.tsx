@@ -58,6 +58,7 @@ export default function ScheduleList() {
   const [items, setItems] = useState<Item[] | null>(null)
   const [error, setError] = useState('')
   const [open, setOpen] = useState<Item | null>(null)
+  const [showAuto, setShowAuto] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [first, setFirst] = useState(() => startOfDay(Date.now())) // first of the three days shown
   const scroller = useRef<HTMLDivElement>(null)
@@ -122,13 +123,49 @@ export default function ScheduleList() {
   const hourLabel = (h: number) => new Date(2000, 0, 1, h).toLocaleTimeString([], { hour: 'numeric' })
   const range = `${new Date(shown[0]).toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${new Date(shown[DAYS_SHOWN - 1]).toLocaleDateString([], { month: 'short', day: 'numeric' })}`
 
+  const lineupMap = new Map<number, Item[]>()
+  items.filter(it => it.source !== 'auto' && it.endAt > now && it.startAt < now + 7 * DAY)
+    .sort((a, b) => a.startAt - b.startAt)
+    .forEach(it => { const k = startOfDay(Math.max(it.startAt, now)); lineupMap.set(k, [...(lineupMap.get(k) ?? []), it]) })
+  const lineupDays = Array.from(lineupMap.entries())
+
   return (
     <>
-      <div className="sk-field rounded-xl px-4 py-2.5 text-xs text-br-dk-sub">
-        Tap the bell on a show for an iPhone reminder 5 minutes before. Install the app and sign in. No iPhone? Use the calendar link above.
-      </div>
       <ErrorText>{error}</ErrorText>
       {note && <p role="status" className="text-sm text-br-gold">{note}</p>}
+      <section className="space-y-5">
+        {lineupDays.length === 0 && <p className="text-sm text-br-dk-sub">No live shows coming up.</p>}
+        {lineupDays.map(([d, list]) => (
+          <div key={d} className="space-y-2">
+            <p className="font-display text-xs tracking-widest text-br-gold">
+              {d === today ? 'TODAY' : new Date(d).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase()}
+            </p>
+            <div className="sk-raised rounded-xl divide-y divide-br-dk-border">
+              {list.map(it => (
+                <div key={it.id} role="button" tabIndex={0} onClick={() => setOpen(it)}
+                     onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setOpen(it)}
+                     className="flex items-center gap-3 px-4 py-3 cursor-pointer">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-br-dk-text truncate">{it.title}</p>
+                    <p className="text-xs text-br-dk-sub truncate">{time(it.startAt)} – {time(it.endAt)}{it.hosts.length ? ` · ${it.hosts[0]}` : ''}</p>
+                  </div>
+                  {it.startAt <= now && it.endAt > now && <span className="text-[10px] font-display tracking-widest text-br-red">LIVE</span>}
+                  {it.endAt > now && (
+                    <Bell on={bells.has(it.reminderKey)} label={`Remind me before ${it.title}`}
+                          onClick={e => { e.stopPropagation(); toggleBell(it) }} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+      <button onClick={() => setShowAuto(v => !v)} aria-expanded={showAuto}
+              className="sk-key rounded-xl w-full py-3 text-sm font-display tracking-[0.2em] text-br-dk-text">
+        {showAuto ? 'HIDE AUTO DJ SCHEDULE' : 'AUTO DJ SCHEDULE'}
+      </button>
+      {showAuto && (
+      <>
 
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -209,6 +246,8 @@ export default function ScheduleList() {
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-[60] bg-black/50 flex items-end sm:items-center justify-center p-4" onClick={() => setOpen(null)}>

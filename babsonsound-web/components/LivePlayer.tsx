@@ -178,7 +178,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
             <p className="text-br-gold text-xs mb-1">Live with {np!.streamer}</p>
           )}
           {hasSong && np!.duration > 0 && (
-            <div className="h-1 w-full max-w-xs mx-auto md:mx-0 rounded-full bg-br-dk-border overflow-hidden mt-2" aria-hidden>
+            <div className={`h-1 w-full max-w-xs mx-auto md:mx-0 ${pane ? 'lg:mx-auto' : ''} rounded-full bg-br-dk-border overflow-hidden mt-2`} aria-hidden>
               <div className="h-full bg-br-gold" style={{ width: `${pct}%` }} />
             </div>
           )}

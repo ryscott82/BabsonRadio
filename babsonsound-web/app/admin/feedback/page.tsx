@@ -15,7 +15,7 @@ export default function AdminFeedbackPage() {
   const { user, isAdmin, loading } = useAuth()
   const router = useRouter()
   const [items, setItems] = useState<Item[]>([])
-  const [showDone, setShowDone] = useState(false)
+  const [tab, setTab] = useState<'open' | 'archive'>('open')
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
@@ -27,19 +27,22 @@ export default function AdminFeedbackPage() {
   useEffect(() => { if (user && isAdmin) queueMicrotask(load) }, [user, isAdmin, load])
 
   if (!user || !isAdmin) return null
-  const shown = items.filter(i => showDone || i.status === 'new')
+  const shown = items.filter(i => (tab === 'archive') === (i.status === 'done'))
+  const openCount = items.filter(i => i.status === 'new').length
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center gap-4">
         <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">BUGS & IDEAS</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
-        <label className="flex items-center gap-2 text-xs text-br-dk-sub shrink-0">
-          <input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> Show done
-        </label>
+        <div className="flex gap-1 shrink-0">
+          {([['open', `Open (${openCount})`], ['archive', 'Archive']] as const).map(([k, l]) => (
+            <button key={k} onClick={() => setTab(k)} className={`font-display tracking-widest text-xs px-3 py-1.5 rounded-lg ${tab === k ? 'text-br-gold bg-br-dk-surface' : 'text-br-dk-sub'}`}>{l}</button>
+          ))}
+        </div>
       </div>
       <ErrorText>{error}</ErrorText>
-      {shown.length === 0 && <p className="text-sm text-br-dk-sub">Nothing new.</p>}
+      {shown.length === 0 && <p className="text-sm text-br-dk-sub">{tab === 'open' ? 'Nothing new.' : 'Nothing archived yet. Reports you mark done land here.'}</p>}
       {shown.map(i => (
         <div key={i.id} className={`sk-raised rounded-xl p-4 space-y-2 ${i.status === 'done' ? 'opacity-60' : ''}`}>
           <div className="flex items-center justify-between gap-4">
@@ -53,7 +56,7 @@ export default function AdminFeedbackPage() {
             <p className="text-xs text-br-dk-sub truncate">{i.name}{i.email ? ` · ${i.email}` : ''}{i.page ? ` · ${i.page}` : ''}</p>
             <button className="text-xs text-br-gold shrink-0"
                     onClick={async () => { await api('/api/admin/feedback', { id: i.id, status: i.status === 'new' ? 'done' : 'new' }).catch(() => {}); load() }}>
-              {i.status === 'new' ? 'Mark done' : 'Reopen'}
+              {i.status === 'new' ? 'Done → archive' : 'Reopen'}
             </button>
           </div>
         </div>

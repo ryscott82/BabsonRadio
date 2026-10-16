@@ -292,7 +292,7 @@ struct LiveExtrasView: View {
             }
 
             if mode == .rest {
-            if let np, !np.title.isEmpty {
+            if let np, !np.title.isEmpty, np.showOnly != true {
                     starRow(label: "Rate this song", value: model.songStars) { n in
                         Task { await model.rateSong(n, title: np.title, artist: np.artist) }
                     }

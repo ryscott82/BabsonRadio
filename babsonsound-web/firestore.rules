@@ -49,11 +49,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Episodes marked isLocked: true are students/developers only (never guests); everything else is public.
+    // Episodes are students/developers only unless visibility == 'public', which only the server sets, after an adult host
+    // signs the public-sharing agreement. A missing field means private.
     // NOTE: this protects the Firestore document (incl. its audioURL/youtubeID), not the
     // media file itself — private media would also need signed URLs / Storage rules.
     match /episodes/{id} {
-      allow read: if resource.data.get('isLocked', false) == false || isMember();
+      allow read: if resource.data.get('visibility', 'private') == 'public' || isMember();
       allow write: if isStaff();
     }
 

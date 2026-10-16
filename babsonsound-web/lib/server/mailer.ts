@@ -55,3 +55,21 @@ export function betaWelcome(email: string) {
 <p>Babson Radio</p></div>`
   return { subject, text, html }
 }
+
+/** Tell a student how their show request went. */
+export function slotDecisionMail(o: { approved: boolean; title: string; when: string; note: string; connectionInfo: string }) {
+  const subject = o.approved ? `Your show “${o.title}” is approved` : `About your show request “${o.title}”`
+  const link = 'https://babsonradio.com/slots'
+  const lines = o.approved
+    ? [`Good news: your show “${o.title}” is on the schedule for ${o.when}.`,
+       ...(o.note ? ['', `A note from the station: ${o.note}`] : []),
+       ...(o.connectionInfo ? ['', 'How to go live:', o.connectionInfo] : []),
+       '', `You can see everything, or cancel, at ${link}.`]
+    : [`Thanks for asking for a spot with “${o.title}” on ${o.when}. We aren’t able to schedule it this time.`,
+       ...(o.note ? ['', `A note from the station: ${o.note}`] : []),
+       '', `You are welcome to request another time at ${link}.`]
+  const text = ['Hi,', '', ...lines, '', 'Babson Radio'].join('\n')
+  const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1710;line-height:1.5">${
+    ['Hi,', ...lines, 'Babson Radio'].map(l => (l === '' ? '' : `<p style="white-space:pre-wrap">${esc(l)}</p>`)).join('')}</div>`
+  return { subject, text, html }
+}

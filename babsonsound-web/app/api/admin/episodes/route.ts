@@ -2,6 +2,8 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireStaff, str } from '@/lib/server/http'
 import { recentEpisodes, slugify, youtubeId } from '@/lib/server/episodes'
+import { assertAllAdults, consentValid } from '@/lib/server/publicContent'
+import { adminAuth } from '@/lib/server/admin'
 
 export const runtime = 'nodejs'
 
@@ -36,12 +38,35 @@ export async function POST(req: Request) {
     if (!title) throw new HttpError(400, 'Enter a title.')
 
     const db = adminDb()
+
+    // Hosts (their school emails) so ages can be checked and so only they can sign for public sharing.
+    const hostEmails = str(b.hostEmails, 400).split(/[\s,;]+/).map(s => s.trim().toLowerCase()).filter(Boolean).slice(0, 6)
+    const hostUids: string[] = []
+    for (const e of hostEmails) {
+      try { hostUids.push((await adminAuth().getUserByEmail(e)).uid) } catch { throw new HttpError(400, `No account found for ${e}.`) }
+    }
+
+    // Everything is private (students only) unless a signed, adult host agreement covers it.
+    let visibility: 'public' | 'private' = 'private'
+    let publicConsentId = ''
+    if (b.visibility === 'public') {
+      await assertAllAdults(db, hostUids)
+      const slots = await db.collection('airSlots').where('requesterUid', 'in', hostUids.slice(0, 10)).get()
+      const cover = slots.docs.find(d => d.get('makePublic') === true && String(d.get('title')).trim().toLowerCase() === showName.toLowerCase()
+        && hostUids.includes(String(d.get('requesterUid'))))
+      if (!cover || !(await consentValid(db, cover.get('publicConsentId'), hostUids))) {
+        throw new HttpError(403, "That host hasn't signed to share this show publicly. Leave it private; the host can sign for it from their Host page.", 'BR-PUB-005')
+      }
+      visibility = 'public'; publicConsentId = String(cover.get('publicConsentId'))
+    }
+
     const showSlug = slugify(showName)
     const show = await db.collection('shows').where('slug', '==', showSlug).limit(1).get()
     const ref = await db.collection('episodes').add({
       title, showName, showSlug, showId: show.docs[0]?.id ?? '', category, description: str(b.description, 600),
       youtubeID: id, thumbnailURL: `https://img.youtube.com/vi/${id}/hqdefault.jpg`, duration: 0,
       publishedAt: Timestamp.now(), isNew: true, isFeatured: false,
+      visibility, hostUids, ...(publicConsentId ? { publicConsentId } : {}),
     })
     return { ok: true, id: ref.id }
   })

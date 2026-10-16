@@ -460,5 +460,40 @@
     "meaning": "PII_KEY isn't set on the server, so birthdays and age ranges can't be stored encrypted.",
     "userFix": "Contact the station.",
     "staffCheck": "Vercel → Settings → Environment Variables → add PII_KEY (run: openssl rand -base64 32), then redeploy. Keep a copy: without it saved birthdays can't be read."
+  },
+  {
+    "code": "BR-PUB-001",
+    "title": "Public sharing blocked: someone under 18",
+    "meaning": "A host or person in this content is under 18, so it cannot be made public. This is a minor-safety rule and cannot be overridden.",
+    "userFix": "Leave it as students-only. Nothing else is needed.",
+    "staffCheck": "Do not set visibility to public by hand for content with any under-18 host."
+  },
+  {
+    "code": "BR-PUB-002",
+    "title": "Age not on file",
+    "meaning": "A host has not given a birthday or age range yet, so we cannot confirm they are 18 or older.",
+    "userFix": "Open your profile and add your birthday or age range, then try again.",
+    "staffCheck": "The user's profile needs onboardedAt and minor=false."
+  },
+  {
+    "code": "BR-PUB-003",
+    "title": "No known host",
+    "meaning": "The episode has no linked host account, so ages cannot be checked.",
+    "userFix": "Ask staff to add the host's school email to the episode.",
+    "staffCheck": "Set hostUids on the episode (host emails in Admin > Library content)."
+  },
+  {
+    "code": "BR-PUB-004",
+    "title": "Signature incomplete",
+    "meaning": "Public sharing needs every box ticked and a full name typed.",
+    "userFix": "Tick all the boxes and type your first and last name.",
+    "staffCheck": "The signed record is saved in publicConsents with the agreement version and time."
+  },
+  {
+    "code": "BR-PUB-005",
+    "title": "Not your episode",
+    "meaning": "Only the host named on an episode can sign to make it public.",
+    "userFix": "Ask the host to do it from their Host page.",
+    "staffCheck": "Check hostUids on the episode."
   }
 ]

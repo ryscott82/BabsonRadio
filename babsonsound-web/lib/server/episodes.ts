@@ -13,6 +13,9 @@ export interface EpisodeOut {
   duration: number
   publishedAt: number
   isNew: boolean
+  /** 'public' = anyone on the internet; anything else (the default) = Babson students only. */
+  visibility: 'public' | 'private'
+  hostUids: string[]
 }
 
 /** The 11-character video id from any common YouTube link (watch, youtu.be, shorts, embed), or a bare id. */
@@ -42,6 +45,8 @@ export function toEpisode(id: string, d: DocumentData): EpisodeOut {
     category: String(d.category ?? ''), description: String(d.description ?? ''), youtubeID: yt,
     thumbnailURL: String(d.thumbnailURL ?? '') || (yt ? `https://img.youtube.com/vi/${yt}/hqdefault.jpg` : ''),
     duration: Number(d.duration) || 0, publishedAt: at?.toMillis?.() ?? 0, isNew: d.isNew === true,
+    visibility: d.visibility === 'public' ? 'public' : 'private',
+    hostUids: Array.isArray(d.hostUids) ? d.hostUids.map(String) : [],
   }
 }
 

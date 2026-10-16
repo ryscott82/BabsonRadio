@@ -4,6 +4,8 @@ import { HttpError, handle, readJson, requireDirector, str } from '@/lib/server/
 import { findConflict } from '@/lib/server/slots'
 import { rebuildAutoSchedule } from '@/lib/server/autoschedule'
 import { deleteImage } from '@/lib/server/images'
+import { after } from 'next/server'
+import { sendMail, slotDecisionMail } from '@/lib/server/mailer'
 
 export const runtime = 'nodejs'
 
@@ -28,7 +30,7 @@ export async function POST(req: Request) {
 
       if (action === 'decline') {
         tx.update(reqRef, { status: 'declined', staffNote: note, decidedAt: Timestamp.now(), decidedBy: t.uid })
-        return { ok: true, declinedImage: r.get('imagePath') as string | undefined }
+        return { ok: true, declinedImage: r.get('imagePath') as string | undefined, mail: { to: String(r.get('requesterEmail') ?? ''), title: String(r.get('title') ?? ''), at: r.get('startAt').toMillis() as number } }
       }
 
       const start: Timestamp = r.get('startAt')
@@ -43,13 +45,21 @@ export async function POST(req: Request) {
         title: r.get('title'), type: r.get('type'), category: r.get('category'),
         description: r.get('description') ?? '', imageUrl: r.get('imageUrl') ?? '', imagePath: r.get('imagePath') ?? '',
         startAt: start, endAt: end,
+        makePublic: r.get('makePublic') === true, publicConsentId: r.get('publicConsentId') ?? '',
       })
       tx.update(reqRef, {
         status: 'approved', staffNote: note, connectionInfo,
         decidedAt: Timestamp.now(), decidedBy: t.uid,
       })
-      return { ok: true }
+      return { ok: true, mail: { to: String(r.get('requesterEmail') ?? ''), title: String(r.get('title') ?? ''), at: start.toMillis() } }
     })
+    // Email the student the answer (does nothing until RESEND_API_KEY is set in Vercel).
+    const m = result.mail
+    if (m?.to) {
+      const when = new Date(m.at).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }) + ' ET'
+      const mail = slotDecisionMail({ approved: action === 'approve', title: m.title, when, note, connectionInfo })
+      after(() => sendMail(m.to, mail.subject, mail.text, mail.html))
+    }
     // Refit the auto-scheduled filler around the new booking. Never blocks the approval.
     if ('declinedImage' in result) await deleteImage(result.declinedImage) // a declined request's picture is no longer needed
     if (action === 'approve') await rebuildAutoSchedule(db).catch(e => console.error('[autoschedule]', e))

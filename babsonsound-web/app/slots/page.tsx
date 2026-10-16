@@ -7,6 +7,8 @@ import { api, apiGet } from '@/lib/auth'
 import { SLOT_CATEGORIES, SLOT_RULES, SLOT_TYPES, type SlotType } from '@/lib/slots'
 import { ErrorText, Field, PrimaryButton } from '@/components/AuthUI'
 import ImagePicker from '@/components/ImagePicker'
+import PublicAgreement, { type PublicSignature } from '@/components/PublicAgreement'
+import type { AdultStatus } from '@/lib/publicContent'
 
 interface Mine {
   id: string; title: string; type: SlotType; startAt: number; durationMin: number
@@ -46,6 +48,10 @@ export default function SlotsPage() {
   const [durationMin, setDurationMin] = useState(60)
   const [audioURL, setAudioURL] = useState('')
   const [image, setImage] = useState<{ url: string; path: string } | null>(null)
+  const [sharePublic, setSharePublic] = useState(false) // off by default: students only
+  const [sig, setSig] = useState<PublicSignature | null>(null)
+  const [adult, setAdult] = useState<AdultStatus>('unknown')
+  useEffect(() => { if (member) apiGet<{ publicSharing?: AdultStatus }>('/api/me').then(m => setAdult(m.publicSharing ?? 'unknown')).catch(() => {}) }, [member])
 
   const load = useCallback(async () => {
     try { setMine((await apiGet<{ requests: Mine[] }>('/api/slots/mine')).requests) }
@@ -58,7 +64,9 @@ export default function SlotsPage() {
     try {
       const startAt = new Date(start).getTime()
       if (!Number.isFinite(startAt)) throw new Error('Pick a start time.')
-      await api('/api/slots/request', { title, description, location, type, category, startAt, durationMin, audioURL, imageUrl: image?.url ?? '', imagePath: image?.path ?? '' })
+      if (sharePublic && !sig) throw new Error('Tick every box and type your full name to share publicly, or turn that off.')
+      await api('/api/slots/request', { title, description, location, type, category, startAt, durationMin, audioURL, imageUrl: image?.url ?? '', imagePath: image?.path ?? '', ...(sharePublic && sig ? { publicConsent: sig } : {}) })
+      setSharePublic(false); setSig(null)
       setTitle(''); setDescription(''); setLocation(''); setAudioURL(''); setImage(null)
       setNotice('Request sent. Staff review every request, and the answer shows up below.')
       await load()
@@ -124,6 +132,15 @@ export default function SlotsPage() {
           <Field label="Link to your audio" type="url" value={audioURL} onChange={e => setAudioURL(e.target.value)} placeholder="https://…" />
         )}
         <ImagePicker scope="slot" value={image} onChange={setImage} />
+        <div className="space-y-2 border-t border-br-dk-border pt-4">
+          <label className="flex items-center gap-2 text-sm text-br-dk-text">
+            <input type="checkbox" checked={sharePublic} disabled={adult !== 'adult'} onChange={e => { setSharePublic(e.target.checked); if (!e.target.checked) setSig(null) }} />
+            Also share my recordings with the public (optional)
+          </label>
+          {adult !== 'adult' && <PublicAgreement status={adult} onChange={() => {}} />}
+          {sharePublic && adult === 'adult' && <PublicAgreement status={adult} onChange={setSig} />}
+          {!sharePublic && adult === 'adult' && <p className="text-xs text-br-dk-muted">Left off, your recordings are for Babson students only.</p>}
+        </div>
         <p className="text-xs text-br-dk-muted">The title, description and picture are shown to listeners only if your request is approved.</p>
         <ErrorText>{error}</ErrorText>
         {notice && <p className="text-sm text-br-gold">{notice}</p>}

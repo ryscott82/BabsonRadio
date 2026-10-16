@@ -5,6 +5,7 @@ import { notifyAdmins } from '@/lib/server/push'
 import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/http'
 import { findConflict } from '@/lib/server/slots'
 import { checkImageRef } from '@/lib/server/images'
+import { assertAllAdults, recordConsent } from '@/lib/server/publicContent'
 import { SLOT_CATEGORIES, SLOT_RULES, SLOT_TYPES, type SlotCategory, type SlotType } from '@/lib/slots'
 
 export const runtime = 'nodejs'
@@ -59,6 +60,10 @@ export async function POST(req: Request) {
       throw new HttpError(429, `You can have ${SLOT_RULES.maxPendingPerUser} pending requests at a time.`)
     }
 
+    // Optional, off by default: share recordings beyond students. Adults only, and a typed signature is required.
+    const wantsPublic = b.publicConsent != null && typeof b.publicConsent === 'object'
+    if (wantsPublic) await assertAllAdults(db, [t.uid])
+
     const user = await db.collection('users').doc(t.uid).get()
     const ref = await db.collection('slotRequests').add({
       requesterUid: t.uid,
@@ -67,8 +72,14 @@ export async function POST(req: Request) {
       title, description, location, type, category, audioURL,
       imageUrl: img?.imageUrl ?? '', imagePath: img?.imagePath ?? '',
       startAt: Timestamp.fromDate(start), endAt: Timestamp.fromDate(end), durationMin,
-      status: 'pending', createdAt: Timestamp.now(),
+      status: 'pending', createdAt: Timestamp.now(), makePublic: false,
     })
+    if (wantsPublic) {
+      try {
+        const consentId = await recordConsent(db, t, b.publicConsent as Record<string, unknown> as never, { kind: 'slot', id: ref.id, title })
+        await ref.update({ makePublic: true, publicConsentId: consentId })
+      } catch (e) { await ref.delete(); throw e } // a bad signature never leaves a half-made request
+    }
     after(() => notifyAdmins('requests', { title: 'New show request', body: `${user.get('firstName') ?? 'A student'}: ${title}` }, t.uid))
     return { id: ref.id }
   })

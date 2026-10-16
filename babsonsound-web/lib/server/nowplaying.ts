@@ -38,6 +38,8 @@ export interface NowPlayingInfo {
   note: LiveNote | null
   /** True when the host/admin allows the night-time album-color background for what is on air. */
   colorChanging: boolean
+  /** True when a scheduled show is on air and AzuraCast gives no track info, so title/artist are the show and host names instead. */
+  showOnly: boolean
   /** A message for the whole audience from the station controls, or null. */
   announcement: Announcement | null
   updatedAt: number
@@ -49,11 +51,11 @@ const TTL_MS = 8_000
 let lastSample = 0
 let cache: { at: number; value: Built } | null = null
 
-type Built = Omit<NowPlayingInfo, 'announcement'>
+type Built = Omit<NowPlayingInfo, 'announcement'> & { showOnly: boolean; hostNames?: string[] }
 const empty = (configured: boolean): Built => ({
   configured, title: '', artist: '', album: '', art: '', elapsed: 0, duration: 0, playedAt: 0, history: [], bpm: 0, beatOffset: 0,
   isLive: false, streamer: '', playlist: '', listeners: 0, next: null, showTitle: '', blockTitle: '', color: '',
-  occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, colorChanging: false, updatedAt: Date.now(),
+  occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, colorChanging: false, showOnly: false, updatedAt: Date.now(),
 })
 
 type Song = { text?: string; artist?: string; title?: string; album?: string; art?: string; custom_fields?: Record<string, unknown> | unknown[] }
@@ -66,15 +68,15 @@ type Raw = {
 }
 
 /** The scheduled thing on air right now (one-time event > student slot > weekly show > genre block). */
-async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'blockTitle' | 'color' | 'occId' | 'isShow' | 'showStart' | 'showEnd' | 'note' | 'colorChanging'>> {
-  const none = { showTitle: '', blockTitle: '', color: '', occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, colorChanging: false }
+async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'blockTitle' | 'color' | 'occId' | 'isShow' | 'showStart' | 'showEnd' | 'note' | 'colorChanging'> & { hostNames: string[] }> {
+  const none = { showTitle: '', blockTitle: '', color: '', occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, colorChanging: false, hostNames: [] as string[] }
   try {
     const db = adminDb()
     const cur = await currentOnAir(db)
     if (!cur) return none
     return {
       showTitle: cur.isShow ? cur.item.title : '', blockTitle: cur.item.title, color: cur.item.color, occId: cur.occId, isShow: cur.isShow,
-      showStart: cur.item.startAt, showEnd: cur.item.endAt, note: await getNote(db, cur.occId), colorChanging: await getColorChanging(db, cur),
+      showStart: cur.item.startAt, showEnd: cur.item.endAt, note: await getNote(db, cur.occId), colorChanging: await getColorChanging(db, cur), hostNames: cur.item.hosts ?? [],
     }
   } catch { return none }
 }
@@ -121,13 +123,23 @@ async function build(): Promise<Built> {
       playlist,
       listeners: r.listeners?.current ?? 0,
       next: n && (n.title || n.text) ? { title: n.title || n.text || '', artist: n.artist ?? '' } : null,
-      ...(await onAir()),
+      ...(await onAir()), showOnly: false,
       updatedAt: Date.now(),
+    }
+    // A scheduled show that is not the auto DJ usually streams without track info. Show the show and host names instead
+    // of a stale song (or a blank), and turn off the song-only extras (ratings, beat sync, "up next").
+    if (value.isShow && (value.isLive || !value.title)) {
+      value.title = value.showTitle || value.blockTitle
+      value.artist = value.hostNames?.length ? value.hostNames.join(', ') : value.streamer
+      value.album = ''; value.art = ''; value.bpm = 0; value.beatOffset = 0; value.duration = 0; value.elapsed = 0; value.next = null
+      value.showOnly = true
     }
     // When the schedule has only a genre block (not a show) and the station is on auto-play, what is really playing wins:
     // use the AzuraCast playlist name so the label never disagrees with the music.
     if (!value.isLive && !value.isShow && playlist && USE_PLAYLIST_LABEL) value.blockTitle = playlist
     cache = { at: Date.now(), value }
+    // Voting for the next hour closes 10 minutes before it; this makes sure it is decided on time even if no one has the vote card open.
+    void import('./votes').then(m => m.finalizeDue(adminDb())).catch(() => {})
     // If AzuraCast is playing a different playlist than the plan, the schedule follows what is really on air.
     await trackActual(adminDb(), { playlist, playedAt: value.playedAt, isLive, isShow: value.isShow }).catch(() => {})
     // Remember how many people listen to what (once every 5 minutes) so the auto-scheduler can learn.

@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
 import { ErrorText, Field, PrimaryButton } from '@/components/AuthUI'
 import ImagePicker from '@/components/ImagePicker'
+import MyRecordings from '@/components/MyRecordings'
 
 // Songs listeners asked to have added to a playlist while this show was on air.
 function PlaylistRequests({ st, reload }: { st: Status; reload: () => void }) {
@@ -108,7 +109,7 @@ export default function HostPage() {
           {tab === 'live' && (<><Controls st={st} /><LiveNote st={st} reload={load} /><SongRequests st={st} reload={load} /><PlaylistRequests st={st} reload={load} /><Insights st={st} /></>)}
           {tab === 'stats' && <Stats />}
           {tab === 'setlist' && <SetList st={st} />}
-          {tab === 'shows' && (<><Shows st={st} /><ChangeRequest st={st} reload={load} /></>)}
+          {tab === 'shows' && (<><Shows st={st} /><MyRecordings /><ChangeRequest st={st} reload={load} /></>)}
         </>
       )}
     </div>

@@ -85,8 +85,8 @@ export default function ScheduleList() {
       await api('/api/reminders', { key: it.reminderKey, on })
       setNote(on
         ? (it.source === 'auto'
-            ? `You will be reminded 5 minutes before every ${it.title} block, in the Babson Radio app.`
-            : `You will be reminded 5 minutes before ${it.title}, in the Babson Radio app.`)
+            ? `You will be reminded 5 minutes before every ${it.title} block, on your iPhone (Babson Radio app, notifications allowed), not on this computer.`
+            : `You will be reminded 5 minutes before ${it.title} on your iPhone (Babson Radio app, notifications allowed), not on this computer.`)
         : 'Reminder turned off.')
     } catch (e) {
       setBells(prev => { const n = new Set(prev); if (on) n.delete(it.reminderKey); else n.add(it.reminderKey); return n })
@@ -124,7 +124,10 @@ export default function ScheduleList() {
 
   return (
     <>
-      <p className="text-xs text-br-dk-sub">Tap the bell on any show for a reminder 5 minutes before it starts. Reminders arrive in the Babson Radio iPhone app.</p>
+      <div className="sk-field rounded-xl px-4 py-2.5 text-xs text-br-dk-sub">
+        <strong className="text-br-dk-text">How reminders work:</strong> tap the bell on a show and we send a notification to your <strong className="text-br-dk-text">iPhone</strong> 5 minutes before it starts.
+        Your computer or browser will not show a pop-up. Install the Babson Radio iPhone app, sign in with this same account and allow notifications. No iPhone? Add the schedule to your calendar instead (link above).
+      </div>
       <ErrorText>{error}</ErrorText>
       {note && <p role="status" className="text-sm text-br-gold">{note}</p>}
 
@@ -229,6 +232,7 @@ export default function ScheduleList() {
                       className="sk-key rounded-xl w-full py-3 text-sm font-display tracking-[0.2em] text-br-dk-text">
                 {bells.has(open.reminderKey) ? 'REMINDER ON' : 'REMIND ME 5 MINUTES BEFORE'}
               </button>
+              <p className="text-[11px] text-br-dk-muted text-center -mt-2">Sent to the Babson Radio iPhone app, not this browser.</p>
               <button onClick={() => setOpen(null)} className="sk-key rounded-xl w-full py-3 text-sm font-display tracking-[0.2em] text-br-dk-text">CLOSE</button>
             </div>
           </div>

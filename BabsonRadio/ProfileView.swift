@@ -1496,6 +1496,10 @@ struct AboutYouSection: View {
     @State private var bDay = 0
     @State private var message: String?
     @State private var saving = false
+    /// What is saved on the server. The save button only appears when something differs from this, then goes away once saved.
+    @State private var saved: [String] = ["", "", "0", "0"]
+    private var current: [String] { [gradYear, concentration, String(bMonth), String(bDay)] }
+    private var dirty: Bool { current != saved }
 
     private func field(_ title: String, _ placeholder: String, _ text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -1567,6 +1571,7 @@ struct AboutYouSection: View {
             if let message {
                 Text(message).font(.system(size: 12)).foregroundColor(scheme == .dark ? .brGold : .brGreen)
             }
+            if dirty || saving {
             Button {
                 saving = true; message = nil
                 Task {
@@ -1577,7 +1582,10 @@ struct AboutYouSection: View {
                             "concentrations": concentration.isEmpty ? [String]() : [concentration],
                             "birthday": birthday,
                         ])
+                        saved = current
                         message = "Saved."
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        if message == "Saved." { message = nil }
                     } catch { message = error.localizedDescription }
                     saving = false
                 }
@@ -1590,6 +1598,7 @@ struct AboutYouSection: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10))
             }
             .disabled(saving)
+            }
         }
         .padding(18)
         .brCard()
@@ -1599,6 +1608,7 @@ struct AboutYouSection: View {
                 concentration = me.concentrations?.first ?? ""
                 bMonth = me.birthday?.month ?? 0
                 bDay = me.birthday?.day ?? 0
+                saved = current
             }
         }
     }

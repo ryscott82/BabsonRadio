@@ -18,6 +18,8 @@ export interface NowPlaying {
   showStart: number
   showEnd: number
   colorChanging?: boolean
+  /** A show is on air without track info: title/artist are the show and host names. */
+  showOnly?: boolean
   note: { headline: string; message: string; updatedAt: number; by: string } | null
   announcement: { text: string; updatedAt: number; until: number } | null
   updatedAt: number

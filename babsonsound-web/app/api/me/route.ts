@@ -33,6 +33,8 @@ export async function GET(req: Request) {
       birthday: cleanBirthday(u.get('birthday')),
       // False until the one-time "about you" step (name, phone, birthday or age range) is done.
       onboarded: u.get('onboardedAt') != null,
+      // 'adult' only when the profile says 18+. Drives the "make public" option; minors and unknowns never see it.
+      publicSharing: u.get('minor') === true ? 'minor' : (u.get('minor') === false && u.get('onboardedAt') != null ? 'adult' : 'unknown'),
     }
   })
 }

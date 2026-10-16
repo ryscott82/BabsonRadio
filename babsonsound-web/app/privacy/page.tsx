@@ -3,7 +3,7 @@ import { INSTAGRAM_URL, LINKS } from '@/lib/links'
 
 export const metadata: Metadata = { title: 'Privacy | Babson Radio', description: 'What Babson Radio collects, why, and your choices.' }
 
-const UPDATED = 'October 12, 2026'
+const UPDATED = 'October 16, 2026'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -52,6 +52,7 @@ export default function PrivacyPage() {
 
       <Section title="Your choices">
         <p>You can edit your name, turn on invisible mode, and delete your account from your profile. Deleting removes your account and profile. We delete the rest of your data, including anything left in backups and logs, within one year after you delete your account. Syncing contacts is always your choice, and you can turn off contacts access in your phone&apos;s settings.</p>
+        <p>Recordings are for Babson students only by default. A host who is 18 or older can choose to make a show or recording public, which takes a signed agreement; we keep that record (name typed, date and agreement version). Nothing involving anyone under 18 can be made public. Switching a recording back to private stops new viewers from the site, but cannot remove copies others already saved.</p>
         <p>Babson Radio is for people 13 and older. Our <a className={a} href="/terms">Terms of Use</a> explain the rules for using the service.</p>
       </Section>
 

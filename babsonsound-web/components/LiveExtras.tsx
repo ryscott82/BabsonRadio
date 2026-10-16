@@ -125,7 +125,7 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
   }
 
   // ── rate the song that is playing ──
-  const songKey = np?.title ? `${np.artist}|${np.title}` : ''
+  const songKey = np?.title && !np.showOnly ? `${np.artist}|${np.title}` : ''
   const [songStars, setSongStars] = useState<{ key: string; n: number }>({ key: '', n: 0 })
   useEffect(() => {
     if (!songKey || !np) return

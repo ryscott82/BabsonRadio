@@ -7,7 +7,7 @@ import { api, apiGet } from '@/lib/auth'
 interface State {
   blockStart: number; blockEnd: number; threshold: number
   options: { label: string; count: number }[]
-  myVote: string | null; winner: string | null; canVote: boolean; requestsOpen?: boolean; requestsShow?: string
+  myVote: string | null; winner: string | null; upNext?: { blockStart: number; label: string } | null; canVote: boolean; requestsOpen?: boolean; requestsShow?: string
 }
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -45,16 +45,19 @@ export default function VoteCard() {
     setBusy(false)
   }
 
-  const top = Math.max(1, s.threshold, ...s.options.map(o => o.count))
+  const top = Math.max(1, ...s.options.map(o => o.count))
   return (
     <section className="sk-raised rounded-xl p-4 space-y-3">
       <div>
         <h2 className="font-display text-br-dk-text text-lg tracking-wide">WHAT WOULD YOU LIKE TO HEAR?</h2>
         <p className="text-xs text-br-dk-sub mt-0.5">
-          {s.winner
-            ? `${s.winner} is taking over ${clock(s.blockStart)} – ${clock(s.blockEnd)}.`
-            : `Vote for ${clock(s.blockStart)} – ${clock(s.blockEnd)}. At ${s.threshold} votes, a genre takes over the hour.`}
+          Vote for {clock(s.blockStart)} – {clock(s.blockEnd)}. Voting closes 10 minutes before the hour; the genre with the most votes (at least {s.threshold}, no tie) takes it.
         </p>
+        {s.upNext && (
+          <p className="text-xs text-br-gold mt-1">
+            {s.upNext.label ? `${s.upNext.label} won ${clock(s.upNext.blockStart)}.` : `${clock(s.upNext.blockStart)}: no clear winner, so the auto DJ picks.`}
+          </p>
+        )}
       </div>
       <div className="space-y-1.5">
         {s.options.map(o => (
@@ -62,7 +65,7 @@ export default function VoteCard() {
                   className={`relative w-full text-left rounded-lg overflow-hidden sk-field px-3 py-1.5 text-xs text-br-dk-text ${s.myVote === o.label ? 'ring-1 ring-br-gold' : ''}`}>
             <span className="absolute inset-y-0 left-0 bg-br-gold/20" style={{ width: `${Math.min(100, (o.count / top) * 100)}%` }} />
             <span className="relative flex justify-between gap-3">
-              <span>{o.label}{s.winner === o.label ? ' ✓' : ''}</span>
+              <span>{o.label}</span>
               <span className="tabular-nums text-br-dk-sub">{o.count}</span>
             </span>
           </button>

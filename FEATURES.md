@@ -99,6 +99,8 @@ Legend: [x] built, [ ] planned.
 
 ## What would you like to hear (votes)
 - Signed-in people see a live tally for the NEXT hour (web home page, iOS Live tab button). Students, developers and guests connected to Babson can vote; one vote each, changeable until the hour starts.
+- (Oct 2026 rework) Voting for an hour closes 10 minutes before it. The genre with the MOST votes wins if it has at least 3 and is strictly ahead (a tie or too few votes leaves the auto DJ's pick). It is decided once, so no early lock-in and no flip-flopping; `voteResults/{hour}` holds the outcome. Genres only: entries that look like "Artist - Song" are ignored.
+- DMCA notes (not legal advice): the statutory webcasting license requires the service to be non-interactive, so listeners may steer genres but never pick specific songs or artists, and requests never play at a promised time. Also watch the sound-recording complement (no more than 3 songs from one album, or 4 from one artist, in 3 hours; at most 2 and 3 in a row): set AzuraCast's playlist/station rules to enforce it. Showing "Next:" song titles ahead of time can read as a pre-announced playlist, so consider dropping it. Check with counsel.
 - Each hour offers 5 broad genres picked from a pool of 8 (same 5 for everyone, different each hour; includes Jazz House for Studying). Edit the pool in lib/server/votes.ts, or save { list: [...] } to Firestore config/voteGenres. Every genre needs an AzuraCast playlist with the same name.
 - When a genre gets a majority (half) of the people who usually listen at that hour it takes over (average of the last 4 weeks of listener samples for that hour, rounded up, at least 3; 15 until there is history). The number is fixed per hour block and shown in the app. It takes over that hour from the auto-scheduler (`autoBlocks` with ruleId `vote`, never rebuilt away; booked shows stay). The AzuraCast sync runs afterwards if it is on.
 - Free-text artist/song requests exist only while a live show's DJ has turned "Take requests" on in the host panel (web, Live tab). Never for the auto DJ; it switches off when the show ends. Requests (5 a day each) show in that host's panel and in Admin > Listener requests. They never play automatically. Genre votes are separate and still decide the auto-scheduled hours.
@@ -127,3 +129,24 @@ Legend: [x] built, [ ] planned.
 ## Simplified look (Oct 2026)
 - Green-only theme; color-changing background is a per-set host switch (and an auto-DJ switch for admins), night only. Server: `liveColor/{occId}` docs, `colorChanging` in the now-playing feed, `POST /api/live/color`.
 - Home is a one-screen desktop layout: player left, Today / Episodes / Shows tabs right.
+
+## Public sharing (opt-in, adults only)
+- [x] Everything is students-only by default. A missing `visibility` on an episode means private (Firestore rules changed: only `visibility == 'public'` is readable by non-members). Episodes added before this are now private until a host signs.
+- [x] Go On Air (`/slots`): optional "share my recordings with the public", off by default, needs all 5 agreement boxes ticked and a typed full name. The signed record is saved in `publicConsents` and the request/airSlot carries `makePublic` + `publicConsentId`.
+- [x] Host page, My shows tab, "My recordings": a host signs to make one episode public, and can make it private again at any time (no signature needed). Admins can also switch to private.
+- [x] Admin > Library content: add host school emails (links `hostUids`); "Public" only works when every host is a known adult and has signed for that show. Otherwise it stays students-only.
+- [x] Under 18, or no birthday/age range on file, means the option is hidden/blocked on the website and re-checked on the server (BR-PUB-001/002/003). One under-18 host blocks the whole episode.
+- [ ] Deploy `firestore.rules` (`firebase deploy --only firestore:rules`) before this goes live
+- [ ] iOS: no public-sharing screen yet (website only)
+- [ ] Have counsel look at the agreement wording (`lib/publicContent.ts`); changing it means bumping `PUBLIC_AGREEMENT_VERSION`
+
+## Admin tidy-up (Oct 2026)
+- [x] Show requests (Admin > Slots): tabs Needs a decision / Booked / Archive. Declined and cancelled requests live in Archive only. Approve is one click, notes and go-live details are optional.
+- [x] Approve/decline emails to the student (needs `RESEND_API_KEY` and a verified sender domain in Resend; without it nothing is sent, nothing breaks)
+- [x] Bugs & Ideas: Open and Archive tabs; "Done" moves a report to the archive
+- [x] Listener insights: Dashboard tab (headline numbers, what to do, audience chart) and Raw data tab
+- [x] A scheduled show that is not the auto DJ and has no track info now shows the show name and host(s) (or the streamer name) instead of a song, and song ratings, "next" and beat sync are skipped for it. Shazam-style detection was not added (costly, unreliable on live talk, and extra licensing)
+- [x] Skip button: the 90% count now uses signed-in listeners (AzuraCast's number included people who cannot vote), the check also runs on every poll, and a failed skip now shows an error instead of failing silently. If it still fails, the AzuraCast API key needs "Manage station broadcasting"
+- [x] Progress bar under the title is centered in the home player
+- [x] Schedule page explains reminders are iPhone push notifications, not browser pop-ups
+- [x] iOS About you: the save button only shows when something changed

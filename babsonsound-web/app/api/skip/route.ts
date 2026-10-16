@@ -2,14 +2,17 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, requireUser } from '@/lib/server/http'
 import { bump } from '@/lib/server/earnedEmojis'
-import { azSkip, azuraConfigured, skipState } from '@/lib/server/skipVotes'
+import { applySkipIfReady, azuraConfigured, skipState } from '@/lib/server/skipVotes'
 
 export const runtime = 'nodejs'
 
 export async function GET(req: Request) {
   return handle(async () => {
     const t = await requireUser(req)
-    return stripKey(await skipState(adminDb(), t.uid))
+    const db = adminDb()
+    let s = await skipState(db, t.uid)
+    try { s = await applySkipIfReady(db, s) } catch { /* the vote still stands; the next poll tries again */ }
+    return stripKey(s)
   })
 }
 
@@ -29,19 +32,11 @@ export async function POST(req: Request) {
     await db.collection('skipVotes').doc(s.key).set({ voters: FieldValue.arrayUnion(t.uid), at: Timestamp.fromMillis(now) }, { merge: true })
     await bump(db, t.uid)
     s = await skipState(db, t.uid, now)
-    if (s.votes >= s.needed && !s.skipped && azuraConfigured()) {
-      // Mark first so two people tipping it at once only skip one song.
-      const ref = db.collection('skipVotes').doc(s.key)
-      const won = await db.runTransaction(async tx => {
-        if ((await tx.get(ref)).get('skipped') === true) return false
-        tx.set(ref, { skipped: true, skippedAt: Timestamp.fromMillis(now), needed: s.needed, votes: s.votes }, { merge: true })
-        return true
-      })
-      if (won) {
-        try { await azSkip(); s = { ...s, skipped: true } }
-        catch (e) { console.error('[vote skip]', e); await ref.set({ skipped: false }, { merge: true }) }
-      }
+    if (s.votes >= s.needed && !s.skipped && !azuraConfigured()) {
+      throw new HttpError(503, 'Skipping is not connected to the radio yet. Tell the station team.', 'BR-HST-003')
     }
+    try { s = await applySkipIfReady(db, s, now) }
+    catch { throw new HttpError(502, 'Enough people asked, but the radio did not accept the skip. Tell the station team (AzuraCast key needs "Manage station broadcasting").', 'BR-HST-003') }
     return stripKey(s)
   })
 }

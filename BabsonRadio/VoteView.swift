@@ -14,6 +14,8 @@ nonisolated struct VoteState: Decodable {
     let options: [Option]
     let myVote: String?
     let winner: String?
+    struct UpNext: Decodable { let blockStart: Double; let label: String }
+    let upNext: UpNext?
     let canVote: Bool?
     let requestsOpen: Bool?
     let requestsShow: String?
@@ -42,10 +44,13 @@ struct VoteView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     if let s = state {
-                        Text(s.winner.map { "\($0) is taking over \(time(s.blockStart)) – \(time(s.blockEnd))." }
-                             ?? "Vote for \(time(s.blockStart)) – \(time(s.blockEnd)). At \(s.threshold) votes, a genre takes over the hour.")
+                        Text("Vote for \(time(s.blockStart)) – \(time(s.blockEnd)). Voting closes 10 minutes before the hour. The genre with the most votes (at least \(s.threshold), no tie) takes it.")
                             .font(.system(size: 14)).foregroundColor(sub)
-                        let top = max(s.threshold, s.options.map(\.count).max() ?? 1)
+                        if let u = s.upNext {
+                            Text(u.label.isEmpty ? "\(time(u.blockStart)): no clear winner, so the auto DJ picks." : "\(u.label) won \(time(u.blockStart)).")
+                                .font(.system(size: 13)).foregroundColor(accent)
+                        }
+                        let top = max(1, s.options.map(\.count).max() ?? 1)
                         ForEach(s.options) { o in
                             Button { vote(o.label) } label: {
                                 ZStack(alignment: .leading) {
@@ -54,7 +59,7 @@ struct VoteView: View {
                                             .frame(width: g.size.width * CGFloat(min(1, Double(o.count) / Double(top))))
                                     }
                                     HStack {
-                                        Text(o.label + (s.winner == o.label ? " ✓" : ""))
+                                        Text(o.label)
                                             .font(.system(size: 15, weight: s.myVote == o.label ? .bold : .regular))
                                             .foregroundColor(text)
                                         Spacer()

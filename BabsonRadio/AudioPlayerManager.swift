@@ -38,6 +38,8 @@ nonisolated struct NowPlayingInfo: Decodable, Equatable {
     let playedAt: Double?
     let bpm: Double?
     let beatOffset: Double?
+    /// A show is on air without track info: title and artist are the show and host names, so there is no song to rate.
+    let showOnly: Bool?
 }
 
 /// Where the beat lands right now: `origin` is when a beat last (or first) fell, in seconds since the reference date.

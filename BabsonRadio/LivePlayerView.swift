@@ -13,6 +13,7 @@ struct LivePlayerView: View {
     @State private var showVote = false
     @State private var drawerOpen = false
     @Environment(\.verticalSizeClass) private var vSize
+    @Environment(\.horizontalSizeClass) private var hSize
 
     /// Signed-out visitors can preview the stream.
     private var canPlay: Bool { auth.canListenLive || !auth.isSignedIn }
@@ -33,11 +34,26 @@ struct LivePlayerView: View {
         GeometryReader { geo in
             let top = geo.safeAreaInsets.top
             let small = geo.size.height < 700
+            // Roomy screens (an open foldable, an iPad, a resized window) get a big clock so the screen never looks empty.
+            // Apple's advice: decide from the size class and the space available, never from the device or a fixed width.
+            let wide = hSize == .regular
+            let landscape = geo.size.width > geo.size.height
+            let clockOnTop = wide && !landscape
+            let clockLeft = wide && landscape
+            let leftPane: CGFloat = clockLeft ? geo.size.width * 0.42 : 0
+            let clockSize: CGFloat = clockOnTop ? min(geo.size.width * 0.22, 200) : (clockLeft ? min(geo.size.width * 0.15, 180) : 0)
+            let clockBand: CGFloat = clockOnTop ? clockSize * 1.45 + 24 : 0
             // Everything the listener needs fits on one screen. The cover takes whatever height is left over.
-            let reserved: CGFloat = top + (small ? 410 : 470)
-            let side = max(120, min(geo.size.width - 72, geo.size.height - reserved))
+            let reserved: CGFloat = top + (small ? 410 : 470) + clockBand
+            let side = max(120, min(geo.size.width - leftPane - 72, geo.size.height - reserved))
             let drawerH = min(geo.size.height * 0.72, 560)
             ZStack(alignment: .bottom) {
+                if clockLeft {
+                    BigClock(size: clockSize, alignment: .center, accent: accent, show: audio.nowPlaying?.showTitle ?? "")
+                        .frame(width: leftPane)
+                        .frame(width: geo.size.width, height: geo.size.height, alignment: .leading)
+                        .allowsHitTesting(false)
+                }
                 VStack(spacing: 0) {
                     if let a = audio.nowPlaying?.announcement, !a.text.isEmpty {
                         Text(a.text)
@@ -56,6 +72,12 @@ struct LivePlayerView: View {
                         .padding(.top, 6)
                         .padding(.bottom, 10)
 
+                    if clockOnTop {
+                        BigClock(size: clockSize, alignment: .center, accent: accent, show: audio.nowPlaying?.showTitle ?? "")
+                            .padding(.bottom, 8)
+                    }
+
+                    VStack(spacing: 0) {
                     PlayerArtCard()
                         .frame(width: 340, height: 340)
                         .scaleEffect(side / 340)
@@ -92,6 +114,9 @@ struct LivePlayerView: View {
                             .padding(.horizontal, 32)
                             .padding(.top, 6)
                     }
+                    Spacer(minLength: 0)
+                    }
+                    .padding(.leading, leftPane)
                     Spacer(minLength: 0)
                 }
                 .padding(.bottom, LiveDrawer<EmptyView>.handleHeight)
@@ -766,6 +791,8 @@ struct LiveBoardView: View {
                 HStack(spacing: 40) {
                     art(side: side)
                     VStack(alignment: .leading, spacing: 8) {
+                        BigClock(size: min(geo.size.height * 0.24, 110), alignment: .leading, accent: glow, show: "", onDark: true)
+                            .padding(.bottom, 6)
                         Text(hasSong ? (np?.title ?? "") : "Babson Radio")
                             .font(BRFont.display(34)).foregroundColor(.white)
                             .lineLimit(3).minimumScaleFactor(0.6)
@@ -841,6 +868,65 @@ struct LiveBoardView: View {
 }
 #endif
 
+
+
+// MARK: - Big clock
+
+/// The time, big, like a desk clock: "1:19" with a small AM/PM, the date underneath and the show that is on air.
+/// Used on big screens (an open foldable, an iPad) and on the full screen board. Updates once a minute.
+struct BigClock: View {
+    var size: CGFloat
+    var alignment: HorizontalAlignment = .center
+    var accent: Color
+    var show: String = ""
+    var onDark: Bool = false
+    @Environment(\.colorScheme) private var scheme
+
+    private var ink: Color { onDark ? .white : (scheme == .dark ? .brDkText : .brLtText) }
+
+    var body: some View {
+        TimelineView(.everyMinute) { context in
+            let parts = Self.timeParts(context.date)
+            VStack(alignment: alignment, spacing: size * 0.04) {
+                HStack(alignment: .firstTextBaseline, spacing: size * 0.08) {
+                    Text(parts.time)
+                        .font(BRFont.display(size)).kerning(size * 0.02)
+                        .foregroundColor(ink)
+                        .lineLimit(1).minimumScaleFactor(0.5)
+                    if !parts.suffix.isEmpty {
+                        Text(parts.suffix)
+                            .font(BRFont.display(size * 0.26)).kerning(2)
+                            .foregroundColor(accent)
+                    }
+                }
+                Text(Self.dateLine(context.date))
+                    .font(BRFont.display(max(14, size * 0.16))).kerning(4)
+                    .foregroundColor(ink.opacity(0.7))
+                if !show.isEmpty {
+                    Text(show.uppercased())
+                        .font(BRFont.display(max(12, size * 0.11))).kerning(3)
+                        .foregroundColor(accent).lineLimit(1).padding(.top, size * 0.04)
+                }
+            }
+            .multilineTextAlignment(alignment == .leading ? .leading : .center)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// "1:19" and "AM" (or "13:19" and "" in 24-hour settings).
+    static func timeParts(_ date: Date) -> (time: String, suffix: String) {
+        let f = DateFormatter()
+        f.setLocalizedDateFormatFromTemplate("jmm")
+        let pieces = f.string(from: date).components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+        return (pieces.first ?? "", pieces.dropFirst().joined(separator: " "))
+    }
+
+    static func dateLine(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.setLocalizedDateFormatFromTemplate("EEEEMMMMd")
+        return f.string(from: date).uppercased()
+    }
+}
 
 // MARK: - Pull-up drawer
 

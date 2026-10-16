@@ -1,0 +1,1 @@
+rm -f .git/index.lock && git add -A && git commit -m "new beaver logo and icons again, live page fits one screen with a pull-up drawer, volume bar under play and skip like apple music, reactions always on the main screen" && git push

@@ -1,6 +1,7 @@
 'use client'
 
 import SongLinks from '@/components/SongLinks'
+import BigClock from '@/components/BigClock'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
@@ -278,8 +279,10 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
       <div ref={boardRef} onMouseMove={() => setAwake(true)} onClick={() => setAwake(true)}
            className={`fixed inset-0 z-[100] bg-black overflow-hidden flex items-center justify-center ${awake ? '' : 'cursor-none'}`}>
         <Visualizer inline color={glow} playing={isPlaying} className="absolute inset-0 w-full h-full pointer-events-none scale-110 blur-[8px]" />
-        <div className="relative flex flex-col md:flex-row items-center gap-10 md:gap-16 px-10 max-w-[1600px] w-full">
-          <div className="shrink-0 w-[min(70vw,46vh)] aspect-square rounded-2xl overflow-hidden shadow-[0_0_120px_var(--glow)]"
+        <div className="relative flex flex-col items-center gap-[4vh] px-10 max-w-[1600px] w-full">
+        <BigClock color="#fff" accent={glow || '#2fb67c'} sizeClass="text-[clamp(4rem,min(13vw,22vh),14rem)]" />
+        <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16 w-full justify-center">
+          <div className="shrink-0 w-[min(70vw,34vh)] aspect-square rounded-2xl overflow-hidden shadow-[0_0_120px_var(--glow)]"
                style={{ ['--glow' as string]: (glow || '#2fb67c') + '88', background: glow ? `linear-gradient(135deg, ${glow}, #000000aa)` : '#003D27' }}>
             {np?.art
               // eslint-disable-next-line @next/next/no-img-element
@@ -292,6 +295,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
             {np?.showTitle && <p className="mt-6 text-[clamp(1rem,1.8vw,1.75rem)] font-display tracking-[0.2em]" style={{ color: glow || '#fff' }}>{np.showTitle}</p>}
             {hasSong && np!.next && <p className="mt-8 text-white/50 text-[clamp(0.9rem,1.4vw,1.4rem)]">Next: {np!.next.title}{np!.next.artist ? ` · ${np!.next.artist}` : ''}</p>}
           </div>
+        </div>
         </div>
         <p className="absolute bottom-6 left-8 font-display tracking-[0.4em] text-white/40 text-sm">BABSON RADIO</p>
         <div className={`absolute top-5 right-5 flex gap-3 transition-opacity duration-500 ${awake ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>

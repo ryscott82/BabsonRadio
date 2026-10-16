@@ -1,14 +1,18 @@
 import {
   collection,
-  doc,
   getDocs,
-  getDoc,
   query,
   where,
   orderBy,
   limit,
+  type DocumentData,
+  type QueryDocumentSnapshot,
 } from 'firebase/firestore'
 import { db } from './firebase'
+
+/** A Firestore document with its id. Fields are loosely typed on purpose; the pages read the ones they need. */
+export type Doc = { id: string } & DocumentData
+const toDoc = (d: QueryDocumentSnapshot): Doc => ({ id: d.id, ...d.data() })
 
 // ── Shows ──────────────────────────────────────────────────────
 
@@ -16,7 +20,7 @@ async function _getShows() {
   const snap = await getDocs(
     query(collection(db, 'shows'), where('isActive', '==', true), orderBy('name'))
   )
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  return snap.docs.map(toDoc)
 }
 
 async function _getShowBySlug(slug: string) {
@@ -25,23 +29,23 @@ async function _getShowBySlug(slug: string) {
   )
   if (snap.empty) return null
   const d = snap.docs[0]
-  return { id: d.id, ...d.data() }
+  return toDoc(d)
 }
 
 async function _getFeaturedShows() {
   const snap = await getDocs(
     query(collection(db, 'shows'), where('isFeatured', '==', true), where('isActive', '==', true))
   )
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  return snap.docs.map(toDoc)
 }
 
 // ── Episodes ───────────────────────────────────────────────────
 
 async function _getRecentEpisodes(count = 10) {
   const snap = await getDocs(
-    query(collection(db, 'episodes'), orderBy('publishedAt', 'desc'), limit(count))
+    query(collection(db, 'episodes'), where('visibility', '==', 'public'), orderBy('publishedAt', 'desc'), limit(count))
   )
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  return snap.docs.map(toDoc)
 }
 
 async function _getEpisodesByShow(showId: string) {
@@ -49,17 +53,18 @@ async function _getEpisodesByShow(showId: string) {
     query(
       collection(db, 'episodes'),
       where('showId', '==', showId),
+      where('visibility', '==', 'public'),
       orderBy('publishedAt', 'desc')
     )
   )
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  return snap.docs.map(toDoc)
 }
 
 async function _getFeaturedEpisodes() {
   const snap = await getDocs(
-    query(collection(db, 'episodes'), where('isFeatured', '==', true), orderBy('publishedAt', 'desc'), limit(6))
+    query(collection(db, 'episodes'), where('isFeatured', '==', true), where('visibility', '==', 'public'), orderBy('publishedAt', 'desc'), limit(6))
   )
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  return snap.docs.map(toDoc)
 }
 
 // ── Schedule ───────────────────────────────────────────────────
@@ -68,7 +73,7 @@ async function _getSchedule() {
   const snap = await getDocs(
     query(collection(db, 'schedule'), where('isActive', '==', true), orderBy('dayOfWeek'), orderBy('startTime'))
   )
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  return snap.docs.map(toDoc)
 }
 
 async function _getTodaySchedule() {
@@ -81,13 +86,13 @@ async function _getTodaySchedule() {
       orderBy('startTime')
     )
   )
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  return snap.docs.map(toDoc)
 }
 
 // ── Fail-soft wrappers ─────────────────────────────────────────
 // Pages are pre-rendered at build time. A missing index or a rules denial should show an empty
-// section, never break the whole deploy. (Episodes are private to students, so an anonymous
-// server render may legitimately get nothing back.)
+// section, never break the whole deploy. These pages are public, so episode queries ask for
+// visibility == 'public' only (the rules reject any query that could also return private ones).
 
 async function soft<T>(fn: () => Promise<T>, fallback: T, label: string): Promise<T> {
   try {

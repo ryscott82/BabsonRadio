@@ -24,3 +24,7 @@ playlist_missing.csv
 
 tools/art/
 tools/art_report.csv
+
+# Python
+__pycache__/
+*.pyc

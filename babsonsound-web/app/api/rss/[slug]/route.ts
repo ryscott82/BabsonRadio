@@ -6,10 +6,10 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params
-  const show = await getShowBySlug(slug) as any
+  const show = await getShowBySlug(slug)
   if (!show) return new NextResponse('Show not found', { status: 404 })
 
-  const episodes = await getEpisodesByShow(show.id) as any[]
+  const episodes = await getEpisodesByShow(show.id)
   const siteURL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://babsonsound.com'
 
   const items = episodes.map(ep => {

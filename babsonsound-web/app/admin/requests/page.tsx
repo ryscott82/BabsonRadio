@@ -61,7 +61,7 @@ export default function AdminRequestsPage() {
 
       <div className="space-y-3">
         <h2 className="font-display text-br-dk-text text-xl tracking-[0.1em]">ADD TO A PLAYLIST</h2>
-        <p className="text-sm text-br-dk-sub">Songs listeners want added to a playlist, grouped by playlist. Requests made during a host's show also appear in that host's panel.</p>
+        <p className="text-sm text-br-dk-sub">Songs listeners want added to a playlist, grouped by playlist. Requests made during a host&apos;s show also appear in that host&apos;s panel.</p>
         {byList.map(name => (
           <div key={name} className="space-y-2">
             <h3 className="text-xs text-br-gold tracking-widest">{name}</h3>

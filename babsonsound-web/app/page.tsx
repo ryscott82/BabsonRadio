@@ -1,5 +1,6 @@
 import LivePlayer from '@/components/LivePlayer'
 import EpisodeCard from '@/components/EpisodeCard'
+type EpisodeProps = React.ComponentProps<typeof EpisodeCard>['episode']
 import { LikesProvider, LikeBar } from '@/components/Likes'
 import Link from 'next/link'
 import { LINKS } from '@/lib/links'
@@ -22,7 +23,7 @@ export default async function HomePage() {
 
   const todayPanel = schedule.length > 0 ? (
     <div className="rounded-xl overflow-hidden sk-raised divide-y divide-br-dk-border">
-      {schedule.map((slot: any) => (
+      {schedule.map(slot => (
         <div key={slot.id} className={`flex items-center gap-4 px-5 py-3 ${slot.isLive ? 'bg-br-green/5' : 'bg-br-dk-surface'}`}>
           <span className={`font-display text-sm tracking-wider w-20 shrink-0 ${slot.isLive ? 'text-br-gold' : 'text-br-dk-sub'}`}>{slot.startTime}</span>
           {slot.isLive && <span className="w-2 h-2 rounded-full bg-br-red shrink-0" />}
@@ -37,10 +38,10 @@ export default async function HomePage() {
   ) : <p className="text-sm text-br-dk-sub py-6">Nothing scheduled today. The auto DJ has you covered. <Link href="/schedule" className="text-br-gold">See the week</Link></p>
 
   const episodesPanel = episodes.length > 0 ? (
-    <LikesProvider ids={episodes.slice(0, 6).map((ep: any) => ep.id)}>
+    <LikesProvider ids={episodes.slice(0, 6).map(ep => ep.id)}>
       <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
-        {episodes.slice(0, 6).map((ep: any) => (
-          <div key={ep.id}><EpisodeCard episode={ep} /><LikeBar episodeId={ep.id} /></div>
+        {episodes.slice(0, 6).map(ep => (
+          <div key={ep.id}><EpisodeCard episode={ep as EpisodeProps} /><LikeBar episodeId={ep.id} /></div>
         ))}
       </div>
     </LikesProvider>
@@ -48,7 +49,7 @@ export default async function HomePage() {
 
   const showsPanel = shows.length > 0 ? (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-      {shows.map((show: any) => (
+      {shows.map(show => (
         <Link key={show.id} href={`/shows/${show.slug}`} className="group flex items-center gap-4 p-3 rounded-xl sk-raised">
           <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#003D27] to-br-green flex items-center justify-center shrink-0 overflow-hidden">
             {show.artworkURL ? <img src={show.artworkURL} alt={show.name} className="w-full h-full object-cover" />

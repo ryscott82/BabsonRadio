@@ -74,9 +74,10 @@ async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'blockTitle' 
     const db = adminDb()
     const cur = await currentOnAir(db)
     if (!cur) return none
+    const [note, colorChanging] = await Promise.all([getNote(db, cur.occId), getColorChanging(db, cur)])
     return {
       showTitle: cur.isShow ? cur.item.title : '', blockTitle: cur.item.title, color: cur.item.color, occId: cur.occId, isShow: cur.isShow,
-      showStart: cur.item.startAt, showEnd: cur.item.endAt, note: await getNote(db, cur.occId), colorChanging: await getColorChanging(db, cur), hostNames: cur.item.hosts ?? [],
+      showStart: cur.item.startAt, showEnd: cur.item.endAt, note, colorChanging, hostNames: cur.item.hosts ?? [],
     }
   } catch { return none }
 }

@@ -134,7 +134,7 @@ export default function SlotsPage() {
         </div>
       )}
 
-      <form onSubmit={submit} className={`sk-raised rounded-2xl p-5 space-y-4 ${ready && !ready.trained ? 'opacity-50 pointer-events-none' : ''}`} aria-disabled={ready ? !ready.trained : undefined}>
+      <form onSubmit={submit} className={`sk-raised rounded-2xl p-5 space-y-4 ${ready && !ready.trained ? 'opacity-50 pointer-events-none' : ''}`}>
         <Field label="Title" value={title} onChange={e => setTitle(e.target.value)} maxLength={80} required />
         <label className="block">
           <span className={label}>WHAT&apos;S IT ABOUT?</span>

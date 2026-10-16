@@ -1,5 +1,6 @@
 import { getShowBySlug, getEpisodesByShow } from '@/lib/firestore'
 import EpisodeCard from '@/components/EpisodeCard'
+type EpisodeProps = React.ComponentProps<typeof EpisodeCard>['episode']
 import { LikesProvider, LikeBar } from '@/components/Likes'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
@@ -12,7 +13,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const show = await getShowBySlug(slug) as any
+  const show = await getShowBySlug(slug)
   if (!show) return { title: 'Show not found' }
   return {
     title: `${show.name} — Babson Radio`,
@@ -22,13 +23,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ShowPage({ params }: Props) {
   const { slug } = await params
-  const [show, episodes] = await Promise.all([
-    getShowBySlug(slug),
-    (async () => {
-      const s = await getShowBySlug(slug) as any
-      return s ? getEpisodesByShow(s.id) : []
-    })(),
-  ]) as [any, any[]]
+  const show = await getShowBySlug(slug)
+  const episodes = show ? await getEpisodesByShow(show.id) : []
 
   if (!show) notFound()
 
@@ -80,11 +76,11 @@ export default async function ShowPage({ params }: Props) {
       {episodes.length === 0 ? (
         <p className="text-br-dk-muted text-sm py-12 text-center">No episodes published yet.</p>
       ) : (
-        <LikesProvider ids={episodes.map((ep: any) => ep.id)}>
+        <LikesProvider ids={episodes.map(ep => ep.id)}>
           <div className="space-y-3">
-            {episodes.map((ep: any) => (
+            {episodes.map(ep => (
               <div key={ep.id}>
-                <EpisodeCard episode={ep} layout="row" />
+                <EpisodeCard episode={ep as EpisodeProps} layout="row" />
                 <LikeBar episodeId={ep.id} />
               </div>
             ))}

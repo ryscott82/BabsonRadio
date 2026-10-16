@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 
 const KEY = 'br-interest-dismissed'
@@ -8,8 +8,7 @@ const KEY = 'br-interest-dismissed'
 /** The interest form is only for beta testers. Everyone else, signed in or not, never sees it. Testers can close it (remembered on this device). */
 export default function InterestFormCta({ children }: { children: ReactNode }) {
   const { loading, user, isTester } = useAuth()
-  const [hidden, setHidden] = useState(false)
-  useEffect(() => { try { if (localStorage.getItem(KEY) === '1') setHidden(true) } catch { /* private window: it just comes back next visit */ } }, [])
+  const [hidden, setHidden] = useState(() => { try { return typeof window !== 'undefined' && localStorage.getItem(KEY) === '1' } catch { return false /* private window: it just comes back next visit */ } })
   if (loading || hidden) return null
   if (!user || !isTester) return null
   return (

@@ -27,7 +27,7 @@ export default function VoteCard() {
   useEffect(() => {
     if (!user) return
     queueMicrotask(load)
-    const t = setInterval(load, 10_000) // near real time
+    const t = setInterval(() => { if (!document.hidden) load() }, 10_000) // near real time; paused in background tabs
     return () => clearInterval(t)
   }, [user, load])
 

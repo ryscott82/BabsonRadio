@@ -30,7 +30,7 @@ function Art({ item, className }: { item: Item; className: string }) {
   }
   const a = genreArt(item.title)
   // A scheduler-picked color wins over the generic art.
-  const background = item.color ? `linear-gradient(135deg, ${item.color}, ${item.color}88)` : a.background
+  const background = a.background
   return (
     <div className={`${className} flex items-center justify-center`} style={{ background }}>
       <span className="font-display text-br-brass text-2xl">{a.initial}</span>
@@ -124,7 +124,7 @@ export default function ScheduleList() {
 
   return (
     <>
-      <p className="text-sm text-br-dk-sub">Tap the bell on any show to get a reminder 5 minutes before it starts. Reminders arrive in the Babson Radio iPhone app.</p>
+      <p className="text-xs text-br-dk-sub">Tap the bell on any show for a reminder 5 minutes before it starts. Reminders arrive in the Babson Radio iPhone app.</p>
       <ErrorText>{error}</ErrorText>
       {note && <p role="status" className="text-sm text-br-gold">{note}</p>}
 
@@ -157,7 +157,7 @@ export default function ScheduleList() {
           ))}
         </div>
 
-        <div ref={scroller} className="overflow-y-auto" style={{ maxHeight: '68vh' }}>
+        <div ref={scroller} className="overflow-y-auto max-h-[68vh] lg:max-h-[calc(100dvh-17rem)]">
           <div className="grid grid-cols-[2.75rem_repeat(3,minmax(0,1fr))]" style={{ height: 24 * HOUR_PX }}>
             <div className="relative">
               {hours.map(h => (
@@ -185,10 +185,10 @@ export default function ScheduleList() {
                       <div key={it.id} role="button" tabIndex={0} onClick={() => setOpen(it)}
                            onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setOpen(it)}
                            className={`absolute inset-x-0.5 rounded-md px-1.5 py-1 overflow-hidden cursor-pointer text-left ${
-                             it.source === 'auto' ? 'sk-field' : `sk-raised border-l-2 ${it.color ? '' : 'border-br-gold'}`} ${live ? 'ring-1 ring-br-red' : ''} ${it.endAt <= now ? 'opacity-55' : ''}`}
+                             it.source === 'auto' ? 'sk-field' : `sk-raised border-l-2 border-br-gold`} ${live ? 'ring-1 ring-br-red' : ''} ${it.endAt <= now ? 'opacity-55' : ''}`}
                            style={{
                              top: top + 1, height,
-                             ...(it.color && it.source !== 'auto' ? { borderLeftColor: it.color, backgroundImage: `linear-gradient(${it.color}38, ${it.color}38)` } : {}),
+                             
                            }}>
                         <p className="text-xs leading-tight text-br-dk-text pr-6 line-clamp-2">{it.title}</p>
                         {tall && <p className="text-[10px] text-br-dk-sub truncate">{time(it.startAt)}{it.hosts.length ? ` · ${it.hosts[0]}` : ''}</p>}

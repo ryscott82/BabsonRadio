@@ -79,6 +79,20 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | BR-PRE-001 | **Site isn't open yet**: The website is in pre-launch mode and this request didn't include the preview password. | Babson Radio opens on October 22. Check back then. | Unlock in a browser at /coming-soon (Developer access), or send the X-Preview-Key header. iOS: set BackendConfig.previewKey. To open the site for everyone, set PRELAUNCH_OFF=1 in Vercel and redeploy. |
 | BR-PRE-002 | **Invite-only until launch**: Before launch, only emails on the beta tester list can create an account or open the site. | Ask the station to add your Babson email, then try again. | Add the email at /admin/testers (Admin → Beta Testers). Remove the restriction on launch day by setting PRELAUNCH_OFF=1. |
 
+## Age and birthday
+
+| Code | What it is | What the user should do | What staff check |
+|---|---|---|---|
+| BR-AGE-001 | **Under 13**: The birthday or age range says the person is under 13. Babson Radio keeps no data about under-13s, so the account and everything on it was deleted. | Babson Radio is for people 13 and older. | Nothing is kept. Check the Firebase user is gone if the person disputes it. |
+| BR-AGE-002 | **Parent or guardian OK needed**: People 13 to 17 must confirm a parent or guardian agrees to them using Babson Radio. | Tick the parent or guardian box, then continue. | None needed. The answer is saved as parentalConsent on the user's profile. |
+| BR-AGE-003 | **Birthday or age range missing or not valid**: The birthday was not a real past date, or neither a birthday nor an age range was sent. | Pick your birthday, or tap 'use age range instead' and pick a range. | None needed. The app blocks this before the server is called. |
+
+## Sign in with Apple
+
+| Code | What it is | What the user should do | What staff check |
+|---|---|---|---|
+| BR-APL-001 | **Not an Apple sign-in**: This step is only for accounts that signed in with Apple. | Sign out and sign in with Apple, or use the email sign-in. | Firebase Console → Authentication → Users: check the provider column shows Apple. |
+
 ## Requests
 
 | Code | What it is | What the user should do | What staff check |
@@ -100,6 +114,7 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | BR-SRV-006 | **Authentication not set up**: Firebase Authentication isn't initialized for the project. | Contact the station. | Firebase Console → Authentication → Get started → enable Email/Password. |
 | BR-SRV-007 | **Server not allowed to use the database**: The service account lacks permission or belongs to a different project. | Contact the station. | Regenerate the key from the SAME project (babson-radio); check IAM roles (Firebase Admin SDK / Editor). |
 | BR-SRV-008 | **Server couldn't reach Firebase**: Network timeout or connection failure to Google services. | Wait a minute and retry. | Check status.firebase.google.com; usually transient. |
+| BR-SRV-009 | **Encryption key missing**: PII_KEY isn't set on the server, so birthdays and age ranges can't be stored encrypted. | Contact the station. | Vercel → Settings → Environment Variables → add PII_KEY (run: openssl rand -base64 32), then redeploy. Keep a copy: without it saved birthdays can't be read. |
 
 ## App & connection
 

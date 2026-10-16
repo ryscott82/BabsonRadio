@@ -39,10 +39,10 @@ function formatDate(ts: { seconds: number } | Date | string) {
 
 const categoryGradients: Record<string, string> = {
   Music:     'from-[#003D27] to-[#006644]',
-  Interview: 'from-[#1A2E4A] to-[#2E5C8A]',
-  Podcast:   'from-[#2A1A08] to-[#5C3A10]',
-  Talk:      'from-[#1A0A2E] to-[#4A1A7A]',
-  News:      'from-[#2A0808] to-[#7A1A1A]',
+  Interview: 'from-[#00402B] to-[#0B7A55]',
+  Podcast:   'from-[#0A3322] to-[#14704D]',
+  Talk:      'from-[#06301F] to-[#0F6B48]',
+  News:      'from-[#0F2E22] to-[#1F7A58]',
 }
 
 export default function EpisodeCard({ episode, layout = 'card' }: EpisodeCardProps) {

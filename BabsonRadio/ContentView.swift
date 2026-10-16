@@ -7,6 +7,7 @@ struct ContentView: View {
     @Environment(\.colorScheme) var scheme
     @ObservedObject private var auth = AuthManager.shared
     @State private var splashDone = false
+    @State private var welcomeSkipped = false
     @State private var askSchoolEmail = false
     @State private var showSchoolEmailSheet = false
 
@@ -47,12 +48,28 @@ struct ContentView: View {
         .onChange(of: splashDone) { _, done in maybeAskSchoolEmail(done) }
         .onChange(of: auth.currentUser?.id) { _, _ in maybeAskSchoolEmail(splashDone) }
         .overlay {
+            // After the launch splash: the sign-in splash, or the step an Apple / unverified account is stuck on.
+            if splashDone && auth.hasResolvedAuth {
+                if auth.needsSchoolEmail {
+                    AppleSchoolEmailView().transition(.opacity).zIndex(2)
+                } else if auth.needsEmailVerification {
+                    VerifyEmailView().transition(.opacity).zIndex(2)
+                } else if !auth.isSignedIn && !welcomeSkipped {
+                    WelcomeView(onSkip: { withAnimation { welcomeSkipped = true } }).transition(.opacity).zIndex(2)
+                }
+            }
+        }
+        .overlay {
             if !splashDone {
                 SplashView()
                     .transition(.opacity)
-                    .zIndex(1)
+                    .zIndex(3)
             }
         }
+        .fullScreenCover(isPresented: Binding(get: { splashDone && auth.isSignedIn && auth.needsOnboarding }, set: { _ in })) {
+            OnboardingView()
+        }
+        .onChange(of: auth.isSignedIn) { _, now in if !now { welcomeSkipped = false } }
         .task {
             // Hold the splash until the sign-in check is done (at most 6 seconds), and at least long enough to see it.
             let start = Date()

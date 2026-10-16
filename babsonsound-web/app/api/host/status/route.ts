@@ -26,17 +26,19 @@ export async function GET(req: Request) {
     const insights: Record<string, unknown> = {}
     for (const sh of c.open.slice(0, 3)) {
       const id = occurrenceId(sh)
-      const [note, rx, ratings, list, votes, rqDoc, rqList, plList] = await Promise.all([
+      const [note, rx, ratings, list, votes, rqDoc, rqList, plList, colorDoc] = await Promise.all([
         getNote(db, id, now), reactionSummary(db, id, now),
         db.collection('ratings').where('occId', '==', id).get(),
         db.collection('setlists').doc(id).get(), db.collection('setlistVotes').doc(id).get(),
         db.collection('liveRequests').doc(id).get(), db.collection('songRequests').where('occId', '==', id).get(),
         db.collection('playlistRequests').where('occId', '==', id).get(),
+        db.collection('liveColor').doc(id).get(),
       ])
       const stars = ratings.docs.map(d => d.get('stars') as number)
       const v = (votes.get('votes') ?? {}) as Record<string, string[]>
       insights[id] = {
         comments: ratings.docs.filter(d => d.get('comment')).map(d => ({ stars: d.get('stars'), text: d.get('comment'), at: d.get('at')?.toMillis?.() ?? 0 })).sort((a, b) => b.at - a.at).slice(0, 20),
+        colorChanging: colorDoc.exists && colorDoc.get('on') === true,
         requestsOpen: rqDoc.exists && rqDoc.get('open') === true,
         requests: rqList.docs.map(d => ({ id: d.id, text: d.get('text'), name: d.get('name'), at: d.get('at').toMillis() })).sort((a, b) => b.at - a.at).slice(0, 30),
         playlistRequests: plList.docs.map(rowOf).sort((a, b) => b.at - a.at).slice(0, 50),

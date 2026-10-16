@@ -223,12 +223,24 @@ struct DeleteAccountButton: View {
     @StateObject private var auth = AuthManager.shared
     @Environment(\.colorScheme) var scheme
     @State private var confirming = false
+    @State private var confirmingApple = false
     @State private var password = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Button("Delete my account") { confirming = true }
+            Button("Delete my account") { if auth.isAppleUser { confirmingApple = true } else { confirming = true } }
                 .font(.system(size: 13)).foregroundColor(.brRed)
+        }
+        .sheet(isPresented: $confirmingApple) {
+            VStack(spacing: 16) {
+                Text("DELETE YOUR ACCOUNT?").font(BRFont.display(24)).kerning(2)
+                Text("This permanently removes your account and data. Confirm with Apple to continue.")
+                    .font(.system(size: 14)).multilineTextAlignment(.center)
+                AppleSignInButton(purpose: .confirmDelete)
+                Button("Cancel") { confirmingApple = false }.font(.system(size: 13))
+            }
+            .padding(28)
+            .presentationDetents([.medium])
         }
         .alert("Delete your account?", isPresented: $confirming) {
             SecureField("Password", text: $password)

@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useNowPlaying } from '@/lib/nowplaying'
 import { ART_THEME, BABSON_GREEN, useArtPalette } from '@/lib/artColor'
-import { useParty } from '@/lib/party'
+import { setColorChanging, useParty } from '@/lib/party'
 
 // Wraps the home page body (not the top bar). Everyone starts on the station green; a few seconds in, the page
 // fades to the three main colors of the current cover, one per kind of element (see .art-ui in globals.css).
@@ -24,6 +24,9 @@ export default function ArtTheme({ className, children }: { className?: string; 
   const palette = useArtPalette(np?.art || undefined)
   const [ready, setReady] = useState(false)
   const night = useParty().party
+  const allow = np?.colorChanging === true
+  useEffect(() => { setColorChanging(allow) }, [allow])
+  useEffect(() => () => setColorChanging(false), [])
   useEffect(() => {
     if (!ART_THEME) return
     const t = setTimeout(() => setReady(true), FADE_DELAY_MS)

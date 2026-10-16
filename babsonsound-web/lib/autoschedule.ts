@@ -37,6 +37,8 @@ export interface AutoConfig {
   playlistMap: Record<string, string> // filler name -> AzuraCast playlist name (optional; default is the same name)
   /** Favor genres listeners like (listener counts, ratings, reactions). Every genre still gets airtime. */
   learn: boolean
+  /** Night-time color-changing background (album colors) while the auto DJ is on air. */
+  colorChanging: boolean
   rules: AutoRule[]
 }
 
@@ -53,6 +55,7 @@ export const DEFAULT_CONFIG: AutoConfig = {
   lockMinutes: 60,
   syncToAzuraCast: false,
   learn: true,
+  colorChanging: false,
   playlistMap: {},
   defaultFillers: ['Indie & Alt', 'Throwback Hits', 'Pop Hits', 'Hip-Hop & R&B'],
   rules: [
@@ -315,6 +318,7 @@ export function sanitizeConfig(input: unknown): AutoConfig {
     lockMinutes: clamp(o.lockMinutes, 0, 360, d.lockMinutes),
     syncToAzuraCast: o.syncToAzuraCast === true,
     learn: o.learn !== false,
+    colorChanging: o.colorChanging === true,
     playlistMap: Object.fromEntries(Object.entries((o.playlistMap ?? {}) as Record<string, unknown>).slice(0, 60)
       .map(([k, v]) => [text(k, 40), text(v, 80)]).filter(([k, v]) => k && v)),
     defaultFillers: list(o.defaultFillers).length ? list(o.defaultFillers) : d.defaultFillers,

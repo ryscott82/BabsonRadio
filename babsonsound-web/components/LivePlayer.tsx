@@ -132,14 +132,14 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
 
   return (
     <>
-    <div className="relative overflow-hidden rounded-2xl sk-hero grain">
+    <div className={`relative overflow-hidden rounded-2xl sk-hero grain ${pane ? 'lg:h-full' : ''}`}>
       {/* Animated background, tinted with the on-air event's color */}
       {!board && <Visualizer color={glow} playing={isPlaying} follow={art.full && !showColor} />}
 
-      <div className={`relative p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 ${pane ? 'lg:flex-col lg:p-12 lg:gap-10' : ''}`}>
+      <div className={`relative p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 ${pane ? 'lg:flex-col lg:p-6 lg:gap-5 lg:justify-center lg:h-full' : ''}`}>
 
         {/* Art block */}
-        <div className={`relative shrink-0 w-44 h-44 md:w-56 md:h-56 ${pane ? 'lg:w-full lg:max-w-[30rem] lg:h-auto lg:aspect-square' : ''} rounded-xl overflow-hidden grain flex items-center justify-center ${showColor ? '' : 'bg-gradient-to-br from-[#003D27] to-[#006644]'}`}
+        <div className={`relative shrink-0 w-44 h-44 md:w-56 md:h-56 ${pane ? 'lg:w-[min(30rem,36dvh)] lg:h-auto lg:aspect-square' : ''} rounded-xl overflow-hidden grain flex items-center justify-center ${showColor ? '' : 'bg-gradient-to-br from-[#003D27] to-[#006644]'}`}
              style={showColor ? { background: `linear-gradient(135deg, ${showColor}, ${showColor}66 70%, #000000aa)`, boxShadow: `0 0 40px ${showColor}55` } : undefined}>
           {np?.art ? (
             // eslint-disable-next-line @next/next/no-img-element

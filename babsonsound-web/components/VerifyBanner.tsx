@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { resendVerification } from '@/lib/auth'
 
-// Shown while a new account is inside its 3-day window and the email link has not been clicked yet.
+// Shown while a new account is inside its 7-day window and the email link has not been clicked yet.
 export default function VerifyBanner() {
   const { user, verifyDeadline, reload } = useAuth()
   const [msg, setMsg] = useState('')

@@ -37,6 +37,17 @@ export async function getNote(db: Firestore, occId: string, now = Date.now()): P
   return { headline, message, updatedAt: (d.get('updatedAt') as Timestamp).toMillis(), by: String(d.get('byName') ?? '') }
 }
 
+/** Is the color-changing (album color) background allowed for this airing? Per-show switch from the host panel; the auto DJ uses the admin setting. */
+export async function getColorChanging(db: Firestore, cur: OnAir, now = Date.now()): Promise<boolean> {
+  if (!cur.isShow) {
+    const c = await db.collection('config').doc('autoScheduler').get()
+    return c.get('colorChanging') === true
+  }
+  const d = await db.collection('liveColor').doc(cur.occId).get()
+  const exp = (d.get('expiresAt') as Timestamp | undefined)?.toMillis() ?? 0
+  return d.exists && d.get('on') === true && exp > now
+}
+
 // ── Song requests: only when the DJ of a live show turns them on. Never for the auto DJ. ──
 
 export interface RequestsStatus { open: boolean; occId: string; showTitle: string }

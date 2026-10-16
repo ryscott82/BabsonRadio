@@ -1,8 +1,8 @@
 // Fallback artwork when an item has no picture: a gradient picked from its title, so the same genre
 // always looks the same. (iOS mirror: GenreArt in SlotsView.swift)
 const PAIRS: [string, string][] = [
-  ['#003D27', '#006644'], ['#1A2E4A', '#2E5C8A'], ['#2A1A08', '#5C3A10'],
-  ['#1A0A2E', '#4A1A7A'], ['#2A0808', '#7A1A1A'], ['#0F2A2E', '#1F6F78'],
+  ['#003D27', '#006644'], ['#00402B', '#0B7A55'], ['#0A3322', '#14704D'],
+  ['#003D27', '#1C8560'], ['#06301F', '#0F6B48'], ['#0F2E22', '#1F7A58'],
 ]
 
 export function genreArt(title: string): { background: string; initial: string } {

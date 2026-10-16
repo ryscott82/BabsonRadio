@@ -7,8 +7,8 @@ import ShareFormButton from '@/components/ShareFormButton'
 import InterestFormCta from '@/components/InterestFormCta'
 import VoteCard from '@/components/VoteCard'
 import LiveExtrasPane from '@/components/LiveExtrasPane'
+import HomeTabs from '@/components/HomeTabs'
 import ArtTheme from '@/components/ArtTheme'
-import RecentlyPlayed from '@/components/RecentlyPlayed'
 import { getRecentEpisodes, getTodaySchedule, getFeaturedShows } from '@/lib/firestore'
 
 export const revalidate = 60 // re-fetch data every 60 seconds
@@ -20,127 +20,86 @@ export default async function HomePage() {
     getFeaturedShows(),
   ])
 
+  const todayPanel = schedule.length > 0 ? (
+    <div className="rounded-xl overflow-hidden sk-raised divide-y divide-br-dk-border">
+      {schedule.map((slot: any) => (
+        <div key={slot.id} className={`flex items-center gap-4 px-5 py-3 ${slot.isLive ? 'bg-br-green/5' : 'bg-br-dk-surface'}`}>
+          <span className={`font-display text-sm tracking-wider w-20 shrink-0 ${slot.isLive ? 'text-br-gold' : 'text-br-dk-sub'}`}>{slot.startTime}</span>
+          {slot.isLive && <span className="w-2 h-2 rounded-full bg-br-red shrink-0" />}
+          <div className="min-w-0">
+            <p className={`text-sm font-medium truncate ${slot.isLive ? 'text-br-dk-text' : 'text-br-dk-sub'}`}>{slot.showName}</p>
+            {slot.hostNames?.length > 0 && <p className="text-br-dk-muted text-xs truncate">{slot.hostNames.join(', ')}</p>}
+          </div>
+          {slot.isLive && <span className="ml-auto font-display text-br-red text-[10px] tracking-widest">LIVE</span>}
+        </div>
+      ))}
+    </div>
+  ) : <p className="text-sm text-br-dk-sub py-6">Nothing scheduled today. The auto DJ has you covered. <Link href="/schedule" className="text-br-gold">See the week</Link></p>
+
+  const episodesPanel = episodes.length > 0 ? (
+    <LikesProvider ids={episodes.slice(0, 6).map((ep: any) => ep.id)}>
+      <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
+        {episodes.slice(0, 6).map((ep: any) => (
+          <div key={ep.id}><EpisodeCard episode={ep} /><LikeBar episodeId={ep.id} /></div>
+        ))}
+      </div>
+    </LikesProvider>
+  ) : <p className="text-sm text-br-dk-sub py-6">No episodes yet.</p>
+
+  const showsPanel = shows.length > 0 ? (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+      {shows.map((show: any) => (
+        <Link key={show.id} href={`/shows/${show.slug}`} className="group flex items-center gap-4 p-3 rounded-xl sk-raised">
+          <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#003D27] to-br-green flex items-center justify-center shrink-0 overflow-hidden">
+            {show.artworkURL ? <img src={show.artworkURL} alt={show.name} className="w-full h-full object-cover" />
+              : <span className="font-display text-br-brass text-xl">{show.name[0]}</span>}
+          </div>
+          <div className="min-w-0">
+            <p className="text-br-dk-text text-sm font-medium truncate group-hover:text-br-gold transition-colors">{show.name}</p>
+            <p className="text-br-dk-sub text-xs truncate">{show.description}</p>
+          </div>
+        </Link>
+      ))}
+    </div>
+  ) : <p className="text-sm text-br-dk-sub py-6">No shows yet.</p>
+
+  const tabs = [
+    { id: 'today', label: 'TODAY', href: '/schedule', node: todayPanel },
+    { id: 'episodes', label: 'EPISODES', href: '/browse', node: episodesPanel },
+    { id: 'shows', label: 'SHOWS', href: '/shows', node: showsPanel },
+  ]
+
   return (
-    <ArtTheme className="max-w-6xl lg:max-w-[1800px] mx-auto px-4 lg:px-8 xl:px-12 py-8 space-y-16">
+    <ArtTheme className="max-w-6xl lg:max-w-[1800px] mx-auto px-4 lg:px-8 xl:px-12 py-6 space-y-10 lg:space-y-4 fit">
 
       {/* ── Interest form (hidden for signed-in members) ───────── */}
-      <InterestFormCta><section className="sk-raised rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+      <InterestFormCta><section className="sk-raised rounded-2xl px-5 py-3 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 shrink-0">
         <div className="flex-1">
-          <h2 className="font-display text-br-dk-text text-2xl tracking-wide">TELL US WHAT YOU WANT TO HEAR</h2>
-          <p className="text-sm text-br-dk-sub mt-1">Music, podcasts, sports highlights. The interest form takes under a minute.</p>
+          <h2 className="font-display text-br-dk-text text-lg tracking-wide">TELL US WHAT YOU WANT TO HEAR</h2>
+          <p className="text-xs text-br-dk-sub">Music, podcasts, sports highlights. Under a minute.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 shrink-0">
           <a href={LINKS.interest} target="_blank" rel="noopener noreferrer"
-             className="sk-btn font-display tracking-[0.2em] text-sm px-6 py-3.5 rounded-xl text-center">
+             className="sk-btn font-display tracking-[0.2em] text-xs px-5 py-2.5 rounded-xl text-center">
             FILL OUT THE FORM
           </a>
           <ShareFormButton className="text-center" />
         </div>
       </section></InterestFormCta>
 
-      {/* Two panes on desktop: the player stays on the left, everything else scrolls on the right. */}
-      <div className="lg:grid lg:grid-cols-[minmax(520px,58%)_minmax(0,1fr)] lg:gap-10 xl:gap-14 lg:items-start space-y-16 lg:space-y-0">
-      <div className="lg:[@media(min-height:860px)]:sticky lg:top-24">
-        <section>
-          <LivePlayer pane />
-        </section>
-        <div className="hidden lg:block"><RecentlyPlayed /></div>
-      </div>
-      <div className="space-y-16 min-w-0">
-        <div className="space-y-6 empty:hidden">
-          <LiveExtrasPane />
-          <VoteCard />
-        </div>
-
-      {/* ── Today's Schedule ─────────────────────────────────── */}
-      {schedule.length > 0 && (
-        <section>
-          <SectionHeader title="TODAY'S SCHEDULE" />
-          <div className="rounded-xl overflow-hidden sk-raised divide-y divide-br-dk-border">
-            {schedule.map((slot: any) => (
-              <div key={slot.id} className={`flex items-center gap-4 px-5 py-4 ${slot.isLive ? 'bg-br-green/5' : 'bg-br-dk-surface'}`}>
-                <span className={`font-display text-sm tracking-wider w-20 shrink-0 ${slot.isLive ? 'text-br-gold' : 'text-br-dk-sub'}`}>
-                  {slot.startTime}
-                </span>
-                {slot.isLive && <span className="w-2 h-2 rounded-full bg-br-red shrink-0" />}
-                <div>
-                  <p className={`text-sm font-medium ${slot.isLive ? 'text-br-dk-text' : 'text-br-dk-sub'}`}>
-                    {slot.showName}
-                  </p>
-                  {slot.hostNames?.length > 0 && (
-                    <p className="text-br-dk-muted text-xs">{slot.hostNames.join(', ')}</p>
-                  )}
-                </div>
-                {slot.isLive && (
-                  <div className="ml-auto flex items-center gap-1.5 bg-br-red/20 border border-br-red/30 px-2.5 py-1 rounded">
-                    <span className="w-1 h-1 rounded-full bg-br-red" />
-                    <span className="font-display text-br-red text-[10px] tracking-widest">LIVE</span>
-                  </div>
-                )}
-              </div>
-            ))}
+      {/* Desktop: the player on the left, one panel (Today / Episodes / Shows) on the right. The page never scrolls. */}
+      <div className="lg:grid lg:grid-cols-[minmax(440px,46%)_minmax(0,1fr)] lg:gap-8 xl:gap-12 lg:flex-1 lg:min-h-0 space-y-10 lg:space-y-0">
+        <div className="lg:h-full lg:min-h-0"><LivePlayer pane /></div>
+        <div className="flex flex-col gap-4 min-w-0 lg:h-full lg:min-h-0">
+          <div className="space-y-4 empty:hidden shrink-0">
+            <LiveExtrasPane />
+            <VoteCard />
           </div>
-        </section>
-      )}
-
-      {/* ── Recent Episodes ───────────────────────────────────── */}
-      {episodes.length > 0 && (
-        <section>
-          <SectionHeader title="RECENT EPISODES" href="/browse" />
-          <LikesProvider ids={episodes.slice(0, 8).map((ep: any) => ep.id)}>
-            <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-4 gap-5">
-              {episodes.slice(0, 8).map((ep: any) => (
-                <div key={ep.id}>
-                  <EpisodeCard episode={ep} />
-                  <LikeBar episodeId={ep.id} />
-                </div>
-              ))}
-            </div>
-          </LikesProvider>
-        </section>
-      )}
-
-      {/* ── Featured Shows ────────────────────────────────────── */}
-      {shows.length > 0 && (
-        <section>
-          <SectionHeader title="SHOWS" href="/shows" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4">
-            {shows.map((show: any) => (
-              <Link
-                key={show.id}
-                href={`/shows/${show.slug}`}
-                className="group flex items-center gap-4 p-4 rounded-xl sk-raised"
-              >
-                <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-[#003D27] to-br-green flex items-center justify-center shrink-0 overflow-hidden">
-                  {show.artworkURL
-                    ? <img src={show.artworkURL} alt={show.name} className="w-full h-full object-cover" />
-                    : <span className="font-display text-br-brass text-xl">{show.name[0]}</span>
-                  }
-                </div>
-                <div className="min-w-0">
-                  <p className="text-br-dk-text text-sm font-medium truncate group-hover:text-br-gold transition-colors">
-                    {show.name}
-                  </p>
-                  <p className="text-br-dk-sub text-xs truncate">{show.description}</p>
-                  <p className="text-br-dk-muted text-xs">{show.totalEpisodes ?? 0} episodes</p>
-                </div>
-              </Link>
-            ))}
+          <div className="lg:flex-1 lg:min-h-0">
+            <HomeTabs tabs={tabs} />
           </div>
-        </section>
-      )}
-
-      </div>
-      </div>
-
-      {/* Request a spot: a button here and one in the profile, instead of a tab in the nav */}
-      <section className="sk-raised rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-        <div className="flex-1">
-          <h2 className="font-display text-br-dk-text text-2xl tracking-wide">WANT YOUR OWN SHOW?</h2>
-          <p className="text-sm text-br-dk-sub mt-1">Pick a time and tell us what you would play. Students can request an hour on air.</p>
         </div>
-        <Link href="/slots" className="sk-btn font-display tracking-[0.2em] text-sm px-6 py-3.5 rounded-xl text-center shrink-0">REQUEST A SPOT</Link>
-      </section>
+      </div>
 
       {/* Empty state when no content in Firestore yet */}
       {episodes.length === 0 && shows.length === 0 && schedule.length === 0 && (
@@ -150,19 +109,5 @@ export default async function HomePage() {
         </div>
       )}
     </ArtTheme>
-  )
-}
-
-function SectionHeader({ title, href }: { title: string; href?: string }) {
-  return (
-    <div className="flex items-center gap-4 mb-6">
-      <h2 className="font-display text-br-dk-text text-xl tracking-[0.1em] shrink-0">{title}</h2>
-      <div className="flex-1 h-px bg-br-dk-border" />
-      {href && (
-        <Link href={href} className="font-display text-br-gold text-xs tracking-widest hover:text-br-gold/80 shrink-0">
-          SEE ALL
-        </Link>
-      )}
-    </div>
   )
 }

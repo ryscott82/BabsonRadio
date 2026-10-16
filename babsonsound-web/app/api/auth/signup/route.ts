@@ -14,7 +14,7 @@ import { isTester } from '@/lib/server/testers'
 export const runtime = 'nodejs'
 
 // Creates a student account. Email verification is sent by the client afterwards; members must verify
-// within 3 days (Firestore rules and the server accept the `graceUntil` claim until then).
+// within 7 days (Firestore rules and the server accept the `graceUntil` claim until then).
 export async function POST(req: Request) {
   return handle(async () => {
     const b = await readJson(req)
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     let uid: string
     try {
       uid = (await adminAuth().createUser({ email, password, displayName: firstName, emailVerified: false })).uid
-      // 3 days of full use before the email link is required (rules and the server check this claim).
+      // 7 days of full use before the email link is required (rules and the server check this claim).
       await adminAuth().setCustomUserClaims(uid, { graceUntil: Date.now() + VERIFY_GRACE_MS, ...(tester ? { tester: true } : {}), ...(open ? { openMember: true } : {}) })
     } catch (e) {
       const code = (e as { code?: string }).code

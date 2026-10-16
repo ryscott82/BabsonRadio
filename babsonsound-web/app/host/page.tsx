@@ -45,7 +45,7 @@ interface NowPlaying { song: string; elapsed: number; duration: number; isLive: 
 interface Insight {
   comments?: { stars: number; text: string; at: number }[]
   playlistRequests?: { id: string; title: string; artist: string; playlist: string; names: string[]; count: number; done: boolean }[]
-  requestsOpen?: boolean; requests?: { id: string; text: string; name: string; at: number }[]
+  requestsOpen?: boolean; colorChanging?: boolean; requests?: { id: string; text: string; name: string; at: number }[]
   note: { headline: string; message: string } | null
   reactions: Record<string, number>; recentReactions: Record<string, number>
   ratingCount: number; ratingAvg: number
@@ -184,6 +184,14 @@ function LiveNote({ st, reload }: { st: Status; reload: () => void }) {
   const selId = sel?.id ?? ''
   if (selId && loadedFor !== selId) { setLoadedFor(selId); setHeadline(existing?.headline ?? ''); setMessage(existing?.message ?? '') }
   if (!sel) return null
+  const colorOn = st.insights[sel.id]?.colorChanging === true
+
+  async function toggleColor(on: boolean) {
+    setBusy(true); setErr('')
+    try { await api('/api/live/color', { occId: sel!.id, on }); reload() }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Could not save.') }
+    setBusy(false)
+  }
 
   async function save(clear = false) {
     setBusy(true); setErr(''); setMsg('')
@@ -216,6 +224,10 @@ function LiveNote({ st, reload }: { st: Status; reload: () => void }) {
         <button type="button" onClick={() => save(true)} className="text-sm text-br-dk-sub">Clear</button>
       </div>
       <p className="text-xs text-br-dk-sub">It shows under the player on the website and in the app, and disappears shortly after your show ends.</p>
+      <label className="flex items-center gap-3 text-sm text-br-dk-text pt-2 border-t border-br-dk-border">
+        <input type="checkbox" checked={colorOn} disabled={busy} onChange={e => toggleColor(e.target.checked)} />
+        Color-changing background for this set (night only, 7pm to 6am)
+      </label>
     </section>
   )
 }

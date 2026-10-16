@@ -17,6 +17,7 @@ export interface NowPlaying {
   isShow: boolean
   showStart: number
   showEnd: number
+  colorChanging?: boolean
   note: { headline: string; message: string; updatedAt: number; by: string } | null
   announcement: { text: string; updatedAt: number; until: number } | null
   updatedAt: number

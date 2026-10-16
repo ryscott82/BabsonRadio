@@ -1,6 +1,6 @@
 import 'server-only'
 import { adminDb } from './admin'
-import { currentOnAir, getNote, type LiveNote } from './live'
+import { currentOnAir, getColorChanging, getNote, type LiveNote } from './live'
 import { listenerSample } from './taste'
 import { getAnnouncement, type Announcement } from './announcement'
 import { lookupBeat } from './beats'
@@ -36,6 +36,8 @@ export interface NowPlayingInfo {
   showEnd: number
   /** A message the host or staff pinned to this show, or null. */
   note: LiveNote | null
+  /** True when the host/admin allows the night-time album-color background for what is on air. */
+  colorChanging: boolean
   /** A message for the whole audience from the station controls, or null. */
   announcement: Announcement | null
   updatedAt: number
@@ -51,7 +53,7 @@ type Built = Omit<NowPlayingInfo, 'announcement'>
 const empty = (configured: boolean): Built => ({
   configured, title: '', artist: '', album: '', art: '', elapsed: 0, duration: 0, playedAt: 0, history: [], bpm: 0, beatOffset: 0,
   isLive: false, streamer: '', playlist: '', listeners: 0, next: null, showTitle: '', blockTitle: '', color: '',
-  occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, updatedAt: Date.now(),
+  occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, colorChanging: false, updatedAt: Date.now(),
 })
 
 type Song = { text?: string; artist?: string; title?: string; album?: string; art?: string; custom_fields?: Record<string, unknown> | unknown[] }
@@ -64,15 +66,15 @@ type Raw = {
 }
 
 /** The scheduled thing on air right now (one-time event > student slot > weekly show > genre block). */
-async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'blockTitle' | 'color' | 'occId' | 'isShow' | 'showStart' | 'showEnd' | 'note'>> {
-  const none = { showTitle: '', blockTitle: '', color: '', occId: '', isShow: false, showStart: 0, showEnd: 0, note: null }
+async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'blockTitle' | 'color' | 'occId' | 'isShow' | 'showStart' | 'showEnd' | 'note' | 'colorChanging'>> {
+  const none = { showTitle: '', blockTitle: '', color: '', occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, colorChanging: false }
   try {
     const db = adminDb()
     const cur = await currentOnAir(db)
     if (!cur) return none
     return {
       showTitle: cur.isShow ? cur.item.title : '', blockTitle: cur.item.title, color: cur.item.color, occId: cur.occId, isShow: cur.isShow,
-      showStart: cur.item.startAt, showEnd: cur.item.endAt, note: await getNote(db, cur.occId),
+      showStart: cur.item.startAt, showEnd: cur.item.endAt, note: await getNote(db, cur.occId), colorChanging: await getColorChanging(db, cur),
     }
   } catch { return none }
 }

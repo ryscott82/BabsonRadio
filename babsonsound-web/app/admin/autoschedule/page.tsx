@@ -218,6 +218,10 @@ export default function AutoSchedulePage() {
           Learn from listeners: play genres people listen to, rate and react to more often (every genre still gets airtime). <a href="/admin/insights" className="underline">See what it learned</a>
         </label>
         <label className="flex items-center gap-3 text-sm text-br-dk-text">
+          <input type="checkbox" checked={cfg.colorChanging === true} onChange={e => update({ colorChanging: e.target.checked })} />
+          Color-changing background while the auto DJ plays (night only, 7pm to 6am). Otherwise the site stays green.
+        </label>
+        <label className="flex items-center gap-3 text-sm text-br-dk-text">
           <input type="checkbox" checked={cfg.syncToAzuraCast} onChange={e => update({ syncToAzuraCast: e.target.checked })} />
           Send the schedule to AzuraCast automatically after every rebuild
         </label>

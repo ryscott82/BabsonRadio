@@ -64,6 +64,7 @@ export function classifyServerError(e: unknown): string {
   if (/FIREBASE_SERVICE_ACCOUNT_JSON is not set/i.test(msg)) return 'BR-SRV-001'
   if (e instanceof SyntaxError || /private key|PEM|service account|Unexpected token|JSON/i.test(msg)) return 'BR-SRV-002'
   if (/PHONE_HASH_PEPPER/i.test(msg)) return 'BR-SRV-003'
+  if (/PII_KEY/i.test(msg)) return 'BR-SRV-009'
   if (/configuration-not-found|CONFIGURATION_NOT_FOUND/i.test(c + msg)) return 'BR-SRV-006'
   if (c === '9' || /failed-precondition|requires an index/i.test(c + msg)) return 'BR-SRV-005'
   if (c === '5' || /NOT_FOUND|database.*does not exist/i.test(c + msg)) return 'BR-SRV-004'

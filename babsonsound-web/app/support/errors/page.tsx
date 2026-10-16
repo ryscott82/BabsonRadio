@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: 'Error codes — Babson Radio' }
 
 const AREAS: Record<string, string> = {
   AUTH: 'Signing in', ACC: 'Accounts', GST: 'Guest access', NET: 'Contacts & friends',
-  SLT: 'Air-time requests', PERM: 'Permissions', PRE: 'Before launch', REQ: 'Requests', SRV: 'Server (station staff)', CLI: 'App & connection',
+  SLT: 'Air-time requests', PERM: 'Permissions', PRE: 'Before launch', AGE: 'Age and birthday', APL: 'Sign in with Apple', REQ: 'Requests', SRV: 'Server (station staff)', CLI: 'App & connection',
 }
 
 export default function ErrorKey() {

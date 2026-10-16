@@ -11,12 +11,12 @@ export default function Footer() {
   if (usePathname() === '/coming-soon') return null
   const link = 'text-br-dk-sub hover:text-br-dk-text transition-colors'
   return (
-    <footer className="relative z-[1] mt-20 border-t border-br-dk-border">
-      <div className="max-w-6xl mx-auto px-4 py-8 flex flex-wrap items-center justify-between gap-4">
-        <p className="font-display tracking-[0.3em] text-sm text-br-dk-text">
+    <footer className="relative z-[1] mt-12 lg:mt-0 border-t border-br-dk-border lg:h-[2.75rem]">
+      <div className="max-w-[1800px] mx-auto px-4 lg:px-8 xl:px-12 py-6 lg:py-0 lg:h-full flex flex-wrap items-center justify-between gap-x-6 gap-y-3 text-xs lg:text-[11px]">
+        <p className="font-display tracking-[0.3em] text-sm lg:text-xs text-br-dk-text shrink-0">
           <span className="text-br-gold">BABSON</span> RADIO
         </p>
-        <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+        <nav className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <a href={LINKS.interest} {...ext} className={link}>Interest form</a>
           <a href={LINKS.about} {...ext} className={link}>About us</a>
           <a href={LINKS.events} {...ext} className={link}>Events</a>
@@ -27,10 +27,10 @@ export default function Footer() {
           <TesterFeedback />
           {INSTAGRAM_URL && <a href={INSTAGRAM_URL} {...ext} className={link}>Instagram</a>}
         </nav>
+        <p className="text-br-dk-sub shrink-0">
+          Designed by <a href="https://ryanedwardmediagroup.com" {...ext} className="underline underline-offset-4 hover:text-br-dk-text transition-colors">Ryan Edward Media Group</a>
+        </p>
       </div>
-      <p className="max-w-6xl mx-auto px-4 pb-6 text-xs text-br-dk-sub">
-        Designed by <a href="https://ryanedwardmediagroup.com" {...ext} className="underline underline-offset-4 hover:text-br-dk-text transition-colors">Ryan Edward Media Group</a>
-      </p>
     </footer>
   )
 }

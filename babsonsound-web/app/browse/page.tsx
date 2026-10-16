@@ -56,9 +56,9 @@ function BrowseBody() {
 
 export default function BrowsePage() {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-3xl w-full mx-auto px-4 py-6 space-y-4 fit">
       <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">SEARCH</h1>
-      <LockedGate><BrowseBody /></LockedGate>
+      <div className="fit-body"><LockedGate><BrowseBody /></LockedGate></div>
     </div>
   )
 }

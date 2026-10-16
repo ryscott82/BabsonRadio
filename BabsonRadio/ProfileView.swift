@@ -12,6 +12,8 @@ struct ProfileView: View {
     var body: some View {
         if auth.isSignedIn, let user = auth.currentUser {
             if user.isGuest { GuestProfileView(user: user) } else { SignedInProfileView(user: user) }
+        } else if auth.needsSchoolEmail {
+            AppleSchoolEmailView()
         } else if auth.needsEmailVerification {
             VerifyEmailView()
         } else {

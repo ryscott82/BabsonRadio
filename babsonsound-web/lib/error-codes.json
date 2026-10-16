@@ -425,5 +425,40 @@
     "meaning": "Creating an account requires agreeing to the Terms of Use and Privacy Policy.",
     "userFix": "Tick the box that says you agree to the Terms of Use and Privacy Policy, then try again.",
     "staffCheck": "None needed. Acceptance time and version are saved on the user's profile (termsAcceptedAt, termsVersion)."
+  },
+  {
+    "code": "BR-AGE-001",
+    "title": "Under 13",
+    "meaning": "The birthday or age range says the person is under 13. Babson Radio keeps no data about under-13s, so the account and everything on it was deleted.",
+    "userFix": "Babson Radio is for people 13 and older.",
+    "staffCheck": "Nothing is kept. Check the Firebase user is gone if the person disputes it."
+  },
+  {
+    "code": "BR-AGE-002",
+    "title": "Parent or guardian OK needed",
+    "meaning": "People 13 to 17 must confirm a parent or guardian agrees to them using Babson Radio.",
+    "userFix": "Tick the parent or guardian box, then continue.",
+    "staffCheck": "None needed. The answer is saved as parentalConsent on the user's profile."
+  },
+  {
+    "code": "BR-AGE-003",
+    "title": "Birthday or age range missing or not valid",
+    "meaning": "The birthday was not a real past date, or neither a birthday nor an age range was sent.",
+    "userFix": "Pick your birthday, or tap 'use age range instead' and pick a range.",
+    "staffCheck": "None needed. The app blocks this before the server is called."
+  },
+  {
+    "code": "BR-APL-001",
+    "title": "Not an Apple sign-in",
+    "meaning": "This step is only for accounts that signed in with Apple.",
+    "userFix": "Sign out and sign in with Apple, or use the email sign-in.",
+    "staffCheck": "Firebase Console → Authentication → Users: check the provider column shows Apple."
+  },
+  {
+    "code": "BR-SRV-009",
+    "title": "Encryption key missing",
+    "meaning": "PII_KEY isn't set on the server, so birthdays and age ranges can't be stored encrypted.",
+    "userFix": "Contact the station.",
+    "staffCheck": "Vercel → Settings → Environment Variables → add PII_KEY (run: openssl rand -base64 32), then redeploy. Keep a copy: without it saved birthdays can't be read."
   }
 ]

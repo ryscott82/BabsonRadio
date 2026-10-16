@@ -7,7 +7,6 @@ import { signOut } from '@/lib/auth'
 import { useEffect, useState } from 'react'
 import { apiGet } from '@/lib/auth'
 import ThemeToggle from './ThemeToggle'
-import PartyToggle from './PartyToggle'
 
 // Four links in the bar. Everything else (profile, requesting a spot, host panel, admin) lives in the profile menu.
 const NAV_LINKS = [
@@ -68,7 +67,6 @@ export default function Nav() {
 
         {/* Right side */}
         <div className="ml-auto flex items-center gap-3">
-          <PartyToggle />
           <ThemeToggle />
 
           {user ? (

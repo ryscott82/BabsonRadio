@@ -79,6 +79,15 @@ Legend: [x] built, [ ] planned.
 - [x] Everything an admin can do
 - [ ] View-only demo account
 
+## Sign-in and account setup
+- [x] Sign-in splash with Sign in with Apple or email (iOS); Apple accounts add a school email and verify it within 7 days
+- [x] One-time "About you" step: name, phone, graduation year, birthday or "use age range instead" (encrypted; under 13 deleted; 13 to 17 need a parent/guardian box)
+- [x] New email sign-ups get 7 days (was 3) to verify
+- [ ] Show age/birthday in the admin users list (stored encrypted, decrypt there)
+- [ ] Ask guests for a birthday or age range too
+- [ ] Website: Sign in with Apple, and the About you step
+- Setup: docs/APPLE_SIGNIN_SETUP.md
+
 ## Not built yet
 - iOS: set list upvotes, ratings list on the profile
 
@@ -86,9 +95,6 @@ Legend: [x] built, [ ] planned.
 - Optional: Firestore TTL policies on `exp` for collection groups `rxEvents` (reaction events, 1 day) and `listenSessions` (listening log, 1 year)
 - Add the listening log to the privacy policy before launch
 - Shared-contact suggestions need `PHONE_HASH_PEPPER` set in Vercel (already used for contact matching), and App Store privacy answers should list Contacts as collected (phone numbers, scrambled, linked to the account, used for app functionality)
-- Set AZURACAST_URL, AZURACAST_API_KEY, AZURACAST_STATION_ID in Vercel
-- firebase deploy --only firestore:rules
-- Controls endpoints are untested against a real AzuraCast server
 
 ## What would you like to hear (votes)
 - Signed-in people see a live tally for the NEXT hour (web home page, iOS Live tab button). Students, developers and guests connected to Babson can vote; one vote each, changeable until the hour starts.
@@ -116,3 +122,7 @@ Legend: [x] built, [ ] planned.
 - Any signed-in listener can ask to skip the current track while the automatic playlist is running. The track skips when requests reach 90 percent of the people listening.
 - Only people who are tuned in right now count. The total is the larger of the AzuraCast listener count and the app's own listening count.
 - Not available during live shows.
+
+## Simplified look (Oct 2026)
+- Green-only theme; color-changing background is a per-set host switch (and an auto-DJ switch for admins), night only. Server: `liveColor/{occId}` docs, `colorChanging` in the now-playing feed, `POST /api/live/color`.
+- Home is a one-screen desktop layout: player left, Today / Episodes / Shows tabs right.

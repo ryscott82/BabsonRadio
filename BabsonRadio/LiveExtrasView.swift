@@ -201,10 +201,18 @@ struct LiveExtrasView: View {
     var mode: Mode = .rest
     @ObservedObject private var audio = AudioPlayerManager.shared
     @ObservedObject private var model = LiveExtrasModel.shared
+    @ObservedObject private var lab = TestLab.shared
     @ObservedObject private var auth = AuthManager.shared
     @Environment(\.colorScheme) private var scheme
 
     private var np: NowPlayingInfo? { audio.nowPlaying }
+
+    /// The reactions change with the music: while Mac Miller (from Pittsburgh) is on, the usual four become Pittsburgh.
+    private var reactionRow: [String] {
+        lab.pittsburgh || (np?.artist ?? "").range(of: "mac\\s*miller", options: [.regularExpression, .caseInsensitive]) != nil
+            ? [":pgh-bridge:", ":pgh-helmet:", ":pgh-pirate:", ":pgh-heart:"]
+            : model.emojis
+    }
 
     // End-of-show feedback state
     @State private var curShow: (occId: String, title: String)? = nil
@@ -279,13 +287,13 @@ struct LiveExtrasView: View {
             } else if mode == .reactions, let occ = np?.occId, !occ.isEmpty {
                 BRGlassGroup(spacing: 10) {
                     HStack(spacing: 10) {
-                        ForEach(model.emojis, id: \.self) { e in
+                        ForEach(reactionRow, id: \.self) { e in
                             Button { Task { await model.react(e) } } label: {
-                                ReactionGlyph(emoji: e, size: 24).frame(width: model.emojis.count > 5 ? 42 : 52, height: 44)
+                                ReactionGlyph(emoji: e, size: 24).frame(width: reactionRow.count > 5 ? 42 : 52, height: 44)
                                     .brGlass(in: Capsule(), interactive: true)
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("React with \(e)")
+                            .accessibilityLabel(e.hasPrefix(":pgh-") ? "React" : "React with \(e)")
                         }
                     }
                 }
@@ -350,8 +358,104 @@ struct ReactionGlyph: View {
     var body: some View {
         if emoji == ":br:" {
             Image("LaunchLogo").resizable().scaledToFit().frame(height: size * 1.15)
+        } else if emoji.hasPrefix(":pgh-"), emoji.hasSuffix(":") {
+            PittsburghGlyph(kind: String(emoji.dropFirst(5).dropLast()), size: size * 1.2)
         } else {
             Text(emoji).font(.system(size: size))
         }
+    }
+}
+
+
+// MARK: - Pittsburgh reactions
+
+/// Our own simple drawings for the Pittsburgh reaction set (the same artwork as the website's public/pgh/*.svg): a yellow bridge,
+/// a black and gold football helmet, a black and gold pirate flag and a red heart. Drawn in a 64 by 64 box. Not team logos.
+struct PittsburghGlyph: View {
+    let kind: String
+    let size: CGFloat
+    private static let gold = Color(red: 0.99, green: 0.72, blue: 0.15)
+    private static let ink = Color(red: 0.105, green: 0.105, blue: 0.105)
+
+    var body: some View {
+        Canvas { ctx, sz in
+            let k = sz.width / 64
+            ctx.scaleBy(x: k, y: k)
+            let gold = Self.gold, ink = Self.ink
+            func stroke(_ path: Path, _ w: CGFloat, _ c: Color) {
+                ctx.stroke(path, with: .color(c), style: StrokeStyle(lineWidth: w, lineCap: .round, lineJoin: .round))
+            }
+            func seg(_ a: CGPoint, _ b: CGPoint) -> Path { var p = Path(); p.move(to: a); p.addLine(to: b); return p }
+            switch kind {
+            case "bridge":
+                stroke(seg(CGPoint(x: 4, y: 40), CGPoint(x: 60, y: 40)), 3.5, gold)
+                stroke(seg(CGPoint(x: 18, y: 12), CGPoint(x: 18, y: 40)), 4, gold)
+                stroke(seg(CGPoint(x: 46, y: 12), CGPoint(x: 46, y: 40)), 4, gold)
+                var cables = Path()
+                cables.move(to: CGPoint(x: 4, y: 38)); cables.addQuadCurve(to: CGPoint(x: 18, y: 14), control: CGPoint(x: 11, y: 24))
+                cables.move(to: CGPoint(x: 18, y: 14)); cables.addQuadCurve(to: CGPoint(x: 46, y: 14), control: CGPoint(x: 32, y: 40))
+                cables.move(to: CGPoint(x: 46, y: 14)); cables.addQuadCurve(to: CGPoint(x: 60, y: 38), control: CGPoint(x: 53, y: 24))
+                stroke(cables, 2.5, gold)
+                for (x, y) in [(24.0, 23.0), (28.0, 26.0), (32.0, 27.0), (36.0, 26.0), (40.0, 23.0)] {
+                    stroke(seg(CGPoint(x: x, y: y), CGPoint(x: x, y: 40)), 1.6, gold)
+                }
+                var water = Path()
+                water.move(to: CGPoint(x: 6, y: 52))
+                water.addQuadCurve(to: CGPoint(x: 18, y: 52), control: CGPoint(x: 12, y: 48))
+                water.addQuadCurve(to: CGPoint(x: 30, y: 52), control: CGPoint(x: 24, y: 56))
+                water.addQuadCurve(to: CGPoint(x: 42, y: 52), control: CGPoint(x: 36, y: 48))
+                water.addQuadCurve(to: CGPoint(x: 54, y: 52), control: CGPoint(x: 48, y: 56))
+                stroke(water, 2.5, gold.opacity(0.55))
+            case "helmet":
+                var shell = Path()
+                shell.move(to: CGPoint(x: 10, y: 38))
+                shell.addCurve(to: CGPoint(x: 37, y: 11), control1: CGPoint(x: 8, y: 20), control2: CGPoint(x: 22, y: 9))
+                shell.addCurve(to: CGPoint(x: 54, y: 38), control1: CGPoint(x: 50, y: 13), control2: CGPoint(x: 56, y: 25))
+                shell.addLine(to: CGPoint(x: 45, y: 42)); shell.addLine(to: CGPoint(x: 39, y: 47)); shell.addLine(to: CGPoint(x: 20, y: 47))
+                shell.addCurve(to: CGPoint(x: 10, y: 38), control1: CGPoint(x: 14, y: 47), control2: CGPoint(x: 10, y: 43))
+                shell.closeSubpath()
+                ctx.fill(shell, with: .color(ink))
+                var stripe = Path()
+                stripe.move(to: CGPoint(x: 22, y: 14))
+                stripe.addCurve(to: CGPoint(x: 50, y: 23), control1: CGPoint(x: 32, y: 7), control2: CGPoint(x: 46, y: 12))
+                stroke(stripe, 3.5, gold)
+                ctx.fill(Path(ellipseIn: CGRect(x: 26, y: 32, width: 6, height: 6)), with: .color(gold))
+                let mask = Color(red: 0.79, green: 0.8, blue: 0.82)
+                stroke(seg(CGPoint(x: 40, y: 40), CGPoint(x: 58, y: 40)), 2.4, mask)
+                stroke(seg(CGPoint(x: 41, y: 46), CGPoint(x: 56, y: 46)), 2.4, mask)
+                stroke(seg(CGPoint(x: 52, y: 36), CGPoint(x: 52, y: 50)), 2.4, mask)
+            case "pirate":
+                var flag = Path()
+                flag.move(to: CGPoint(x: 6, y: 12))
+                flag.addQuadCurve(to: CGPoint(x: 32, y: 12), control: CGPoint(x: 20, y: 6))
+                flag.addQuadCurve(to: CGPoint(x: 58, y: 12), control: CGPoint(x: 44, y: 18))
+                flag.addLine(to: CGPoint(x: 58, y: 50))
+                flag.addQuadCurve(to: CGPoint(x: 32, y: 50), control: CGPoint(x: 44, y: 56))
+                flag.addQuadCurve(to: CGPoint(x: 6, y: 50), control: CGPoint(x: 20, y: 44))
+                flag.closeSubpath()
+                ctx.fill(flag, with: .color(ink))
+                ctx.fill(Path(ellipseIn: CGRect(x: 23, y: 17, width: 18, height: 18)), with: .color(gold))
+                ctx.fill(Path(roundedRect: CGRect(x: 27, y: 32, width: 10, height: 7), cornerRadius: 2), with: .color(gold))
+                ctx.fill(Path(ellipseIn: CGRect(x: 26.1, y: 23.6, width: 4.8, height: 4.8)), with: .color(ink))
+                ctx.fill(Path(ellipseIn: CGRect(x: 33.1, y: 23.6, width: 4.8, height: 4.8)), with: .color(ink))
+                stroke(seg(CGPoint(x: 16, y: 39), CGPoint(x: 48, y: 48)), 3.4, gold)
+                stroke(seg(CGPoint(x: 48, y: 39), CGPoint(x: 16, y: 48)), 3.4, gold)
+            default: // heart
+                var h = Path()
+                h.move(to: CGPoint(x: 32, y: 56))
+                h.addCurve(to: CGPoint(x: 17, y: 14), control1: CGPoint(x: 8, y: 40), control2: CGPoint(x: 6, y: 22))
+                h.addCurve(to: CGPoint(x: 32, y: 19), control1: CGPoint(x: 25, y: 9), control2: CGPoint(x: 31, y: 13))
+                h.addCurve(to: CGPoint(x: 47, y: 14), control1: CGPoint(x: 33, y: 13), control2: CGPoint(x: 39, y: 9))
+                h.addCurve(to: CGPoint(x: 32, y: 56), control1: CGPoint(x: 58, y: 22), control2: CGPoint(x: 56, y: 40))
+                h.closeSubpath()
+                ctx.fill(h, with: .color(Color(red: 0.84, green: 0.15, blue: 0.24)))
+                var shine = Path()
+                shine.move(to: CGPoint(x: 17, y: 22))
+                shine.addCurve(to: CGPoint(x: 25, y: 17), control1: CGPoint(x: 18, y: 18), control2: CGPoint(x: 21, y: 16))
+                stroke(shine, 3, Color.white.opacity(0.5))
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
     }
 }

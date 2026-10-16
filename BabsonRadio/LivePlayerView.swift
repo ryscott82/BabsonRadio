@@ -14,6 +14,13 @@ struct LivePlayerView: View {
     @State private var drawerOpen = false
     @Environment(\.verticalSizeClass) private var vSize
     @Environment(\.horizontalSizeClass) private var hSize
+    /// True while the foldable is propped half open. The big clock only shows then, on the outer screen, sideways.
+    @State private var halfFolded = false
+    @ObservedObject private var lab = TestLab.shared
+    /// The real hinge, or the admin Test lab's pretend half-folded switch.
+    private var folded: Bool { halfFolded || lab.halfFolded }
+    /// The full screen board, opened by the corner button on a fully open foldable (same as the website's full screen).
+    @State private var showBoard = false
 
     /// Signed-out visitors can preview the stream.
     private var canPlay: Bool { auth.canListenLive || !auth.isSignedIn }
@@ -130,11 +137,34 @@ struct LivePlayerView: View {
             .ignoresSafeArea(edges: .top)
         }
         .overlay { EmojiRainOverlay() }
+        .trackHalfFolded($halfFolded)
+        .overlay {
+            if showBoard && hSize == .regular {
+                LiveBoardView(canPlay: canPlay, glow: glowColor, stacked: true).transition(.opacity)
+            }
+        }
+        // The same corner button opens and closes the full screen board.
+        .overlay(alignment: .bottomLeading) {
+            if hSize == .regular && (!folded || showBoard) {
+                Button { withAnimation(.easeInOut(duration: 0.25)) { showBoard.toggle() } } label: {
+                    Image(systemName: showBoard ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(showBoard ? .white : (scheme == .dark ? .brDkText : .brLtText))
+                        .frame(width: 40, height: 40)
+                        .brGlass(in: Circle(), interactive: true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(showBoard ? "Exit full screen" : "Full screen")
+                // Right in the corner: measured from the screen edge, not the safe area.
+                .padding(.leading, 12).padding(.bottom, 12)
+                .ignoresSafeArea()
+            }
+        }
 #if os(iOS)
         // Turned sideways on an iPhone: a clean full screen board with just the music, like the website's full screen mode.
         .overlay {
             if vSize == .compact {
-                LiveBoardView(canPlay: canPlay, glow: glowColor).transition(.opacity)
+                LiveBoardView(canPlay: canPlay, glow: glowColor, showClock: (folded && hSize == .compact) || lab.clock).transition(.opacity)
             }
         }
         .animation(.easeInOut(duration: 0.25), value: vSize == .compact)
@@ -154,75 +184,114 @@ struct LivePlayerView: View {
 
     // MARK: - Roomy layout (open foldable, iPad, wide windows)
 
-    /// Two pages, like an open book. Left: "On Air" (the clock, the cover, what is playing). Right: "The Room" (controls,
-    /// reactions, the host's note, set list, vote, community). ArrangementView puts them side by side, and stacks them
+    /// Two pages, like an open book. Left: the standard player (cover, controls). Right: reactions, ratings and voting. ArrangementView puts them side by side, and stacks them
     /// top and bottom when the device is propped up like a tabletop: the show on top, the touch controls on the stable half.
     @ViewBuilder private func duoContent(top: CGFloat) -> some View {
-        NavigationStack {
+        if #available(iOS 27.1, *) {
             ArrangementView {
-                onAirPage
+                playerPage(top: top)
             } secondary: {
-                roomPage(top: top)
+                reactionsPage(top: top)
             }
-            .toolbar(.hidden, for: .navigationBar)
-            .containerBackground(.clear, for: .navigation)
+        } else {
+            HStack(spacing: 0) {
+                playerPage(top: top)
+                reactionsPage(top: top)
+            }
         }
     }
 
-    private var onAirPage: some View {
+    /// Left page. The logo sits on top. Open: cover, info and the media controls. Half folded: the cover and info fill the pane.
+    private func playerPage(top: CGFloat) -> some View {
         GeometryReader { g in
-            let clockSize = max(56, min(g.size.width * 0.3, g.size.height * 0.2, 190))
-            let side = max(110, min(g.size.width - 72, g.size.height - clockSize * 1.7 - 170))
-            VStack(spacing: 14) {
+            let controls = !folded
+            let side = max(120, min(g.size.width - 48, g.size.height - top - (controls ? 330 : 190)))
+            VStack(spacing: 0) {
+                headerRow(topInset: top, showProfile: false)
+                    .padding(.leading, 40).padding(.trailing, 20)
+                    .padding(.top, 14).padding(.bottom, 6)
                 Spacer(minLength: 0)
-                BigClock(size: clockSize, alignment: .center, accent: accent, show: audio.nowPlaying?.showTitle ?? "")
                 PlayerArtCard()
                     .frame(width: 340, height: 340)
                     .scaleEffect(side / 340)
                     .frame(width: side, height: side)
                 nowPlayingInfo
                     .padding(.horizontal, 24)
+                    .padding(.top, 14)
+                if controls {
+                    playRow.padding(.top, 20)
+                    volumeRow.padding(.horizontal, 36).padding(.top, 14)
+                    controlNotes.padding(.top, 8)
+                }
                 Spacer(minLength: 0)
             }
             .frame(width: g.size.width, height: g.size.height)
+            .animation(.easeInOut(duration: 0.3), value: folded)
         }
     }
 
-    private func roomPage(top: CGFloat) -> some View {
-        VStack(spacing: 0) {
-            headerRow(topInset: top)
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .padding(.bottom, 10)
-            playRow
-            volumeRow
-                .padding(.horizontal, 36)
-                .padding(.top, 6)
-            LiveExtrasView(mode: .reactions)
-                .padding(.top, 8)
-            if !auth.isSignedIn {
-                Text("Previewing the live stream. Sign in from the Profile tab for reminders, friends and more.")
-                    .font(.system(size: 11))
-                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-                    .multilineTextAlignment(.center).lineLimit(2)
-                    .padding(.horizontal, 32).padding(.top, 6)
-            } else if !auth.canListenLive {
-                Text(lockedMessage)
-                    .font(.system(size: 11))
-                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-                    .multilineTextAlignment(.center).lineLimit(2)
-                    .padding(.horizontal, 32).padding(.top, 6)
-            }
+    @ViewBuilder private var controlNotes: some View {
+        if !auth.isSignedIn {
+            Text("Previewing the live stream. Sign in from the Profile tab for reminders, friends and more.")
+                .font(.system(size: 11))
+                .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                .multilineTextAlignment(.center).lineLimit(2)
+                .padding(.horizontal, 32)
+        } else if !auth.canListenLive {
+            Text(lockedMessage)
+                .font(.system(size: 11))
+                .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                .multilineTextAlignment(.center).lineLimit(2)
+                .padding(.horizontal, 32)
+        }
+    }
+
+    /// Right page: profile in the corner, then reactions, ratings and the poll. Open: the poll is inline and the join buttons are
+    /// below it. Half folded: the poll shrinks to a button and the media controls sit at the bottom, so everything you touch is here.
+    private func reactionsPage(top: CGFloat) -> some View {
+        GeometryReader { g in
             ScrollView {
-                roomContent.padding(.bottom, 24)
+                VStack(spacing: 14) {
+                    HStack {
+                        Spacer()
+                        ProfileCircleButton()
+                    }
+                    .padding(.trailing, 20).padding(.top, top + 12)
+                    VStack(spacing: 12) {
+                        roomBody(community: false, voteButton: folded)
+                    }
+                    .frame(maxWidth: .infinity)
+                    if !folded && auth.isSignedIn && auth.canListenLive {
+                        VotePanel(compact: true)
+                            .frame(maxWidth: 520)
+                            .padding(.horizontal, 24)
+                    }
+                    // Reactions sit under the poll
+                    LiveExtrasView(mode: .reactions)
+                        .frame(maxWidth: .infinity)
+                    Spacer(minLength: 8)
+                    if folded {
+                        playRow
+                        volumeRow.padding(.horizontal, 36)
+                        controlNotes
+                            .padding(.bottom, 24)
+                    } else {
+                        communitySection
+                            .frame(maxWidth: 520)
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 20)
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: g.size.height)
             }
             .scrollIndicators(.hidden)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    /// The host's note, who is tuned in, set list, vote and community. Shown in the pull-up drawer on a phone, and inline on "The Room" page.
-    private var roomContent: some View {
+    /// The host's note, who is tuned in, set list, vote and community. Shown in the pull-up drawer on a phone, and on the right page of an open foldable.
+    private var roomContent: some View { roomBody(community: true) }
+
+    private func roomBody(community: Bool, voteButton: Bool = true) -> some View {
 
                     VStack(spacing: 18) {
                         if let note = audio.nowPlaying?.note, !(note.headline.isEmpty && note.message.isEmpty) {
@@ -244,7 +313,7 @@ struct LivePlayerView: View {
                             }
                         }
                         LiveExtrasView(mode: .rest)
-                        if auth.isSignedIn && auth.canListenLive {
+                        if voteButton && auth.isSignedIn && auth.canListenLive {
                             Button { showVote = true } label: {
                                 Label("What would you like to hear?", systemImage: "hand.thumbsup")
                                     .font(.system(size: 14, weight: .semibold))
@@ -254,16 +323,19 @@ struct LivePlayerView: View {
                             }
                             .buttonStyle(.plain)
                         }
-                        communitySection
-                            .padding(.bottom, 24)
+                        if community {
+                            communitySection
+                                .padding(.bottom, 24)
+                        }
                     }
                     .padding(.top, 8)
     }
 
     // MARK: - Sub-views
 
-    private func headerRow(topInset: CGFloat) -> some View {
-        HStack {
+    private func headerRow(topInset: CGFloat, profileFirst: Bool = false, showProfile: Bool = true) -> some View {
+        HStack(spacing: 12) {
+            if profileFirst && showProfile { ProfileCircleButton() }
             // Logo wordmark
             VStack(alignment: .leading, spacing: 0) {
                 Text("BABSON")
@@ -284,7 +356,7 @@ struct LivePlayerView: View {
                     .transition(.scale.combined(with: .opacity))
             }
 
-            ProfileCircleButton()
+            if !profileFirst && showProfile { ProfileCircleButton() }
         }
         .animation(.easeInOut(duration: 0.25), value: audio.isPlaying)
         .padding(.top, topInset)
@@ -819,6 +891,9 @@ struct LiveVisualizer: View {
 struct LiveBoardView: View {
     let canPlay: Bool
     let glow: Color
+    var showClock: Bool = false
+    /// Stacked: the cover as big as the screen allows, with the title and artist underneath. For the open foldable and iPad.
+    var stacked = false
     @ObservedObject private var audio = AudioPlayerManager.shared
     @ObservedObject private var theme = ArtTheme.shared
     @State private var awake = true
@@ -843,11 +918,30 @@ struct LiveBoardView: View {
                 Color.black.ignoresSafeArea()
                 LiveVisualizer(color: glow, playing: audio.isPlaying, beat: audio.beatClock).ignoresSafeArea()
 
+                if stacked {
+                    let big = max(140, min(geo.size.width - 64, geo.size.height - 250))
+                    VStack(spacing: 16) {
+                        art(side: big)
+                        VStack(spacing: 4) {
+                            Text(hasSong ? (np?.title ?? "") : "Babson Radio")
+                                .font(BRFont.display(32)).foregroundColor(.white)
+                                .lineLimit(1).minimumScaleFactor(0.5)
+                            Text(hasSong ? ((np?.artist.isEmpty == false) ? np!.artist : "Babson Radio") : "Live from campus")
+                                .font(.system(size: 19, weight: .medium)).foregroundColor(.white.opacity(0.8)).lineLimit(1)
+                        }
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.top, 16).padding(.bottom, 100)
+                } else {
                 HStack(spacing: 40) {
                     art(side: side)
                     VStack(alignment: .leading, spacing: 8) {
-                        BigClock(size: min(geo.size.height * 0.24, 110), alignment: .leading, accent: glow, show: "", onDark: true)
-                            .padding(.bottom, 6)
+                        if showClock {
+                            BigClock(size: min(geo.size.height * 0.24, 110), alignment: .leading, accent: glow, show: "", onDark: true)
+                                .padding(.bottom, 6)
+                        }
                         Text(hasSong ? (np?.title ?? "") : "Babson Radio")
                             .font(BRFont.display(34)).foregroundColor(.white)
                             .lineLimit(3).minimumScaleFactor(0.6)
@@ -864,6 +958,7 @@ struct LiveBoardView: View {
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 32).padding(.bottom, 70)
+                }
 
                 VStack {
                     Spacer()
@@ -886,11 +981,13 @@ struct LiveBoardView: View {
                     .brGlass(in: Capsule())
                     .padding(.bottom, 8)
                     .opacity(awake ? 1 : 0).allowsHitTesting(awake)
+                    if !stacked {
                     HStack {
                         Text("BABSON RADIO").font(BRFont.display(11)).kerning(5).foregroundColor(.white.opacity(0.4))
                         Spacer()
                     }
                     .padding(.horizontal, 32).padding(.bottom, 10)
+                    }
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
@@ -923,6 +1020,25 @@ struct LiveBoardView: View {
 }
 #endif
 
+
+// MARK: - Half-folded tracking
+
+private struct HalfFoldedTracker: ViewModifier {
+    @Binding var halfFolded: Bool
+    func body(content: Content) -> some View {
+        if #available(iOS 27.1, *) {
+            content.onHingeChange { _, context in
+                halfFolded = context.hinge?.status == .partiallyOpen
+            }
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    func trackHalfFolded(_ value: Binding<Bool>) -> some View { modifier(HalfFoldedTracker(halfFolded: value)) }
+}
 
 // MARK: - Big clock
 

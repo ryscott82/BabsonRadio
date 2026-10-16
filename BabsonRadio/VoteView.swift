@@ -21,9 +21,11 @@ nonisolated struct VoteState: Decodable {
     let requestsShow: String?
 }
 
-struct VoteView: View {
+/// The poll and song requests, without a sheet around it. Used inline on the open foldable, and inside VoteView on a phone.
+struct VotePanel: View {
     @Environment(\.colorScheme) var scheme
-    @Environment(\.dismiss) private var dismiss
+    /// Compact: two columns, no request forms, for the open foldable where the poll shares the page with reactions.
+    var compact = false
     @State private var state: VoteState?
     @State private var message: String?
     @State private var request = ""
@@ -40,17 +42,16 @@ struct VoteView: View {
     private func time(_ ms: Double) -> String { Self.clock.string(from: Date(timeIntervalSince1970: ms / 1000)) }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     if let s = state {
-                        Text("Vote for \(time(s.blockStart)) – \(time(s.blockEnd)). Voting closes 10 minutes before the hour. The genre with the most votes (at least \(s.threshold), no tie) takes it.")
-                            .font(.system(size: 14)).foregroundColor(sub)
+                        Text("Vote closes at \(time(s.blockEnd - 600_000))")
+                            .font(.system(size: 13, weight: .semibold)).foregroundColor(sub)
                         if let u = s.upNext {
                             Text(u.label.isEmpty ? "\(time(u.blockStart)): no clear winner, so the auto DJ picks." : "\(u.label) won \(time(u.blockStart)).")
                                 .font(.system(size: 13)).foregroundColor(accent)
                         }
                         let top = max(1, s.options.map(\.count).max() ?? 1)
+                        LazyVGrid(columns: compact ? [GridItem(.flexible(), spacing: 8), GridItem(.flexible())] : [GridItem(.flexible())], spacing: compact ? 8 : 10) {
                         ForEach(s.options) { o in
                             Button { vote(o.label) } label: {
                                 ZStack(alignment: .leading) {
@@ -67,7 +68,7 @@ struct VoteView: View {
                                     }
                                     .padding(.horizontal, 14)
                                 }
-                                .frame(height: 44)
+                                .frame(height: compact ? 38 : 44)
                                 .background(card)
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
                                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(s.myVote == o.label ? accent : .clear, lineWidth: 1.5))
@@ -75,10 +76,11 @@ struct VoteView: View {
                             .buttonStyle(.plain)
                             .disabled(busy || s.canVote == false)
                         }
+                        }
                         if s.canVote == false {
                             Text("Voting opens once a Babson student sponsors you or has you in their contacts.")
                                 .font(.system(size: 12)).foregroundColor(sub)
-                        } else if s.requestsOpen == true {
+                        } else if !compact, s.requestsOpen == true {
                             Text(s.requestsShow.map { "Request a song for \($0)" } ?? "Request a song")
                                 .font(.system(size: 13, weight: .semibold)).foregroundColor(text).padding(.top, 8)
                             HStack {
@@ -88,19 +90,12 @@ struct VoteView: View {
                                     .disabled(busy || request.trimmingCharacters(in: .whitespaces).count < 2)
                             }
                         }
-                        if s.canVote != false { PlaylistRequestForm() }
+                        if s.canVote != false && !compact { PlaylistRequestForm() }
                     } else {
                         ProgressView().frame(maxWidth: .infinity).padding(.top, 40)
                     }
                     if let m = message { Text(m).font(.system(size: 13)).foregroundColor(sub) }
                 }
-                .padding(20)
-            }
-            .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
-            .navigationTitle("What would you like to hear?")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
-        }
         .task {
             // Near real time: refresh every 10 seconds while the sheet is open.
             while !Task.isCancelled {
@@ -132,6 +127,21 @@ struct VoteView: View {
     }
 }
 
+
+struct VoteView: View {
+    @Environment(\.colorScheme) var scheme
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView { VotePanel().padding(20) }
+                .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+                .navigationTitle("What would you like to hear?")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
+        }
+    }
+}
 
 nonisolated struct PlaylistList: Decodable { let playlists: [String] }
 

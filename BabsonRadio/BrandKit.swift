@@ -131,6 +131,9 @@ struct BRSectionHeader: View {
 
 struct OnAirBadge: View {
     @ObservedObject private var theme = ArtTheme.shared
+    @Environment(\.colorScheme) private var scheme
+    /// Station red, unless the whole UI is following the album art.
+    private var color: Color { ArtTheme.full(scheme) ? theme.badge : .brRed }
     var body: some View {
         HStack(spacing: 6) {
             Circle()
@@ -143,9 +146,9 @@ struct OnAirBadge: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 3)
-        .background(theme.badge)
+        .background(color)
         .clipShape(RoundedRectangle(cornerRadius: 3))
-        .shadow(color: theme.badge.opacity(0.35), radius: 6, x: 0, y: 2)
+        .shadow(color: color.opacity(0.35), radius: 6, x: 0, y: 2)
     }
 }
 

@@ -73,18 +73,22 @@ struct SkipControl: View {
 /// The little equalizer bars beside the play button while music plays.
 struct EqualizerBars: View {
     let color: Color
-    @State private var up = false
 
+    /// Driven by the clock, not by a looping animation on state. A repeat-forever animation tied to state also animates the view's
+    /// position whenever the layout changes (rotating, unfolding, split view), which scattered the bars around the screen.
     var body: some View {
-        HStack(alignment: .center, spacing: 4) {
-            ForEach(0..<4, id: \.self) { i in
-                Capsule().fill(color)
-                    .frame(width: 4, height: up ? 30 : 8)
-                    .animation(.easeInOut(duration: 0.45 + Double(i) * 0.09).repeatForever(autoreverses: true).delay(Double(i) * 0.12), value: up)
+        TimelineView(.animation) { tl in
+            let t = tl.date.timeIntervalSinceReferenceDate
+            HStack(alignment: .center, spacing: 4) {
+                ForEach(0..<4, id: \.self) { i in
+                    let wave = (sin(t * (2.6 + Double(i) * 0.55) + Double(i) * 1.3) + 1) / 2
+                    Capsule().fill(color)
+                        .frame(width: 4, height: 8 + 22 * wave)
+                }
             }
+            .frame(width: 28, height: 32)
         }
-        .frame(height: 32)
-        .onAppear { up = true }
+        .fixedSize()
         .accessibilityHidden(true)
     }
 }

@@ -2,6 +2,7 @@ import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/http'
 import { EMOJIS, bucketMinute, currentOnAir } from '@/lib/server/live'
+import { PITTSBURGH } from '@/lib/reactionThemes'
 import { EARNED_EMOJIS, bump, emojisFor } from '@/lib/server/earnedEmojis'
 
 export const runtime = 'nodejs'
@@ -58,7 +59,8 @@ export async function POST(req: Request) {
     const emoji = str(b.emoji, 8)
     const cid = str(b.cid, 24).replace(/[^A-Za-z0-9]/g, '')
     const earned = (EARNED_EMOJIS as readonly string[]).includes(emoji)
-    if (!earned && !(EMOJIS as readonly string[]).includes(emoji)) throw new HttpError(400, 'Pick one of the reactions.')
+    const themed = (PITTSBURGH as readonly string[]).includes(emoji)
+    if (!earned && !themed && !(EMOJIS as readonly string[]).includes(emoji)) throw new HttpError(400, 'Pick one of the reactions.')
     if (earned && !(await emojisFor(adminDb(), t.uid)).includes(emoji)) throw new HttpError(400, 'Pick one of the reactions.')
     const now = Date.now()
     const recent = (sent.get(t.uid) ?? []).filter(x => now - x < 60_000)

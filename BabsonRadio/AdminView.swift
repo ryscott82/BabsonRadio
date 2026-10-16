@@ -82,6 +82,7 @@ private final class AdminModel: ObservableObject {
 struct AdminView: View {
     @StateObject private var model = AdminModel()
     @StateObject private var push = PushManager.shared
+    @ObservedObject private var lab = TestLab.shared
     @Environment(\.colorScheme) private var scheme
 
     @State private var showDone = false
@@ -103,6 +104,7 @@ struct AdminView: View {
                 reports
                 station
                 notifications
+                testLab
             }
             .padding(20)
         }
@@ -261,6 +263,28 @@ struct AdminView: View {
         .disabled(model.busy)
     }
 
+    private var testLab: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            BRSectionHeader(title: "TEST LAB")
+            Text("Switch on things that are not always on, to try them on this phone. They only change this phone, and reset when you quit the app.")
+                .font(.system(size: 12)).foregroundColor(sub)
+            Toggle("Pittsburgh reactions (as if Mac Miller is on)", isOn: $lab.pittsburgh)
+            Toggle("Pretend the foldable is half folded", isOn: $lab.halfFolded)
+            Toggle("Big clock on the full screen board", isOn: $lab.clock)
+            Text("Falling emojis, 3 seconds after you tap. Switch to the Live tab to watch.")
+                .font(.system(size: 12)).foregroundColor(sub).padding(.top, 4)
+            HStack(spacing: 10) {
+                stationButton("🔥 RAIN", filled: false) { lab.rain("🔥") }
+                stationButton("BRIDGE RAIN", filled: false) { lab.rain(":pgh-bridge:") }
+                stationButton("BEAVER RAIN", filled: false) { lab.rain(":br:") }
+            }
+            Button("Turn everything off") { lab.reset() }
+                .font(.system(size: 13, weight: .semibold)).foregroundColor(sub)
+        }
+        .font(.system(size: 14)).foregroundColor(text).tint(accent)
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
+    }
+
     private var notifications: some View {
         VStack(alignment: .leading, spacing: 10) {
             BRSectionHeader(title: "NOTIFICATIONS ON THIS PHONE")
@@ -276,4 +300,25 @@ struct AdminView: View {
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
     }
+}
+
+
+// MARK: - Test lab
+
+/// Switches for things that are not always on, so they can be tried by hand from Admin. Per phone, not saved.
+@MainActor
+final class TestLab: ObservableObject {
+    static let shared = TestLab()
+    @Published var pittsburgh = false
+    @Published var halfFolded = false
+    @Published var clock = false
+
+    func rain(_ emoji: String) {
+        Task {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            LiveExtrasModel.shared.rain(emoji, count: 24, spread: 2.5)
+        }
+    }
+
+    func reset() { pittsburgh = false; halfFolded = false; clock = false }
 }

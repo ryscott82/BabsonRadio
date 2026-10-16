@@ -4,6 +4,8 @@ import UIKit
 #endif
 
 struct ContentView: View {
+    /// The blur under the status bar is for a phone. On the open foldable and iPad the status bar sits at the side, and the blur just washes out the top of the page.
+    @Environment(\.horizontalSizeClass) private var hSize
     @Environment(\.colorScheme) var scheme
     @ObservedObject private var auth = AuthManager.shared
     @State private var splashDone = false
@@ -36,7 +38,7 @@ struct ContentView: View {
         }
         .tint(scheme == .dark ? .brGold : .brGreen)
         .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
-        .overlay(alignment: .top) { StatusBarBlur() }
+        .overlay(alignment: .top) { if hSize != .regular { StatusBarBlur() } }
         .task(id: auth.isSignedIn) { ContactsManager.shared.promptOnFirstOpen() }
         .alert("Are you a Babson student?", isPresented: $askSchoolEmail) {
             Button("Add my school email") { showSchoolEmailSheet = true }

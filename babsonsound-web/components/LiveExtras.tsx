@@ -223,18 +223,6 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
           )}
         </div>
       )}
-      {rateable && !closing && (
-        <div className={`${card} flex flex-wrap items-center gap-3`}>
-          <span className="text-sm text-br-dk-text">{rateable.isShow ? 'Rate the whole show' : 'Rate this hour of music'}: {rateable.title}</span>
-          <span className="flex" role="group" aria-label="Star rating">
-            {[1, 2, 3, 4, 5].map(n => (
-              <button key={n} type="button" onClick={() => rate(n)} aria-label={`${n} star${n > 1 ? 's' : ''}`}
-                      className={`text-xl leading-none px-0.5 ${n <= rating.mine ? 'text-br-gold' : 'text-br-dk-muted'}`}>★</button>
-            ))}
-          </span>
-          {rating.count > 0 && <span className="text-xs text-br-dk-sub">{rating.avg} average · {rating.count} rating{rating.count === 1 ? '' : 's'}</span>}
-        </div>
-      )}
       {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}
     </div>
   )

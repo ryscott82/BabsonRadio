@@ -302,17 +302,13 @@ struct LiveExtrasView: View {
 
             if mode != .reactions {
             if let np, !np.title.isEmpty, np.showOnly != true {
-                    starRow(label: "Rate this song", value: model.songStars) { n in
+                    starRow(label: "Rate this song (it counts toward the show too)", value: model.songStars) { n in
                         Task { await model.rateSong(n, title: np.title, artist: np.artist) }
                     }
                 }
     
                 if mode == .rest, let t = feedbackTarget {
                     feedbackCard(t)
-                } else if mode == .rest, let r = rateable {
-                    starRow(label: (r.isShow ? "Rate the whole show: " : "Rate this hour of music: ") + r.title, value: model.showStars) { n in
-                        Task { await model.rateShow(n, occId: r.occId, title: r.title) }
-                    }
                 }
             }
 
@@ -435,12 +431,12 @@ struct PittsburghGlyph: View {
                 flag.addQuadCurve(to: CGPoint(x: 6, y: 50), control: CGPoint(x: 20, y: 44))
                 flag.closeSubpath()
                 ctx.fill(flag, with: .color(ink))
-                ctx.fill(Path(ellipseIn: CGRect(x: 23, y: 17, width: 18, height: 18)), with: .color(gold))
-                ctx.fill(Path(roundedRect: CGRect(x: 27, y: 32, width: 10, height: 7), cornerRadius: 2), with: .color(gold))
+                ctx.fill(Path(ellipseIn: CGRect(x: 23, y: 17, width: 18, height: 18)), with: .color(.white))
+                ctx.fill(Path(roundedRect: CGRect(x: 27, y: 32, width: 10, height: 7), cornerRadius: 2), with: .color(.white))
                 ctx.fill(Path(ellipseIn: CGRect(x: 26.1, y: 23.6, width: 4.8, height: 4.8)), with: .color(ink))
                 ctx.fill(Path(ellipseIn: CGRect(x: 33.1, y: 23.6, width: 4.8, height: 4.8)), with: .color(ink))
-                stroke(seg(CGPoint(x: 16, y: 39), CGPoint(x: 48, y: 48)), 3.4, gold)
-                stroke(seg(CGPoint(x: 48, y: 39), CGPoint(x: 16, y: 48)), 3.4, gold)
+                stroke(seg(CGPoint(x: 16, y: 39), CGPoint(x: 48, y: 48)), 3.4, .white)
+                stroke(seg(CGPoint(x: 48, y: 39), CGPoint(x: 16, y: 48)), 3.4, .white)
             default: // heart
                 var h = Path()
                 h.move(to: CGPoint(x: 32, y: 56))

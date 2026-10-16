@@ -39,6 +39,21 @@ export async function POST(req: Request) {
       uid: t.uid, songId: keyOf(artist, title), title, artist, stars,
       label: cur?.item.title ?? '', occId: cur?.occId ?? '', isShow: cur?.isShow ?? false, at: Timestamp.now(),
     })
+    // One rating for people to think about: the show's rating from this person is the average of the songs they rated in it.
+    if (cur?.occId) {
+      try {
+        const mine = await db.collection('songRatings').where('uid', '==', t.uid).where('occId', '==', cur.occId).get()
+        const all = mine.docs.map(d => d.get('stars') as number).filter(n => Number.isFinite(n))
+        if (all.length) {
+          const avg = all.reduce((x, y) => x + y, 0) / all.length
+          await db.collection('ratings').doc(`${cur.occId}__${t.uid}`).set({
+            occId: cur.occId, showKey: cur.occId.replace(/_\d{10,14}$/, ''), uid: t.uid,
+            stars: Math.min(5, Math.max(1, Math.round(avg))), avg: Math.round(avg * 100) / 100, songs: all.length,
+            showTitle: cur.item.title, isShow: cur.isShow, derived: true, at: Timestamp.now(),
+          }, { merge: true })
+        }
+      } catch { /* the song rating is saved; the show average catches up on the next one */ }
+    }
     await noteStars(db, t.uid, `s:${keyOf(artist, title)}`, stars).catch(() => {})
     await bump(db, t.uid)
     return { ok: true }

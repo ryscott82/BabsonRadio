@@ -184,7 +184,7 @@ struct LivePlayerView: View {
 
     // MARK: - Roomy layout (open foldable, iPad, wide windows)
 
-    /// Two pages, like an open book. Left: the standard player (cover, controls). Right: reactions, ratings and voting. ArrangementView puts them side by side, and stacks them
+    /// Two pages, like an open book. Left: the cover and what is playing. Right: poll, rating, reactions and the media controls. ArrangementView puts them side by side, and stacks them
     /// top and bottom when the device is propped up like a tabletop: the show on top, the touch controls on the stable half.
     @ViewBuilder private func duoContent(top: CGFloat) -> some View {
         if #available(iOS 27.1, *) {
@@ -201,11 +201,10 @@ struct LivePlayerView: View {
         }
     }
 
-    /// Left page. The logo sits on top. Open: cover, info and the media controls. Half folded: the cover and info fill the pane.
+    /// Left page, open or half folded: the logo, then the cover and what is playing, as big as the pane allows. No controls here.
     private func playerPage(top: CGFloat) -> some View {
         GeometryReader { g in
-            let controls = !folded
-            let side = max(120, min(g.size.width - 48, g.size.height - top - (controls ? 330 : 190)))
+            let side = max(120, min(g.size.width - 48, g.size.height - top - 190))
             VStack(spacing: 0) {
                 headerRow(topInset: top, showProfile: false)
                     .padding(.leading, 40).padding(.trailing, 20)
@@ -218,11 +217,6 @@ struct LivePlayerView: View {
                 nowPlayingInfo
                     .padding(.horizontal, 24)
                     .padding(.top, 14)
-                if controls {
-                    playRow.padding(.top, 20)
-                    volumeRow.padding(.horizontal, 36).padding(.top, 14)
-                    controlNotes.padding(.top, 8)
-                }
                 Spacer(minLength: 0)
             }
             .frame(width: g.size.width, height: g.size.height)
@@ -281,12 +275,12 @@ struct LivePlayerView: View {
                     LiveExtrasView(mode: .reactions)
                         .frame(maxWidth: .infinity)
                     Spacer(minLength: 8)
-                    if folded {
-                        playRow
-                        volumeRow.padding(.horizontal, 36)
-                        controlNotes
-                            .padding(.bottom, 24)
-                    } else {
+                    // Media controls sit at the bottom of this pane, above the join button
+                    playRow
+                    volumeRow.padding(.horizontal, 36)
+                    controlNotes
+                        .padding(.bottom, folded ? 24 : 4)
+                    if !folded {
                         communitySection
                             .frame(maxWidth: 520)
                             .padding(.horizontal, 24)

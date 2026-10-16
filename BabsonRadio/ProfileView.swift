@@ -1078,6 +1078,28 @@ class ContactsManager: ObservableObject {
         applySaved([:])
     }
 
+    /// Babson's own phone lines (Public Safety, advising, offices) are public and are never suggested.
+    /// Babson's campus numbers all start 781-239. Add other prefixes ("617555") or full 10-digit numbers here if more turn up.
+    nonisolated private static let blockedNumberPrefixes = ["781239"]
+
+    /// Words that mark an office or department instead of a person. A contact with one of these in its name or details is never suggested.
+    nonisolated private static let officeWords = ["public safety", "campus police", "campus safety", "security", "advising", "advisor", "adviser",
+                                                  "student life", "dean of", "registrar", "financial aid", "help desk", "helpdesk", "dining", "health services",
+                                                  "counseling", "front desk", "main office", "switchboard"]
+
+    nonisolated private static func isBlockedNumber(_ raw: String) -> Bool {
+        var d = raw.filter(\.isNumber)
+        if d.count == 11, d.hasPrefix("1") { d.removeFirst() }
+        return blockedNumberPrefixes.contains { d.hasPrefix($0) }
+    }
+
+    /// True for Babson's own lines and office-style contacts. These are left out of suggestions and their numbers are never uploaded.
+    nonisolated private static func isCampusOffice(_ c: CNContact, name: String) -> Bool {
+        if c.phoneNumbers.contains(where: { isBlockedNumber($0.value.stringValue) }) { return true }
+        let text = [name, c.organizationName, c.departmentName, c.jobTitle, c.nickname].joined(separator: " ")
+        return officeWords.contains { text.localizedCaseInsensitiveContains($0) }
+    }
+
     nonisolated private static func babsonMatch(_ c: CNContact, name: String) -> (reason: String, rank: Int)? {
         let schoolDomains = ["babson.edu", "olin.edu", "wellesley.edu"]
         for e in c.emailAddresses {
@@ -1113,9 +1135,11 @@ class ContactsManager: ObservableObject {
                         .trimmingCharacters(in: .whitespaces)
                     let phone = contact.phoneNumbers.first?.value.stringValue
                     if !name.isEmpty, let phone {
-                        let match = Self.babsonMatch(contact, name: name)
-                        let hashes = contact.phoneNumbers.compactMap { Self.phoneHash($0.value.stringValue) }
-                        let emailHashes = contact.emailAddresses.compactMap { Self.emailHash($0.value as String) }
+                        // Babson's own lines and offices stay in the full contact list but are never suggested or counted.
+                        let office = Self.isCampusOffice(contact, name: name)
+                        let match = office ? nil : Self.babsonMatch(contact, name: name)
+                        let hashes = office ? [] : contact.phoneNumbers.compactMap { Self.phoneHash($0.value.stringValue) }
+                        let emailHashes = office ? [] : contact.emailAddresses.compactMap { Self.emailHash($0.value as String) }
                         result.append(BRContact(id: contact.identifier, name: name, primaryPhone: phone,
                                                 babsonReason: match?.reason, babsonRank: match?.rank ?? 0, phoneHashes: hashes, emailHashes: emailHashes))
                     }

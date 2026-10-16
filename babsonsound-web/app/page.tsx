@@ -4,7 +4,6 @@ type EpisodeProps = React.ComponentProps<typeof EpisodeCard>['episode']
 import { LikesProvider, LikeBar } from '@/components/Likes'
 import Link from 'next/link'
 import { LINKS } from '@/lib/links'
-import ShareFormButton from '@/components/ShareFormButton'
 import InterestFormCta from '@/components/InterestFormCta'
 import VoteCard from '@/components/VoteCard'
 import LiveExtrasPane from '@/components/LiveExtrasPane'
@@ -84,7 +83,6 @@ export default async function HomePage() {
              className="sk-btn font-display tracking-[0.2em] text-xs px-5 py-2.5 rounded-xl text-center">
             FILL OUT THE FORM
           </a>
-          <ShareFormButton className="text-center" />
         </div>
       </section></InterestFormCta>
 

@@ -196,7 +196,8 @@ private struct RainDropView: View {
 // MARK: - Buttons and star rows under the player
 
 struct LiveExtrasView: View {
-    enum Mode { case reactions, rest }
+    enum Mode { case reactions, rest, board }
+    /// `.board` is the emoji row plus the song rating, for the full screen board.
     /// `.reactions` is the emoji row that stays on the main screen; `.rest` is ratings and feedback, which live in the drawer.
     var mode: Mode = .rest
     @ObservedObject private var audio = AudioPlayerManager.shared
@@ -281,10 +282,10 @@ struct LiveExtrasView: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            if mode == .reactions, let occ = np?.occId, !occ.isEmpty, auth.isInvisible {
+            if mode != .rest, let occ = np?.occId, !occ.isEmpty, auth.isInvisible {
                 Text("Reactions are off while Invisible mode is on.")
                     .font(.system(size: 12)).foregroundColor(sub).multilineTextAlignment(.center)
-            } else if mode == .reactions, let occ = np?.occId, !occ.isEmpty {
+            } else if mode != .rest, let occ = np?.occId, !occ.isEmpty {
                 BRGlassGroup(spacing: 10) {
                     HStack(spacing: 10) {
                         ForEach(reactionRow, id: \.self) { e in
@@ -299,23 +300,23 @@ struct LiveExtrasView: View {
                 }
             }
 
-            if mode == .rest {
+            if mode != .reactions {
             if let np, !np.title.isEmpty, np.showOnly != true {
                     starRow(label: "Rate this song", value: model.songStars) { n in
                         Task { await model.rateSong(n, title: np.title, artist: np.artist) }
                     }
                 }
     
-                if let t = feedbackTarget {
+                if mode == .rest, let t = feedbackTarget {
                     feedbackCard(t)
-                } else if let r = rateable {
+                } else if mode == .rest, let r = rateable {
                     starRow(label: (r.isShow ? "Rate the whole show: " : "Rate this hour of music: ") + r.title, value: model.showStars) { n in
                         Task { await model.rateShow(n, occId: r.occId, title: r.title) }
                     }
                 }
             }
 
-            if mode == .reactions, !model.message.isEmpty {
+            if mode != .rest, !model.message.isEmpty {
                 Text(model.message).font(.system(size: 12)).foregroundColor(gold).multilineTextAlignment(.center)
             }
         }

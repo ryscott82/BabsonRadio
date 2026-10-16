@@ -140,7 +140,7 @@ struct LivePlayerView: View {
         .trackHalfFolded($halfFolded)
         .overlay {
             if showBoard && hSize == .regular {
-                LiveBoardView(canPlay: canPlay, glow: glowColor, stacked: true).transition(.opacity)
+                LiveBoardView(canPlay: canPlay, glow: glowColor, stacked: true).ignoresSafeArea().transition(.opacity)
             }
         }
         // The same corner button opens and closes the full screen board.
@@ -168,7 +168,7 @@ struct LivePlayerView: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: vSize == .compact)
-        .toolbar(vSize == .compact ? .hidden : .visible, for: .tabBar)
+        .toolbar((vSize == .compact || showBoard) ? .hidden : .visible, for: .tabBar)
 #endif
         .alert("Enjoying Babson Radio?", isPresented: $audio.showSignInPrompt) {
             Button("Create account or sign in") { showProfileSheet = true }
@@ -257,16 +257,27 @@ struct LivePlayerView: View {
                         ProfileCircleButton()
                     }
                     .padding(.trailing, 20).padding(.top, top + 12)
+                    // The poll is first (a button when half folded), then the ratings, then the reactions.
+                    if auth.isSignedIn && auth.canListenLive {
+                        if folded {
+                            Button { showVote = true } label: {
+                                Label("What would you like to hear?", systemImage: "hand.thumbsup")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(accent)
+                                    .padding(.horizontal, 18).padding(.vertical, 12)
+                                    .brGlass(in: Capsule(), tint: accent.opacity(0.25), fallback: accent.opacity(0.14))
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            VotePanel(compact: true)
+                                .frame(maxWidth: 520)
+                                .padding(.horizontal, 24)
+                        }
+                    }
                     VStack(spacing: 12) {
-                        roomBody(community: false, voteButton: folded)
+                        roomBody(community: false, voteButton: false)
                     }
                     .frame(maxWidth: .infinity)
-                    if !folded && auth.isSignedIn && auth.canListenLive {
-                        VotePanel(compact: true)
-                            .frame(maxWidth: 520)
-                            .padding(.horizontal, 24)
-                    }
-                    // Reactions sit under the poll
                     LiveExtrasView(mode: .reactions)
                         .frame(maxWidth: .infinity)
                     Spacer(minLength: 8)
@@ -514,24 +525,6 @@ struct LivePlayerView: View {
                 .padding(.vertical, 14)
                 .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
                 .brGlass(in: RoundedRectangle(cornerRadius: 14), tint: theme.button(scheme), interactive: true, fallback: theme.button(scheme))
-            }
-
-            if auth.isTester {
-            ShareLink(item: BabsonLinks.interest,
-                      subject: Text("Babson Radio"),
-                      message: Text("Student radio is coming back to Babson. Tell them what you want to hear:")) {
-                HStack(spacing: 8) {
-                    Spacer()
-                    Image(systemName: "square.and.arrow.up")
-                    Text("SHARE THE FORM")
-                        .font(BRFont.display(15))
-                        .kerning(2)
-                    Spacer()
-                }
-                .padding(.vertical, 14)
-                .foregroundColor(theme.accent(scheme))
-                .brGlass(in: RoundedRectangle(cornerRadius: 14), interactive: true)
-            }
             }
 
             HStack(spacing: 22) {
@@ -919,21 +912,48 @@ struct LiveBoardView: View {
                 LiveVisualizer(color: glow, playing: audio.isPlaying, beat: audio.beatClock).ignoresSafeArea()
 
                 if stacked {
-                    let big = max(140, min(geo.size.width - 64, geo.size.height - 250))
-                    VStack(spacing: 16) {
-                        art(side: big)
-                        VStack(spacing: 4) {
-                            Text(hasSong ? (np?.title ?? "") : "Babson Radio")
-                                .font(BRFont.display(32)).foregroundColor(.white)
-                                .lineLimit(1).minimumScaleFactor(0.5)
-                            Text(hasSong ? ((np?.artist.isEmpty == false) ? np!.artist : "Babson Radio") : "Live from campus")
-                                .font(.system(size: 19, weight: .medium)).foregroundColor(.white.opacity(0.8)).lineLimit(1)
+                    // Edge to edge: the cover as big as the screen allows on the left, the controls, reactions and rating on the right.
+                    let rail: CGFloat = 330
+                    let big = max(200, min(geo.size.width - rail - 56, geo.size.height - 120))
+                    HStack(spacing: 24) {
+                        VStack(spacing: 14) {
+                            art(side: big)
+                            VStack(spacing: 2) {
+                                Text(hasSong ? (np?.title ?? "") : "Babson Radio")
+                                    .font(BRFont.display(30)).foregroundColor(.white)
+                                    .lineLimit(1).minimumScaleFactor(0.5)
+                                Text(hasSong ? ((np?.artist.isEmpty == false) ? np!.artist : "Babson Radio") : "Live from campus")
+                                    .font(.system(size: 18, weight: .medium)).foregroundColor(.white.opacity(0.8)).lineLimit(1)
+                            }
+                            .frame(width: big)
                         }
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        VStack(spacing: 28) {
+                            Spacer(minLength: 0)
+                            HStack(spacing: 18) {
+                                Button { if canPlay { audio.toggle() } } label: {
+                                    Image(systemName: audio.isBuffering ? "ellipsis" : (audio.isPlaying ? "pause.fill" : "play.fill"))
+                                        .font(.system(size: 26, weight: .semibold)).foregroundColor(.white)
+                                        .frame(width: 68, height: 68)
+                                        .brGlass(in: Circle(), interactive: true)
+                                }
+                                .buttonStyle(.plain).opacity(canPlay ? 1 : 0.4)
+                                .accessibilityLabel(audio.isPlaying ? "Pause" : "Play")
+                                SkipControl(onDark: true)
+                            }
+                            HStack(spacing: 10) {
+                                Image(systemName: "speaker.fill").font(.system(size: 13)).foregroundColor(.white.opacity(0.7))
+                                SystemVolumeSlider(tint: .white).frame(height: 34)
+                                Image(systemName: "speaker.wave.3.fill").font(.system(size: 13)).foregroundColor(.white.opacity(0.7))
+                            }
+                            .padding(.horizontal, 20)
+                            LiveExtrasView(mode: .board)
+                                .environment(\.colorScheme, .dark)
+                            Spacer(minLength: 0)
+                        }
+                        .frame(width: rail)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.top, 16).padding(.bottom, 100)
+                    .padding(.leading, 28).padding(.trailing, 20).padding(.vertical, 20)
                 } else {
                 HStack(spacing: 40) {
                     art(side: side)
@@ -960,6 +980,7 @@ struct LiveBoardView: View {
                 .padding(.horizontal, 32).padding(.bottom, 70)
                 }
 
+                if !stacked {
                 VStack {
                     Spacer()
                     // Play/pause, skip and volume. They fade a few seconds after the last tap.
@@ -981,13 +1002,12 @@ struct LiveBoardView: View {
                     .brGlass(in: Capsule())
                     .padding(.bottom, 8)
                     .opacity(awake ? 1 : 0).allowsHitTesting(awake)
-                    if !stacked {
                     HStack {
                         Text("BABSON RADIO").font(BRFont.display(11)).kerning(5).foregroundColor(.white.opacity(0.4))
                         Spacer()
                     }
                     .padding(.horizontal, 32).padding(.bottom, 10)
-                    }
+                }
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)

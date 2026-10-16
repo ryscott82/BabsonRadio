@@ -150,3 +150,5 @@ Legend: [x] built, [ ] planned.
 - [x] Progress bar under the title is centered in the home player
 - [x] Schedule page explains reminders are iPhone push notifications, not browser pop-ups
 - [x] iOS About you: the save button only shows when something changed
+
+- [ ] Live DJ track names: setup guide is in `docs/DJ_METADATA_SETUP.md` (untested at the booth); clean-up + album-art lookup and an external now-playing endpoint are not built yet

@@ -22,6 +22,9 @@ export async function GET(req: Request) {
       .sort((a, b) => b.cancelledAt - a.cancelledAt).slice(0, 20)
     let newReports = 0
     if (admin) newReports = (await db.collection('feedback').where('status', '==', 'new').get()).size
-    return { pendingRequests: pending.size, newReports: admin ? newReports : null, cancellations }
+    const da = await db.collection('ops').doc('deadair').get()
+    const lastSeen = da.get('lastSeen')?.toMillis?.() ?? 0
+    const deadAir = { active: da.get('active') === true, since: da.get('since')?.toMillis?.() ?? 0, detail: da.get('detail') ?? '', monitorAgeSec: lastSeen ? Math.round((Date.now() - lastSeen) / 1000) : null }
+    return { pendingRequests: pending.size, newReports: admin ? newReports : null, cancellations, deadAir }
   })
 }

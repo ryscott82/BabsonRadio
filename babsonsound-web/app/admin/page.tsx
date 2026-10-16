@@ -11,6 +11,7 @@ import { plexMono } from '@/components/admin/opsFont'
 
 interface Alerts {
   pendingRequests: number; newReports: number | null
+  deadAir?: { active: boolean; since: number; detail: string; monitorAgeSec: number | null }
   cancellations: { id: string; title: string; requesterName: string; startAt: number; cancelledAt: number; reason: string; wasApproved: boolean }[]
 }
 interface Dash {
@@ -45,7 +46,8 @@ export default function AdminPage() {
 
   if (loading || !user || !isDirector) return <div className="min-h-[60vh]" />
 
-  const needs = alerts && (alerts.pendingRequests > 0 || (alerts.newReports ?? 0) > 0 || alerts.cancellations.length > 0)
+  const monitorStale = !!alerts?.deadAir && (alerts.deadAir.monitorAgeSec == null || alerts.deadAir.monitorAgeSec > 300)
+  const needs = alerts && (alerts.deadAir?.active || monitorStale || alerts.pendingRequests > 0 || (alerts.newReports ?? 0) > 0 || alerts.cancellations.length > 0)
   const tile = 'sk-raised px-3 py-2.5 min-w-0'
 
   return (
@@ -86,6 +88,8 @@ export default function AdminPage() {
           <section className="sk-raised p-4">
             <h2 className="text-br-gold text-xs mb-3">attention</h2>
             {!needs && <p className="text-sm text-br-dk-sub">Nothing waiting.</p>}
+            {alerts?.deadAir?.active && <p className="text-sm text-br-red">DEAD AIR since {clock(alerts.deadAir.since)}. {alerts.deadAir.detail}</p>}
+            {monitorStale && !alerts?.deadAir?.active && <p className="text-sm text-br-dk-text">The dead-air monitor has not checked in{alerts?.deadAir?.monitorAgeSec != null ? ` for ${Math.round(alerts.deadAir.monitorAgeSec / 60)} min` : ' yet'}. Make sure it is running on the streaming PC.</p>}
             {alerts && alerts.pendingRequests > 0 && (
               <p className="text-sm text-br-dk-text"><Link href="/admin/slots" className="underline">{alerts.pendingRequests} show request{alerts.pendingRequests === 1 ? '' : 's'}</Link> waiting for a decision.</p>
             )}
@@ -116,7 +120,7 @@ export default function AdminPage() {
 
           <section className="grid sm:grid-cols-3 gap-5 text-sm">
             <ToolGroup title="programming" links={[
-              ['/admin/schedule', 'Schedule'], ['/admin/slots', 'Slot requests'], ['/admin/show-updates', 'Show updates'], ['/admin/library', 'Library content'],
+              ['/admin/schedule', 'Schedule'], ['/admin/slots', 'Slot requests'], ['/admin/training', 'Training'], ['/admin/show-updates', 'Show updates'], ['/admin/library', 'Library content'],
               ...(isAdmin ? [['/admin/autoschedule', 'Auto-scheduler'], ['/admin/setlists', 'Set lists']] : []),
             ]} />
             <ToolGroup title="people" links={[
@@ -125,6 +129,7 @@ export default function AdminPage() {
             ]} />
             <ToolGroup title="numbers" links={[
               ['/admin/insights', 'What listeners like'],
+              ...(isAdmin ? [['/admin/playlog', 'Play log (export)']] : []),
               ...(isAdmin ? [['/admin/listening', 'Listening log'], ['/admin/network', 'Friends web']] : []),
             ]} />
           </section>

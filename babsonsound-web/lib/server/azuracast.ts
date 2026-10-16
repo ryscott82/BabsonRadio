@@ -191,3 +191,37 @@ export async function azPlaylistNames(): Promise<string[]> {
     return names
   } catch { return plCache?.names ?? [] }
 }
+
+// ── Play log (for royalty reporting and charts) ──────────────────────────────
+
+export interface PlayRow {
+  playedAt: number; title: string; artist: string; album: string; isrc: string
+  durationSec: number; playlist: string; streamer: string; isRequest: boolean
+}
+
+type HistRow = {
+  played_at?: number; duration?: number; playlist?: string; streamer?: string; is_request?: boolean
+  song?: { title?: string; artist?: string; album?: string; isrc?: string; text?: string }
+}
+
+/** Everything that aired between two times, oldest first. Handles both the plain-list and the paged AzuraCast reply. */
+export async function azHistory(startMs: number, endMs: number): Promise<PlayRow[]> {
+  if (!azuraConfigured()) throw new Error('AzuraCast is not configured')
+  const out: PlayRow[] = []
+  const PAGE = 500
+  for (let page = 1; page <= 80; page++) {
+    const q = `start=${encodeURIComponent(new Date(startMs).toISOString())}&end=${encodeURIComponent(new Date(endMs).toISOString())}&rowCount=${PAGE}&current=${page}`
+    const r = await az<HistRow[] | { rows?: HistRow[] }>(`/station/${station()}/history?${q}`)
+    const list = Array.isArray(r) ? r : (r.rows ?? [])
+    for (const h of list) {
+      const at = (h.played_at ?? 0) * 1000
+      if (!at || at < startMs || at >= endMs) continue
+      out.push({
+        playedAt: at, title: h.song?.title ?? h.song?.text ?? '', artist: h.song?.artist ?? '', album: h.song?.album ?? '', isrc: h.song?.isrc ?? '',
+        durationSec: h.duration ?? 0, playlist: h.playlist ?? '', streamer: h.streamer ?? '', isRequest: h.is_request === true,
+      })
+    }
+    if (Array.isArray(r) || list.length < PAGE) break
+  }
+  return out.sort((a, b) => a.playedAt - b.playedAt)
+}

@@ -93,6 +93,38 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 |---|---|---|---|
 | BR-APL-001 | **Not an Apple sign-in**: This step is only for accounts that signed in with Apple. | Sign out and sign in with Apple, or use the email sign-in. | Firebase Console → Authentication → Users: check the provider column shows Apple. |
 
+## Host training
+
+| Code | What it is | What the user should do | What staff check |
+|---|---|---|---|
+| BR-TRN-001 | **Training required**: A student tried to request a slot without being certified. | Take the host quiz at /training, or request in-person training. | Admin > Training shows who is certified. Directors can certify by hand. |
+| BR-TRN-002 | **Quiz retried too fast**: A second quiz attempt came within 20 seconds of the last. | Read the explanations, then try again. | — |
+| BR-TRN-003 | **Quiz not finished**: Some questions were left blank. | Answer every question before submitting. | — |
+
+## Conduct agreements
+
+| Code | What it is | What the user should do | What staff check |
+|---|---|---|---|
+| BR-CON-001 | **Conduct agreement not signed**: The conduct agreement needs every box ticked and a typed full name. | Tick every box and type your first and last name. | Signed records are in conductConsents (kind=conduct). |
+| BR-CON-002 | **Clean-hours pledge not signed**: A slot that overlaps 6 AM to 10 PM Eastern needs the signed clean-hours pledge. | Sign the pledge, or pick a time outside the clean hours. | Signed records are in conductConsents (kind=clean); the request stores cleanPledgeId. |
+
+## Public sharing
+
+| Code | What it is | What the user should do | What staff check |
+|---|---|---|---|
+| BR-PUB-001 | **Public sharing blocked: someone under 18**: A host or person in this content is under 18, so it cannot be made public. This is a minor-safety rule and cannot be overridden. | Leave it as students-only. Nothing else is needed. | Do not set visibility to public by hand for content with any under-18 host. |
+| BR-PUB-002 | **Age not on file**: A host has not given a birthday or age range yet, so we cannot confirm they are 18 or older. | Open your profile and add your birthday or age range, then try again. | The user's profile needs onboardedAt and minor=false. |
+| BR-PUB-003 | **No known host**: The episode has no linked host account, so ages cannot be checked. | Ask staff to add the host's school email to the episode. | Set hostUids on the episode (host emails in Admin > Library content). |
+| BR-PUB-004 | **Signature incomplete**: Public sharing needs every box ticked and a full name typed. | Tick all the boxes and type your first and last name. | The signed record is saved in publicConsents with the agreement version and time. |
+| BR-PUB-005 | **Not your episode**: Only the host named on an episode can sign to make it public. | Ask the host to do it from their Host page. | Check hostUids on the episode. |
+
+## Operations
+
+| Code | What it is | What the user should do | What staff check |
+|---|---|---|---|
+| BR-OPS-001 | **Pick a date range**: The play log or another report needs a valid start and end date. | Choose both dates (end on or after start). | — |
+| BR-OPS-002 | **Date range too long**: The play log is limited to 93 days at a time. | Export in smaller chunks. | — |
+
 ## Requests
 
 | Code | What it is | What the user should do | What staff check |

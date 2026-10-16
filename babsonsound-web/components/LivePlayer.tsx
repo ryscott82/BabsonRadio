@@ -1,5 +1,6 @@
 'use client'
 
+import SongLinks from '@/components/SongLinks'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
@@ -173,6 +174,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
           <p className={`text-br-dk-sub text-sm ${pane ? 'lg:text-base' : ''} mb-1`}>
             {hasSong ? (np!.artist || 'Babson Radio') : 'Babson College — Internet Radio'}
           </p>
+          {hasSong && !np!.showOnly && <SongLinks title={np!.title} artist={np!.artist} className="mb-1" />}
           {np?.showTitle && <p className="text-xs mb-1" style={{ color: showColor || undefined }}>On air: {np.showTitle}</p>}
           {hasSong && np!.isLive && np!.streamer && (
             <p className="text-br-gold text-xs mb-1">Live with {np!.streamer}</p>

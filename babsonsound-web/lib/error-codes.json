@@ -495,5 +495,54 @@
     "meaning": "Only the host named on an episode can sign to make it public.",
     "userFix": "Ask the host to do it from their Host page.",
     "staffCheck": "Check hostUids on the episode."
+  },
+  {
+    "code": "BR-TRN-001",
+    "title": "Training required",
+    "meaning": "A student tried to request a slot without being certified.",
+    "userFix": "Take the host quiz at /training, or request in-person training.",
+    "staffCheck": "Admin > Training shows who is certified. Directors can certify by hand."
+  },
+  {
+    "code": "BR-TRN-002",
+    "title": "Quiz retried too fast",
+    "meaning": "A second quiz attempt came within 20 seconds of the last.",
+    "userFix": "Read the explanations, then try again.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-TRN-003",
+    "title": "Quiz not finished",
+    "meaning": "Some questions were left blank.",
+    "userFix": "Answer every question before submitting.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-CON-001",
+    "title": "Conduct agreement not signed",
+    "meaning": "The conduct agreement needs every box ticked and a typed full name.",
+    "userFix": "Tick every box and type your first and last name.",
+    "staffCheck": "Signed records are in conductConsents (kind=conduct)."
+  },
+  {
+    "code": "BR-CON-002",
+    "title": "Clean-hours pledge not signed",
+    "meaning": "A slot that overlaps 6 AM to 10 PM Eastern needs the signed clean-hours pledge.",
+    "userFix": "Sign the pledge, or pick a time outside the clean hours.",
+    "staffCheck": "Signed records are in conductConsents (kind=clean); the request stores cleanPledgeId."
+  },
+  {
+    "code": "BR-OPS-001",
+    "title": "Pick a date range",
+    "meaning": "The play log or another report needs a valid start and end date.",
+    "userFix": "Choose both dates (end on or after start).",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-OPS-002",
+    "title": "Date range too long",
+    "meaning": "The play log is limited to 93 days at a time.",
+    "userFix": "Export in smaller chunks.",
+    "staffCheck": ""
   }
 ]

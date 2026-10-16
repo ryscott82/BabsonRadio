@@ -52,6 +52,7 @@ export async function GET(req: Request) {
 
     return {
       birthdays,
+      hosting: c.open.length > 0,
       staff: c.staff, canEditAny: await canEditAnyShow(db, c.t), emojis: EMOJIS, insights, controlsOpen, windowHours: HOST_WINDOW_MS / 3_600_000, now,
       shows: c.shows.map(s => ({ ...s, id: occurrenceId(s), open: showOpen(s, now) })),
       nowPlaying, pending,

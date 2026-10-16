@@ -22,6 +22,8 @@ export interface ScheduleItem {
   color: string
   /** What a bell is attached to: weekly:<show>, slot:<id> or genre:<name> (every block of that genre). */
   reminderKey: string
+  /** Student hosts, for per-host show options. Never sent to the public schedule. */
+  hostUids?: string[]
 }
 
 export async function buildScheduleFeed(db: Firestore, opts: { days: number; showStudentHosts: boolean; now?: number; includeAuto?: boolean; back?: number }): Promise<ScheduleItem[]> {
@@ -43,6 +45,7 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
       imageUrl: d.get('imageUrl') ?? '', category: d.get('category') ?? '',
       format: d.get('type') === 'prerecorded' ? 'prerecorded' : 'live',
       startAt, endAt: d.get('endAt').toMillis(), showSlug: '', color: '', reminderKey: `slot:${d.id}`,
+      hostUids: d.get('requesterUid') ? [d.get('requesterUid')] : [],
     })
   }
 
@@ -109,6 +112,7 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
         category: w.get('category') ?? '', format: 'show', startAt, endAt, showSlug: w.get('showSlug') ?? '',
         color: w.get('color') ?? '',
         reminderKey: `weekly:${w.id}`,
+        hostUids: Array.isArray(w.get('hostUids')) ? w.get('hostUids') : [],
       })
     }
   }

@@ -8,6 +8,7 @@ struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var hSize
     @Environment(\.colorScheme) var scheme
     @ObservedObject private var auth = AuthManager.shared
+    @ObservedObject private var profile = ProfileStore.shared
     @State private var splashDone = false
     @State private var welcomeSkipped = false
     @State private var askSchoolEmail = false
@@ -30,6 +31,11 @@ struct ContentView: View {
                     BRTabIcon(systemName: "books.vertical", label: "Library")
                 }
 
+            if profile.hosting {
+                NavigationStack { HostPanelView() }
+                    .tabItem { BRTabIcon(systemName: "mic.fill", label: "Host") }
+            }
+
             // Search is the right-most tab; Profile is the circle button in the top corner of every page.
             SearchView()
                 .tabItem {
@@ -40,6 +46,13 @@ struct ContentView: View {
         .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
         .overlay(alignment: .top) { if hSize != .regular { StatusBarBlur() } }
         .task(id: auth.isSignedIn) { ContactsManager.shared.promptOnFirstOpen() }
+        .task(id: auth.isSignedIn) {
+            // Host tab appears while the host window is open; re-check every minute.
+            while auth.isSignedIn && !Task.isCancelled {
+                await ProfileStore.shared.loadHosting()
+                try? await Task.sleep(nanoseconds: 60_000_000_000)
+            }
+        }
         .alert("Are you a Babson student?", isPresented: $askSchoolEmail) {
             Button("Add my school email") { showSchoolEmailSheet = true }
             Button("Not now", role: .cancel) {}

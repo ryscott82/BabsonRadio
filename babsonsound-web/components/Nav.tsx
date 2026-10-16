@@ -17,14 +17,18 @@ const NAV_LINKS = [
 ]
 
 export default function Nav() {
+  const HOST_LINK = { href: '/host', label: 'Host' }
   const { user, userDoc, isAdmin, isDirector, isBabson, isDeveloper, isGuest, isHost } = useAuth()
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)      // profile menu
   const [mobileOpen, setMobileOpen] = useState(false)  // hamburger menu on phones
-  const [hostsAny, setHostsAny] = useState(false) // listed as a host on a show (e.g. an approved student slot)
+  const [hosting, setHosting] = useState(false) // a show of theirs is on air or about to be (controls window is open)
   useEffect(() => {
-    if (!user || !(isBabson || isDeveloper)) { queueMicrotask(() => setHostsAny(false)); return }
-    apiGet<{ host: boolean }>('/api/host/access').then(r => setHostsAny(r.host)).catch(() => setHostsAny(false))
+    if (!user || !(isBabson || isDeveloper)) { queueMicrotask(() => setHosting(false)); return }
+    const load = () => apiGet<{ hosting: boolean }>('/api/host/access').then(r => setHosting(r.hosting)).catch(() => setHosting(false))
+    load()
+    const t = setInterval(() => { if (!document.hidden) load() }, 60_000)
+    return () => clearInterval(t)
   }, [user, isBabson, isDeveloper])
   const initials = (() => {
     const first = (userDoc?.firstName ?? userDoc?.displayName ?? user?.displayName ?? user?.email ?? 'U').trim()
@@ -33,7 +37,7 @@ export default function Nav() {
   })()
   if (pathname === '/coming-soon') return null
 
-  const showHost = hostsAny || isHost || isDirector || isAdmin
+  const showHost = hosting
   const showAdmin = isAdmin || isDirector
   const canRequest = isBabson || isDeveloper
   const active = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href))
@@ -52,7 +56,7 @@ export default function Nav() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1 flex-1">
-          {NAV_LINKS.map(link => (
+          {(showHost ? [...NAV_LINKS, HOST_LINK] : NAV_LINKS).map(link => (
             <Link
               key={link.href}
               href={link.href}
@@ -85,7 +89,6 @@ export default function Nav() {
                   {canRequest && <Link href="/slots" onClick={close} className={`${item} border-t border-br-dk-border`}>Request a spot</Link>}
                   {isBabson && <Link href="/guest-access" onClick={close} className={`${item} border-t border-br-dk-border`}>Guest access</Link>}
                   {isGuest && <Link href="/auth/guest" onClick={close} className={`${item} border-t border-br-dk-border`}>My guest access</Link>}
-                  {showHost && <Link href="/host" onClick={close} className={`${item} border-t border-br-dk-border`}>Host panel</Link>}
                   {showAdmin && <Link href="/admin" onClick={close} className={`${item} border-t border-br-dk-border`}>Radio operations</Link>}
                   <button
                     onClick={() => { signOut(); close() }}
@@ -120,7 +123,7 @@ export default function Nav() {
       {/* Mobile nav dropdown: just the four links; the rest is under the profile circle */}
       {mobileOpen && (
         <div className="md:hidden bg-br-dk-surface border-t border-br-dk-border px-4 py-3 flex flex-col gap-1">
-          {NAV_LINKS.map(link => (
+          {(showHost ? [...NAV_LINKS, HOST_LINK] : NAV_LINKS).map(link => (
             <Link key={link.href} href={link.href} onClick={close}
               className="font-display tracking-widest text-sm text-br-dk-sub hover:text-br-dk-text py-2">
               {link.label}

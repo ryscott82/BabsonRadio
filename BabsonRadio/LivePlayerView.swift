@@ -313,6 +313,10 @@ struct LivePlayerView: View {
                             .brGlass(in: RoundedRectangle(cornerRadius: 16), tint: accent.opacity(0.25), fallback: accent.opacity(0.15))
                             .padding(.horizontal, 24)
                         }
+                        if presence.count > 0 {
+                            Text(presence.friendsLine ?? "\(presence.count) tuned in")
+                                .font(.system(size: 11)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                        }
                         if !presence.groups.isEmpty {
                             VStack(spacing: 4) {
                                 ForEach(presence.groups.prefix(3)) { g in

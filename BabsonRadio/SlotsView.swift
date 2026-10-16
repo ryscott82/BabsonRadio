@@ -42,7 +42,7 @@ struct SlotsView: View {
                 if auth.currentUser?.isGuest == true {
                     GuestLockedNote(text: "Requesting airtime is for Babson students.")
                 } else if auth.isSignedIn {
-                    signedInContent
+                    HostGateView { signedInContent }
                 } else {
                     signedOutPrompt
                 }
@@ -109,6 +109,9 @@ struct SlotsView: View {
                     }
                 }
             }
+
+            HostOptionsView()
+                .padding(.horizontal, 20)
         }
         .padding(.bottom, 40)
     }

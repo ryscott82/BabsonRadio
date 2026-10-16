@@ -1,6 +1,6 @@
 import 'server-only'
 import { adminDb } from './admin'
-import { currentOnAir, getColorChanging, getNote, type LiveNote } from './live'
+import { currentOnAir, getColorChanging, getNote, hostPrefsFor, type LiveNote } from './live'
 import { listenerSample } from './taste'
 import { getAnnouncement, type Announcement } from './announcement'
 import { lookupBeat } from './beats'
@@ -38,6 +38,9 @@ export interface NowPlayingInfo {
   note: LiveNote | null
   /** True when the host/admin allows the night-time album-color background for what is on air. */
   colorChanging: boolean
+  /** The host's own reaction emojis for this show ([] = the usual ones), and whether rating this show is on. */
+  hostEmojis: string[]
+  ratingsOn: boolean
   /** True when a scheduled show is on air and AzuraCast gives no track info, so title/artist are the show and host names instead. */
   showOnly: boolean
   /** A message for the whole audience from the station controls, or null. */
@@ -55,7 +58,7 @@ type Built = Omit<NowPlayingInfo, 'announcement'> & { showOnly: boolean; hostNam
 const empty = (configured: boolean): Built => ({
   configured, title: '', artist: '', album: '', art: '', elapsed: 0, duration: 0, playedAt: 0, history: [], bpm: 0, beatOffset: 0,
   isLive: false, streamer: '', playlist: '', listeners: 0, next: null, showTitle: '', blockTitle: '', color: '',
-  occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, colorChanging: false, showOnly: false, updatedAt: Date.now(),
+  occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, colorChanging: false, hostEmojis: [], ratingsOn: true, showOnly: false, updatedAt: Date.now(),
 })
 
 type Song = { text?: string; artist?: string; title?: string; album?: string; art?: string; custom_fields?: Record<string, unknown> | unknown[] }
@@ -68,16 +71,17 @@ type Raw = {
 }
 
 /** The scheduled thing on air right now (one-time event > student slot > weekly show > genre block). */
-async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'blockTitle' | 'color' | 'occId' | 'isShow' | 'showStart' | 'showEnd' | 'note' | 'colorChanging'> & { hostNames: string[] }> {
-  const none = { showTitle: '', blockTitle: '', color: '', occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, colorChanging: false, hostNames: [] as string[] }
+async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'blockTitle' | 'color' | 'occId' | 'isShow' | 'showStart' | 'showEnd' | 'note' | 'colorChanging' | 'hostEmojis' | 'ratingsOn'> & { hostNames: string[] }> {
+  const none = { showTitle: '', blockTitle: '', color: '', occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, colorChanging: false, hostEmojis: [] as string[], ratingsOn: true, hostNames: [] as string[] }
   try {
     const db = adminDb()
     const cur = await currentOnAir(db)
     if (!cur) return none
-    const [note, colorChanging] = await Promise.all([getNote(db, cur.occId), getColorChanging(db, cur)])
+    const [note, baseColor, prefs] = await Promise.all([getNote(db, cur.occId), getColorChanging(db, cur), hostPrefsFor(db, cur)])
+    const colorChanging = prefs.theme === 'art' ? true : prefs.theme === 'standard' ? false : baseColor
     return {
       showTitle: cur.isShow ? cur.item.title : '', blockTitle: cur.item.title, color: cur.item.color, occId: cur.occId, isShow: cur.isShow,
-      showStart: cur.item.startAt, showEnd: cur.item.endAt, note, colorChanging, hostNames: cur.item.hosts ?? [],
+      showStart: cur.item.startAt, showEnd: cur.item.endAt, note, colorChanging, hostEmojis: prefs.emojis, ratingsOn: prefs.ratings, hostNames: cur.item.hosts ?? [],
     }
   } catch { return none }
 }

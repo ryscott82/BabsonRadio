@@ -2,6 +2,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireDirector, str } from '@/lib/server/http'
 import { TRAINING_VERSION } from '@/lib/training'
+import { CHECKIN_VALID_MS } from '@/lib/server/conduct'
 
 export const runtime = 'nodejs'
 
@@ -27,13 +28,14 @@ export async function GET(req: Request) {
         certifiedAt, certifiedBy: t?.get('certifiedBy') ?? '', score: t?.get('score') ?? null, attempts: t?.get('attempts') ?? 0,
         requestedAt: certifiedAt == null ? ms(t?.get('requestedAt')) : null, requestNote: t?.get('requestNote') ?? '',
         conductSigned: d.get('conductVersion') != null,
+        checkInAt: (() => { const at = ms(t?.get('checkInAt')), ok = ms(t?.get('checkInApprovedAt')); return at && (!ok || ok < at) && Date.now() - at < CHECKIN_VALID_MS ? at : null })(),
       }
     })
     return { users: rows }
   })
 }
 
-// { uid, action: 'certify' | 'revoke' | 'clearRequest' }
+// { uid, action: 'certify' | 'revoke' | 'clearRequest' | 'approveCheckin' }
 export async function POST(req: Request) {
   return handle(async () => {
     const me = await requireDirector(req)
@@ -44,6 +46,7 @@ export async function POST(req: Request) {
     const now = Timestamp.now()
     if (action === 'certify') await ref.set({ certifiedAt: now, revokedAt: null, version: TRAINING_VERSION, certifiedBy: me.email ?? me.uid, requestedAt: null }, { merge: true })
     else if (action === 'revoke') await ref.set({ revokedAt: now }, { merge: true })
+    else if (action === 'approveCheckin') await ref.set({ checkInApprovedAt: now, checkInApprovedBy: me.email ?? me.uid, requestedAt: null }, { merge: true })
     else if (action === 'clearRequest') await ref.set({ requestedAt: null }, { merge: true })
     else throw new HttpError(400, 'Unknown action.')
     return { ok: true }

@@ -1,4 +1,5 @@
-// Host certification quiz. The questions go to the browser WITHOUT answers; the server grades (app/api/training).
+// Host certification quiz: 10 placeholder questions, to be replaced with the real training material.
+//  The questions go to the browser WITHOUT answers; the server grades (app/api/training).
 // Review the wording with a director before launch. Pass mark is the percentage below.
 
 export const TRAINING_VERSION = '2026-10-16'
@@ -27,10 +28,6 @@ export const QUIZ: QuizQuestion[] = [
     why: 'Recordings are for students by default. Public sharing needs a signed agreement from an adult host, and nothing with anyone under 18 can be public.' },
   { id: 'cancel', q: 'You cannot make your slot. What should you do?', options: ['Do not show up and hope nobody notices', 'Cancel the slot in the app or on the site as early as you can, with a reason', 'Ask a friend to log in as you', 'Wait until the show starts'], answer: 1,
     why: 'Early cancellation lets staff fill the time. Never share your login.' },
-  { id: 'emergency', q: 'There is a campus emergency announcement while you are live. What do you do?', options: ['Keep going, it has nothing to do with the show', 'Follow staff instructions, share official information only, and do not speculate', 'Share rumors you heard, to be helpful', 'End the stream'], answer: 1,
-    why: 'Only official information gets repeated on air, and staff direct what happens next.' },
-  { id: 'consequences', q: 'What can happen if someone breaks the conduct or clean-hours agreement?', options: ['Nothing, it is a club', 'The broadcast can be cut, the slot cancelled, recordings removed, and a report made to Babson', 'A warning email, always', 'Only a smaller slot next time'], answer: 1,
-    why: 'These agreements are enforceable. Staff can act immediately.' },
 ]
 
 /** What the browser is allowed to see: questions and options, no answers. */

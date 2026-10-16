@@ -18,6 +18,9 @@ export interface NowPlaying {
   showStart: number
   showEnd: number
   colorChanging?: boolean
+  /** The host's own reaction emojis for this show ([] = the usual ones), and whether ratings are on for it. */
+  hostEmojis?: string[]
+  ratingsOn?: boolean
   /** A show is on air without track info: title/artist are the show and host names. */
   showOnly?: boolean
   note: { headline: string; message: string; updatedAt: number; by: string } | null

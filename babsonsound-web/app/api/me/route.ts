@@ -5,6 +5,7 @@ import { isTester } from '@/lib/server/testers'
 import { finishSchoolUpgrade } from '@/lib/server/upgrade'
 import { cleanBirthday } from '@/lib/server/birthdays'
 import { CONCENTRATIONS, MAX_CONCENTRATIONS, TERMS_VERSION, normText, validGradYear } from '@/lib/terms'
+import { AVATAR_COLORS, DEFAULT_AVATAR, MAX_HOST_EMOJIS } from '@/lib/profile'
 import { HttpError, handle, isBabsonToken, isDeveloperToken, readJson, requireUser, str } from '@/lib/server/http'
 
 export const runtime = 'nodejs'
@@ -28,6 +29,13 @@ export async function GET(req: Request) {
       isBabson: isBabsonToken(t),
       isTester: t.tester === true || (await isTester(t.email)),
       invisible: u.get('invisible') === true,
+      avatarColor: u.get('avatarColor') ?? DEFAULT_AVATAR,
+      joinedAt: (u.get('joinedAt') as { toMillis?: () => number } | undefined)?.toMillis?.() ?? null,
+      hostPrefs: {
+        theme: ['standard', 'art'].includes(u.get('hostPrefs')?.theme) ? u.get('hostPrefs').theme : 'auto',
+        emojis: Array.isArray(u.get('hostPrefs')?.emojis) ? u.get('hostPrefs').emojis : [],
+        ratings: u.get('hostPrefs')?.ratings !== false,
+      },
       gradYear: u.get('gradYear') ?? '',
       concentrations: u.get('concentrations') ?? [],
       birthday: cleanBirthday(u.get('birthday')),
@@ -59,6 +67,17 @@ export async function POST(req: Request) {
       update.lastName = lastName
     }
     if (typeof b.invisible === 'boolean') update.invisible = b.invisible
+    if ('avatarColor' in b) {
+      if (!AVATAR_COLORS.some(c => c.id === b.avatarColor)) throw new HttpError(400, 'Pick one of the colors.')
+      update.avatarColor = b.avatarColor
+    }
+    // What a host picks for their own shows (Go on air, bottom of the page).
+    if (b.hostPrefs && typeof b.hostPrefs === 'object') {
+      const hp = b.hostPrefs as Record<string, unknown>
+      const emojis = [...new Set((Array.isArray(hp.emojis) ? hp.emojis : []).map(e => str(e, 8)).filter(e => e && /\p{Extended_Pictographic}/u.test(e)))]
+      if (emojis.length > MAX_HOST_EMOJIS) throw new HttpError(400, `Pick up to ${MAX_HOST_EMOJIS} reactions.`)
+      update.hostPrefs = { theme: ['standard', 'art'].includes(String(hp.theme)) ? hp.theme : 'auto', emojis, ratings: hp.ratings !== false }
+    }
     // Optional "about you" details. They are only ever shown as counts ("3 people in your class are listening").
     if ('gradYear' in b) {
       const y = str(b.gradYear, 10)

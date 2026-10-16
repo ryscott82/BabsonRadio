@@ -2,6 +2,7 @@ import 'server-only'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 import { buildScheduleFeed, type ScheduleItem } from './scheduleFeed'
 import { occurrenceId } from './host'
+import { DEFAULT_HOST_PREFS, MAX_HOST_EMOJIS, type HostPrefs } from '../profile'
 
 // What is on air right now, and the live extras around it (a note from the host, reactions, set list votes, ratings).
 // Everything is keyed by the "occurrence": one airing of one show, like weekly-Abc_1760400000000.
@@ -23,6 +24,19 @@ export async function currentOnAir(db: Firestore, now = Date.now()): Promise<OnA
     .sort((a, b) => RANK[a.source] - RANK[b.source])
   const item = items[0]
   return item ? { item, occId: occIdOf(item), isShow: item.source !== 'auto' } : null
+}
+
+/** Options the host of this airing chose under Go on air (reaction emojis, ratings on or off, color theme). Nothing set = the station defaults. */
+export async function hostPrefsFor(db: Firestore, cur: OnAir): Promise<HostPrefs> {
+  const uids = (cur.item.hostUids ?? []).slice(0, 3)
+  if (!cur.isShow || !uids.length) return { ...DEFAULT_HOST_PREFS }
+  const docs = await Promise.all(uids.map(u => db.collection('users').doc(u).get()))
+  const p = (docs.map(d => d.get('hostPrefs')).find(Boolean) ?? {}) as Partial<HostPrefs>
+  return {
+    theme: p.theme === 'standard' || p.theme === 'art' ? p.theme : 'auto',
+    emojis: Array.isArray(p.emojis) ? p.emojis.filter(e => typeof e === 'string').slice(0, MAX_HOST_EMOJIS) : [],
+    ratings: p.ratings !== false,
+  }
 }
 
 export interface LiveNote { headline: string; message: string; updatedAt: number; by: string }
@@ -77,12 +91,12 @@ export async function reactionSummary(db: Firestore, occId: string, now = Date.n
   const d = await db.collection('reactions').doc(occId).get()
   const total: Record<string, number> = {}, recent: Record<string, number> = {}
   const counts = (d.get('counts') ?? {}) as Record<string, number>
-  for (const e of EMOJIS) { total[e] = counts[e] ?? 0; recent[e] = 0 }
+  for (const e of new Set([...EMOJIS, ...Object.keys(counts)])) { total[e] = counts[e] ?? 0; recent[e] = 0 }
   const buckets = (d.get('buckets') ?? {}) as Record<string, Record<string, number>>
   const cutoff = minuteOf(now) - 2 // last ~3 minutes
   for (const [m, byEmoji] of Object.entries(buckets)) {
     if (Number(m) < cutoff) continue
-    for (const e of EMOJIS) recent[e] += byEmoji[e] ?? 0
+    for (const e of Object.keys(byEmoji)) recent[e] = (recent[e] ?? 0) + (byEmoji[e] ?? 0)
   }
   const v = { recent, total }
   rxCache.set(occId, { at: now, v })

@@ -28,16 +28,11 @@ private struct SignedInProfileView: View {
     let user: BRUser
     @Environment(\.dismiss) private var dismiss
     @State private var showReport = false
-    @State private var hostAvailable = false
     @StateObject private var auth = AuthManager.shared
     @ObservedObject private var contacts = ContactsManager.shared
-    @StateObject private var presence = PresenceManager.shared
+    @ObservedObject private var store = ProfileStore.shared
+    @State private var avatarPicker = false
     @Environment(\.colorScheme) var scheme
-
-    // Listeners (will come from Firestore presence in production)
-    private var listeners: [LiveListener] {
-        (0..<min(presence.count, 24)).map { LiveListener(id: "anon-\($0)", colorSeed: $0) }
-    }
 
     // Single sheet driven by enum — never stack two .sheet modifiers
     enum ActiveSheet: Identifiable {
@@ -68,68 +63,61 @@ private struct SignedInProfileView: View {
                     accountCard
                         .padding(.horizontal, 20)
                         .padding(.top, 16)
-                        .padding(.bottom, 28)
+                        .padding(.bottom, 24)
 
-                    // ── Tuned in right now ─────────────────────────
-                    listenersSection
-                        .padding(.bottom, 20)
+                    // The same order as the website's profile.
+                    goOnAirRow
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 16)
 
-                    invisibleSection
-                        .padding(.bottom, 20)
-
-                    if !user.isGuest {
-                        AboutYouSection()
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
-                        NotificationChoicesSection()
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
-                    }
-
-                    // Hosts (listed on a show) and staff get the radio controls and set list.
-                    Color.clear.frame(height: 0)
-                        .task {
-                            if let s: HostStatus = try? await BackendAPI.get("/api/host/status") { hostAvailable = s.staff || !s.shows.isEmpty }
-                        }
-                    if user.isAdmin {
-                        adminRow
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
-                    }
-                    if hostAvailable {
+                    if store.hosting {
                         hostRow
                             .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
+                            .padding(.bottom, 16)
                     }
 
-                    // Students request a spot on the radio from here.
-                    if !user.isGuest {
-                        goOnAirRow
+                    if let me = store.me, !me.answered {
+                        AboutYouSection()
                             .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
-                    }
-
-                    reportRow
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, user.isDeveloper ? 16 : 32)
-
-                    if user.isDeveloper {
-                        BeatDelayRow()
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 32)
+                            .padding(.bottom, 16)
                     }
 
                     // Students only: developers have no babson.edu identity to sponsor guests with.
                     if !user.isDeveloper {
-                        // ── Guest access section ───────────────────────
                         guestInviteSection
-                            .padding(.bottom, 20)
+                            .padding(.bottom, 16)
 
-                        // ── Invite contacts section ─────────────────────
                         inviteSection
-                            .padding(.bottom, 40)
-                    } else {
-                        Color.clear.frame(height: 40)
+                            .padding(.bottom, 16)
+                    }
+
+                    ProfileDisclosure(title: "Notifications") { NotificationChoicesSection(bare: true) }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 16)
+
+                    invisibleSection
+                        .padding(.bottom, 16)
+
+                    if let me = store.me, me.answered {
+                        ProfileDisclosure(title: "About you") { AboutYouSection(bare: true) }
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 16)
+                    }
+
+                    if user.isDeveloper {
+                        BeatDelayRow()
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 16)
+                    }
+
+                    reportRow
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 16)
+
+                    if user.isAdmin {
+                        adminRow
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 32)
                     }
 
                     if let ig = BabsonLinks.instagram {
@@ -209,61 +197,53 @@ private struct SignedInProfileView: View {
             // Only silently loads if access was previously granted — never auto-prompts
             await contacts.requestAccessIfNeeded()
         }
+        .task { await store.load(); await store.loadHosting() }
     }
 
     // MARK: - Account card
 
     private var accountCard: some View {
-        HStack(spacing: 16) {
-            // Avatar circle with initials
-            ZStack {
-                Circle()
-                    .fill(LinearGradient(
-                        colors: [Color.brGreen, Color(hex: "004430")],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ))
-                    .frame(width: 58, height: 58)
-                Text(user.initials)
-                    .font(BRFont.display(22))
-                    .foregroundColor(.white)
-                    .kerning(1)
+        VStack(spacing: 6) {
+            Button { withAnimation { avatarPicker.toggle() } } label: {
+                ProfileAvatar(name: user.displayName, colorId: store.me?.avatarColor, size: 84)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Change profile color")
+
+            if avatarPicker {
+                HStack(spacing: 12) {
+                    ForEach(AvatarPalette.all, id: \.id) { c in
+                        Button { Task { await store.setColor(c.id) } } label: {
+                            Circle().fill(Color(hex: c.hex)).frame(width: 30, height: 30)
+                                .overlay(Circle().stroke(scheme == .dark ? Color.brGold : Color.brGreen, lineWidth: store.me?.avatarColor == c.id || (store.me?.avatarColor == nil && c.id == "green") ? 3 : 0).padding(-4))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(c.id)
+                    }
+                }
+                .padding(.vertical, 8)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(user.displayName)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                if !user.isDeveloper, AuthManager.isBabsonEmail(user.email) {
-                    Text("@" + String(user.email.prefix(while: { $0 != "@" })))
-                        .font(BRFont.display(13)).kerning(1.5)
-                        .foregroundColor(scheme == .dark ? .brGold : .brGreen)
-                }
-                if user.isDeveloper {
-                    BRTagChip(text: "DEVELOPER", style: .gold)
-                }
-                if let by = auth.verifyDeadline {
-                    Text("Verify your email by \(by.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())).")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.brRed)
-                }
-                Text(user.email)
-                    .font(.system(size: 13))
-                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-                if !user.phoneNumber.isEmpty && user.phoneNumber != "0000000000" {
-                    Text(PhoneField.format(user.phoneNumber))
-                        .font(.system(size: 13))
-                        .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-                }
-                Text("Member since \(user.joinedDate.formatted(.dateTime.month().year()))")
-                    .font(.system(size: 12))
-                    .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
+            Text(user.displayName)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                .padding(.top, 4)
+            if !user.isDeveloper, AuthManager.isBabsonEmail(user.email) {
+                Text("@" + String(user.email.prefix(while: { $0 != "@" })))
+                    .font(BRFont.display(14)).kerning(1.5)
+                    .foregroundColor(scheme == .dark ? .brGold : .brGreen)
             }
-
-            Spacer()
+            if user.isDeveloper { BRTagChip(text: "DEVELOPER", style: .gold) }
+            if let by = auth.verifyDeadline {
+                Text("Verify your email by \(by.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())).")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.brRed)
+            }
+            Text("Member since \(user.joinedDate.formatted(.dateTime.month(.wide).year()))")
+                .font(.system(size: 13))
+                .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
         }
-        .padding(18)
-        .brCard()
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Listeners section
@@ -386,60 +366,6 @@ private struct SignedInProfileView: View {
             .brCard()
         }
         .buttonStyle(.plain)
-    }
-
-    private var listenersSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            BRSectionHeader(title: "TUNED IN NOW")
-                .padding(.horizontal, 20)
-
-            VStack(alignment: .leading, spacing: 16) {
-                // Listener count
-                HStack(spacing: 10) {
-                    // Stacked avatar circles
-                    ZStack(alignment: .leading) {
-                        ForEach(Array(listeners.prefix(5).enumerated()), id: \.element.id) { i, listener in
-                            Circle()
-                                .fill(listener.avatarColor)
-                                .frame(width: 28, height: 28)
-                                .overlay(Circle().stroke(scheme == .dark ? Color.brDkBg : Color.brLtBg, lineWidth: 2))
-                                .offset(x: CGFloat(i) * 18)
-                        }
-                    }
-                    .frame(width: CGFloat(min(listeners.prefix(5).count, 5)) * 18 + 28, height: 28)
-
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("\(presence.count) \(presence.count == 1 ? "person" : "people") tuned in")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                        Text(presence.friendsLine ?? "Live right now")
-                            .font(.system(size: 12))
-                            .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-                    }
-                }
-
-                // Anonymous listener bubbles grid
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 8), spacing: 10) {
-                    ForEach(listeners) { listener in
-                        Circle()
-                            .fill(listener.avatarColor.opacity(0.8))
-                            .frame(height: 36)
-                            .overlay(
-                                Circle()
-                                    .stroke(scheme == .dark ? Color.brDkBorder : Color.brLtBorder, lineWidth: 1)
-                            )
-                    }
-                }
-            }
-            .padding(18)
-            .brCard()
-            .padding(.horizontal, 20)
-
-            Text("You only see names of people you know.")
-                .font(.system(size: 11))
-                .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
-                .padding(.horizontal, 24)
-        }
     }
 
     // MARK: - Invisible mode
@@ -1490,6 +1416,8 @@ struct HostPanelView: View {
 
 struct AboutYouSection: View {
     @Environment(\.colorScheme) var scheme
+    /// Inside a Profile disclosure row: no card or title of its own.
+    var bare = false
     @State private var gradYear = ""
     @State private var concentration = ""
     @State private var bMonth = 0
@@ -1517,12 +1445,14 @@ struct AboutYouSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("About you (optional)")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-            Text("Tell us about you!")
-                .font(.system(size: 12))
-                .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+            if !bare {
+                Text("About you")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                Text("All optional.")
+                    .font(.system(size: 12))
+                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+            }
             VStack(alignment: .leading, spacing: 4) {
                 Text("Graduation year").font(.system(size: 12, weight: .semibold))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
@@ -1584,6 +1514,7 @@ struct AboutYouSection: View {
                         ])
                         saved = current
                         message = "Saved."
+                        await ProfileStore.shared.load()
                         try? await Task.sleep(nanoseconds: 2_000_000_000)
                         if message == "Saved." { message = nil }
                     } catch { message = error.localizedDescription }
@@ -1600,8 +1531,8 @@ struct AboutYouSection: View {
             .disabled(saving)
             }
         }
-        .padding(18)
-        .brCard()
+        .padding(bare ? 0 : 18)
+        .modifier(CardIf(on: !bare))
         .task {
             if let me: MeResponse = try? await BackendAPI.get("/api/me") {
                 gradYear = me.gradYear ?? ""
@@ -1619,12 +1550,15 @@ struct AboutYouSection: View {
 
 struct NotificationChoicesSection: View {
     @Environment(\.colorScheme) var scheme
+    var bare = false
     @StateObject private var push = PushManager.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Notifications").font(.system(size: 15, weight: .semibold))
-                .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+            if !bare {
+                Text("Notifications").font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+            }
             Toggle("Happy birthday message", isOn: Binding(get: { push.birthdayOn }, set: { v in Task { await push.setMine(birthday: v) } }))
             Toggle("Station announcements (live events and news)", isOn: Binding(get: { push.announcementsOn }, set: { v in Task { await push.setMine(announcements: v) } }))
             if !push.status.isEmpty {
@@ -1633,8 +1567,8 @@ struct NotificationChoicesSection: View {
         }
         .font(.system(size: 14))
         .tint(scheme == .dark ? .brGold : .brGreen)
-        .padding(18)
-        .brCard()
+        .padding(bare ? 12 : 18)
+        .modifier(CardIf(on: !bare))
         .disabled(push.busy || !PushManager.available)
         .task { await push.loadMine() }
     }
@@ -1666,4 +1600,11 @@ private struct BeatDelayRow: View {
         .padding(16)
         .brGlass(in: RoundedRectangle(cornerRadius: 14))
     }
+}
+
+
+/// The standard card, or nothing (when the view already sits inside a card).
+private struct CardIf: ViewModifier {
+    let on: Bool
+    func body(content: Content) -> some View { if on { content.brCard() } else { content } }
 }

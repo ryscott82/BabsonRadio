@@ -45,7 +45,7 @@ export async function GET(req: Request) {
     const totals: Record<string, number> = Object.fromEntries(EMOJIS.map(e => [e, 0]))
     for (const d of rx.docs) {
       const counts = (d.get('counts') ?? {}) as Record<string, number>
-      for (const e of EMOJIS) { totals[e] += counts[e] ?? 0; get(d.id).reactions += counts[e] ?? 0 }
+      for (const [e, n] of Object.entries(counts)) { totals[e] = (totals[e] ?? 0) + (n ?? 0); get(d.id).reactions += n ?? 0 }
     }
     for (const d of ratings.docs) get(String(d.get('occId'))).stars.push(d.get('stars') as number)
     for (const d of samples.docs) get(String(d.get('occId'))).samples.push(Number(d.get('listeners')) || 0)

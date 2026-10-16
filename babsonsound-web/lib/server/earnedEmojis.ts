@@ -11,9 +11,9 @@ export const EARNED_EMOJIS = ['🖕', BEAVER] as const
 const BEAVER_AFTER = 25
 
 /** The usual reactions plus whatever this person has earned. */
-export async function emojisFor(db: Firestore, uid: string): Promise<string[]> {
+export async function emojisFor(db: Firestore, uid: string, base: readonly string[] = EMOJIS): Promise<string[]> {
   const got = ((await db.collection('users').doc(uid).get()).get('earnedEmojis') as string[] | undefined) ?? []
-  return [...EMOJIS, ...EARNED_EMOJIS.filter(e => got.includes(e))]
+  return [...base, ...EARNED_EMOJIS.filter(e => got.includes(e))]
 }
 
 /** Call after saving a rating. `key` is the song or show that was rated. */

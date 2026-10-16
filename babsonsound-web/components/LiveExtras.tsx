@@ -36,8 +36,9 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
     load()
     const t = setInterval(() => { if (!document.hidden) load() }, 60_000)
     return () => clearInterval(t)
-  }, [can, user?.uid])
+  }, [can, user?.uid, np?.occId, np?.hostEmojis?.join('')])
   const occId = np?.occId ?? ''
+  const ratingsOn = np?.ratingsOn !== false
 
   // Invisible mode switches off the social bits: reactions (sending and seeing them).
   const [invisible, setInvisible] = useState(false)
@@ -174,7 +175,7 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
         </div>
       )}
 
-      {songKey && (
+      {songKey && ratingsOn && (
         <div className={`${card} flex flex-wrap items-center gap-3`}>
           <span className="text-sm text-br-dk-text truncate max-w-full">Rate this song</span>
           <span className="flex" role="group" aria-label="Song rating">
@@ -203,7 +204,7 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
         </div>
       )}
 
-      {rateable && closing && (
+      {rateable && closing && ratingsOn && (
         <div className={`${card} space-y-3`}>
           <p className="text-br-dk-text font-medium">{endsAt > now ? 'Almost over' : 'That was'}: {rateable.title}. How was it?</p>
           <span className="flex" role="group" aria-label="Star rating">

@@ -9,8 +9,8 @@ import { ErrorText, Field, PrimaryButton } from '@/components/AuthUI'
 import ImagePicker from '@/components/ImagePicker'
 import PublicAgreement, { type PublicSignature } from '@/components/PublicAgreement'
 import type { AdultStatus } from '@/lib/publicContent'
-import SignBox, { type Signature } from '@/components/SignBox'
-import { CLEAN_CLAUSES, CLEAN_VERSION, CONDUCT_CLAUSES, CONDUCT_VERSION, SLUR_DEFINITION, touchesCleanHours } from '@/lib/conduct'
+import HostGate from '@/components/HostGate'
+import HostOptions from '@/components/HostOptions'
 
 interface Mine {
   id: string; title: string; type: SlotType; startAt: number; durationMin: number
@@ -53,18 +53,6 @@ export default function SlotsPage() {
   const [sharePublic, setSharePublic] = useState(false) // off by default: students only
   const [sig, setSig] = useState<PublicSignature | null>(null)
   const [adult, setAdult] = useState<AdultStatus>('unknown')
-  const [ready, setReady] = useState<{ conductSigned: boolean; trained: boolean; trainingRequested: boolean } | null>(null)
-  const [conductSig, setConductSig] = useState<Signature | null>(null)
-  const [cleanSig, setCleanSig] = useState<Signature | null>(null)
-  const [requesting, setRequesting] = useState(false)
-  useEffect(() => { if (member) apiGet<{ conductSigned: boolean; trained: boolean; trainingRequested: boolean }>('/api/host/readiness').then(setReady).catch(() => {}) }, [member])
-  const startMs = new Date(start).getTime()
-  const daytime = Number.isFinite(startMs) && touchesCleanHours(startMs, startMs + durationMin * 60_000)
-  async function requestTraining() {
-    setRequesting(true)
-    try { await api('/api/training/request', {}); setReady(r => (r ? { ...r, trainingRequested: true } : r)) } catch { /* the page keeps working */ }
-    setRequesting(false)
-  }
   useEffect(() => { if (member) apiGet<{ publicSharing?: AdultStatus }>('/api/me').then(m => setAdult(m.publicSharing ?? 'unknown')).catch(() => {}) }, [member])
 
   const load = useCallback(async () => {
@@ -78,10 +66,8 @@ export default function SlotsPage() {
     try {
       const startAt = new Date(start).getTime()
       if (!Number.isFinite(startAt)) throw new Error('Pick a start time.')
-      if (ready && !ready.conductSigned && !conductSig) throw new Error('Read and sign the conduct agreement first.')
-      if (daytime && !cleanSig) throw new Error('Your slot overlaps the clean hours. Sign the clean-hours pledge or pick a time outside 6 AM to 10 PM.')
       if (sharePublic && !sig) throw new Error('Tick every box and type your full name to share publicly, or turn that off.')
-      await api('/api/slots/request', { title, description, location, type, category, startAt, durationMin, audioURL, imageUrl: image?.url ?? '', imagePath: image?.path ?? '', ...(sharePublic && sig ? { publicConsent: sig } : {}), ...(conductSig ? { conduct: conductSig } : {}), ...(daytime && cleanSig ? { cleanPledge: cleanSig } : {}) })
+      await api('/api/slots/request', { title, description, location, type, category, startAt, durationMin, audioURL, imageUrl: image?.url ?? '', imagePath: image?.path ?? '', ...(sharePublic && sig ? { publicConsent: sig } : {}) })
       setSharePublic(false); setSig(null)
       setTitle(''); setDescription(''); setLocation(''); setAudioURL(''); setImage(null)
       setNotice('Request sent. Staff review every request, and the answer shows up below.')
@@ -121,20 +107,8 @@ export default function SlotsPage() {
         </p>
       </div>
 
-      {ready && !ready.trained && (
-        <div className="sk-raised rounded-2xl p-5 space-y-3">
-          <p className="font-display text-br-gold tracking-widest text-sm">TRAINING COMES FIRST</p>
-          <p className="text-sm text-br-dk-text">Hosts must be certified. It takes about ten minutes.</p>
-          <div className="flex flex-wrap gap-3 items-center">
-            <Link href="/training" className="rounded-lg bg-br-gold text-black text-xs font-semibold px-4 py-2">Take the quiz</Link>
-            {ready.trainingRequested
-              ? <span className="text-xs text-br-dk-sub">Training requested. A director will reach out.</span>
-              : <button type="button" disabled={requesting} onClick={requestTraining} className="rounded-lg border border-br-dk-border text-br-dk-text text-xs font-semibold px-4 py-2">Request in-person training</button>}
-          </div>
-        </div>
-      )}
-
-      <form onSubmit={submit} className={`sk-raised rounded-2xl p-5 space-y-4 ${ready && !ready.trained ? 'opacity-50 pointer-events-none' : ''}`}>
+      <HostGate>
+      <form onSubmit={submit} className="sk-raised rounded-2xl p-5 space-y-4">
         <Field label="Title" value={title} onChange={e => setTitle(e.target.value)} maxLength={80} required />
         <label className="block">
           <span className={label}>WHAT&apos;S IT ABOUT?</span>
@@ -170,8 +144,6 @@ export default function SlotsPage() {
           {sharePublic && adult === 'adult' && <PublicAgreement status={adult} onChange={setSig} />}
           {!sharePublic && adult === 'adult' && <p className="text-xs text-br-dk-muted">Off: Babson students only.</p>}
         </div>
-        {daytime && <SignBox title="CLEAN-HOURS PLEDGE" intro="Your slot overlaps 6 AM to 10 PM Eastern. Daytime shows must be completely clean." clauses={CLEAN_CLAUSES} version={CLEAN_VERSION} onChange={setCleanSig} />}
-        {ready && !ready.conductSigned && <SignBox title="CONDUCT AGREEMENT (ONCE, FOR ALL HOURS)" intro={SLUR_DEFINITION} clauses={CONDUCT_CLAUSES} version={CONDUCT_VERSION} onChange={setConductSig} />}
         <p className="text-xs text-br-dk-muted">Shown to listeners if approved.</p>
         <ErrorText>{error}</ErrorText>
         {notice && <p className="text-sm text-br-gold">{notice}</p>}
@@ -210,6 +182,9 @@ export default function SlotsPage() {
           </div>
         ))}
       </section>
+
+      <HostOptions />
+      </HostGate>
     </div>
   )
 }

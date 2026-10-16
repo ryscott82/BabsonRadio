@@ -8,6 +8,6 @@ export const runtime = 'nodejs'
 export async function GET(req: Request) {
   return handle(async () => {
     const c = await hostContext(req, adminDb())
-    return { host: c.staff || c.shows.length > 0 }
+    return { host: c.staff || c.shows.length > 0, hosting: c.open.length > 0 }
   })
 }

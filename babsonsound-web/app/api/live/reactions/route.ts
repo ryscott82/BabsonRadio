@@ -1,7 +1,7 @@
 import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/http'
-import { EMOJIS, bucketMinute, currentOnAir } from '@/lib/server/live'
+import { EMOJIS, bucketMinute, currentOnAir, hostPrefsFor } from '@/lib/server/live'
 import { PITTSBURGH } from '@/lib/reactionThemes'
 import { EARNED_EMOJIS, bump, emojisFor } from '@/lib/server/earnedEmojis'
 
@@ -37,7 +37,8 @@ export async function GET() {
     const now = Date.now()
     const cur = await currentOnAir(db, now)
     if (!cur) return { occId: '', emojis: EMOJIS, events: [], now }
-    return { occId: cur.occId, emojis: EMOJIS, events: await recentEvents(db, cur.occId, now), now }
+    const mine = (await hostPrefsFor(db, cur).catch(() => null))?.emojis ?? []
+    return { occId: cur.occId, emojis: mine.length ? mine : EMOJIS, events: await recentEvents(db, cur.occId, now), now }
   }, { 'Cache-Control': 'public, s-maxage=2, stale-while-revalidate=4' })
 }
 
@@ -60,8 +61,12 @@ export async function POST(req: Request) {
     const cid = str(b.cid, 24).replace(/[^A-Za-z0-9]/g, '')
     const earned = (EARNED_EMOJIS as readonly string[]).includes(emoji)
     const themed = (PITTSBURGH as readonly string[]).includes(emoji)
-    if (!earned && !themed && !(EMOJIS as readonly string[]).includes(emoji)) throw new HttpError(400, 'Pick one of the reactions.')
-    if (earned && !(await emojisFor(adminDb(), t.uid)).includes(emoji)) throw new HttpError(400, 'Pick one of the reactions.')
+    const dbAll = adminDb()
+    const curNow = await currentOnAir(dbAll).catch(() => null)
+    const hostSet = curNow ? (await hostPrefsFor(dbAll, curNow).catch(() => null))?.emojis ?? [] : []
+    const base: readonly string[] = hostSet.length ? hostSet : EMOJIS
+    if (!earned && !themed && !base.includes(emoji)) throw new HttpError(400, 'Pick one of the reactions.')
+    if (earned && !(await emojisFor(dbAll, t.uid)).includes(emoji)) throw new HttpError(400, 'Pick one of the reactions.')
     const now = Date.now()
     const recent = (sent.get(t.uid) ?? []).filter(x => now - x < 60_000)
     if (recent.length >= 30 || (recent.length && now - recent[recent.length - 1] < 500)) throw new HttpError(429, 'Easy there, try again in a second.')

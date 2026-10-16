@@ -38,6 +38,9 @@ nonisolated struct NowPlayingInfo: Decodable, Equatable {
     let playedAt: Double?
     let bpm: Double?
     let beatOffset: Double?
+    /// The host's own reaction emojis for this show (empty = the usual ones), and whether ratings are on for it. Missing from older servers.
+    let hostEmojis: [String]?
+    let ratingsOn: Bool?
     /// A show is on air without track info: title and artist are the show and host names, so there is no song to rate.
     let showOnly: Bool?
 }

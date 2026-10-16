@@ -8,6 +8,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import MyRatings from '@/components/MyRatings'
 import { api, apiGet, deleteMyAccount, signOut } from '@/lib/auth'
 import { Card, ErrorText, Field, GhostButton, PrimaryButton } from '@/components/AuthUI'
+import Avatar from '@/components/Avatar'
+import { AVATAR_COLORS } from '@/lib/profile'
 
 function ReportForm() {
   const [type, setType] = useState<'bug' | 'feature'>('bug')
@@ -26,8 +28,7 @@ function ReportForm() {
   }
 
   return (
-    <form onSubmit={send} className="sk-raised rounded-2xl p-5 space-y-3">
-      <h2 className="font-display text-br-dk-text tracking-widest text-sm">REPORT A BUG OR SUGGEST A FEATURE</h2>
+    <form onSubmit={send} className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
         {(['bug', 'feature'] as const).map(k => (
           <button key={k} type="button" aria-pressed={type === k} onClick={() => setType(k)}
@@ -46,7 +47,7 @@ function ReportForm() {
   )
 }
 
-function AboutYou() {
+function AboutYou({ onSaved }: { onSaved?: () => void }) {
   const [gradYear, setGradYear] = useState('')
   const [conc, setConc] = useState<string[]>([])
   const [bMonth, setBMonth] = useState('')
@@ -66,7 +67,7 @@ function AboutYou() {
     e.preventDefault(); setBusy(true); setMsg('')
     try {
       await api('/api/me', { gradYear, concentrations: conc.filter(Boolean), birthday: bMonth && bDay ? { month: Number(bMonth), day: Number(bDay) } : null })
-      setMsg('Saved.')
+      setMsg('Saved.'); onSaved?.()
     } catch (err) { setMsg(err instanceof Error ? err.message : 'Could not save.') }
     setBusy(false)
   }
@@ -76,8 +77,8 @@ function AboutYou() {
   return (
     <form onSubmit={save} className="bg-br-dk-surface border border-br-dk-border rounded-2xl p-5 space-y-4">
       <div>
-        <p className="text-br-dk-text text-sm font-medium">About you (optional)</p>
-        <p className="text-br-dk-sub text-xs mt-1">Tell us about you!</p>
+        <p className="text-br-dk-text text-sm font-medium">About you</p>
+        <p className="text-br-dk-sub text-xs mt-1">All optional.</p>
       </div>
       <label className="block"><span className={lab}>GRADUATION YEAR</span>
         <select className={box} value={gradYear} onChange={e => setGradYear(e.target.value)}>
@@ -115,21 +116,40 @@ function AboutYou() {
   )
 }
 
+/** A tappable row that opens its content in place. */
+function Row({ title, hint, open, onToggle, children }: { title: string; hint?: string; open: boolean; onToggle: () => void; children?: React.ReactNode }) {
+  return (
+    <div className="sk-raised rounded-2xl">
+      <button type="button" aria-expanded={open} onClick={onToggle} className="w-full flex items-center justify-between gap-4 p-5 text-left">
+        <span>
+          <span className="block text-br-dk-text text-sm font-medium">{title}</span>
+          {hint && <span className="block text-br-dk-sub text-xs mt-1">{hint}</span>}
+        </span>
+        <span className="text-br-dk-sub text-sm" aria-hidden>{open ? '–' : '+'}</span>
+      </button>
+      {open && <div className="px-5 pb-5">{children}</div>}
+    </div>
+  )
+}
+
 export default function ProfilePage() {
-  const { user, userDoc, loading, isBabson, isDeveloper, isGuest } = useAuth()
+  const { user, userDoc, loading, isBabson, isDeveloper, isGuest, isAdmin, isDirector } = useAuth()
   const router = useRouter()
-  const [invisible, setInvisible] = useState(false)
-  const [hosts, setHosts] = useState(false) // listed as a show host (or staff)
+  const member = isBabson || isDeveloper
+  const [me, setMe] = useState<{ invisible: boolean; avatarColor: string; joinedAt: number | null; answered: boolean } | null>(null)
+  const [hosting, setHosting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [open, setOpen] = useState<'' | 'color' | 'about' | 'ratings' | 'report'>('')
   const [showDelete, setShowDelete] = useState(false)
   const [pw, setPw] = useState('')
   const [busy, setBusy] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    if (!user || !(isBabson || isDeveloper)) return
-    apiGet<{ staff: boolean; shows: unknown[] }>('/api/host/status').then(r => setHosts(r.staff || r.shows.length > 0)).catch(() => {})
-  }, [user, isBabson, isDeveloper])
+    if (!user || !member) return
+    apiGet<{ hosting: boolean }>('/api/host/access').then(r => setHosting(r.hosting)).catch(() => {})
+  }, [user, member])
 
   useEffect(() => {
     if (loading) return
@@ -137,71 +157,118 @@ export default function ProfilePage() {
     else if (isGuest) router.replace('/auth/guest')
   }, [loading, user, isGuest, router])
 
-  useEffect(() => {
-    if (!user || isGuest) return
-    apiGet<{ invisible: boolean }>('/api/me').then(r => setInvisible(r.invisible)).catch(() => {})
-  }, [user, isGuest])
+  const loadMe = () => apiGet<{ invisible: boolean; avatarColor: string; joinedAt: number | null; gradYear: string; concentrations: string[]; birthday?: unknown }>('/api/me')
+    .then(r => setMe({ invisible: r.invisible, avatarColor: r.avatarColor, joinedAt: r.joinedAt, answered: !!(r.gradYear || r.concentrations?.length || r.birthday) })).catch(() => {})
+  useEffect(() => { if (user && !isGuest) queueMicrotask(loadMe) }, [user, isGuest])
 
   if (loading || !user || isGuest) return null
 
-  async function toggle() {
+  async function toggleInvisible() {
+    if (!me) return
     setSaving(true); setError('')
-    const next = !invisible
-    setInvisible(next)
+    const next = !me.invisible
+    setMe({ ...me, invisible: next })
     try { await api('/api/me', { invisible: next }) }
-    catch (e) { setInvisible(!next); setError(e instanceof Error ? e.message : 'Could not save.') }
+    catch (e) { setMe({ ...me, invisible: !next }); setError(e instanceof Error ? e.message : 'Could not save.') }
     setSaving(false)
   }
+  async function pickColor(id: string) {
+    if (!me) return
+    const prev = me.avatarColor
+    setMe({ ...me, avatarColor: id }); setError('')
+    try { await api('/api/me', { avatarColor: id }) } catch (e) { setMe(m => (m ? { ...m, avatarColor: prev } : m)); setError(e instanceof Error ? e.message : 'Could not save.') }
+  }
+  async function invite() {
+    const url = 'https://babsonradio.com'
+    try {
+      if (navigator.share) await navigator.share({ title: 'Babson Radio', url })
+      else { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2_000) }
+    } catch { /* cancelled */ }
+  }
+
+  const first = userDoc?.firstName ?? userDoc?.displayName ?? user.displayName ?? ''
+  const fullName = [first, userDoc?.lastName].filter(Boolean).join(' ')
+  const since = me?.joinedAt ? new Date(me.joinedAt).toLocaleDateString([], { month: 'long', year: 'numeric' }) : ''
+  const toggle = (k: typeof open) => setOpen(o => (o === k ? '' : k))
+  const rowLink = 'block sk-raised rounded-2xl p-5'
+  const showAbout = member && me != null && !me.answered
+  const aboutLater = member && me != null && me.answered
 
   return (
     <Card title="YOUR PROFILE">
-      <div className="space-y-6">
-        <div className="text-center">
-          <p className="text-br-dk-text text-lg">{[userDoc?.firstName ?? userDoc?.displayName ?? user.displayName, userDoc?.lastName].filter(Boolean).join(' ')}</p>
+      <div className="space-y-4">
+        <div className="text-center space-y-1">
+          <button type="button" aria-label="Change profile color" aria-expanded={open === 'color'} onClick={() => toggle('color')} className="rounded-full">
+            <Avatar name={first} color={me?.avatarColor} size={84} />
+          </button>
+          {open === 'color' && (
+            <div className="flex justify-center gap-3 pt-2 pb-1" role="radiogroup" aria-label="Profile color">
+              {AVATAR_COLORS.map(c => (
+                <button key={c.id} type="button" role="radio" aria-checked={me?.avatarColor === c.id} aria-label={c.id} onClick={() => pickColor(c.id)}
+                        className={`h-8 w-8 rounded-full ${me?.avatarColor === c.id ? 'ring-2 ring-offset-2 ring-br-gold ring-offset-br-dk-bg' : ''}`} style={{ background: c.hex }} />
+              ))}
+            </div>
+          )}
+          <p className="text-br-dk-text text-lg pt-2">{fullName}</p>
           {userDoc?.username && <p className="text-br-gold text-sm font-display tracking-widest">@{userDoc.username}</p>}
-          <p className="text-br-dk-sub text-sm">{user.email}{isDeveloper ? ' · Developer' : ''}</p>
+          {since && <p className="text-br-dk-sub text-sm">Member since {since}</p>}
         </div>
 
-        {(isBabson || isDeveloper) && (
-          <Link href="/slots" className="block sk-raised rounded-2xl p-5">
-            <p className="text-br-dk-text text-sm font-medium">Request a spot</p>
-            <p className="text-br-dk-sub text-xs mt-1">Ask for an hour on air.</p>
+        {member && (
+          <Link href="/slots" className={rowLink}>
+            <p className="text-br-dk-text text-sm font-medium">Go on air</p>
+            <p className="text-br-dk-sub text-xs mt-1">Request airtime.</p>
           </Link>
         )}
 
-        {hosts && (
-          <Link href="/host" className="block sk-raised rounded-2xl p-5">
+        {hosting && (
+          <Link href="/host" className={rowLink}>
             <p className="text-br-dk-text text-sm font-medium">Host panel</p>
-            <p className="text-br-dk-sub text-xs mt-1">Live feed, listener message and set list.</p>
+            <p className="text-br-dk-sub text-xs mt-1">You&apos;re on air soon.</p>
           </Link>
         )}
 
-        {(isBabson || isDeveloper) && (
-          <div className="bg-br-dk-surface border border-br-dk-border rounded-2xl p-5">
+        {showAbout && <AboutYou onSaved={loadMe} />}
+
+        {isBabson && (
+          <Link href="/guest-access" className={rowLink}>
+            <p className="text-br-dk-text text-sm font-medium">Guest access</p>
+          </Link>
+        )}
+
+        {member && (
+          <button type="button" onClick={invite} className={`${rowLink} w-full text-left`}>
+            <p className="text-br-dk-text text-sm font-medium">Invite friends</p>
+            {copied && <p className="text-br-gold text-xs mt-1">Link copied.</p>}
+          </button>
+        )}
+
+        {member && <Row title="My ratings" open={open === 'ratings'} onToggle={() => toggle('ratings')}><MyRatings /></Row>}
+
+        {member && me && (
+          <div className="sk-raised rounded-2xl p-5">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-br-dk-text text-sm font-medium">Invisible mode</p>
-                <p className="text-br-dk-sub text-xs mt-1">
-                  Friends can&apos;t see you tuned in. Reactions and contact suggestions are off.
-                </p>
+                <p className="text-br-dk-sub text-xs mt-1">Friends can&apos;t see you tuned in. Reactions and contact suggestions are off.</p>
               </div>
-              <button role="switch" aria-checked={invisible} disabled={saving} onClick={toggle}
-                      className="sk-switch shrink-0">
-                <span className="sk-knob" />
-              </button>
+              <button role="switch" aria-checked={me.invisible} disabled={saving} onClick={toggleInvisible} className="sk-switch shrink-0"><span className="sk-knob" /></button>
             </div>
           </div>
         )}
         <ErrorText>{error}</ErrorText>
 
-        {(isBabson || isDeveloper) && <AboutYou />}
-        {(isBabson || isDeveloper) && <MyRatings />}
+        {aboutLater && <Row title="About you" open={open === 'about'} onToggle={() => toggle('about')}><AboutYou onSaved={loadMe} /></Row>}
 
-        <ReportForm />
+        <Row title="Report a bug or suggest a feature" open={open === 'report'} onToggle={() => toggle('report')}><ReportForm /></Row>
 
-        {isBabson && <p className="text-center text-sm"><Link href="/guest-access" className="text-br-gold">Guest access</Link></p>}
+        {(isAdmin || isDirector) && (
+          <Link href="/admin" className={rowLink}>
+            <p className="text-br-dk-text text-sm font-medium">Admin</p>
+          </Link>
+        )}
 
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-4 pt-2">
           <GhostButton onClick={() => signOut()}>SIGN OUT</GhostButton>
           {!showDelete ? (
             <button className="block mx-auto text-xs text-br-dk-sub hover:text-br-red" onClick={() => setShowDelete(true)}>Delete my account</button>

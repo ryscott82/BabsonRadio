@@ -9,9 +9,9 @@ import { plexMono } from '@/components/admin/opsFont'
 
 interface Row {
   uid: string; name: string; email: string; role: string; trained: boolean; certifiedAt: number | null; certifiedBy: string
-  score: number | null; attempts: number; requestedAt: number | null; requestNote: string; conductSigned: boolean
+  score: number | null; attempts: number; requestedAt: number | null; requestNote: string; conductSigned: boolean; checkInAt: number | null
 }
-type Filter = 'all' | 'trained' | 'untrained' | 'requested'
+type Filter = 'checked in' | 'all' | 'trained' | 'untrained' | 'requested'
 
 // Look anyone up and see at a glance whether they are certified to host.
 export default function AdminTrainingPage() {
@@ -19,7 +19,7 @@ export default function AdminTrainingPage() {
   const router = useRouter()
   const [rows, setRows] = useState<Row[]>([])
   const [q, setQ] = useState('')
-  const [filter, setFilter] = useState<Filter>('all')
+  const [filter, setFilter] = useState<Filter>('checked in')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState('')
 
@@ -29,7 +29,7 @@ export default function AdminTrainingPage() {
   }, [])
   useEffect(() => { if (user && isDirector) queueMicrotask(load) }, [user, isDirector, load])
 
-  async function act(uid: string, action: 'certify' | 'revoke' | 'clearRequest') {
+  async function act(uid: string, action: 'certify' | 'revoke' | 'clearRequest' | 'approveCheckin') {
     setBusy(uid); setError('')
     try { await api('/api/admin/training', { uid, action }); await load() } catch (e) { setError(e instanceof Error ? e.message : 'Could not save.') }
     setBusy('')
@@ -38,10 +38,10 @@ export default function AdminTrainingPage() {
   const shown = useMemo(() => {
     const t = q.trim().toLowerCase()
     return rows.filter(r => (!t || r.name.toLowerCase().includes(t) || r.email.toLowerCase().includes(t)) &&
-      (filter === 'all' || (filter === 'trained' && r.trained) || (filter === 'untrained' && !r.trained) || (filter === 'requested' && r.requestedAt != null)))
-      .sort((a, b) => (b.requestedAt ?? 0) - (a.requestedAt ?? 0))
+      (filter === 'all' || (filter === 'checked in' && r.checkInAt != null) || (filter === 'trained' && r.trained) || (filter === 'untrained' && !r.trained) || (filter === 'requested' && r.requestedAt != null)))
+      .sort((a, b) => (b.checkInAt ?? 0) - (a.checkInAt ?? 0) || (b.requestedAt ?? 0) - (a.requestedAt ?? 0))
   }, [rows, q, filter])
-  const counts = { trained: rows.filter(r => r.trained).length, requested: rows.filter(r => r.requestedAt != null).length }
+  const counts = { trained: rows.filter(r => r.trained).length, requested: rows.filter(r => r.requestedAt != null).length, checked: rows.filter(r => r.checkInAt != null).length }
 
   if (loading || !user || !isDirector) return <div className="min-h-[60vh]" />
   const btn = 'rounded-md border border-br-dk-border px-2.5 py-1 text-xs text-br-dk-text hover:text-br-gold disabled:opacity-40'
@@ -52,11 +52,11 @@ export default function AdminTrainingPage() {
         <div className="flex items-baseline gap-3 border-b border-br-dk-border pb-3">
           <Link href="/admin" className="text-br-dk-sub text-xs">radio-ops</Link>
           <h1 className="text-br-dk-text text-base font-semibold">training</h1>
-          <span className="text-xs text-br-dk-sub ml-auto">{counts.trained} certified · {counts.requested} waiting for training</span>
+          <span className="text-xs text-br-dk-sub ml-auto">{counts.checked} checked in · {counts.trained} certified · {counts.requested} waiting for training</span>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search name or email" className="sk-field rounded-lg px-3 py-2 text-sm text-br-dk-text min-w-[14rem]" />
-          {(['all', 'trained', 'untrained', 'requested'] as Filter[]).map(f => (
+          {(['checked in', 'all', 'trained', 'untrained', 'requested'] as Filter[]).map(f => (
             <button key={f} onClick={() => setFilter(f)} aria-pressed={filter === f} className={`${btn} ${filter === f ? 'text-br-gold border-br-gold' : ''}`}>{f}</button>
           ))}
         </div>
@@ -67,6 +67,7 @@ export default function AdminTrainingPage() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-br-dk-text truncate">{r.name || r.email} <span className="text-xs text-br-dk-muted">{r.role}</span></p>
                 <p className="text-xs text-br-dk-sub truncate">{r.email}</p>
+                {r.checkInAt && <p className="text-xs text-br-gold">Says they are at training now ({new Date(r.checkInAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })})</p>}
                 {r.requestedAt && <p className="text-xs text-br-gold">Asked for training {new Date(r.requestedAt).toLocaleDateString()}{r.requestNote ? `: "${r.requestNote}"` : ''}</p>}
               </div>
               <div className="text-xs text-br-dk-sub tabular-nums">
@@ -74,6 +75,7 @@ export default function AdminTrainingPage() {
                 <span className="ml-3">{r.conductSigned ? 'conduct signed' : 'conduct not signed'}</span>
               </div>
               <div className="flex gap-2">
+                {r.checkInAt && <button className={`${btn} text-br-gold border-br-gold`} disabled={busy === r.uid} onClick={() => act(r.uid, 'approveCheckin')}>Confirm at training</button>}
                 {!r.trained && <button className={btn} disabled={busy === r.uid} onClick={() => act(r.uid, 'certify')}>Certify</button>}
                 {r.trained && <button className={btn} disabled={busy === r.uid} onClick={() => act(r.uid, 'revoke')}>Revoke</button>}
                 {r.requestedAt && <button className={btn} disabled={busy === r.uid} onClick={() => act(r.uid, 'clearRequest')}>Clear request</button>}

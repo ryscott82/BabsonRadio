@@ -14,7 +14,7 @@ export async function GET(req: Request) {
     const member = await requireMember(req).then(() => true, () => false)
     const db = adminDb()
     return {
-      items: await buildScheduleFeed(db, { days, showStudentHosts: member, back }),
+      items: (await buildScheduleFeed(db, { days, showStudentHosts: member, back })).map(({ hostUids: _h, ...i }) => i),
       timezone: (await loadConfig(db)).timezone, // station time zone (the app uses it for weekly reminders)
     }
   })

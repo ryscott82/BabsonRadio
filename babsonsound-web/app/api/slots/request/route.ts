@@ -6,8 +6,8 @@ import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/ht
 import { findConflict } from '@/lib/server/slots'
 import { checkImageRef } from '@/lib/server/images'
 import { assertAllAdults, recordConsent } from '@/lib/server/publicContent'
-import { checkSignature, readiness, signCleanPledge, signConduct } from '@/lib/server/conduct'
-import { CLEAN_VERSION, CONDUCT_VERSION, touchesCleanHours } from '@/lib/conduct'
+import { readiness } from '@/lib/server/conduct'
+import { touchesCleanHours } from '@/lib/conduct'
 import { SLOT_CATEGORIES, SLOT_RULES, SLOT_TYPES, type SlotCategory, type SlotType } from '@/lib/slots'
 
 export const runtime = 'nodejs'
@@ -57,12 +57,11 @@ export async function POST(req: Request) {
 
     if (await findConflict(db, start, end)) throw new HttpError(409, 'That time is already booked. Pick another.')
 
-    // Hosts must be trained, have signed the conduct agreement, and (for daytime slots) pledge to play only clean music.
+    // Hosts must be trained and have signed the four host agreements (which include the clean music hours).
     const ready = await readiness(db, t)
-    if (!ready.trained) throw new HttpError(403, 'Finish host training before you request a slot. Take the quiz or request in-person training.', 'BR-TRN-001')
-    if (!ready.conductSigned) checkSignature(b.conduct, CONDUCT_VERSION, 'BR-CON-001')
+    if (!ready.trained) throw new HttpError(403, 'Finish host training before you request a slot.', 'BR-TRN-001')
+    if (!ready.conductSigned) throw new HttpError(403, 'Sign the host agreements before you request a slot.', 'BR-CON-001')
     const cleanHours = touchesCleanHours(startMs, startMs + durationMin * 60_000)
-    if (cleanHours) checkSignature(b.cleanPledge, CLEAN_VERSION, 'BR-CON-002')
 
     const mine = await db.collection('slotRequests').where('requesterUid', '==', t.uid).get()
     if (mine.docs.filter(d => d.get('status') === 'pending').length >= SLOT_RULES.maxPendingPerUser) {
@@ -83,10 +82,6 @@ export async function POST(req: Request) {
       startAt: Timestamp.fromDate(start), endAt: Timestamp.fromDate(end), durationMin,
       status: 'pending', createdAt: Timestamp.now(), makePublic: false, cleanHours,
     })
-    try {
-      if (!ready.conductSigned) await signConduct(db, t, b.conduct)
-      if (cleanHours) await ref.update({ cleanPledgeId: await signCleanPledge(db, t, b.cleanPledge, ref.id) })
-    } catch (e) { await ref.delete(); throw e } // never leave a request without its signatures
     if (wantsPublic) {
       try {
         const consentId = await recordConsent(db, t, b.publicConsent as Record<string, unknown> as never, { kind: 'slot', id: ref.id, title })

@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireMember } from '@/lib/server/http'
 import { readiness } from '@/lib/server/conduct'
 import { PASS_PERCENT, QUIZ, TRAINING_VERSION, publicQuiz } from '@/lib/training'
+import { AGREEMENTS_VERSION, HOST_AGREEMENTS } from '@/lib/conduct'
 
 export const runtime = 'nodejs'
 
@@ -15,7 +16,11 @@ export async function GET(req: Request) {
     return {
       trained: r.trained, staff: r.staff, requested: r.trainingRequested,
       certifiedAt: tr.get('certifiedAt')?.toMillis?.() ?? null, passPercent: PASS_PERCENT,
-      questions: publicQuiz(),
+      checkIn: r.checkIn, conductSigned: r.conductSigned,
+      // The app shows the same agreements the website does.
+      agreements: HOST_AGREEMENTS, agreementsVersion: AGREEMENTS_VERSION,
+      // The quiz only opens after an admin confirms the person is at an in-person training.
+      questions: r.quizUnlocked ? publicQuiz() : [],
     }
   })
 }
@@ -26,6 +31,7 @@ export async function POST(req: Request) {
     const b = await readJson(req)
     const answers = (b.answers && typeof b.answers === 'object' ? b.answers : {}) as Record<string, unknown>
     const db = adminDb()
+    if (!(await readiness(db, t)).quizUnlocked) throw new HttpError(403, 'Check in at your training first. A director confirms it and the quiz opens.', 'BR-TRN-004')
     const ref = db.collection('training').doc(t.uid)
     const prev = await ref.get()
     const last = prev.get('lastAttemptAt')?.toMillis?.() ?? 0

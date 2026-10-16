@@ -43,6 +43,7 @@ final class LiveExtrasModel: ObservableObject {
     /// The reaction row: the usual ones plus any this person has earned (the server decides which).
     @Published var emojis: [String] = LiveExtrasModel.emojis
     private var pollRound = 0
+    private var emojiOcc = ""
 
     private let cid = UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(10).lowercased()
     private var since: Double = 0
@@ -78,7 +79,9 @@ final class LiveExtrasModel: ObservableObject {
     /// Check for other people's reactions every few seconds while the live screen is open.
     func pollLoop() async {
         while !Task.isCancelled {
-            if pollRound % 20 == 0 { await loadEmojis() } // about once a minute
+            // About once a minute, and right away when a different show comes on (hosts can pick their own reactions).
+            let occNow = AudioPlayerManager.shared.nowPlaying?.occId ?? ""
+            if pollRound % 20 == 0 || occNow != emojiOcc { emojiOcc = occNow; await loadEmojis() }
             pollRound += 1
             if !AuthManager.shared.isInvisible { await pollOnce() }
             try? await Task.sleep(nanoseconds: 3_000_000_000)
@@ -225,6 +228,7 @@ struct LiveExtrasView: View {
     private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
     @ObservedObject private var theme = ArtTheme.shared
     private var gold: Color { theme.accent(scheme) }
+    private var ratingsOn: Bool { np?.ratingsOn != false }
     private var songKey: String { "\(np?.artist ?? "")|\(np?.title ?? "")" }
 
     /// The block or show on air, once it has been going 10 minutes.
@@ -239,7 +243,7 @@ struct LiveExtrasView: View {
 
     /// From 5 minutes before a show ends until 45 minutes after, ask how it was.
     private var feedbackTarget: (occId: String, title: String)? {
-        guard auth.currentUser.map({ !$0.isGuest }) == true else { return nil }
+        guard ratingsOn, auth.currentUser.map({ !$0.isGuest }) == true else { return nil }
         if let np, np.isShow == true, let occ = np.occId, !occ.isEmpty, let end = np.showEnd, end > 0 {
             let left = end - Date().timeIntervalSince1970 * 1000
             if left > 0 && left <= 5 * 60_000 { return (occ, showTitleNow) }
@@ -301,7 +305,7 @@ struct LiveExtrasView: View {
             }
 
             if mode != .reactions {
-            if let np, !np.title.isEmpty, np.showOnly != true {
+            if ratingsOn, let np, !np.title.isEmpty, np.showOnly != true {
                     starRow(label: "Rate this song", value: model.songStars) { n in
                         Task { await model.rateSong(n, title: np.title, artist: np.artist) }
                     }

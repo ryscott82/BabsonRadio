@@ -2,7 +2,7 @@ import 'server-only'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 import type { DecodedIdToken } from 'firebase-admin/auth'
 import { HttpError, isDeveloperToken } from './http'
-import { CLEAN_VERSION, CONDUCT_VERSION } from '../conduct'
+import { CONDUCT_VERSION } from '../conduct'
 import { looksLikeFullName } from '../publicContent'
 
 // Conduct agreement (everyone, once per version) and training status. Staff (director, admin, developer) skip the training gate.
@@ -19,7 +19,7 @@ export function checkSignature(input: unknown, version: string, code: string): S
   return { typedName, accepted: true, version }
 }
 
-async function saveRecord(db: Firestore, t: DecodedIdToken, kind: 'conduct' | 'clean', sig: Signature, scope: { kind: string; id: string }): Promise<string> {
+async function saveRecord(db: Firestore, t: DecodedIdToken, kind: 'conduct', sig: Signature, scope: { kind: string; id: string }): Promise<string> {
   const ref = await db.collection('conductConsents').add({
     uid: t.uid, email: t.email ?? '', typedName: sig.typedName, kind, version: sig.version,
     scopeKind: scope.kind, scopeId: scope.id, signedAt: Timestamp.now(),
@@ -35,19 +35,19 @@ export async function signConduct(db: Firestore, t: DecodedIdToken, input: unkno
   return id
 }
 
-/** Sign the clean-hours pledge for one request. */
-export async function signCleanPledge(db: Firestore, t: DecodedIdToken, input: unknown, requestId: string): Promise<string> {
-  const sig = checkSignature(input, CLEAN_VERSION, 'BR-CON-002')
-  return saveRecord(db, t, 'clean', sig, { kind: 'slot', id: requestId })
-}
-
 export async function isStaff(db: Firestore, t: DecodedIdToken): Promise<boolean> {
   if (isDeveloperToken(t)) return true
   const role = (await db.collection('users').doc(t.uid).get()).get('role')
   return role === 'director' || role === 'superAdmin'
 }
 
-export interface Readiness { conductSigned: boolean; trained: boolean; trainingRequested: boolean; staff: boolean }
+/** How long an admin's "yes, they are at training" stays valid for taking the quiz. */
+export const CHECKIN_VALID_MS = 12 * 3_600_000
+
+export type CheckIn = 'none' | 'pending' | 'approved'
+export interface Readiness { conductSigned: boolean; trained: boolean; trainingRequested: boolean; staff: boolean; checkIn: CheckIn; quizUnlocked: boolean }
+
+const ms = (v: unknown) => (v as { toMillis?: () => number } | null | undefined)?.toMillis?.() ?? 0
 
 export async function readiness(db: Firestore, t: DecodedIdToken): Promise<Readiness> {
   const [u, tr, staff] = await Promise.all([
@@ -56,10 +56,15 @@ export async function readiness(db: Firestore, t: DecodedIdToken): Promise<Readi
     isStaff(db, t),
   ])
   const trained = staff || (tr.exists && tr.get('certifiedAt') != null && tr.get('revokedAt') == null)
+  const at = ms(tr.get('checkInAt')), ok = ms(tr.get('checkInApprovedAt')), now = Date.now()
+  const approved = ok > 0 && ok >= at && now - ok < CHECKIN_VALID_MS
+  const checkIn: CheckIn = approved ? 'approved' : at > 0 && ok < at && now - at < CHECKIN_VALID_MS ? 'pending' : 'none'
   return {
     conductSigned: u.get('conductVersion') === CONDUCT_VERSION,
     trained,
     trainingRequested: tr.exists && tr.get('requestedAt') != null && tr.get('certifiedAt') == null,
     staff,
+    checkIn,
+    quizUnlocked: staff || approved,
   }
 }

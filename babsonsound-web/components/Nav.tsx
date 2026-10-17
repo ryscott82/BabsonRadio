@@ -88,7 +88,7 @@ export default function Nav() {
                 <div className="absolute right-0 top-full mt-2 w-52 sk-raised rounded-xl overflow-hidden">
                   <Link href="/profile" onClick={close} className={item}>Profile</Link>
                   {canRequest && <Link href="/slots" onClick={close} className={`${item} border-t border-br-dk-border`}>Request a spot</Link>}
-                  {isBabson && <Link href="/guest-access" onClick={close} className={`${item} border-t border-br-dk-border`}>Guest access</Link>}
+                  {isBabson && <Link href="/guest-access" onClick={close} className={`${item} border-t border-br-dk-border`}>Invite friends</Link>}
                   {isGuest && <Link href="/auth/guest" onClick={close} className={`${item} border-t border-br-dk-border`}>My guest access</Link>}
                   {showAdmin && <Link href="/admin" onClick={close} className={`${item} border-t border-br-dk-border`}>Radio operations</Link>}
                   <button

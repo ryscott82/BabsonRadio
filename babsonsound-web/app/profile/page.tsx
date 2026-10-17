@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import MyRatings from '@/components/MyRatings'
 import { api, apiGet, deleteMyAccount, signOut } from '@/lib/auth'
-import { Card, ErrorText, Field, GhostButton, PrimaryButton } from '@/components/AuthUI'
+import { Card, ErrorText, Field, GhostButton, PrimaryButton, formatPhone } from '@/components/AuthUI'
 import Avatar from '@/components/Avatar'
 import { AVATAR_COLORS } from '@/lib/profile'
 
@@ -116,6 +116,46 @@ function AboutYou({ onSaved }: { onSaved?: () => void }) {
   )
 }
 
+function PhoneChange() {
+  const [info, setInfo] = useState<{ current: string; pending: { last4: string; at: number } | null } | null>(null)
+  const [phone, setPhone] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  useEffect(() => { apiGet<typeof info>('/api/me/phone').then(setInfo).catch(() => {}) }, [])
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault(); setBusy(true); setMsg('')
+    try {
+      const r = await api<{ pending: { last4: string; at: number } }>('/api/me/phone', { phone })
+      setInfo(i => ({ current: i?.current ?? '', pending: r.pending })); setPhone('')
+    } catch (err) { setMsg(err instanceof Error ? err.message : 'Could not send.') }
+    setBusy(false)
+  }
+  async function cancel() {
+    setBusy(true)
+    try { await api('/api/me/phone', { cancel: true }); setInfo(i => (i ? { ...i, pending: null } : i)) } catch { /* try again */ }
+    setBusy(false)
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-br-dk-sub text-xs">{info?.current ? `Current number ends in ${info.current}.` : ''} An admin approves changes.</p>
+      {info?.pending ? (
+        <div className="space-y-2">
+          <p className="text-sm text-br-dk-text">Waiting for approval: number ending in {info.pending.last4}.</p>
+          <GhostButton type="button" onClick={cancel}>Cancel request</GhostButton>
+        </div>
+      ) : (
+        <form onSubmit={send} className="space-y-3">
+          <Field label="New phone number" value={phone} onChange={e => setPhone(formatPhone(e.target.value))} placeholder="(617) 555-1234" inputMode="tel" autoComplete="tel-national" />
+          {msg && <p role="status" className="text-sm text-br-red">{msg}</p>}
+          <PrimaryButton type="submit" busy={busy}>REQUEST CHANGE</PrimaryButton>
+        </form>
+      )}
+    </div>
+  )
+}
+
 /** A tappable row that opens its content in place. */
 function Row({ title, hint, open, onToggle, children }: { title: string; hint?: string; open: boolean; onToggle: () => void; children?: React.ReactNode }) {
   return (
@@ -140,7 +180,7 @@ export default function ProfilePage() {
   const [hosting, setHosting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [open, setOpen] = useState<'' | 'color' | 'about' | 'ratings' | 'report'>('')
+  const [open, setOpen] = useState<'' | 'color' | 'about' | 'ratings' | 'report' | 'phone'>('')
   const [showDelete, setShowDelete] = useState(false)
   const [pw, setPw] = useState('')
   const [busy, setBusy] = useState(false)
@@ -232,11 +272,12 @@ export default function ProfilePage() {
 
         {isBabson && (
           <Link href="/guest-access" className={rowLink}>
-            <p className="text-br-dk-text text-sm font-medium">Guest access</p>
+            <p className="text-br-dk-text text-sm font-medium">Invite friends</p>
+            <p className="text-br-dk-sub text-xs mt-1">Friends you invite get guest access automatically.</p>
           </Link>
         )}
 
-        {member && (
+        {member && !isBabson && (
           <button type="button" onClick={invite} className={`${rowLink} w-full text-left`}>
             <p className="text-br-dk-text text-sm font-medium">Invite friends</p>
             {copied && <p className="text-br-gold text-xs mt-1">Link copied.</p>}
@@ -259,6 +300,8 @@ export default function ProfilePage() {
         <ErrorText>{error}</ErrorText>
 
         {aboutLater && <Row title="About you" open={open === 'about'} onToggle={() => toggle('about')}><AboutYou onSaved={loadMe} /></Row>}
+
+        {member && <Row title="Phone number" open={open === 'phone'} onToggle={() => toggle('phone')}><PhoneChange /></Row>}
 
         <Row title="Report a bug or suggest a feature" open={open === 'report'} onToggle={() => toggle('report')}><ReportForm /></Row>
 

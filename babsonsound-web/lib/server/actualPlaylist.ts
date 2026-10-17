@@ -14,6 +14,10 @@ let last = 0
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 const ms = (t: unknown) => (t as Timestamp).toMillis()
 
+/** Playlists that only slip station IDs, jingles and promos between songs. They never count as "what is playing". */
+export const INTERSTITIAL = /babson sound|station id|\bids?\b|jingle|promo|sweeper|imaging|liner|announce/i
+export const isInterstitial = (name: string) => INTERSTITIAL.test(name)
+
 export interface ActualInput { playlist: string; playedAt: number; isLive: boolean; isShow: boolean }
 
 export async function trackActual(db: Firestore, inp: ActualInput, now = Date.now()): Promise<void> {
@@ -37,6 +41,9 @@ export async function trackActual(db: Firestore, inp: ActualInput, now = Date.no
     if (open && ms(open.get('endAt')) > now) await open.ref.update({ endAt: Timestamp.fromMillis(now) })
     return
   }
+
+  // A jingle between two songs isn't a change of playlist; ignoring it keeps one steady record instead of dozens.
+  if (isInterstitial(inp.playlist)) return
 
   const target = planned ? (cfg.playlistMap[planned] || planned) : ''
   const matches = !!planned && (norm(planned) === norm(inp.playlist) || norm(target) === norm(inp.playlist))

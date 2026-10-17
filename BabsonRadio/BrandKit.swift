@@ -41,8 +41,8 @@ extension Color {
     static let brLtSurface2 = Color(hex: "EDE8DC")
     static let brLtBorder   = Color(hex: "D8D0BE")
     static let brLtText     = Color(hex: "1A1710")
-    static let brLtSub      = Color(hex: "6A6258")
-    static let brLtMuted    = Color(hex: "A09888")
+    static let brLtSub      = Color(hex: "575047")
+    static let brLtMuted    = Color(hex: "857C6C")
 
     // Adaptive (auto dark/light)
     static let brBackground  = Color("BRBackground")

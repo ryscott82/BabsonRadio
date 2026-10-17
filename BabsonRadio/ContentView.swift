@@ -11,26 +11,40 @@ struct ContentView: View {
     @ObservedObject private var profile = ProfileStore.shared
     @ObservedObject private var theme = ArtTheme.shared
     @State private var tab = 0
+    @ObservedObject private var board = BoardState.shared
+    @State private var paneSize: CGSize = .zero
+    /// Bumped each time you come back to Live, so the player loads fresh like at launch (the tab bar went missing on a plain return).
+    @State private var liveLoad = 0
     @State private var splashDone = false
     @State private var welcomeSkipped = false
     @State private var askSchoolEmail = false
     @State private var showSchoolEmailSheet = false
 
     var body: some View {
+        // An open foldable in landscape, on any tab but Live: the player stays on the left half, the tab fills the right half.
+        let customBar = hSize == .regular && paneSize.width > paneSize.height
+        let sideW: CGFloat = (customBar && tab != 0) ? paneSize.width / 2 : 0
+        // One explicit answer, recomputed on every tab switch as well as when the board opens or closes:
+        // hidden only while you are on Live with the full screen board up, shown in every other case.
+        let hideBar = tab == 0 && board.open
         TabView(selection: $tab) {
             LivePlayerView()
+                .id(liveLoad)
+                .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
                 .tag(0)
                 .tabItem {
                     BRTabIcon(systemName: "radio", label: "Live")
                 }
 
             ScheduleView()
+                .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
                 .tag(1)
                 .tabItem {
                     BRTabIcon(systemName: "calendar", label: "Schedule")
                 }
 
             LibraryView()
+                .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
                 .tag(2)
                 .tabItem {
                     BRTabIcon(systemName: "books.vertical", label: "Library")
@@ -38,17 +52,26 @@ struct ContentView: View {
 
             if profile.hosting {
                 NavigationStack { HostPanelView() }
-                    .tag(3)
+                    .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
+                        .tag(3)
                     .tabItem { BRTabIcon(systemName: "mic.fill", label: "Host") }
             }
 
             // Search is the right-most tab; Profile is the circle button in the top corner of every page.
             SearchView()
+                .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
                 .tag(4)
                 .tabItem {
                     BRTabIcon(systemName: "magnifyingglass", label: "Search")
                 }
         }
+        // Measured on the full-size TabView (before the padding); the pane appears and disappears with no animation.
+        .background { Color.clear.onGeometryChange(for: CGSize.self, of: { $0.size }) { paneSize = $0 } }
+        .padding(.leading, sideW)
+        .overlay(alignment: .leading) {
+            if sideW > 0 { LivePlayerView(sidePane: true).frame(width: sideW) }
+        }
+        .onChange(of: tab) { old, new in if new == 0 && old != 0 { liveLoad += 1 } }
         .tint(ArtTheme.full(scheme) ? theme.accent(scheme) : (scheme == .dark ? .brGold : .brGreen))
         .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
         .overlay(alignment: .top) { if hSize != .regular && tab != 0 { StatusBarBlur() } }
@@ -160,3 +183,4 @@ struct StatusBarBlur: View {
         .allowsHitTesting(false)
     }
 }
+

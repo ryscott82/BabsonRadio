@@ -52,7 +52,7 @@ export default function GuestAccessPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-10">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">GUEST ACCESS</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">INVITE FRIENDS</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
       <ErrorText>{error}</ErrorText>
@@ -63,7 +63,7 @@ export default function GuestAccessPage() {
         {pending.map(r => <RequestRow key={r.id} r={r} run={run} />)}
       </Section>
 
-      <Section title="Invite someone">
+      <Section title="Invite a friend — they get guest access automatically">
         <InviteForm run={run} />
       </Section>
 
@@ -109,7 +109,7 @@ function InviteForm({ run }: { run: (f: () => Promise<unknown>, ok?: string) => 
       onSubmit={e => {
         e.preventDefault()
         run(async () => { await api('/api/guest/invite', { guestEmail: email, duration }); setEmail('') },
-          `Invited. Tell them to open Guest access and enter that email — their ${GUEST_DURATIONS[duration].label.toLowerCase()} starts when they sign in.`)
+          `Invited. They get guest access as soon as they sign up with that email — their ${GUEST_DURATIONS[duration].label.toLowerCase()} starts when they sign in.`)
       }}
       className="flex flex-wrap items-end gap-3"
     >

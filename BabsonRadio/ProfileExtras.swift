@@ -179,3 +179,65 @@ struct HostOptionsView: View {
         }
     }
 }
+
+// MARK: - Change phone number
+
+private struct PhoneChangeInfo: Decodable {
+    struct Pending: Decodable { let last4: String }
+    let current: String
+    let pending: Pending?
+}
+
+/// Asks an admin to change the number on the account. Inside a Profile disclosure row.
+struct PhoneChangeSection: View {
+    @Environment(\.colorScheme) private var scheme
+    @State private var info: PhoneChangeInfo?
+    @State private var phone = ""
+    @State private var busy = false
+    @State private var message = ""
+
+    private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
+    private var text: Color { scheme == .dark ? .brDkText : .brLtText }
+    private var accent: Color { scheme == .dark ? .brGold : .brGreen }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text((info.map { $0.current.isEmpty ? "" : "Current number ends in \($0.current). " } ?? "") + "An admin approves changes.")
+                .font(.system(size: 12)).foregroundColor(sub)
+            if let p = info?.pending {
+                Text("Waiting for approval: number ending in \(p.last4).")
+                    .font(.system(size: 14)).foregroundColor(text)
+                Button("Cancel request") { Task { await cancel() } }
+                    .font(.system(size: 14, weight: .semibold)).foregroundColor(accent).disabled(busy)
+            } else {
+                PhoneField(phoneNumber: $phone)
+                if !message.isEmpty { Text(message).font(.system(size: 13)).foregroundColor(.brRed) }
+                Button { Task { await send() } } label: {
+                    Text("Request change").font(.system(size: 15, weight: .semibold))
+                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                        .foregroundColor(scheme == .dark ? .black : .white)
+                        .background(accent, in: RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(busy || PhoneField.digits(phone).count != 10)
+            }
+        }
+        .task { info = try? await BackendAPI.get("/api/me/phone") }
+    }
+
+    private func send() async {
+        busy = true; message = ""
+        do {
+            let _: EmptyResponse = try await BackendAPI.post("/api/me/phone", ["phone": PhoneField.digits(phone)])
+            phone = ""
+            info = try? await BackendAPI.get("/api/me/phone")
+        } catch { message = error.localizedDescription }
+        busy = false
+    }
+
+    private func cancel() async {
+        busy = true
+        let _: EmptyResponse? = try? await BackendAPI.post("/api/me/phone", ["cancel": true])
+        info = try? await BackendAPI.get("/api/me/phone")
+        busy = false
+    }
+}

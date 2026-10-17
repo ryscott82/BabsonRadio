@@ -2,6 +2,7 @@ import 'server-only'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 import { clipInterval, endAfter, localParts, occursOn, parseClock, type Repeat } from '../autoschedule'
 import { loadConfig } from './autoschedule'
+import { isInterstitial } from './actualPlaylist'
 import { localDate, localToUtc } from './tz'
 
 // One schedule for everyone (website, iOS app): weekly shows + approved student slots + genre blocks.
@@ -64,8 +65,21 @@ export async function buildScheduleFeed(db: Firestore, opts: { days: number; sho
   // What really played when it differed from the plan (see actualPlaylist.ts): it replaces the planned block for that time.
   if (opts.includeAuto !== false) {
     const act = await db.collection('autoActual').where('endAt', '>', Timestamp.fromMillis(since)).get()
-    const actual = act.docs.map(d => ({ id: d.id, startMs: d.get('startAt').toMillis() as number, endMs: d.get('endAt').toMillis() as number, label: String(d.get('label') ?? '') }))
-      .filter(a => a.startMs < until && a.endMs > a.startMs)
+    const raw = act.docs.map(d => ({ id: d.id, startMs: d.get('startAt').toMillis() as number, endMs: d.get('endAt').toMillis() as number, label: String(d.get('label') ?? '') }))
+      .filter(a => a.startMs < until && a.endMs > a.startMs && !isInterstitial(a.label))
+      .sort((a, b) => a.startMs - b.startMs)
+    // Tidy the records: same playlist back to back (gap under 20 min) becomes one block; when two overlap, the later one wins.
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+    const actual: typeof raw = []
+    for (const r of raw) {
+      const prev = actual[actual.length - 1]
+      if (prev && norm(prev.label) === norm(r.label) && r.startMs - prev.endMs <= 20 * 60_000) prev.endMs = Math.max(prev.endMs, r.endMs)
+      else {
+        if (prev && r.startMs < prev.endMs) prev.endMs = r.startMs
+        actual.push({ ...r })
+      }
+    }
+    for (let i = actual.length - 1; i >= 0; i--) if (actual[i].endMs <= actual[i].startMs) actual.splice(i, 1)
     if (actual.length) {
       const planned = autoPieces.splice(0)
       for (const a of planned) clipInterval({ startMs: a.startAt, endMs: a.endAt }, actual, 60_000).forEach((c, n) =>

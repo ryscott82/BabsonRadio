@@ -1,9 +1,12 @@
 import SwiftUI
+import Combine
 import MediaPlayer
 
 // MARK: - Live Player Screen
 
 struct LivePlayerView: View {
+    /// True for the left page that stays beside the other tabs on an open foldable in landscape (like two phones side by side).
+    var sidePane = false
     @StateObject private var audio = AudioPlayerManager.shared
     @StateObject private var auth = AuthManager.shared
     @ObservedObject private var presence = PresenceManager.shared
@@ -18,6 +21,8 @@ struct LivePlayerView: View {
     @State private var halfFolded = false
     @ObservedObject private var lab = TestLab.shared
     /// The real hinge, or the admin Test lab's pretend half-folded switch.
+    /// A phone turned sideways. Never true on an open Duo or iPad (regular width), even if the vertical size class blips while the tabs switch.
+    private var landscapePhone: Bool { vSize == .compact && hSize != .regular }
     private var folded: Bool { halfFolded || lab.halfFolded }
     /// The full screen board, opened by the corner button on a fully open foldable (same as the website's full screen).
     @State private var showBoard = false
@@ -38,6 +43,47 @@ struct LivePlayerView: View {
     }
 
     var body: some View {
+        if sidePane { sidePlayer } else { mainBody }
+    }
+
+    /// The player on its own, for the left half while another tab fills the right half. It never touches the tab bar.
+    private var sidePlayer: some View {
+        GeometryReader { g in
+            let top = g.safeAreaInsets.top
+            let side = max(120, min(g.size.width - 56, g.size.height - top - 360))
+            VStack(spacing: 0) {
+                headerRow(topInset: top, showProfile: false)
+                    .padding(.leading, 40).padding(.trailing, 20)
+                    .padding(.top, 14).padding(.bottom, 6)
+                Spacer(minLength: 8)
+                PlayerArtCard()
+                    .frame(width: 340, height: 340)
+                    .scaleEffect(side / 340)
+                    .frame(width: side, height: side)
+                Spacer(minLength: 8)
+                nowPlayingInfo.padding(.horizontal, 24)
+                Spacer(minLength: 8)
+                playRow
+                Spacer(minLength: 8)
+                volumeRow.padding(.horizontal, 36)
+                controlNotes
+                Spacer(minLength: 24)
+            }
+            .frame(width: g.size.width, height: g.size.height)
+        }
+        .background {
+            ZStack {
+                (scheme == .dark ? Color.brDkBg : Color.brLtBg)
+                theme.wash(scheme)
+                LiveVisualizer(color: glowColor, playing: audio.isPlaying, beat: audio.beatClock)
+            }
+            .ignoresSafeArea()
+        }
+        .ignoresSafeArea(edges: .top)
+        .onAppear { audio.startPolling() }
+    }
+
+    private var mainBody: some View {
         GeometryReader { geo in
             let top = geo.safeAreaInsets.top
             let small = geo.size.height < 700
@@ -162,12 +208,14 @@ struct LivePlayerView: View {
 #if os(iOS)
         // Turned sideways on an iPhone: a clean full screen board with just the music, like the website's full screen mode.
         .overlay {
-            if vSize == .compact {
+            if landscapePhone {
                 LiveBoardView(canPlay: canPlay, glow: glowColor, showClock: (folded && hSize == .compact) || lab.clock).transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: vSize == .compact)
-        .toolbar((vSize == .compact || showBoard) ? .hidden : .visible, for: .tabBar)
+        .animation(.easeInOut(duration: 0.25), value: landscapePhone)
+        // The Live page only reports whether the full screen board is up. ContentView owns the tab bar and decides.
+        .onChange(of: landscapePhone) { _, up in BoardState.shared.phoneBoard = up }
+        .onChange(of: showBoard) { _, up in BoardState.shared.duoBoard = up }
 #endif
         .alert("Enjoying Babson Radio?", isPresented: $audio.showSignInPrompt) {
             Button("Create account or sign in") { showProfileSheet = true }
@@ -177,8 +225,11 @@ struct LivePlayerView: View {
         }
         .sheet(isPresented: $showProfileSheet) { ProfileView() }
         .sheet(isPresented: $showVote) { VoteView() }
-        .onAppear { audio.startPolling(); ArtTheme.shared.start() }
-        .onDisappear { audio.stopPolling() }
+        .onAppear { audio.startPolling(); ArtTheme.shared.start(); BoardState.shared.phoneBoard = landscapePhone; BoardState.shared.duoBoard = showBoard
+            // Open Duo: the system leaves the tab bar hidden after a tab switch, and only a change in this flag brings it back.
+            // So on every return to Live, flip the Duo tracker on and straight off again (the board itself never shows).
+            if hSize == .regular && !showBoard { BoardState.shared.nudgeDuo() } }
+        .onDisappear { BoardState.shared.phoneBoard = false; BoardState.shared.duoBoard = false; if hSize != .regular { audio.stopPolling() } }
     }
 
     // MARK: - Roomy layout (open foldable, iPad, wide windows)
@@ -459,17 +510,17 @@ struct LivePlayerView: View {
 
     /// Equalizer on the left while playing, play/stop in the middle, skip on the right (same as the website).
     private var playRow: some View {
-        HStack(alignment: .top, spacing: 14) {
-            ZStack(alignment: .trailing) {
-                Color.clear
+        // Three equal slots around the play button: the same width on each side, the same gap, all centered on one line.
+        HStack(spacing: 30) {
+            ZStack {
                 if audio.isPlaying { EqualizerBars(color: theme.accent(scheme)) }
             }
-            .frame(maxWidth: .infinity).frame(height: 72)
+            .frame(width: 48, height: 48)
             playControl.opacity(canPlay ? 1 : 0.4)
-            HStack { SkipControl().padding(.top, 12); Spacer(minLength: 0) }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            SkipControl()
+                .frame(width: 48, height: 48)
         }
-        .frame(maxWidth: 320)
+        .frame(maxWidth: .infinity)
     }
 
     private var playControl: some View {
@@ -1143,8 +1194,9 @@ struct LiveDrawer<Content: View>: View {
         ZStack(alignment: .top) {
             // Frosted glass in the drawer's color
             shape.fill(.ultraThinMaterial)
-                .overlay(shape.fill(Color.black.opacity(scheme == .dark ? 0.5 : 0)))
-                .overlay(shape.fill(LinearGradient(colors: scheme == .dark ? [base.opacity(0.22), base.opacity(0.08)] : [base.opacity(0.38), base.opacity(0.18)], startPoint: .top, endPoint: .bottom)))
+                // A solid-ish base under the tint (dark in dark mode, cream in light) so the text always has contrast.
+                .overlay(shape.fill(scheme == .dark ? Color.black.opacity(0.5) : Color.brLtBg.opacity(0.88)))
+                .overlay(shape.fill(LinearGradient(colors: scheme == .dark ? [base.opacity(0.22), base.opacity(0.08)] : [base.opacity(0.16), base.opacity(0.06)], startPoint: .top, endPoint: .bottom)))
                 .overlay(shape.stroke(Color.white.opacity(0.3), lineWidth: 1))
                 .shadow(color: base.opacity(0.35), radius: 18, y: -4)
 
@@ -1166,12 +1218,12 @@ struct LiveDrawer<Content: View>: View {
 
             // The grab tab: no words, just a handle and a chevron that bobs a little while it is closed.
             VStack(spacing: 0) {
-                Capsule().fill(Color.white.opacity(0.75)).frame(width: 40, height: 5).padding(.top, 9)
+                Capsule().fill((scheme == .dark ? Color.white : Color.brLtSub).opacity(0.75)).frame(width: 40, height: 5).padding(.top, 9)
                 TimelineView(.animation) { tl in
                     let t = tl.date.timeIntervalSinceReferenceDate
                     Image(systemName: open ? "chevron.compact.down" : "chevron.compact.up")
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.9))
+                        .foregroundColor((scheme == .dark ? Color.white : Color.brLtSub).opacity(0.9))
                         .offset(y: open ? 0 : CGFloat(sin(t * 3.2)) * -2.5)
                 }
                 .frame(height: 24)
@@ -1206,5 +1258,24 @@ struct LiveDrawer<Content: View>: View {
     private func offset(_ closed: CGFloat) -> CGFloat {
         let base: CGFloat = open ? 0 : closed
         return min(max(base + drag, 0), closed)
+    }
+}
+
+
+
+
+/// Whether the full screen board is up. Read by ContentView, which is the only place that shows or hides the tab bar.
+final class BoardState: ObservableObject {
+    static let shared = BoardState()
+    /// An iPhone turned sideways (the board comes up by itself).
+    @Published var phoneBoard = false
+    /// The open Duo / iPad: the board the person opened with the full screen button. Tracked on its own, apart from the phone.
+    @Published var duoBoard = false
+    var open: Bool { phoneBoard || duoBoard }
+
+    /// Flips the Duo tracker on and right back off so the tab bar gets a fresh show instruction.
+    func nudgeDuo() {
+        duoBoard = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { [weak self] in self?.duoBoard = false }
     }
 }

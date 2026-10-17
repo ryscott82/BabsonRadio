@@ -92,6 +92,12 @@ export async function getNowPlaying(): Promise<NowPlayingInfo> {
   return { ...base, announcement }
 }
 
+/** Looks at AzuraCast right now (skipping the few-second cache) and records any schedule correction. Used by the webhook and the studio PC's ping, so it works with nobody on the app. */
+export async function refreshNowPlaying(): Promise<void> {
+  cache = null
+  await build()
+}
+
 async function build(): Promise<Built> {
   const base = (process.env.AZURACAST_URL ?? '').replace(/\/+$/, '')
   if (!base) return empty(false)

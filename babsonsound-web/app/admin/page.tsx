@@ -125,6 +125,7 @@ export default function AdminPage() {
             ]} />
             <ToolGroup title="people" links={[
               ['/admin/feedback', 'Bugs and ideas'], ['/admin/requests', 'Listener requests'],
+              ...(isAdmin ? [['/admin/phone-changes', 'Phone changes']] : []),
               ...(isAdmin ? [['/admin/users', 'Users and roles'], ['/admin/testers', 'Beta testers'], ['/admin/birthdays', 'Birthdays'], ['/admin/notify', 'Send a notification']] : []),
             ]} />
             <ToolGroup title="numbers" links={[

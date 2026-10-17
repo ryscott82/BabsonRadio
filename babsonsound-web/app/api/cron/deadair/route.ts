@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, str } from '@/lib/server/http'
 import { notifyAdmins } from '@/lib/server/push'
 import { mailConfigured, sendMail } from '@/lib/server/mailer'
+import { refreshNowPlaying } from '@/lib/server/nowplaying'
 
 export const runtime = 'nodejs'
 
@@ -21,6 +22,9 @@ export async function POST(req: Request) {
     if (!['ok', 'silent', 'down'].includes(state)) throw new HttpError(400, 'Unknown state.')
     const detail = str(b.detail, 200)
     const seconds = Math.max(0, Math.round(Number(b.seconds) || 0))
+
+    // The studio PC pings here every minute, so use it to keep the schedule's record of what is playing up to date.
+    after(() => refreshNowPlaying().catch(() => {}))
 
     const db = adminDb()
     const ref = db.collection('ops').doc('deadair')

@@ -35,25 +35,30 @@ struct SkipControl: View {
     var body: some View {
         Group {
             if auth.isSignedIn, let sk = model.skip, sk.eligible {
-                VStack(spacing: 4) {
-                    Button { Task { await model.ask() } } label: {
-                        Image(systemName: "forward.end.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(onDark ? .white : (scheme == .dark ? .brDkText : .brLtText))
-                            .frame(width: 48, height: 48)
-                            .brGlass(in: Circle(), interactive: true)
+                Button { Task { await model.ask() } } label: {
+                    Image(systemName: "forward.end.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(onDark ? .white : (scheme == .dark ? .brDkText : .brLtText))
+                        .frame(width: 48, height: 48)
+                        .brGlass(in: Circle(), interactive: true)
+                }
+                .buttonStyle(.plain)
+                .disabled(sk.mine)
+                .opacity(sk.mine ? 0.6 : 1)
+                .accessibilityLabel(sk.mine ? "You asked to skip this song" : "Ask to skip this song")
+                // The count hangs below the button without changing its size, so the button lines up with the play button.
+                .overlay(alignment: .top) {
+                    VStack(spacing: 2) {
+                        Text("\(sk.votes)/\(sk.needed)")
+                            .font(.system(size: 11)).monospacedDigit()
+                            .foregroundColor(onDark ? .white.opacity(0.7) : (scheme == .dark ? .brDkSub : .brLtSub))
+                        if !model.error.isEmpty {
+                            Text(model.error).font(.system(size: 11)).foregroundColor(.brRed)
+                                .multilineTextAlignment(.center).frame(width: 150)
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .disabled(sk.mine)
-                    .opacity(sk.mine ? 0.6 : 1)
-                    .accessibilityLabel(sk.mine ? "You asked to skip this song" : "Ask to skip this song")
-                    Text("\(sk.votes)/\(sk.needed) requested")
-                        .font(.system(size: 11)).monospacedDigit()
-                        .foregroundColor(onDark ? .white.opacity(0.7) : (scheme == .dark ? .brDkSub : .brLtSub))
-                    if !model.error.isEmpty {
-                        Text(model.error).font(.system(size: 11)).foregroundColor(.brRed)
-                            .multilineTextAlignment(.center).frame(maxWidth: 150)
-                    }
+                    .fixedSize()
+                    .offset(y: 52)
                 }
             } else if auth.isSignedIn {
                 // Not skippable right now (a live show, or the station's skip link isn't set up): show it dimmed so it never just vanishes.

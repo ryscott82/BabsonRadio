@@ -110,6 +110,12 @@ private struct SignedInProfileView: View {
                             .padding(.bottom, 16)
                     }
 
+                    if !user.isGuest {
+                        ProfileDisclosure(title: "Phone number") { PhoneChangeSection() }
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 16)
+                    }
+
                     reportRow
                         .padding(.horizontal, 20)
                         .padding(.bottom, 16)
@@ -391,13 +397,13 @@ private struct SignedInProfileView: View {
 
     private var guestInviteSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            BRSectionHeader(title: "GUEST ACCESS")
+            BRSectionHeader(title: "INVITE FRIENDS")
                 .padding(.horizontal, 20)
 
             VStack(spacing: 0) {
                 // ── Form ───────────────────────────────────────────
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Give anyone temporary access.")
+                    Text("Friends you invite get guest access automatically. Pick how long it lasts.")
                         .font(.system(size: 13))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
 
@@ -559,7 +565,7 @@ private struct SignedInProfileView: View {
 
     private var inviteSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            BRSectionHeader(title: "INVITE FRIENDS")
+            BRSectionHeader(title: "OR TEXT A LINK")
                 .padding(.horizontal, 20)
 
             VStack(spacing: 0) {
@@ -571,7 +577,7 @@ private struct SignedInProfileView: View {
                         .frame(width: 32)
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Know someone who should listen?")
+                        Text("Rather text them?")
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                         Text("Pick a contact.")

@@ -31,7 +31,7 @@ nonisolated struct TrainingInfo: Decodable {
     let agreementsVersion: String
 }
 
-nonisolated struct QuizWrong: Decodable { let id: String; let why: String }
+nonisolated struct QuizWrong: Decodable, Identifiable { let id: String; let why: String }
 nonisolated struct QuizResult: Decodable {
     let passed: Bool
     let percent: Int

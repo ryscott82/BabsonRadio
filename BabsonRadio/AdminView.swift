@@ -100,6 +100,7 @@ struct AdminView: View {
                 if let e = model.error { Text(e).font(.system(size: 13)).foregroundColor(.brRed) }
                 status
                 attention
+                AdminToolLinks()
                 testers
                 reports
                 station
@@ -154,7 +155,7 @@ struct AdminView: View {
                 Text("Nothing waiting.").font(.system(size: 14)).foregroundColor(sub)
             }
             if let a, a.pendingRequests > 0 {
-                Text("\(a.pendingRequests) show request\(a.pendingRequests == 1 ? "" : "s") waiting. Decide on the website.")
+                Text("\(a.pendingRequests) show request\(a.pendingRequests == 1 ? "" : "s") waiting. Open Show requests below.")
                     .font(.system(size: 14)).foregroundColor(text)
             }
             if let a, let n = a.newReports, n > 0 {

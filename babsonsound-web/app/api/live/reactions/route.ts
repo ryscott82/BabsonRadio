@@ -2,7 +2,7 @@ import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/http'
 import { EMOJIS, bucketMinute, currentOnAir, hostPrefsFor } from '@/lib/server/live'
-import { PITTSBURGH } from '@/lib/reactionThemes'
+import { themedEmojis } from '@/lib/server/easterEggs'
 import { EARNED_EMOJIS, bump, emojisFor } from '@/lib/server/earnedEmojis'
 
 export const runtime = 'nodejs'
@@ -57,11 +57,11 @@ export async function POST(req: Request) {
   return handle(async () => {
     const t = await requireMember(req)
     const b = await readJson(req)
-    const emoji = str(b.emoji, 8)
+    const emoji = str(b.emoji, 24)
     const cid = str(b.cid, 24).replace(/[^A-Za-z0-9]/g, '')
     const earned = (EARNED_EMOJIS as readonly string[]).includes(emoji)
-    const themed = (PITTSBURGH as readonly string[]).includes(emoji)
     const dbAll = adminDb()
+    const themed = (await themedEmojis(dbAll)).has(emoji)
     const curNow = await currentOnAir(dbAll).catch(() => null)
     const hostSet = curNow ? (await hostPrefsFor(dbAll, curNow).catch(() => null))?.emojis ?? [] : []
     const base: readonly string[] = hostSet.length ? hostSet : EMOJIS

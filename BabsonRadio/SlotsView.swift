@@ -301,6 +301,11 @@ struct RequestSlotForm: View {
     @State private var start = RequestSlotForm.roundUp(Date().addingTimeInterval(25 * 3600))
     @State private var durationMin = 60
     @State private var audioURL = ""
+    @State private var location = ""
+    @State private var sharePublic = false
+    @State private var pubTicks: Set<Int> = []
+    @State private var pubName = ""
+    @State private var pubInfo: PublicInfo?
     @State private var photoItem: PhotosPickerItem?
     @State private var photoPreview: UIImage?
     @State private var uploaded: UploadedImage?
@@ -325,8 +330,13 @@ struct RequestSlotForm: View {
     private var conflict: AirSlot? {
         slots.schedule.first { $0.startAt < snappedEnd && $0.endAt > snappedStart }
     }
+    private var publicOK: Bool {
+        guard sharePublic, let info = pubInfo else { return true }
+        return pubTicks.count == info.publicClauses.count && pubName.trimmingCharacters(in: .whitespaces).split(separator: " ").count >= 2
+    }
     private var canSubmit: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && details.trimmingCharacters(in: .whitespacesAndNewlines).count >= 10 && publicOK
             && conflict == nil && !tooSoon && !isSubmitting && !isUploading
     }
 
@@ -335,11 +345,15 @@ struct RequestSlotForm: View {
             Form {
                 Section("About your show") {
                     TextField("Title", text: $title)
-                    TextField("What's it about? (optional)", text: $details, axis: .vertical)
+                    TextField("What's it about? A sentence or two", text: $details, axis: .vertical)
                         .lineLimit(3...6)
                     Picker("Category", selection: $category) {
                         ForEach(Self.categories, id: \.self) { Text($0.capitalized).tag($0) }
                     }
+                }
+
+                Section {
+                    TextField("Special requests or location (optional)", text: $location)
                 }
 
                 Section("Picture (optional)") {
@@ -382,6 +396,29 @@ struct RequestSlotForm: View {
                     }
                 }
 
+                if let info = pubInfo, info.publicSharing == "adult" {
+                    Section {
+                        Toggle("Also share my recordings with the public", isOn: $sharePublic)
+                        if sharePublic {
+                            ForEach(Array(info.publicClauses.enumerated()), id: \.offset) { i, c in
+                                Button {
+                                    if pubTicks.contains(i) { pubTicks.remove(i) } else { pubTicks.insert(i) }
+                                } label: {
+                                    HStack(alignment: .top, spacing: 10) {
+                                        Image(systemName: pubTicks.contains(i) ? "checkmark.square.fill" : "square")
+                                        Text(c).font(.footnote).multilineTextAlignment(.leading)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            TextField("Type your full name to sign", text: $pubName)
+                                .textInputAutocapitalization(.words).autocorrectionDisabled()
+                        }
+                    } footer: {
+                        Text(sharePublic ? "" : "Off: Babson students only.")
+                    }
+                }
+
                 Section("When") {
                     DatePicker("Start", selection: $start, in: earliest...latest,
                                displayedComponents: [.date, .hourAndMinute])
@@ -411,6 +448,7 @@ struct RequestSlotForm: View {
                 guard let item else { return }
                 Task { await upload(item) }
             }
+            .task { pubInfo = try? await BackendAPI.get("/api/me") }
             .navigationTitle("Request a slot")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -456,7 +494,11 @@ struct RequestSlotForm: View {
                     start: snappedStart,
                     durationMin: durationMin,
                     audioURL: type == "prerecorded" ? audioURL.trimmingCharacters(in: .whitespaces) : "",
-                    image: uploaded
+                    image: uploaded,
+                    location: location.trimmingCharacters(in: .whitespacesAndNewlines),
+                    publicConsent: sharePublic && pubInfo != nil
+                        ? ["typedName": pubName.trimmingCharacters(in: .whitespaces), "accepted": true, "version": pubInfo!.publicVersion]
+                        : nil
                 )
                 dismiss()
             } catch {
@@ -467,6 +509,12 @@ struct RequestSlotForm: View {
     }
 }
 
+
+nonisolated struct PublicInfo: Decodable {
+    let publicSharing: String?
+    let publicClauses: [String]
+    let publicVersion: String
+}
 
 // MARK: - Picture helpers
 

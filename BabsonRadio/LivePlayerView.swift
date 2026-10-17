@@ -256,7 +256,8 @@ struct LivePlayerView: View {
                     .padding(.trailing, 20).padding(.top, top + 12)
                     // The poll is first (a button when half folded), then the ratings, then the reactions.
                     if auth.isSignedIn && auth.canListenLive {
-                        if folded {
+                        // A button only when the pane is too short to hold the poll without scrolling.
+                        if folded && g.size.height < 640 {
                             Button { showVote = true } label: {
                                 Label("What would you like to hear?", systemImage: "hand.thumbsup")
                                     .font(.system(size: 14, weight: .semibold))

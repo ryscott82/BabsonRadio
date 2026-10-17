@@ -4,6 +4,7 @@ import { removeContactGraph } from '@/lib/server/contactGraph'
 import { isTester } from '@/lib/server/testers'
 import { finishSchoolUpgrade } from '@/lib/server/upgrade'
 import { cleanBirthday } from '@/lib/server/birthdays'
+import { PUBLIC_AGREEMENT_VERSION, PUBLIC_CLAUSES } from '@/lib/publicContent'
 import { CONCENTRATIONS, MAX_CONCENTRATIONS, TERMS_VERSION, normText, validGradYear } from '@/lib/terms'
 import { AVATAR_COLORS, DEFAULT_AVATAR, MAX_HOST_EMOJIS } from '@/lib/profile'
 import { HttpError, handle, isBabsonToken, isDeveloperToken, readJson, requireUser, str } from '@/lib/server/http'
@@ -42,6 +43,7 @@ export async function GET(req: Request) {
       // False until the one-time "about you" step (name, phone, birthday or age range) is done.
       onboarded: u.get('onboardedAt') != null,
       // 'adult' only when the profile says 18+. Drives the "make public" option; minors and unknowns never see it.
+      publicClauses: PUBLIC_CLAUSES, publicVersion: PUBLIC_AGREEMENT_VERSION,
       publicSharing: u.get('minor') === true ? 'minor' : (u.get('minor') === false && u.get('onboardedAt') != null ? 'adult' : 'unknown'),
     }
   })

@@ -13,6 +13,18 @@ nonisolated private struct ReactionFeed: Decodable {
 nonisolated private struct MineReply: Decodable { let mine: Int }
 nonisolated private struct ShowRatingReply: Decodable { let mine: Int }
 nonisolated struct EmojiList: Decodable { let emojis: [String] }
+/// An admin-made rule (Admin > Easter eggs on the website): while it matches, the reaction row changes.
+nonisolated struct EggRule: Decodable {
+    let artist: [String]; let title: [String]; let show: [String]; let emojis: [String]
+    func matches(artist a: String, title t: String, show s: String) -> Bool {
+        func hit(_ needles: [String], _ hay: String) -> Bool {
+            let h = hay.lowercased()
+            return !h.isEmpty && needles.contains { !$0.isEmpty && h.contains($0) }
+        }
+        return hit(artist, a) || hit(title, t) || hit(show, s)
+    }
+}
+nonisolated struct EggList: Decodable { let eggs: [EggRule] }
 nonisolated struct SkipReply: Decodable { let eligible: Bool; let votes: Int; let needed: Int; let mine: Bool }
 
 private func enc(_ s: String) -> String {
@@ -81,11 +93,16 @@ final class LiveExtrasModel: ObservableObject {
         while !Task.isCancelled {
             // About once a minute, and right away when a different show comes on (hosts can pick their own reactions).
             let occNow = AudioPlayerManager.shared.nowPlaying?.occId ?? ""
-            if pollRound % 20 == 0 || occNow != emojiOcc { emojiOcc = occNow; await loadEmojis() }
+            if pollRound % 20 == 0 || occNow != emojiOcc { emojiOcc = occNow; await loadEmojis(); await loadEggs() }
             pollRound += 1
             if !AuthManager.shared.isInvisible { await pollOnce() }
             try? await Task.sleep(nanoseconds: 3_000_000_000)
         }
+    }
+
+    @Published var eggs: [EggRule] = []
+    func loadEggs() async {
+        if let r: EggList = try? await BackendAPI.get("/api/live/easter-eggs") { eggs = r.eggs }
     }
 
     func loadEmojis() async {
@@ -212,11 +229,13 @@ struct LiveExtrasView: View {
 
     private var np: NowPlayingInfo? { audio.nowPlaying }
 
-    /// The reactions change with the music: while Mac Miller (from Pittsburgh) is on, the usual four become Pittsburgh.
+    /// The reactions change with the music through admin-made rules (Test Lab can force the Pittsburgh one).
     private var reactionRow: [String] {
-        lab.pittsburgh || (np?.artist ?? "").range(of: "mac\\s*miller", options: [.regularExpression, .caseInsensitive]) != nil
-            ? [":pgh-bridge:", ":pgh-helmet:", ":pgh-pirate:", ":pgh-heart:"]
-            : model.emojis
+        if lab.pittsburgh { return [":pgh-bridge:", ":pgh-helmet:", ":pgh-pirate:", ":pgh-heart:"] }
+        if let n = np, let e = model.eggs.first(where: { $0.matches(artist: n.artist, title: n.title, show: n.showTitle ?? "") }) {
+            return e.emojis
+        }
+        return model.emojis
     }
 
     // End-of-show feedback state

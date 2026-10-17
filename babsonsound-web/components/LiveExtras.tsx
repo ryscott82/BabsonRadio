@@ -1,7 +1,7 @@
 'use client'
 
 import EmojiGlyph from '@/components/EmojiGlyph'
-import { reactionTheme } from '@/lib/reactionThemes'
+import { reactionTheme, type EggRule } from '@/lib/reactionThemes'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
@@ -37,6 +37,10 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
     const t = setInterval(() => { if (!document.hidden) load() }, 60_000)
     return () => clearInterval(t)
   }, [can, user?.uid, np?.occId, np?.hostEmojis?.join('')])
+  const [eggs, setEggs] = useState<EggRule[]>([])
+  useEffect(() => {
+    apiGet<{ eggs: EggRule[] }>('/api/live/easter-eggs').then(r => setEggs(r.eggs)).catch(() => {})
+  }, [])
   const occId = np?.occId ?? ''
   const ratingsOn = np?.ratingsOn !== false
 
@@ -166,7 +170,7 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
       {occId && !invisible && (
         <div className={`${card} flex flex-wrap items-center gap-3`}>
           <span className="text-xs text-br-dk-sub">React</span>
-          {(reactionTheme(np?.artist) ?? emojis).map(e => (
+          {(reactionTheme(eggs, np) ?? emojis).map(e => (
             <button key={e} type="button" onClick={() => react(e)} aria-label={`React ${e}`}
                     className="sk-key rounded-full h-9 w-10 flex items-center justify-center text-base active:scale-90 transition-transform">
               <EmojiGlyph e={e} size="1.3rem" />

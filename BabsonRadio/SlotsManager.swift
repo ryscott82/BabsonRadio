@@ -44,8 +44,9 @@ class SlotsManager: ObservableObject {
 
     /// Throws a BackendError with a user-readable message if the server rejects the request.
     func submit(title: String, details: String, type: String, category: String,
-                start: Date, durationMin: Int, audioURL: String, image: UploadedImage? = nil) async throws {
-        let body: [String: Any] = [
+                start: Date, durationMin: Int, audioURL: String, image: UploadedImage? = nil,
+                location: String = "", publicConsent: [String: Any]? = nil) async throws {
+        var body: [String: Any] = [
             "title": title,
             "description": details,
             "type": type,
@@ -55,7 +56,9 @@ class SlotsManager: ObservableObject {
             "audioURL": audioURL,
             "imageUrl": image?.url ?? "",
             "imagePath": image?.path ?? "",
+            "location": location,
         ]
+        if let publicConsent { body["publicConsent"] = publicConsent }
         let _: EmptyResponse = try await BackendAPI.post("/api/slots/request", body)
         await refresh()
     }

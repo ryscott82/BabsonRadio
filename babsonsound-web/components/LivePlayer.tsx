@@ -145,7 +145,8 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
              style={showColor ? { background: `linear-gradient(135deg, ${showColor}, ${showColor}66 70%, #000000aa)`, boxShadow: `0 0 40px ${showColor}55` } : undefined}>
           {np?.art ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={np.art} alt={hasSong ? `Cover for ${np.title}` : ''} className="absolute inset-0 w-full h-full object-cover" />
+            <img src={np.art} alt={hasSong ? `Cover for ${np.title}` : ''} className="absolute inset-0 w-full h-full object-cover"
+                 style={art.full ? undefined : { filter: 'saturate(0.94) sepia(0.05)' }} />
           ) : (
             <div className="text-center">
               <p className="font-display text-br-brass/80 text-sm tracking-[0.4em]">BABSON</p>
@@ -156,11 +157,17 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
 
         {/* Info + controls */}
         <div className={`flex-1 text-center md:text-left ${pane ? 'lg:text-center' : ''}`}>
-          {/* ON AIR badge */}
-          <div className="inline-flex items-center gap-1.5 bg-br-red px-3 py-1 rounded mb-4 transition-colors duration-[2000ms]" style={art.badge ? { backgroundColor: art.badge } : undefined}>
-            <span className="w-1.5 h-1.5 rounded-full bg-white/70" />
-            <span className="font-display text-white text-xs tracking-[0.25em]">On Air</span>
-          </div>
+          {/* ON AIR badge (LIVE chip when not playing), same spot as the app */}
+          {isPlaying ? (
+            <div className="inline-flex items-center gap-1.5 bg-br-red px-3 py-1 rounded mb-4 transition-colors duration-[2000ms]" style={art.badge ? { backgroundColor: art.badge } : undefined}>
+              <span className="w-1.5 h-1.5 rounded-full bg-white/70" />
+              <span className="font-display text-white text-xs tracking-[0.25em]">On Air</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center px-3 py-1 rounded mb-4 border border-br-gold/60">
+              <span className="font-display text-br-gold text-xs tracking-[0.25em]">{np?.isLive ? 'LIVE DJ' : 'LIVE'}</span>
+            </div>
+          )}
 
           <h2 className={`font-display text-br-dk-text text-3xl md:text-4xl ${pane ? 'lg:text-5xl' : ''} tracking-wide mb-1`}>
             {hasSong ? np!.title : 'Live Stream'}

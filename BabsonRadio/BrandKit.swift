@@ -32,8 +32,8 @@ extension Color {
     static var brDkBorder: Color   { Color(hex: dkNight ? "252525" : "524A3E") }
     static var brDkBorder2: Color  { Color(hex: dkNight ? "303030" : "5F5648") }
     static var brDkText: Color     { Color(hex: dkNight ? "E8E8E8" : "F4ECDA") }
-    static var brDkSub: Color      { Color(hex: dkNight ? "888888" : "BBB09A") }
-    static var brDkMuted: Color    { Color(hex: dkNight ? "444444" : "8C8271") }
+    static var brDkSub: Color      { Color(hex: dkNight ? "ABABAB" : "CFC4AE") }
+    static var brDkMuted: Color    { Color(hex: dkNight ? "666666" : "9C9281") }
 
     // Light Mode
     static let brLtBg       = Color(hex: "F5F0E8")
@@ -133,7 +133,7 @@ struct OnAirBadge: View {
     @ObservedObject private var theme = ArtTheme.shared
     @Environment(\.colorScheme) private var scheme
     /// Station red, unless the whole UI is following the album art.
-    private var color: Color { ArtTheme.full(scheme) ? theme.badge : .brRed }
+    private var color: Color { .brRed }
     var body: some View {
         HStack(spacing: 6) {
             Circle()
@@ -157,8 +157,10 @@ struct OnAirBadge: View {
 struct BRTagChip: View {
     let text: String
     let style: ChipStyle
+    @ObservedObject private var theme = ArtTheme.shared
+    @Environment(\.colorScheme) private var scheme
 
-    enum ChipStyle { case gold, green, subtle }
+    enum ChipStyle { case gold, green, subtle, live }
 
     var body: some View {
         Text(text)
@@ -173,9 +175,10 @@ struct BRTagChip: View {
 
     var bg: Color {
         switch style {
-        case .gold:   return .brGold
-        case .green:  return .brGreen
+        case .gold:   return ArtTheme.full(scheme) ? theme.button(scheme) : .brGold
+        case .green:  return ArtTheme.full(scheme) ? theme.button(scheme) : .brGreen
         case .subtle: return Color.gray.opacity(0.15)
+        case .live:   return .brRed
         }
     }
 
@@ -184,6 +187,7 @@ struct BRTagChip: View {
         case .gold:   return Color(hex: "080808")
         case .green:  return .white
         case .subtle: return .gray
+        case .live:   return .white
         }
     }
 }
@@ -213,13 +217,14 @@ enum BabsonLinks {
 struct ProfileCircleButton: View {
     @StateObject private var auth = AuthManager.shared
     @Environment(\.colorScheme) var scheme
+    @ObservedObject private var theme = ArtTheme.shared
     @State private var showProfile = false
 
     var body: some View {
         Button { showProfile = true } label: {
             ZStack {
                 Circle()
-                    .fill(scheme == .dark ? Color.brGold : Color.brGreen)
+                    .fill(ArtTheme.full(scheme) ? theme.button(scheme) : (scheme == .dark ? Color.brGold : Color.brGreen))
                     .shadow(color: .black.opacity(0.28), radius: 0, x: 0, y: 2)
                 if let user = auth.currentUser {
                     Text(user.initials)

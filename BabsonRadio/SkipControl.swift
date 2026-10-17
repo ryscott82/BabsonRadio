@@ -55,6 +55,15 @@ struct SkipControl: View {
                             .multilineTextAlignment(.center).frame(maxWidth: 150)
                     }
                 }
+            } else if auth.isSignedIn {
+                // Not skippable right now (a live show, or the station's skip link isn't set up): show it dimmed so it never just vanishes.
+                Image(systemName: "forward.end.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(onDark ? .white : (scheme == .dark ? .brDkText : .brLtText))
+                    .frame(width: 48, height: 48)
+                    .brGlass(in: Circle(), interactive: false)
+                    .opacity(0.35)
+                    .accessibilityLabel("Skip is not available right now")
             }
         }
         // The polling lives on an always-present empty view: modifiers on a Group with nothing in it never run,

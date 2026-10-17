@@ -106,17 +106,20 @@ final class ArtTheme: ObservableObject {
     /// The On Air badge: the cover's color in every mode, station red until a cover has faded in.
     var badge: Color { second == .babson ? .brRed : second.color }
 
+    /// Keeps a color colorful enough to read, but leaves a true gray gray.
+    private static func sat(_ s: Double, _ lo: Double, _ hi: Double) -> Double { s < 0.08 ? s : min(max(s, lo), hi) }
+
     // MARK: Colors for each part of the UI (light and dark get different tones)
 
     /// Text accents, progress, stars, links: the paired green. Lifted in dark mode so it reads.
     func accent(_ scheme: ColorScheme) -> Color {
         guard Self.full(scheme) else { return scheme == .dark ? .brGold : .brGreen }
-        let h = green.hsl; return ArtRGB.hsl(h.h, min(max(h.s, 0.45), 0.65), 0.64).color
+        let h = green.hsl; return ArtRGB.hsl(h.h, Self.sat(h.s, 0.45, 0.65), 0.64).color
     }
     /// Play button and filled buttons: second cover color in light mode, the green in dark.
     func button(_ scheme: ColorScheme) -> Color {
         guard Self.full(scheme) else { return scheme == .dark ? .brGold : .brGreen }
-        let h = green.hsl; return ArtRGB.hsl(h.h, min(max(h.s, 0.45), 0.6), 0.42).color
+        let h = green.hsl; return ArtRGB.hsl(h.h, Self.sat(h.s, 0.45, 0.6), 0.42).color
     }
     /// The visualizer glow: the cover's main color, brightened in dark mode.
     func glow(_ scheme: ColorScheme) -> Color {
@@ -126,32 +129,44 @@ final class ArtTheme: ObservableObject {
     /// A wash behind the page and a tint for glass cards: rich in light mode, deep and muted in dark mode.
     func wash(_ scheme: ColorScheme) -> Color {
         guard Self.full(scheme) else { return .clear }
-        let h = main.hsl; return ArtRGB.hsl(h.h, min(h.s, 0.4), 0.16).color
+        let h = main.hsl; return ArtRGB.hsl(h.h, min(h.s, 0.3), 0.06).color
     }
     func glassTint(_ scheme: ColorScheme) -> Color? {
         guard Self.full(scheme) else { return nil }
-        let h = main.hsl; return ArtRGB.hsl(h.h, min(h.s, 0.4), 0.22).color.opacity(0.7)
+        let h = main.hsl; return ArtRGB.hsl(h.h, min(h.s, 0.3), 0.09).color.opacity(0.85)
     }
 
     // MARK: Palette from a cover
+    // How the "dominant" color is chosen. A plain count of pixels picks the biggest area (usually a face, hair, a dark
+    // background), which is rarely what a person would call the cover's color. A person picks the color that POPS:
+    // saturated, different from the rest of the cover, often small (a title, a logo, a stripe). So:
+    //   1. Group the pixels into 7 color clusters (k-means in Oklab, which matches how we see color differences).
+    //   2. Score each cluster: area (square root, so small things can still win) x how colorful x how different it is
+    //      from the average of the cover x a bonus when it hugs the edges (text, borders, logos).
+    //   3. Pull the score down for skin and hair tones in the middle (the face is not the "color" of the cover).
+    //   4. Ignore grays, near black and near white. A black and white cover gets a neutral gray, not a made-up hue.
 
     #if canImport(UIKit)
-    private static func skinLike(_ h: Double, _ s: Double, _ l: Double) -> Bool {
-        h >= 5 && h <= 45 && s >= 0.15 && s <= 0.7 && l >= 0.2 && l <= 0.8
+    private struct Lab { var l: Double, a: Double, b: Double }
+
+    private static func oklab(_ r: Double, _ g: Double, _ b: Double) -> Lab {
+        func lin(_ c: Double) -> Double { c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }
+        let R = lin(r), G = lin(g), B = lin(b)
+        let l = cbrt(0.4122214708 * R + 0.5363325363 * G + 0.0514459929 * B)
+        let m = cbrt(0.2119034982 * R + 0.6806995451 * G + 0.1073969566 * B)
+        let s = cbrt(0.0883024619 * R + 0.2817188376 * G + 0.6299787005 * B)
+        return Lab(l: 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+                   a: 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+                   b: 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s)
     }
-    private static func hueGap(_ a: Double, _ b: Double) -> Double {
-        let d = abs(a - b).truncatingRemainder(dividingBy: 360)
-        return d > 180 ? 360 - d : d
-    }
-    /// A green that sits well next to a hue: warm covers get emerald, yellows leaf green, greens a deep green, blues sea green, purples a fresher green.
-    private static func pairedGreen(_ h: Double) -> ArtRGB {
-        let g: Double = (h >= 345 || h < 45) ? 152 : h < 75 ? 125 : h < 165 ? 158 : h < 255 ? 150 : 138
-        return ArtRGB.hsl(g, 0.72, 0.31)
+    private static func dist(_ p: Lab, _ q: Lab) -> Double {
+        let dl = p.l - q.l, da = p.a - q.a, db = p.b - q.b
+        return (dl * dl + da * da + db * db).squareRoot()
     }
 
-    /// [main color, paired green, second color] from a cover. Skips grays, near black/white and face-colored pixels in the middle.
+    /// [main color, accent, second color] from a cover.
     static func palette(from image: UIImage) -> (ArtRGB, ArtRGB, ArtRGB)? {
-        let n = 40
+        let n = 48
         guard let cg = image.cgImage else { return nil }
         var px = [UInt8](repeating: 0, count: n * n * 4)
         guard let ctx = CGContext(data: &px, width: n, height: n, bitsPerComponent: 8, bytesPerRow: n * 4,
@@ -160,40 +175,86 @@ final class ArtTheme: ObservableObject {
         ctx.interpolationQuality = .medium
         ctx.draw(cg, in: CGRect(x: 0, y: 0, width: n, height: n))
 
-        let bins = 12
-        var w = [Double](repeating: 0, count: bins), x = w, y = w, sat = w, lit = w
-        for p in 0..<(n * n) {
-            let col = p % n, row = p / n
-            let rgb = ArtRGB(r: Double(px[p * 4]) / 255, g: Double(px[p * 4 + 1]) / 255, b: Double(px[p * 4 + 2]) / 255)
-            let (h, s, l) = rgb.hsl
-            if s < 0.2 || l < 0.12 || l > 0.9 { continue }
-            let center = col >= n / 4 && col < n * 3 / 4 && row >= n / 5 && row < n * 4 / 5
-            if center && skinLike(h, s, l) { continue }
-            let weight = s * (1 - abs(2 * l - 1)) + 0.01
-            let b = min(bins - 1, Int(h / (360 / Double(bins))))
-            w[b] += weight; x[b] += cos(h * .pi / 180) * weight; y[b] += sin(h * .pi / 180) * weight
-            sat[b] += s * weight; lit[b] += l * weight
+        let count = n * n
+        var rgb = [(Double, Double, Double)](), lab = [Lab]()
+        rgb.reserveCapacity(count); lab.reserveCapacity(count)
+        var mean = Lab(l: 0, a: 0, b: 0)
+        for p in 0..<count {
+            let c = (Double(px[p * 4]) / 255, Double(px[p * 4 + 1]) / 255, Double(px[p * 4 + 2]) / 255)
+            let o = oklab(c.0, c.1, c.2)
+            rgb.append(c); lab.append(o)
+            mean.l += o.l; mean.a += o.a; mean.b += o.b
         }
-        let ranked = (0..<bins).filter { w[$0] > 0 }.sorted { w[$0] > w[$1] }.map { i -> (h: Double, s: Double, l: Double, w: Double) in
-            var h = atan2(y[i], x[i]) * 180 / .pi; if h < 0 { h += 360 }
-            return (h, sat[i] / w[i], lit[i] / w[i], w[i])
+        mean = Lab(l: mean.l / Double(count), a: mean.a / Double(count), b: mean.b / Double(count))
+
+        // k-means, started from well spread colors so the result is the same every time.
+        let k = 7
+        var centers = [lab[0]]
+        while centers.count < k {
+            var best = 0, bestD = -1.0
+            for i in stride(from: 0, to: count, by: 3) {
+                let d = centers.map { dist($0, lab[i]) }.min() ?? 0
+                if d > bestD { bestD = d; best = i }
+            }
+            centers.append(lab[best])
         }
-        var picked: [(h: Double, s: Double, l: Double, w: Double)] = []
-        for r in ranked where picked.count < 2 {
-            if picked.allSatisfy({ hueGap($0.h, r.h) >= 40 }) { picked.append(r) }
+        var assign = [Int](repeating: 0, count: count)
+        for _ in 0..<10 {
+            var sum = [Lab](repeating: Lab(l: 0, a: 0, b: 0), count: k), num = [Double](repeating: 0, count: k)
+            for i in 0..<count {
+                var bi = 0, bd = Double.infinity
+                for c in 0..<k { let d = dist(centers[c], lab[i]); if d < bd { bd = d; bi = c } }
+                assign[i] = bi
+                sum[bi].l += lab[i].l; sum[bi].a += lab[i].a; sum[bi].b += lab[i].b; num[bi] += 1
+            }
+            for c in 0..<k where num[c] > 0 { centers[c] = Lab(l: sum[c].l / num[c], a: sum[c].a / num[c], b: sum[c].b / num[c]) }
         }
-        guard let first = picked.first else { return nil }
-        // Green: the cover's own green when it has a real amount of one (10% or more of the colorful pixels), else a complementary shade.
-        let total = ranked.reduce(0.0) { $0 + $1.w }
-        var green = pairedGreen(first.h)
-        if let own = ranked.first(where: { $0.h >= 75 && $0.h <= 170 && $0.w / total >= 0.1 }) {
-            green = ArtRGB.hsl(own.h, min(max(own.s, 0.4), 0.75), 0.31)
+
+        // Score each cluster.
+        struct Cand { var rgb: ArtRGB; var lab: Lab; var score: Double }
+        var cands: [Cand] = []
+        for c in 0..<k {
+            var num = 0.0, edge = 0.0, middle = 0.0
+            var r = 0.0, g = 0.0, b = 0.0
+            for i in 0..<count where assign[i] == c {
+                num += 1; r += rgb[i].0; g += rgb[i].1; b += rgb[i].2
+                let x = Double(i % n) / Double(n), y = Double(i / n) / Double(n)
+                if x < 0.18 || x > 0.82 || y < 0.18 || y > 0.82 { edge += 1 }
+                if x > 0.25 && x < 0.75 && y > 0.2 && y < 0.8 { middle += 1 }
+            }
+            let share = num / Double(count)
+            guard share >= 0.008 else { continue }
+            let L = centers[c]
+            let chroma = (L.a * L.a + L.b * L.b).squareRoot()
+            if chroma < 0.04 || L.l < 0.14 || L.l > 0.96 { continue }       // gray, black, white
+            var hue = atan2(L.b, L.a) * 180 / .pi; if hue < 0 { hue += 360 }
+            let area = min(share, 0.35).squareRoot()
+            let colorful = min(chroma / 0.15, 1.3)
+            let pop = min(dist(L, mean) / 0.3, 1.2)
+            var score = area * colorful * (0.6 + 0.6 * pop)
+            if edge / num > 0.5 { score *= 1.2 }                              // text, borders, logos
+            let skin = hue >= 25 && hue <= 78 && L.l >= 0.35 && L.l <= 0.88 && chroma <= 0.15
+            if skin && middle / num >= 0.5 { score *= 0.4 }                   // faces and hair in the middle
+            cands.append(Cand(rgb: ArtRGB(r: r / num, g: g / num, b: b / num), lab: L, score: score))
         }
-        if picked.count < 2 { picked.append(((first.h + 35).truncatingRemainder(dividingBy: 360), first.s, first.l, 0)) }
-        func cover(_ p: (h: Double, s: Double, l: Double, w: Double)) -> ArtRGB {
-            ArtRGB.hsl(p.h, min(max(p.s, 0.55), 0.9), min(max(p.l, 0.42), 0.58))
+        cands.sort { $0.score > $1.score }
+
+        // A cover with no real color (black and white photo, plain gray): a neutral, never a made-up hue.
+        guard let first = cands.first else {
+            let gray = ArtRGB(r: 0.5, g: 0.5, b: 0.5)
+            return (gray, gray, gray)
         }
-        return (cover(picked[0]), green, cover(picked[1]))
+        let second = cands.dropFirst().first { dist($0.lab, first.lab) >= 0.12 }
+
+        func cover(_ c: ArtRGB) -> ArtRGB {
+            let h = c.hsl
+            return ArtRGB.hsl(h.h, min(max(h.s, 0.55), 0.9), min(max(h.l, 0.42), 0.58))
+        }
+        let main = cover(first.rgb)
+        let h = main.hsl
+        let accent = ArtRGB.hsl(h.h, min(max(h.s, 0.45), 0.75), 0.31)
+        let sec = second.map { cover($0.rgb) } ?? ArtRGB.hsl((h.h + 35).truncatingRemainder(dividingBy: 360), h.s, h.l)
+        return (main, accent, sec)
     }
     #endif
 }

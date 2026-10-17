@@ -33,8 +33,9 @@ struct VotePanel: View {
 
     private var text: Color { scheme == .dark ? .brDkText : .brLtText }
     private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
-    private var accent: Color { scheme == .dark ? .brGold : .brGreen }
-    private var card: Color { scheme == .dark ? .brDkSurface : .brLtSurface }
+    @ObservedObject private var theme = ArtTheme.shared
+    private var accent: Color { ArtTheme.full(scheme) ? theme.accent(scheme) : (scheme == .dark ? .brGold : .brGreen) }
+    private var card: Color { theme.glassTint(scheme) ?? (scheme == .dark ? .brDkSurface : .brLtSurface) }
 
     private static let clock: DateFormatter = {
         let f = DateFormatter(); f.timeStyle = .short; f.dateStyle = .none; return f

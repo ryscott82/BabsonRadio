@@ -159,13 +159,13 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
         <div className={`flex-1 text-center md:text-left ${pane ? 'lg:text-center' : ''}`}>
           {/* ON AIR badge (LIVE chip when not playing), same spot as the app */}
           {isPlaying ? (
-            <div className="inline-flex items-center gap-1.5 bg-br-red px-3 py-1 rounded mb-4 transition-colors duration-[2000ms]" style={art.badge ? { backgroundColor: art.badge } : undefined}>
+            <div className="inline-flex items-center gap-1.5 bg-br-red px-3 py-1 rounded mb-4 transition-colors duration-[2000ms]"> 
               <span className="w-1.5 h-1.5 rounded-full bg-white/70" />
               <span className="font-display text-white text-xs tracking-[0.25em]">On Air</span>
             </div>
           ) : (
-            <div className="inline-flex items-center px-3 py-1 rounded mb-4 border border-br-gold/60">
-              <span className="font-display text-br-gold text-xs tracking-[0.25em]">{np?.isLive ? 'LIVE DJ' : 'LIVE'}</span>
+            <div className="inline-flex items-center px-3 py-1 rounded mb-4 bg-br-red">
+              <span className="font-display text-white text-xs tracking-[0.25em]">{np?.isLive ? 'LIVE DJ' : 'LIVE'}</span>
             </div>
           )}
 

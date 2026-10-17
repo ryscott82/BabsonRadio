@@ -72,21 +72,26 @@ struct LivePlayerView: View {
                         .scaleEffect(side / 340)
                         .frame(width: side, height: side)
 
+                    // Equal gaps between every block, so no awkward empty band is left above the drawer.
+                    Spacer(minLength: 8)
+
                     nowPlayingInfo
                         .padding(.horizontal, 24)
-                        .padding(.top, 12)
+
+                    Spacer(minLength: 8)
 
                     playRow
-                        .padding(.top, 12)
+
+                    Spacer(minLength: 8)
 
                     // Volume under the transport buttons, like Apple Music: quiet speaker, slider, loud speaker.
                     volumeRow
                         .padding(.horizontal, 36)
-                        .padding(.top, 6)
+
+                    Spacer(minLength: 8)
 
                     // Reactions always stay on the main screen.
                     LiveExtrasView(mode: .reactions)
-                        .padding(.top, 8)
 
                     if !auth.isSignedIn {
                         Text("Sign in for reminders and more.")
@@ -109,32 +114,23 @@ struct LivePlayerView: View {
                 .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
 
                 // Everything else lives in a drawer you pull up.
-                LiveDrawer(open: $drawerOpen, height: drawerH, tint: accent) {
+                LiveDrawer(open: $drawerOpen, height: drawerH, bottomExtra: geo.safeAreaInsets.bottom, tint: accent) {
                     drawerContent
                 }
+                .offset(y: geo.safeAreaInsets.bottom)
                 }
-            }
-            .overlay(alignment: .bottom) {
-                // Carry the lip's color down to the tab bar so there is no gap under the closed shelf.
-                if !drawerOpen && hSize != .regular {
-                    Rectangle()
-                        .fill(theme.lipDeep)
-                        .frame(height: geo.safeAreaInsets.bottom + 1)
-                        .offset(y: geo.safeAreaInsets.bottom)
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
-                }
-            }
-            .mask(Rectangle().padding(.bottom, -geo.safeAreaInsets.bottom))
-            .background {
-                ZStack {
-                    (scheme == .dark ? Color.brDkBg : Color.brLtBg)
-                    theme.wash(scheme)
-                    LiveVisualizer(color: glowColor, playing: audio.isPlaying, beat: audio.beatClock)
-                }
-                .ignoresSafeArea()
             }
             .ignoresSafeArea(edges: .top)
+        }
+        // On the whole screen (not just the page above the tab bar), so the color runs all the way to the bottom.
+        .background {
+            ZStack {
+                (scheme == .dark ? Color.brDkBg : Color.brLtBg)
+                theme.wash(scheme)
+                LiveVisualizer(color: glowColor, playing: audio.isPlaying, beat: audio.beatClock)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea()
         }
         .overlay { EmojiRainOverlay() }
         .trackHalfFolded($halfFolded)
@@ -388,7 +384,7 @@ struct LivePlayerView: View {
                 if audio.isPlaying {
                     OnAirBadge()
                 } else {
-                    BRTagChip(text: audio.nowPlaying?.isLive == true ? "LIVE DJ" : "LIVE", style: .gold)
+                    BRTagChip(text: audio.nowPlaying?.isLive == true ? "LIVE DJ" : "LIVE", style: .live)
                 }
                 BRTagChip(text: {
                     let t = audio.nowPlaying?.showTitle ?? ""
@@ -796,6 +792,7 @@ struct LiveVisualizer: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var scheme
     @State private var lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
     @State private var changedAt = Date.distantPast
     @State private var wasPlaying = false
@@ -819,7 +816,7 @@ struct LiveVisualizer: View {
             }
         }
         .blur(radius: Self.softness)
-        .opacity(Self.strength)
+        .opacity(ArtTheme.full(scheme) ? 0.6 : Self.strength)
         .allowsHitTesting(false)
         .onAppear { wasPlaying = playing }
         .onChange(of: playing) { _, now in wasPlaying = !now; changedAt = Date() }
@@ -1126,11 +1123,12 @@ struct BigClock: View {
 /// Tap or drag the lip to open it; drag down or tap to close.
 struct LiveDrawer<Content: View>: View {
     /// What shows when closed: the grab tab plus a blurred peek of what is inside.
-    static var handleHeight: CGFloat { 96 }
-    private static var bottomGap: CGFloat { 8 }
+    static var handleHeight: CGFloat { 72 }
     private static var tabHeight: CGFloat { 44 }
     @Binding var open: Bool
     let height: CGFloat
+    /// Extra height below the page's bottom edge, so the drawer runs down to the bottom of the screen.
+    var bottomExtra: CGFloat = 0
     let tint: Color
     @ViewBuilder var content: () -> Content
     @Environment(\.colorScheme) private var scheme
@@ -1138,14 +1136,15 @@ struct LiveDrawer<Content: View>: View {
 
     /// Babson green, unless the whole UI is following the album art.
     private var base: Color { ArtTheme.full(scheme) ? tint : .brGreen }
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: 28, style: .continuous) }
+    private var shape: UnevenRoundedRectangle { UnevenRoundedRectangle(topLeadingRadius: 28, bottomLeadingRadius: 44, bottomTrailingRadius: 44, topTrailingRadius: 28, style: .continuous) }
 
     var body: some View {
         let closedOffset = height - Self.handleHeight
         ZStack(alignment: .top) {
             // Frosted glass in the drawer's color
             shape.fill(.ultraThinMaterial)
-                .overlay(shape.fill(LinearGradient(colors: [base.opacity(0.38), base.opacity(0.18)], startPoint: .top, endPoint: .bottom)))
+                .overlay(shape.fill(Color.black.opacity(scheme == .dark ? 0.5 : 0)))
+                .overlay(shape.fill(LinearGradient(colors: scheme == .dark ? [base.opacity(0.22), base.opacity(0.08)] : [base.opacity(0.38), base.opacity(0.18)], startPoint: .top, endPoint: .bottom)))
                 .overlay(shape.stroke(Color.white.opacity(0.3), lineWidth: 1))
                 .shadow(color: base.opacity(0.35), radius: 18, y: -4)
 
@@ -1154,11 +1153,11 @@ struct LiveDrawer<Content: View>: View {
                 // The contents. Closed, they are a soft blur you can half read; open, they come into focus.
                 ScrollView(showsIndicators: false) {
                     content()
-                        .padding(.bottom, 24)
+                        .padding(.bottom, 24 + bottomExtra)
                 }
                 .scrollDisabled(!open)
-                .blur(radius: open ? 0 : 14)
-                .opacity(open ? 1 : 0.85)
+                .blur(radius: open ? 0 : 3.5)
+                .opacity(open ? 1 : 0.9)
                 .allowsHitTesting(open)
                 .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: open ? 1 : 0.35), .init(color: open ? .black : .clear, location: 1)], startPoint: .top, endPoint: .bottom))
                 .animation(.easeInOut(duration: 0.3), value: open)
@@ -1197,10 +1196,9 @@ struct LiveDrawer<Content: View>: View {
                         }
                 )
         }
-        .frame(height: height - Self.bottomGap)
+        .frame(height: height + bottomExtra)
         .padding(.horizontal, 10)
-        .padding(.bottom, Self.bottomGap)
-        .frame(height: height, alignment: .top)
+        .frame(height: height + bottomExtra, alignment: .top)
         .offset(y: offset(closedOffset))
         .animation(.spring(duration: 0.35), value: open)
     }

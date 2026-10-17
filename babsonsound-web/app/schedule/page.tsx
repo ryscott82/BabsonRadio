@@ -1,5 +1,5 @@
 import ScheduleList from './ScheduleList'
-import { CALENDAR_URL } from '@/lib/links'
+import { CALENDAR_URL, AUTODJ_CALENDAR_URL } from '@/lib/links'
 
 export default function SchedulePage() {
   return (
@@ -11,7 +11,8 @@ export default function SchedulePage() {
       <p className="text-xs text-br-dk-sub">
         Want it in your calendar?{' '}
         <a href={CALENDAR_URL.replace(/^https?:/, 'webcal:')} className="text-br-gold">Subscribe</a>
-        {' '}or paste <span className="text-br-dk-text select-all">{CALENDAR_URL}</span> into Google, Apple or Outlook calendar.
+        {' '}or paste <span className="text-br-dk-text select-all">{CALENDAR_URL}</span> into Google, Apple or Outlook calendar. It lists live shows only;{' '}
+        <a href={AUTODJ_CALENDAR_URL.replace(/^https?:/, 'webcal:')} className="text-br-gold">the auto DJ playlists</a> have their own calendar.
       </p>
       <ScheduleList />
     </div>

@@ -309,6 +309,7 @@ export default function AutoSchedulePage() {
               <button className={btn}
                       onClick={() => navigator.clipboard?.writeText(calendarUrl).then(() => setNotice('Calendar link copied.'))}>COPY LINK</button>
               <a className={btn} href={calendarUrl.replace(/^https?:/, 'webcal:')}>OPEN IN CALENDAR APP</a>
+              <a className={btn} href={calendarUrl.replace('/api/calendar.ics', '/api/calendar-autodj.ics').replace(/^https?:/, 'webcal:')}>AUTO DJ CALENDAR</a>
             </div>
           </div>
           <div>

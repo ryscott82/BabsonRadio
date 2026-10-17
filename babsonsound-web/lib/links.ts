@@ -1,6 +1,7 @@
 // Babson Sound links used across the site. iOS mirror: BabsonLinks in BabsonRadio/BrandKit.swift.
 export const SITE_URL = 'https://babsonradio.com'
 export const CALENDAR_URL = `${SITE_URL}/api/calendar.ics`
+export const AUTODJ_CALENDAR_URL = `${SITE_URL}/api/calendar-autodj.ics`
 
 export const LINKS = {
   // Babson Radio interest form (Google Forms). The main call to action right now.

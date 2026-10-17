@@ -33,6 +33,8 @@ struct ContentView: View {
             LivePlayerView()
                 .id(liveLoad)
                 .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
+                .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+                .toolbarBackgroundVisibility(.visible, for: .tabBar)
                 .tag(0)
                 .tabItem {
                     BRTabIcon(systemName: "radio", label: "Live")
@@ -41,6 +43,8 @@ struct ContentView: View {
             ScheduleView()
                 .padding(.leading, sideW)
                 .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
+                .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+                .toolbarBackgroundVisibility(.visible, for: .tabBar)
                 .tag(1)
                 .tabItem {
                     BRTabIcon(systemName: "calendar", label: "Schedule")
@@ -49,6 +53,8 @@ struct ContentView: View {
             LibraryView()
                 .padding(.leading, sideW)
                 .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
+                .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+                .toolbarBackgroundVisibility(.visible, for: .tabBar)
                 .tag(2)
                 .tabItem {
                     BRTabIcon(systemName: "books.vertical", label: "Library")
@@ -58,6 +64,8 @@ struct ContentView: View {
                 NavigationStack { HostPanelView() }
                     .padding(.leading, sideW)
                     .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
+                    .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+                    .toolbarBackgroundVisibility(.visible, for: .tabBar)
                         .tag(3)
                     .tabItem { BRTabIcon(systemName: "mic.fill", label: "Host") }
             }
@@ -66,6 +74,8 @@ struct ContentView: View {
             SearchView()
                 .padding(.leading, sideW)
                 .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
+                .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+                .toolbarBackgroundVisibility(.visible, for: .tabBar)
                 .tag(4)
                 .tabItem {
                     BRTabIcon(systemName: "magnifyingglass", label: "Search")

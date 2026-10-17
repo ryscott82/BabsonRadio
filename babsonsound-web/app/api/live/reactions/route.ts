@@ -88,6 +88,7 @@ export async function POST(req: Request) {
       // exp lets a Firestore TTL policy on the rxEvents collection group clean these up (optional).
       await ref.collection('rxEvents').add({ at: now, e: emoji, c: cid, exp: Timestamp.fromMillis(now + 24 * 3_600_000) })
     }
+    await db.collection('users').doc(t.uid).set({ emojiUse: { [emoji]: FieldValue.increment(1) } }, { merge: true }).catch(() => {})
     await bump(db, t.uid)
     return { ok: true }
   })

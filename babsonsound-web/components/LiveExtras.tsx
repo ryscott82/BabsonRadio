@@ -32,7 +32,7 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
   const [emojis, setEmojis] = useState<string[]>(EMOJIS)
   useEffect(() => {
     if (!can) { queueMicrotask(() => setEmojis(EMOJIS)); return }
-    const load = () => apiGet<{ emojis: string[] }>('/api/live/emojis').then(r => setEmojis(r.emojis)).catch(() => {})
+    const load = () => apiGet<{ emojis: string[]; top?: string[] }>('/api/live/emojis').then(r => setEmojis((r.top ?? r.emojis).slice(0, 5))).catch(() => {})
     load()
     const t = setInterval(() => { if (!document.hidden) load() }, 60_000)
     return () => clearInterval(t)

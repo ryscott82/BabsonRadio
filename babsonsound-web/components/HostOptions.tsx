@@ -49,13 +49,6 @@ export default function HostOptions() {
             ))}
           </div>
         </div>
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm text-br-dk-text">Receive ratings during my shows</p>
-            <p className="text-xs text-br-dk-sub">Listeners can always rate. Off just hides the ratings from you.</p>
-          </div>
-          <button role="switch" aria-checked={p.ratings} onClick={() => save({ ...p, ratings: !p.ratings })} className="sk-switch shrink-0"><span className="sk-knob" /></button>
-        </div>
         <ErrorText>{error}</ErrorText>
       </div>
     </section>

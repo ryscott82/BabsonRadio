@@ -70,6 +70,10 @@ private struct SignedInProfileView: View {
                         .padding(.horizontal, 20)
                         .padding(.bottom, 16)
 
+                    emojiUnlocksRow
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 16)
+
                     if store.hosting || user.isAdmin {
                         hostRow
                             .padding(.horizontal, 20)
@@ -336,6 +340,32 @@ private struct SignedInProfileView: View {
                         .font(.system(size: 13))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .multilineTextAlignment(.leading)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .brCard()
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var emojiUnlocksRow: some View {
+        NavigationLink {
+            EmojiUnlocksView()
+        } label: {
+            HStack(spacing: 14) {
+                Text("🔥").font(.system(size: 20)).frame(width: 28)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Reaction emojis")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                    Text("See what you can unlock")
+                        .font(.system(size: 13))
+                        .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
@@ -1376,7 +1406,7 @@ struct HostPanelView: View {
         VStack(alignment: .leading, spacing: 10) {
             BRSectionHeader(title: "LIVE RATINGS")
             if i?.ratingsHidden == true {
-                Text("Ratings are off for you. Listeners can still rate, and the station still sees them. Turn them on under Your show options.")
+                Text("Ratings are off for you. Listeners can still rate, and the station still sees them. That was chosen when the show was booked and can't change during the show.")
                     .font(.system(size: 13)).foregroundColor(sub)
             } else if (i?.ratingCount ?? 0) == 0 {
                 Text("No ratings yet.").font(.system(size: 14)).foregroundColor(sub)

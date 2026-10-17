@@ -12,7 +12,7 @@ nonisolated private struct ReactionFeed: Decodable {
 }
 nonisolated private struct MineReply: Decodable { let mine: Int }
 nonisolated private struct ShowRatingReply: Decodable { let mine: Int }
-nonisolated struct EmojiList: Decodable { let emojis: [String] }
+nonisolated struct EmojiList: Decodable { let emojis: [String]; let top: [String]? }
 /// An admin-made rule (Admin > Easter eggs on the website): while it matches, the reaction row changes.
 nonisolated struct EggRule: Decodable {
     let artist: [String]; let title: [String]; let show: [String]; let emojis: [String]
@@ -54,6 +54,8 @@ final class LiveExtrasModel: ObservableObject {
     @Published var skip: SkipReply? = nil
     /// The reaction row: the usual ones plus any this person has earned (the server decides which).
     @Published var emojis: [String] = LiveExtrasModel.emojis
+    /// Their own most used first. The main screen shows the first 5; the drawer shows the whole row (up to 10).
+    @Published var topEmojis: [String] = LiveExtrasModel.emojis
     private var pollRound = 0
     private var emojiOcc = ""
 
@@ -108,6 +110,7 @@ final class LiveExtrasModel: ObservableObject {
     func loadEmojis() async {
         guard AuthManager.shared.isSignedIn, let r: EmojiList = try? await BackendAPI.get("/api/live/emojis") else { return }
         emojis = r.emojis
+        topEmojis = r.top ?? r.emojis
     }
 
     private func pollOnce() async {
@@ -235,7 +238,7 @@ struct LiveExtrasView: View {
         if let n = np, let e = model.eggs.first(where: { $0.matches(artist: n.artist, title: n.title, show: n.showTitle ?? "") }) {
             return e.emojis
         }
-        return model.emojis
+        return mode == .reactions ? Array(model.topEmojis.prefix(5)) : model.emojis
     }
 
     // End-of-show feedback state
@@ -311,14 +314,20 @@ struct LiveExtrasView: View {
                     .font(.system(size: 12)).foregroundColor(sub).multilineTextAlignment(.center)
             } else if mode != .rest, let occ = np?.occId, !occ.isEmpty {
                 BRGlassGroup(spacing: 10) {
-                    HStack(spacing: 10) {
-                        ForEach(reactionRow, id: \.self) { e in
-                            Button { Task { await model.react(e) } } label: {
-                                ReactionGlyph(emoji: e, size: 24).frame(width: reactionRow.count > 5 ? 42 : 52, height: 44)
-                                    .brGlass(in: Capsule(), interactive: true)
+                    // Rows of up to 5, so a full set of 10 fits as two tidy rows.
+                    let rows = stride(from: 0, to: reactionRow.count, by: 5).map { Array(reactionRow[$0..<min($0 + 5, reactionRow.count)]) }
+                    VStack(spacing: 10) {
+                        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                            HStack(spacing: 10) {
+                                ForEach(row, id: \.self) { e in
+                                    Button { Task { await model.react(e) } } label: {
+                                        ReactionGlyph(emoji: e, size: 24).frame(width: 52, height: 44)
+                                            .brGlass(in: Capsule(), interactive: true)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel(e.hasPrefix(":pgh-") ? "React" : "React with \(e)")
+                                }
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(e.hasPrefix(":pgh-") ? "React" : "React with \(e)")
                         }
                     }
                 }

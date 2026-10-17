@@ -1220,11 +1220,10 @@ struct LiveDrawer<Content: View>: View {
             VStack(spacing: 0) {
                 Color.clear.frame(height: Self.tabHeight)
                 // The contents. Closed, they are a soft blur you can half read; open, they come into focus.
-                ScrollView(showsIndicators: false) {
-                    content()
-                        .padding(.bottom, 24 + bottomExtra)
-                }
-                .scrollDisabled(!open)
+                // A fixed page, not a scroller: the whole drawer is what moves up and down.
+                content()
+                    .padding(.bottom, 24 + bottomExtra)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .blur(radius: open ? 0 : 3.5)
                 .opacity(open ? 1 : 0.9)
                 .allowsHitTesting(open)
@@ -1232,6 +1231,18 @@ struct LiveDrawer<Content: View>: View {
                 .animation(.easeInOut(duration: 0.3), value: open)
             }
             .clipShape(shape)
+
+            // Keeps the soft blur behind the tab bar while the drawer is up (the system bar only blurs over scrolling content).
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                Rectangle().fill(.ultraThinMaterial)
+                    .frame(height: bottomExtra + 34)
+                    .mask(LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .init(x: 0.5, y: 0.45)))
+            }
+            .clipShape(shape)
+            .opacity(open ? 1 : 0)
+            .allowsHitTesting(false)
+            .animation(.easeInOut(duration: 0.3), value: open)
 
             // The grab tab: no words, just a handle and a chevron that bobs a little while it is closed.
             VStack(spacing: 0) {

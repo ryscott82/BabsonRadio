@@ -78,7 +78,9 @@ export async function POST(req: Request) {
       const hp = b.hostPrefs as Record<string, unknown>
       const emojis = [...new Set((Array.isArray(hp.emojis) ? hp.emojis : []).map(e => str(e, 8)).filter(e => e && /\p{Extended_Pictographic}/u.test(e)))]
       if (emojis.length > MAX_HOST_EMOJIS) throw new HttpError(400, `Pick up to ${MAX_HOST_EMOJIS} reactions.`)
-      update.hostPrefs = { theme: ['standard', 'art'].includes(String(hp.theme)) ? hp.theme : 'auto', emojis, ratings: hp.ratings !== false }
+      // Dotted paths so the ratings setting is never touched here: it is chosen when a show is booked and cannot change mid-show.
+      update['hostPrefs.theme'] = ['standard', 'art'].includes(String(hp.theme)) ? hp.theme : 'auto'
+      update['hostPrefs.emojis'] = emojis
     }
     // Optional "about you" details. They are only ever shown as counts ("3 people in your class are listening").
     if ('gradYear' in b) {

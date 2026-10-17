@@ -187,13 +187,6 @@ struct HostOptionsView: View {
                     }
                     .buttonStyle(.plain).disabled(custom.isEmpty)
                 }
-                Toggle(isOn: Binding(get: { ratings }, set: { ratings = $0; save() })) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Receive ratings during my shows").font(.system(size: 15, weight: .semibold)).foregroundColor(text)
-                        Text("Listeners can always rate. Off just hides the ratings from you.").font(.system(size: 12)).foregroundColor(sub)
-                    }
-                }
-                .tint(accent)
                 if let error { Text(error).font(.system(size: 12)).foregroundColor(.brRed) }
             }
             .padding(18).brCard().padding(.horizontal, inset)

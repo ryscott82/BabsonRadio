@@ -70,7 +70,7 @@ private struct SignedInProfileView: View {
                         .padding(.horizontal, 20)
                         .padding(.bottom, 16)
 
-                    if store.hosting {
+                    if store.hosting || user.isAdmin {
                         hostRow
                             .padding(.horizontal, 20)
                             .padding(.bottom, 16)
@@ -200,6 +200,7 @@ private struct SignedInProfileView: View {
             await contacts.requestAccessIfNeeded()
         }
         .task { await store.load(); await store.loadHosting() }
+        .onAppear { contacts.reshuffle() }
     }
 
     // MARK: - Account card
@@ -208,7 +209,7 @@ private struct SignedInProfileView: View {
         VStack(spacing: 10) {
             HStack(spacing: 16) {
                 Button { withAnimation { avatarPicker.toggle() } } label: {
-                    ProfileAvatar(initials: user.initials, colorId: store.me?.avatarColor, size: 64)
+                    ProfileAvatar(initials: user.initials, colorId: store.avatarColor, size: 64)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Change profile color")
@@ -241,13 +242,16 @@ private struct SignedInProfileView: View {
                     ForEach(AvatarPalette.all, id: \.id) { c in
                         Button { Task { await store.setColor(c.id) } } label: {
                             Circle().fill(Color(hex: c.hex)).frame(width: 30, height: 30)
-                                .overlay(Circle().stroke(scheme == .dark ? Color.brGold : Color.brGreen, lineWidth: store.me?.avatarColor == c.id || (store.me?.avatarColor == nil && c.id == "babson-green") ? 3 : 0).padding(-4))
+                                .overlay(Circle().stroke(scheme == .dark ? Color.brGold : Color.brGreen, lineWidth: store.avatarColor == c.id || (store.avatarColor == nil && c.id == "babson-green") ? 3 : 0).padding(-4))
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(c.id)
                     }
                 }
                 .padding(.vertical, 8)
+                if let e = store.colorError {
+                    Text(e).font(.system(size: 12)).foregroundColor(.brRed)
+                }
             }
         }
         .frame(maxWidth: .infinity)
@@ -415,14 +419,14 @@ private struct SignedInProfileView: View {
             VStack(spacing: 0) {
                 // 1. People you probably know
                 if contacts.accessGranted {
-                    if contacts.babson.isEmpty {
+                    if contacts.featured.isEmpty {
                         Text("No suggestions yet.")
                             .font(.system(size: 13))
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 18).padding(.vertical, 16)
                     } else {
-                        ForEach(contacts.babson.prefix(5)) { contact in
+                        ForEach(contacts.featured) { contact in
                             ContactInviteRow(contact: contact, caption: contact.caption, selected: selectedPhone == contact.primaryPhone && selectedPhone != nil) {
                                 selectedPhone = contact.primaryPhone
                                 guestEmail = ""
@@ -644,34 +648,89 @@ struct ContactPickerView: View {
         return base.filter { $0.score > 0 }.sorted { $0.score > $1.score } + base.filter { $0.score == 0 }
     }
 
+    private func letter(_ c: BRContact) -> String {
+        let f = c.name.trimmingCharacters(in: .whitespaces).prefix(1).uppercased()
+        return f.rangeOfCharacter(from: .letters) != nil ? f : "#"
+    }
+
+    /// Alphabetical groups. With no search, the likely contacts get their own group at the top.
+    private var sections: [(key: String, items: [BRContact])] {
+        var out: [(String, [BRContact])] = []
+        var rest = filtered
+        if search.isEmpty {
+            let likely = filtered.filter { $0.score > 0 }
+            if !likely.isEmpty { out.append(("★", likely)) }
+            rest = filtered.filter { $0.score == 0 }
+        }
+        let grouped = Dictionary(grouping: rest, by: letter)
+        for k in grouped.keys.sorted(by: { $0 == "#" ? false : ($1 == "#" ? true : $0 < $1) }) {
+            out.append((k, grouped[k]!.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }))
+        }
+        return out
+    }
+
+    private func row(_ contact: BRContact) -> some View {
+        Button(action: { if let phone = contact.primaryPhone { onSelect(phone) } }) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle().fill(contact.avatarColor.opacity(0.8)).frame(width: 36, height: 36)
+                    Text(contact.initials).font(BRFont.display(13)).foregroundColor(.white)
+                }
+                VStack(alignment: .leading) {
+                    Text(contact.name).font(.system(size: 15, weight: .medium))
+                    if contact.savedBy >= 1 {
+                        Text("\(contact.savedBy)+ mutuals").font(.system(size: 12, weight: .semibold)).foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                    } else if let p = contact.primaryPhone {
+                        Text(p).font(.system(size: 12)).foregroundColor(.secondary)
+                    }
+                }
+                Spacer()
+                if contact.primaryPhone != nil {
+                    Text("Invite").font(BRFont.display(11)).foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                }
+            }
+        }
+        .disabled(contact.primaryPhone == nil)
+    }
+
     var body: some View {
         NavigationStack {
-            List(filtered) { contact in
-                Button(action: {
-                    if let phone = contact.primaryPhone {
-                        onSelect(phone)
-                    }
-                }) {
-                    HStack(spacing: 12) {
-                        ZStack {
-                            Circle().fill(contact.avatarColor.opacity(0.8)).frame(width: 36, height: 36)
-                            Text(contact.initials).font(BRFont.display(13)).foregroundColor(.white)
-                        }
-                        VStack(alignment: .leading) {
-                            Text(contact.name).font(.system(size: 15, weight: .medium))
-                            if let why = contact.caption {
-                                Text(why).font(.system(size: 12, weight: .semibold)).foregroundColor(scheme == .dark ? .brGold : .brGreen)
-                            } else if let p = contact.primaryPhone {
-                                Text(p).font(.system(size: 12)).foregroundColor(.secondary)
-                            }
-                        }
-                        Spacer()
-                        if contact.primaryPhone != nil {
-                            Text("Invite").font(BRFont.display(11)).foregroundColor(scheme == .dark ? .brGold : .brGreen)
+            ScrollViewReader { proxy in
+                List {
+                    ForEach(sections, id: \.key) { sec in
+                        Section {
+                            ForEach(sec.items) { row($0) }
+                        } header: {
+                            Text(sec.key == "★" ? "Might be interested in Babson Radio" : sec.key).id("sec-" + sec.key)
                         }
                     }
                 }
-                .disabled(contact.primaryPhone == nil)
+                .listStyle(.plain)
+                .overlay(alignment: .trailing) {
+                    if search.isEmpty {
+                        let keys = sections.map(\.key)
+                        GeometryReader { geo in
+                            VStack(spacing: 0) {
+                                ForEach(keys, id: \.self) { k in
+                                    Text(k == "★" ? "★" : k)
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                                        .frame(maxHeight: .infinity)
+                                }
+                            }
+                            .frame(width: 22, height: min(geo.size.height, CGFloat(keys.count) * 16))
+                            .frame(maxHeight: .infinity)
+                            .contentShape(Rectangle())
+                            .gesture(DragGesture(minimumDistance: 0).onChanged { g in
+                                let h = min(geo.size.height, CGFloat(keys.count) * 16)
+                                let top = (geo.size.height - h) / 2
+                                let idx = Int((g.location.y - top) / h * CGFloat(keys.count))
+                                if keys.indices.contains(idx) { proxy.scrollTo("sec-" + keys[idx], anchor: .top) }
+                            })
+                        }
+                        .frame(width: 22)
+                    }
+                }
             }
             .searchable(text: $search, prompt: "Search contacts")
             .navigationTitle("Choose a Contact")
@@ -780,6 +839,8 @@ class ContactsManager: ObservableObject {
     @Published var list: [BRContact] = []
     /// Contacts that look like Babson people, best matches first. Worked out on this phone; nothing is uploaded.
     @Published var babson: [BRContact] = []
+    /// The few likely contacts shown on the profile page. Reshuffled each time the profile opens.
+    @Published var featured: [BRContact] = []
     @Published var suggestionsNote = ""
 
     static let shared = ContactsManager()
@@ -841,6 +902,14 @@ class ContactsManager: ObservableObject {
     private func applySaved(_ counts: [String: Int]) {
         list = list.map { var c = $0; c.savedBy = counts[c.id] ?? 0; return c }
         babson = list.filter { $0.score > 0 }.sorted { $0.score > $1.score }
+        reshuffle()
+    }
+
+    /// Pick a fresh handful of likely contacts (favoring stronger matches, but not always the same ones).
+    func reshuffle() {
+        let strong = babson.filter { $0.score >= 3 }.shuffled()
+        let rest = babson.filter { $0.score < 3 }.shuffled()
+        featured = Array((strong + rest).prefix(5))
     }
 
     /// Ask the server which of my contacts many members have saved. At most twice a day; the server allows once an hour.
@@ -926,6 +995,8 @@ class ContactsManager: ObservableObject {
         return nil
     }
 
+    nonisolated private static func digits(_ s: String) -> String { s.filter { $0.isNumber } }
+
     private func loadContacts() {
         let keys: [CNKeyDescriptor] = [
             CNContactGivenNameKey as CNKeyDescriptor,
@@ -943,11 +1014,20 @@ class ContactsManager: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
             var result: [BRContact] = []
+            let me = AuthManager.shared.currentUser
+            let myEmail = (me?.email ?? "").lowercased()
+            let myName = (me?.displayName ?? "").lowercased()
+            let myPhone = Self.digits(me?.phoneNumber ?? "")
             do {
                 try self.store.enumerateContacts(with: request) { contact, _ in
                     let name = "\(contact.givenName) \(contact.familyName)"
                         .trimmingCharacters(in: .whitespaces)
                     let phone = contact.phoneNumbers.first?.value.stringValue
+                    // Never list the person's own contact card.
+                    let isMe = (!myEmail.isEmpty && contact.emailAddresses.contains { ($0.value as String).lowercased() == myEmail })
+                        || (!myName.isEmpty && name.lowercased() == myName)
+                        || (myPhone.count >= 10 && contact.phoneNumbers.contains { Self.digits($0.value.stringValue).suffix(10) == myPhone.suffix(10) })
+                    if isMe { return }
                     if !name.isEmpty, let phone {
                         // Babson's own lines and offices stay in the full contact list but are never suggested or counted.
                         let office = Self.isCampusOffice(contact, name: name)
@@ -991,7 +1071,7 @@ struct BRContact: Identifiable {
 
     /// The reason shown under the name.
     /// Never says why (a school email, a saved number, ...); only that they might be interested.
-    var caption: String? { score > 0 ? "Might be interested in Babson Radio" : nil }
+    var caption: String? { nil }
 
     var initials: String {
         let parts = name.split(separator: " ")
@@ -1089,6 +1169,19 @@ nonisolated struct HostNowPlaying: Decodable {
 nonisolated struct HostStatus: Decodable {
     let staff: Bool; let controlsOpen: Bool; let windowHours: Int
     let shows: [HostShowItem]; let nowPlaying: HostNowPlaying?
+    let insights: [String: HostInsight]?
+}
+nonisolated struct HostComment: Decodable { let stars: Double?; let text: String? }
+nonisolated struct HostNote: Decodable { let headline: String?; let message: String? }
+/// Live feed for one show: pinned note, reactions, ratings.
+nonisolated struct HostInsight: Decodable {
+    let ratingsHidden: Bool?
+    let comments: [HostComment]?
+    let reactions: [String: Int]?
+    let recentReactions: [String: Int]?
+    let ratingCount: Int?
+    let ratingAvg: Double?
+    let note: HostNote?
 }
 nonisolated struct SetlistResponse: Decodable { let songs: String }
 
@@ -1115,6 +1208,14 @@ struct HostPanelView: View {
     @State private var newName = ""
     @State private var newDescription = ""
     @State private var changeMessage: String?
+    @State private var skipping = false
+    @State private var skipMessage: String?
+    @State private var target = 0            // 0 = listeners, 1 = station staff
+    @State private var noteHeadline = ""
+    @State private var noteBody = ""
+    @State private var staffText = ""
+    @State private var msgStatus: String?
+    @State private var sending = false
 
     private var text: Color { scheme == .dark ? .brDkText : .brLtText }
     private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
@@ -1135,6 +1236,12 @@ struct HostPanelView: View {
                 if let err = host.error { Text(err).font(.system(size: 13)).foregroundColor(.brRed) }
                 if let s = host.status {
                     controls(s)
+                    if s.controlsOpen, selected != nil {
+                        messageCard(s)
+                        ratingsCard(s)
+                        reactionsCard(s)
+                    }
+                    HostOptionsView(inset: 0)
                     setList(s)
                     yourShows(s)
                     changeRequest
@@ -1151,7 +1258,7 @@ struct HostPanelView: View {
         .task {
             await host.load()
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(20))
+                try? await Task.sleep(for: .seconds(host.status?.controlsOpen == true ? 8 : 20))
                 await host.load()
             }
         }
@@ -1170,6 +1277,23 @@ struct HostPanelView: View {
                 Text((np?.song ?? "").isEmpty ? "Nothing reported right now" : np!.song)
                     .font(.system(size: 18, weight: .semibold)).foregroundColor(text)
                 if let np { Text("\(np.listeners) listening").font(.system(size: 12)).foregroundColor(sub) }
+                Button {
+                    Task {
+                        skipping = true; skipMessage = nil
+                        do { let _: EmptyResponse = try await BackendAPI.post("/api/host/skip", [String: String]()); skipMessage = "Skipped." }
+                        catch { skipMessage = (error as? BackendError)?.message ?? error.localizedDescription }
+                        skipping = false
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        if skipping { ProgressView().tint(.white) } else { Image(systemName: "forward.fill"); Text("SKIP TRACK").font(BRFont.display(14)).kerning(2) }
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    .background(accent).foregroundColor(scheme == .dark ? .brDkBg : .white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(skipping)
+                if let m = skipMessage { Text(m).font(.system(size: 12)).foregroundColor(sub) }
                 Text("Open \(s.windowHours) hours before to \(s.windowHours) hours after your show.")
                     .font(.system(size: 11)).foregroundColor(sub)
             } else if let next = s.shows.first(where: { $0.startAt.timeIntervalSinceNow > Double(s.windowHours) * 3600 }) {
@@ -1177,6 +1301,121 @@ struct HostPanelView: View {
                     .font(.system(size: 14)).foregroundColor(sub)
             } else {
                 Text("You have no upcoming shows this week.").font(.system(size: 14)).foregroundColor(sub)
+            }
+        }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
+    }
+
+    private func insight(_ s: HostStatus) -> HostInsight? { selected.flatMap { s.insights?[$0.id] } }
+
+    private func field(_ placeholder: String, _ binding: Binding<String>, axis: Axis = .horizontal) -> some View {
+        TextField(placeholder, text: binding, axis: axis)
+            .font(.system(size: 15)).foregroundColor(text)
+            .padding(12)
+            .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    @ViewBuilder private func messageCard(_ s: HostStatus) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            BRSectionHeader(title: "SEND A MESSAGE")
+            Picker("To", selection: $target) {
+                Text("Listeners").tag(0)
+                Text("Station staff").tag(1)
+            }
+            .pickerStyle(.segmented)
+            if target == 0 {
+                if let n = insight(s)?.note, !(n.headline ?? "").isEmpty || !(n.message ?? "").isEmpty {
+                    Text("Pinned now: \(n.headline ?? "") \(n.message ?? "")").font(.system(size: 12)).foregroundColor(sub)
+                }
+                field("Headline", $noteHeadline)
+                field("Message (optional)", $noteBody, axis: .vertical)
+            } else {
+                field("Message to the station team", $staffText, axis: .vertical)
+            }
+            HStack(spacing: 10) {
+                Button { Task { await sendMessage() } } label: {
+                    Text(sending ? "SENDING…" : (target == 0 ? "PIN TO LISTENERS" : "SEND TO STAFF")).font(BRFont.display(13)).kerning(1.5)
+                        .frame(maxWidth: .infinity).padding(.vertical, 13)
+                        .background(accent).foregroundColor(scheme == .dark ? .brDkBg : .white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(sending || (target == 0 ? noteHeadline.trimmingCharacters(in: .whitespaces).isEmpty && noteBody.trimmingCharacters(in: .whitespaces).isEmpty : staffText.trimmingCharacters(in: .whitespaces).count < 2))
+                if target == 0 {
+                    Button { Task { noteHeadline = ""; noteBody = ""; await sendMessage(clear: true) } } label: {
+                        Text("CLEAR").font(BRFont.display(13)).kerning(1.5).padding(.vertical, 13).padding(.horizontal, 16)
+                            .foregroundColor(accent)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(accent, lineWidth: 1.5))
+                    }
+                    .disabled(sending)
+                }
+            }
+            if let m = msgStatus { Text(m).font(.system(size: 12)).foregroundColor(sub) }
+        }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
+    }
+
+    private func sendMessage(clear: Bool = false) async {
+        sending = true; msgStatus = nil
+        do {
+            if target == 0, let sel = selected {
+                let _: EmptyResponse = try await BackendAPI.post("/api/live/note",
+                    ["occId": sel.id, "headline": clear ? "" : noteHeadline, "message": clear ? "" : noteBody])
+                msgStatus = clear ? "Cleared." : "Pinned for listeners."
+            } else {
+                let _: EmptyResponse = try await BackendAPI.post("/api/host/staff-message", ["text": staffText])
+                staffText = ""; msgStatus = "Sent to the station team."
+            }
+            await host.load()
+        } catch { msgStatus = (error as? BackendError)?.message ?? error.localizedDescription }
+        sending = false
+    }
+
+    @ViewBuilder private func ratingsCard(_ s: HostStatus) -> some View {
+        let i = insight(s)
+        VStack(alignment: .leading, spacing: 10) {
+            BRSectionHeader(title: "LIVE RATINGS")
+            if i?.ratingsHidden == true {
+                Text("Ratings are off for you. Listeners can still rate, and the station still sees them. Turn them on under Your show options.")
+                    .font(.system(size: 13)).foregroundColor(sub)
+            } else if (i?.ratingCount ?? 0) == 0 {
+                Text("No ratings yet.").font(.system(size: 14)).foregroundColor(sub)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(String(format: "%.1f", i?.ratingAvg ?? 0)).font(.system(size: 32, weight: .bold)).foregroundColor(text)
+                    Text("★  ·  \(i?.ratingCount ?? 0) rating\((i?.ratingCount ?? 0) == 1 ? "" : "s")").font(.system(size: 13)).foregroundColor(sub)
+                }
+                ForEach(Array((i?.comments ?? []).enumerated()), id: \.offset) { _, c in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(String(repeating: "★", count: Int((c.stars ?? 0).rounded()))).font(.system(size: 11)).foregroundColor(accent)
+                        Text(c.text ?? "").font(.system(size: 14)).foregroundColor(text)
+                    }
+                    .padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+            }
+        }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
+    }
+
+    @ViewBuilder private func reactionsCard(_ s: HostStatus) -> some View {
+        let i = insight(s)
+        let total = (i?.reactions ?? [:]).sorted { $0.value > $1.value }
+        let recent = i?.recentReactions ?? [:]
+        VStack(alignment: .leading, spacing: 10) {
+            BRSectionHeader(title: "LIVE REACTIONS")
+            if total.isEmpty {
+                Text("No reactions yet.").font(.system(size: 14)).foregroundColor(sub)
+            } else {
+                ForEach(total, id: \.key) { e, n in
+                    HStack {
+                        Text(e).font(.system(size: 26))
+                        Text("\(n)").font(.system(size: 20, weight: .semibold)).foregroundColor(text)
+                        Spacer()
+                        if let r = recent[e], r > 0 { Text("+\(r) just now").font(.system(size: 12, weight: .semibold)).foregroundColor(accent) }
+                    }
+                }
             }
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()

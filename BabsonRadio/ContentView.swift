@@ -16,6 +16,8 @@ struct ContentView: View {
     /// Bumped each time you come back to Live, so the player loads fresh like at launch (the tab bar went missing on a plain return).
     @State private var liveLoad = 0
     @State private var splashDone = false
+    /// Day the host welcome was last dismissed. Lives only in memory, so a fully closed app shows it again.
+    @State private var hostWelcomeDay = HostWelcome.shownDay
     @State private var welcomeSkipped = false
     @State private var askSchoolEmail = false
     @State private var showSchoolEmailSheet = false
@@ -115,6 +117,17 @@ struct ContentView: View {
             }
         }
         .overlay {
+            // Hosts get a welcome once a day (and again after the app was closed completely), then land on the Host tab.
+            if splashDone, auth.isSignedIn, profile.hosting, !auth.needsOnboarding, !auth.needsSchoolEmail, !auth.needsEmailVerification,
+               hostWelcomeDay != HostWelcome.todayKey {
+                HostWelcomeView {
+                    HostWelcome.shownDay = HostWelcome.todayKey
+                    withAnimation(.easeInOut(duration: 0.4)) { hostWelcomeDay = HostWelcome.todayKey; tab = 3 }
+                }
+                .transition(.opacity).zIndex(2)
+            }
+        }
+        .overlay {
             if !splashDone {
                 SplashView()
                     .transition(.opacity)
@@ -194,3 +207,44 @@ struct StatusBarBlur: View {
     }
 }
 
+
+
+// MARK: - Host welcome
+
+enum HostWelcome {
+    /// Process-lifetime memory: reset when the app is swiped away and reopened.
+    static var shownDay = ""
+    static var todayKey: String {
+        let c = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        return "\(c.year ?? 0)-\(c.month ?? 0)-\(c.day ?? 0)"
+    }
+}
+
+struct HostWelcomeView: View {
+    let onContinue: () -> Void
+    @Environment(\.colorScheme) private var scheme
+    @State private var shown = false
+
+    var body: some View {
+        ZStack {
+            (scheme == .dark ? Color.brDkBg : Color.brLtBg).ignoresSafeArea()
+            VStack(spacing: 16) {
+                Spacer()
+                Image(systemName: "mic.fill").font(.system(size: 44)).foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                Text("Welcome, Host").font(BRFont.display(34)).foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                Text("Your Host tab is ready.").font(.system(size: 15)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                Spacer()
+                Button(action: onContinue) {
+                    Text("CONTINUE").font(BRFont.display(15)).kerning(2)
+                        .frame(maxWidth: .infinity).padding(.vertical, 16)
+                        .background(scheme == .dark ? Color.brGold : Color.brGreen)
+                        .foregroundColor(scheme == .dark ? .brDkBg : .white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+                .padding(.horizontal, 32).padding(.bottom, 40)
+            }
+            .opacity(shown ? 1 : 0)
+        }
+        .onAppear { withAnimation(.easeIn(duration: 0.5)) { shown = true } }
+    }
+}

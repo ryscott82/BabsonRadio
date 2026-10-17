@@ -20,6 +20,13 @@ export interface HostShow {
   endAt: number
 }
 
+/** Host mode: today (station time) is a day one of your shows is on. A show that runs past midnight counts the next day too. */
+export function hostDayActive(shows: HostShow[], now: number, tz: string): boolean {
+  const day = (ms: number) => { const [y, m, d] = localDate(ms, tz); return y * 10_000 + m * 100 + d }
+  const today = day(now)
+  return shows.some(s => day(s.startAt) <= today && today <= day(Math.max(s.startAt, s.endAt - 1)))
+}
+
 export const showOpen = (s: HostShow, now: number) => now >= s.startAt - HOST_WINDOW_MS && now <= s.endAt + HOST_WINDOW_MS
 export const occurrenceId = (s: Pick<HostShow, 'key' | 'startAt'>) => `${s.key.replace(':', '-')}_${s.startAt}`
 

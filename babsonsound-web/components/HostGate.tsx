@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { api, apiGet } from '@/lib/auth'
 import { ErrorText, PrimaryButton } from '@/components/AuthUI'
-import HostAgreements from '@/components/HostAgreements'
 
 interface Q { id: string; q: string; options: string[] }
 interface Info {
@@ -16,8 +15,8 @@ const card = 'sk-raised rounded-2xl p-5 space-y-4'
 const ghost = 'rounded-lg border border-br-dk-border text-br-dk-text text-sm font-semibold px-4 py-2.5 disabled:opacity-50'
 const solid = 'rounded-lg bg-br-gold text-black text-sm font-semibold px-4 py-2.5 disabled:opacity-50'
 
-/** Everything a new host does before booking: training in person, check-in, the quiz, then the four agreements.
- *  Shows `children` (the booking form) once they are certified and have signed. */
+/** Everything a new host does before booking: training in person, check-in, the quiz, (the agreements come after the request).
+ *  Shows `children` (the booking form) once they are certified. */
 export default function HostGate({ children }: { children: ReactNode }) {
   const [info, setInfo] = useState<Info | null>(null)
   const [error, setError] = useState('')
@@ -41,17 +40,8 @@ export default function HostGate({ children }: { children: ReactNode }) {
   }
 
   if (!info) return error ? <ErrorText>{error}</ErrorText> : null
-  if (info.trained && info.conductSigned) return <>{children}</>
-
-  if (info.trained) {
-    return (
-      <div className={card}>
-        <h2 className="font-display text-br-gold tracking-widest text-sm">ONE LAST STEP</h2>
-        <p className="text-sm text-br-dk-text">Read and sign the host agreements.</p>
-        <HostAgreements busy={busy} error={error} onSign={sig => run(() => api('/api/host/readiness', sig))} />
-      </div>
-    )
-  }
+  // The on-air agreements are signed after the show request is sent, not before.
+  if (info.trained) return <>{children}</>
 
   if (info.checkIn === 'approved' && info.questions.length) {
     const wrong = new Set(result?.wrong.map(w => w.id))

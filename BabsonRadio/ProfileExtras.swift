@@ -41,7 +41,10 @@ nonisolated struct HostAccess: Decodable { let host: Bool; let hosting: Bool }
 @MainActor
 final class ProfileStore: ObservableObject {
     static let shared = ProfileStore()
-    @Published var me: ProfileMe?
+    @Published var me: ProfileMe? { didSet { avatarColor = me?.avatarColor } }
+    /// The chosen profile color. Changes the moment you tap, and goes back if the server says no.
+    @Published var avatarColor: String?
+    @Published var colorError: String?
     /// A show of theirs is on air, or about to be (the host controls window is open). Drives the Host tab.
     @Published var hosting = false
 
@@ -53,8 +56,13 @@ final class ProfileStore: ObservableObject {
         if let r: HostAccess = try? await BackendAPI.get("/api/host/access") { hosting = r.hosting } else { hosting = false }
     }
     func setColor(_ id: String) async {
-        let _: EmptyResponse? = try? await BackendAPI.post("/api/me", ["avatarColor": id])
-        await load()
+        let before = avatarColor
+        avatarColor = id; colorError = nil
+        do { let _: EmptyResponse = try await BackendAPI.post("/api/me", ["avatarColor": id]) }
+        catch {
+            avatarColor = before
+            colorError = (error as? BackendError)?.message ?? error.localizedDescription
+        }
     }
 }
 
@@ -108,7 +116,10 @@ struct ProfileDisclosure<Content: View>: View {
 // MARK: - Host options (bottom of Go on air)
 
 struct HostOptionsView: View {
+    /// Side margin: 20 on its own page, 0 when the page around it already has margins (the Host tab).
+    var inset: CGFloat = 20
     @Environment(\.colorScheme) private var scheme
+    @State private var custom = ""
     @State private var theme = "auto"
     @State private var emojis: [String] = []
     @State private var ratings = true
@@ -123,7 +134,7 @@ struct HostOptionsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            BRSectionHeader(title: "YOUR SHOW OPTIONS").padding(.horizontal, 20)
+            BRSectionHeader(title: "YOUR SHOW OPTIONS").padding(.horizontal, inset)
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Look during your show").font(.system(size: 15, weight: .semibold)).foregroundColor(text)
@@ -145,7 +156,7 @@ struct HostOptionsView: View {
                     Text(emojis.isEmpty ? "None picked: listeners see the usual ones." : "Listeners see these during your show.")
                         .font(.system(size: 12)).foregroundColor(sub)
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 6), spacing: 8) {
-                        ForEach(Self.choices, id: \.self) { e in
+                        ForEach(Self.choices + emojis.filter { !Self.choices.contains($0) }, id: \.self) { e in
                             Button { toggle(e) } label: {
                                 Text(e).font(.system(size: 24)).frame(height: 44).frame(maxWidth: .infinity)
                                     .background(emojis.contains(e) ? accent.opacity(0.25) : (scheme == .dark ? Color.brDkSurface2 : Color.brLtSurface2))
@@ -156,16 +167,36 @@ struct HostOptionsView: View {
                         }
                     }
                 }
+                HStack(spacing: 10) {
+                    TextField("Add your own emoji", text: $custom)
+                        .font(.system(size: 18))
+                        .padding(10)
+                        .background(scheme == .dark ? Color.brDkSurface2 : Color.brLtSurface2)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .onChange(of: custom) { _, new in
+                            // Keep just the last emoji typed or pasted.
+                            if let last = new.last(where: { $0.unicodeScalars.contains { $0.properties.isEmojiPresentation || $0.value > 0x2100 } }) { custom = String(last) }
+                        }
+                    Button {
+                        let e = custom.trimmingCharacters(in: .whitespaces)
+                        guard !e.isEmpty, !emojis.contains(e) else { custom = ""; return }
+                        if emojis.count >= 6 { error = "Up to 6 reactions."; return }
+                        emojis.append(e); custom = ""; error = nil; save()
+                    } label: {
+                        Text("ADD").font(BRFont.display(13)).kerning(1.5).foregroundColor(accent)
+                    }
+                    .buttonStyle(.plain).disabled(custom.isEmpty)
+                }
                 Toggle(isOn: Binding(get: { ratings }, set: { ratings = $0; save() })) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Ratings").font(.system(size: 15, weight: .semibold)).foregroundColor(text)
-                        Text("Off hides ratings from listeners and from you.").font(.system(size: 12)).foregroundColor(sub)
+                        Text("Receive ratings during my shows").font(.system(size: 15, weight: .semibold)).foregroundColor(text)
+                        Text("Listeners can always rate. Off just hides the ratings from you.").font(.system(size: 12)).foregroundColor(sub)
                     }
                 }
                 .tint(accent)
                 if let error { Text(error).font(.system(size: 12)).foregroundColor(.brRed) }
             }
-            .padding(18).brCard().padding(.horizontal, 20)
+            .padding(18).brCard().padding(.horizontal, inset)
         }
         .task {
             guard !loaded, let me: ProfileMe = try? await BackendAPI.get("/api/me"), let p = me.hostPrefs else { return }

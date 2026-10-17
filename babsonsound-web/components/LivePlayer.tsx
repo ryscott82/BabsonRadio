@@ -146,7 +146,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
           {np?.art ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={np.art} alt={hasSong ? `Cover for ${np.title}` : ''} className="absolute inset-0 w-full h-full object-cover"
-                 style={art.full ? undefined : { filter: 'saturate(0.94) sepia(0.05)' }} />
+                 style={art.full ? undefined : { filter: 'var(--cover-filter)' }} />
           ) : (
             <div className="text-center">
               <p className="font-display text-br-brass/80 text-sm tracking-[0.4em]">BABSON</p>
@@ -282,7 +282,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
         <div className="relative flex flex-col items-center gap-[4vh] px-10 max-w-[1600px] w-full">
         <BigClock color="#fff" accent={glow || '#2fb67c'} sizeClass="text-[clamp(4rem,min(13vw,22vh),14rem)]" />
         <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16 w-full justify-center">
-          <div className="shrink-0 w-[min(70vw,34vh)] aspect-square rounded-2xl overflow-hidden shadow-[0_0_120px_var(--glow)]"
+          <div className="shrink-0 w-[min(70vw,34vh)] aspect-square rounded-2xl overflow-hidden shadow-[0_0_60px_var(--glow)]"
                style={{ ['--glow' as string]: (glow || '#2fb67c') + '88', background: glow ? `linear-gradient(135deg, ${glow}, #000000aa)` : '#003D27' }}>
             {np?.art
               // eslint-disable-next-line @next/next/no-img-element

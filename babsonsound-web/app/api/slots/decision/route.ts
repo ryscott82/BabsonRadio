@@ -1,3 +1,4 @@
+import { CONDUCT_VERSION } from '@/lib/conduct'
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireDirector, str } from '@/lib/server/http'
@@ -33,6 +34,9 @@ export async function POST(req: Request) {
         return { ok: true, declinedImage: r.get('imagePath') as string | undefined, mail: { to: String(r.get('requesterEmail') ?? ''), title: String(r.get('title') ?? ''), at: r.get('startAt').toMillis() as number } }
       }
 
+      const signer = await tx.get(db.collection('users').doc(String(r.get('requesterUid'))))
+      if (signer.get('conductVersion') !== CONDUCT_VERSION) throw new HttpError(409, 'They have not signed the on-air agreement yet.')
+
       const start: Timestamp = r.get('startAt')
       const end: Timestamp = r.get('endAt')
       if (start.toMillis() < Date.now()) throw new HttpError(400, 'That time has already passed.')
@@ -45,6 +49,7 @@ export async function POST(req: Request) {
         title: r.get('title'), type: r.get('type'), category: r.get('category'),
         description: r.get('description') ?? '', imageUrl: r.get('imageUrl') ?? '', imagePath: r.get('imagePath') ?? '',
         startAt: start, endAt: end,
+        receiveRatings: r.get('receiveRatings') !== false,
         makePublic: r.get('makePublic') === true, publicConsentId: r.get('publicConsentId') ?? '',
       })
       tx.update(reqRef, {

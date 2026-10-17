@@ -302,6 +302,7 @@ struct RequestSlotForm: View {
     @State private var durationMin = 60
     @State private var audioURL = ""
     @State private var location = ""
+    @State private var receiveRatings = true
     @State private var sharePublic = false
     @State private var pubTicks: Set<Int> = []
     @State private var pubName = ""
@@ -312,6 +313,10 @@ struct RequestSlotForm: View {
     @State private var isUploading = false
     @State private var isSubmitting = false
     @State private var errorText: String? = nil
+    /// After the request is in, the on-air agreements to sign (only when the account has not signed them yet).
+    @State private var agreements: TrainingInfo?
+    @State private var signBusy = false
+    @State private var signError: String?
 
     private static let categories = ["podcast", "music", "talk", "interview", "news", "other"]
     private static let lengths = [15, 30, 45, 60, 90, 120, 180, 240]
@@ -341,6 +346,33 @@ struct RequestSlotForm: View {
     }
 
     var body: some View {
+        if let info = agreements {
+            NavigationStack {
+                ScrollView {
+                    AgreementsForm(info: info, busy: signBusy, error: signError) { name in sign(name, version: info.agreementsVersion) }
+                        .padding(20)
+                }
+                .navigationTitle("On-air agreement")
+                .navigationBarTitleDisplayMode(.inline)
+            }
+            .interactiveDismissDisabled()
+        } else {
+            requestForm
+        }
+    }
+
+    private func sign(_ name: String, version: String) {
+        signBusy = true; signError = nil
+        Task {
+            do {
+                let _: EmptyResponse = try await BackendAPI.post("/api/host/readiness", ["typedName": name, "accepted": true, "version": version])
+                dismiss()
+            } catch { signError = (error as? BackendError)?.message ?? error.localizedDescription }
+            signBusy = false
+        }
+    }
+
+    private var requestForm: some View {
         NavigationStack {
             Form {
                 Section("About your show") {
@@ -354,6 +386,12 @@ struct RequestSlotForm: View {
 
                 Section {
                     TextField("Special requests or location (optional)", text: $location)
+                }
+
+                Section {
+                    Toggle("Receive ratings during my show", isOn: $receiveRatings)
+                } footer: {
+                    Text("Listeners can always rate. Off just hides the ratings from you.")
                 }
 
                 Section("Picture (optional)") {
@@ -486,7 +524,7 @@ struct RequestSlotForm: View {
         errorText = nil
         Task {
             do {
-                try await slots.submit(
+                let needsAgreement = try await slots.submit(
                     title: title.trimmingCharacters(in: .whitespacesAndNewlines),
                     details: details.trimmingCharacters(in: .whitespacesAndNewlines),
                     type: type,
@@ -496,11 +534,13 @@ struct RequestSlotForm: View {
                     audioURL: type == "prerecorded" ? audioURL.trimmingCharacters(in: .whitespaces) : "",
                     image: uploaded,
                     location: location.trimmingCharacters(in: .whitespacesAndNewlines),
+                    receiveRatings: receiveRatings,
                     publicConsent: sharePublic && pubInfo != nil
                         ? ["typedName": pubName.trimmingCharacters(in: .whitespaces), "accepted": true, "version": pubInfo!.publicVersion]
                         : nil
                 )
-                dismiss()
+                // The request is saved. If the account has not agreed to the on-air terms yet, that comes next.
+                if needsAgreement { agreements = try await BackendAPI.get("/api/training") } else { dismiss() }
             } catch {
                 errorText = (error as? BackendError)?.message ?? error.localizedDescription
             }

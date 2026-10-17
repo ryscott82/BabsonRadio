@@ -4,6 +4,7 @@ import { HttpError, handle, readJson, str } from '@/lib/server/http'
 import { canEditAnyShow, hostContext, showOpen } from '@/lib/server/host'
 import { buildScheduleFeed } from '@/lib/server/scheduleFeed'
 import { occIdOf } from '@/lib/server/live'
+import { assertClean } from '@/lib/server/wordFilter'
 
 export const runtime = 'nodejs'
 
@@ -18,6 +19,7 @@ export async function POST(req: Request) {
     const headline = str(b.headline, 80)
     const message = str(b.message, 400)
     if (!occId) throw new HttpError(400, 'Pick a show.')
+    await assertClean(adminDb(), headline, message)
 
     const c = await hostContext(req, db, now)
     const any = await canEditAnyShow(db, c.t)

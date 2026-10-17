@@ -57,10 +57,10 @@ export async function POST(req: Request) {
 
     if (await findConflict(db, start, end)) throw new HttpError(409, 'That time is already booked. Pick another.')
 
-    // Hosts must be trained and have signed the four host agreements (which include the clean music hours).
+    // Hosts must be trained. The on-air agreements (which include the clean music hours) are signed right after they submit,
+    // so the request is saved first and carries a flag for whether the account has signed yet.
     const ready = await readiness(db, t)
     if (!ready.trained) throw new HttpError(403, 'Finish host training before you request a slot.', 'BR-TRN-001')
-    if (!ready.conductSigned) throw new HttpError(403, 'Sign the host agreements before you request a slot.', 'BR-CON-001')
     const cleanHours = touchesCleanHours(startMs, startMs + durationMin * 60_000)
 
     const mine = await db.collection('slotRequests').where('requesterUid', '==', t.uid).get()
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
       title, description, location, type, category, audioURL,
       imageUrl: img?.imageUrl ?? '', imagePath: img?.imagePath ?? '',
       startAt: Timestamp.fromDate(start), endAt: Timestamp.fromDate(end), durationMin,
-      status: 'pending', createdAt: Timestamp.now(), makePublic: false, cleanHours,
+      status: 'pending', createdAt: Timestamp.now(), makePublic: false, cleanHours, conductSigned: ready.conductSigned, receiveRatings: b.receiveRatings !== false,
     })
     if (wantsPublic) {
       try {
@@ -89,6 +89,6 @@ export async function POST(req: Request) {
       } catch (e) { await ref.delete(); throw e } // a bad signature never leaves a half-made request
     }
     after(() => notifyAdmins('requests', { title: 'New show request', body: `${user.get('firstName') ?? 'A student'}: ${title}` }, t.uid))
-    return { id: ref.id }
+    return { id: ref.id, needsAgreement: !ready.conductSigned }
   })
 }

@@ -697,15 +697,21 @@ struct PlayerArtCard: View {
                     .clipShape(RoundedRectangle(cornerRadius: 20))
             }
         }
-        .shadow(color: Color.black.opacity(0.55), radius: 24, x: 0, y: 10)
+        .shadow(color: Color.black.opacity(scheme == .dark ? 0.4 : 0.22), radius: 16, x: 0, y: 6)
     }
 }
 
 /// In the daytime the cover is pulled in a touch (6% less saturation, a hair warmer) so it sits in the muted, warm page.
 struct DaytimeCover: ViewModifier {
     let on: Bool
+    @Environment(\.colorScheme) private var scheme
     func body(content: Content) -> some View {
-        if on { content.saturation(0.94).colorMultiply(Color(red: 1.0, green: 0.99, blue: 0.965)) } else { content }
+        if on && scheme == .light {
+            // Light mode: brighter and a little flatter, so a dark cover is not a hard black square on the cream page.
+            content.saturation(0.94).contrast(0.9).brightness(0.06).colorMultiply(Color(red: 1.0, green: 0.99, blue: 0.965))
+        } else if on {
+            content.saturation(0.94).colorMultiply(Color(red: 1.0, green: 0.99, blue: 0.965))
+        } else { content }
     }
 }
 
@@ -1185,7 +1191,7 @@ struct BigClock: View {
 /// Tap or drag the lip to open it; drag down or tap to close.
 struct LiveDrawer<Content: View>: View {
     /// What shows when closed: the grab tab plus a blurred peek of what is inside.
-    static var handleHeight: CGFloat { 72 }
+    static var handleHeight: CGFloat { 36 }
     private static var tabHeight: CGFloat { 44 }
     @Binding var open: Bool
     let height: CGFloat
@@ -1229,7 +1235,7 @@ struct LiveDrawer<Content: View>: View {
 
             // The grab tab: no words, just a handle and a chevron that bobs a little while it is closed.
             VStack(spacing: 0) {
-                Capsule().fill((scheme == .dark ? Color.white : Color.brLtSub).opacity(0.75)).frame(width: 40, height: 5).padding(.top, 9)
+                Capsule().fill((scheme == .dark ? Color.white : Color.brLtSub).opacity(0.75)).frame(width: 40, height: 5).padding(.top, 6)
                 TimelineView(.animation) { tl in
                     let t = tl.date.timeIntervalSinceReferenceDate
                     Image(systemName: open ? "chevron.compact.down" : "chevron.compact.up")

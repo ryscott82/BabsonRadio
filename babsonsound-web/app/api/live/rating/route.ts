@@ -1,6 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
-import { currentOnAir, hostPrefsFor } from '@/lib/server/live'
+import { currentOnAir } from '@/lib/server/live'
 import { HttpError, handle, readJson, requireMember, requireUser, str } from '@/lib/server/http'
 import { bump, noteStars } from '@/lib/server/earnedEmojis'
 
@@ -40,7 +40,6 @@ export async function POST(req: Request) {
     if (!Number.isInteger(stars) || stars < 1 || stars > 5) throw new HttpError(400, 'Pick 1 to 5 stars.')
     const db = adminDb()
     const cur = await currentOnAir(db).catch(() => null)
-    if (cur?.occId === occId && !(await hostPrefsFor(db, cur)).ratings) throw new HttpError(403, 'Ratings are off for this show.', 'BR-LIV-003')
     await db.collection('ratings').doc(`${occId}__${t.uid}`).set({
       occId, showKey: occId.replace(/_\d{10,14}$/, ''), uid: t.uid, stars, showTitle: str(b.title, 80),
       isShow: cur?.occId === occId ? cur.isShow : true, at: Timestamp.now(),

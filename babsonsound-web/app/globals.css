@@ -28,6 +28,7 @@
    the nav toggle sets data-theme="light" | "dark" to override. */
 :root {
   color-scheme: light;
+  --cover-filter: saturate(.94) sepia(.05) contrast(.9) brightness(1.06); /* light: brighter and flatter */
   --br-bg:#F5F0E8; --br-surface:#FDFAF4; --br-surface2:#EDE8DC;
   --br-border:#D8D0BE; --br-border2:#C6BCA6;
   --br-text:#1A1710; --br-sub:#6A6258; --br-muted:#A09888;
@@ -44,6 +45,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) { /* dark values, repeated below for the explicit toggle */
     color-scheme: dark;
+    --cover-filter: saturate(.94) sepia(.05);
     --br-bg:#07120D; --br-surface:#0E2019; --br-surface2:#153027;
     --br-border:#1F4034; --br-border2:#2A5645;
     --br-text:#EAF3EE; --br-sub:#93AFA2; --br-muted:#52705F;
@@ -57,6 +59,7 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
+  --cover-filter: saturate(.94) sepia(.05);
   --br-bg:#07120D; --br-surface:#0E2019; --br-surface2:#153027;
   --br-border:#1F4034; --br-border2:#2A5645;
   --br-text:#EAF3EE; --br-sub:#93AFA2; --br-muted:#52705F;

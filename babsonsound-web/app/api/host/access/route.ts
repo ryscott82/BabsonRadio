@@ -1,13 +1,18 @@
 import { adminDb } from '@/lib/server/admin'
 import { handle } from '@/lib/server/http'
-import { hostContext } from '@/lib/server/host'
+import { hostContext, hostDayActive } from '@/lib/server/host'
+import { loadConfig } from '@/lib/server/autoschedule'
 
 export const runtime = 'nodejs'
 
-// Does this person host anything? (Decides whether the Host tab shows in the menu.)
+// Does this person host anything? `hosting` is host mode: today is a day one of their shows is on (the app shows the Host tab).
+// `controlsOpen` is narrower: inside the 4-hour window around a show, when the controls actually work.
 export async function GET(req: Request) {
   return handle(async () => {
-    const c = await hostContext(req, adminDb())
-    return { host: c.staff || c.shows.length > 0, hosting: c.open.length > 0 }
+    const db = adminDb()
+    const now = Date.now()
+    const c = await hostContext(req, db, now)
+    const tz = (await loadConfig(db)).timezone
+    return { host: c.staff || c.shows.length > 0, hosting: hostDayActive(c.shows, now, tz), controlsOpen: c.open.length > 0 }
   })
 }

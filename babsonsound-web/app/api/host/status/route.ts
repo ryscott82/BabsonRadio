@@ -24,6 +24,11 @@ export async function GET(req: Request) {
 
     // Passive feed for each show whose window is open: pinned note, reactions, ratings, upvoted songs.
     const insights: Record<string, unknown> = {}
+    // "Receive ratings during my show": a host who turns it off still gets ratings recorded, they just do not see them.
+    const me = await db.collection('users').doc(c.t.uid).get()
+    const weeklyRatings = me.get('hostPrefs')?.ratings !== false
+    const slotDocs = await Promise.all(c.open.filter(s => s.kind === 'slot').map(s => db.collection('airSlots').doc(s.refId).get()))
+    const slotRatings = new Map(slotDocs.map(d => [d.id, d.get('receiveRatings') !== false]))
     for (const sh of c.open.slice(0, 3)) {
       const id = occurrenceId(sh)
       const [note, rx, ratings, list, votes, rqDoc, rqList, plList, colorDoc] = await Promise.all([
@@ -34,10 +39,12 @@ export async function GET(req: Request) {
         db.collection('playlistRequests').where('occId', '==', id).get(),
         db.collection('liveColor').doc(id).get(),
       ])
-      const stars = ratings.docs.map(d => d.get('stars') as number)
+      const sees = sh.kind === 'slot' ? slotRatings.get(sh.refId) !== false : weeklyRatings
+      const stars = sees ? ratings.docs.map(d => d.get('stars') as number) : []
       const v = (votes.get('votes') ?? {}) as Record<string, string[]>
       insights[id] = {
-        comments: ratings.docs.filter(d => d.get('comment')).map(d => ({ stars: d.get('stars'), text: d.get('comment'), at: d.get('at')?.toMillis?.() ?? 0 })).sort((a, b) => b.at - a.at).slice(0, 20),
+        ratingsHidden: !sees,
+        comments: (sees ? ratings.docs : []).filter(d => d.get('comment')).map(d => ({ stars: d.get('stars'), text: d.get('comment'), at: d.get('at')?.toMillis?.() ?? 0 })).sort((a, b) => b.at - a.at).slice(0, 20),
         colorChanging: colorDoc.exists && colorDoc.get('on') === true,
         requestsOpen: rqDoc.exists && rqDoc.get('open') === true,
         requests: rqList.docs.map(d => ({ id: d.id, text: d.get('text'), name: d.get('name'), at: d.get('at').toMillis() })).sort((a, b) => b.at - a.at).slice(0, 30),
@@ -53,6 +60,7 @@ export async function GET(req: Request) {
     return {
       birthdays,
       hosting: c.open.length > 0,
+      myEmojis: Array.isArray(me.get('hostPrefs')?.emojis) ? me.get('hostPrefs').emojis : [],
       staff: c.staff, canEditAny: await canEditAnyShow(db, c.t), emojis: EMOJIS, insights, controlsOpen, windowHours: HOST_WINDOW_MS / 3_600_000, now,
       shows: c.shows.map(s => ({ ...s, id: occurrenceId(s), open: showOpen(s, now) })),
       nowPlaying, pending,

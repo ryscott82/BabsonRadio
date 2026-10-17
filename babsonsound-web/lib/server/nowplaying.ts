@@ -81,7 +81,7 @@ async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'blockTitle' 
     const colorChanging = prefs.theme === 'art' ? true : prefs.theme === 'standard' ? false : baseColor
     return {
       showTitle: cur.isShow ? cur.item.title : '', blockTitle: cur.item.title, color: cur.item.color, occId: cur.occId, isShow: cur.isShow,
-      showStart: cur.item.startAt, showEnd: cur.item.endAt, note, colorChanging, hostEmojis: prefs.emojis, ratingsOn: prefs.ratings, hostNames: cur.item.hosts ?? [],
+      showStart: cur.item.startAt, showEnd: cur.item.endAt, note, colorChanging, hostEmojis: prefs.emojis, ratingsOn: true, hostNames: cur.item.hosts ?? [],
     }
   } catch { return none }
 }

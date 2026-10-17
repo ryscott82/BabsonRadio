@@ -6,12 +6,12 @@ import { azSkip, azuraConfigured } from '@/lib/server/azuracast'
 
 export const runtime = 'nodejs'
 
-// Skip to the next song. Admins and developers only (hosts get a read-only panel). Every use is logged.
+// Skip to the next song. Admins, developers and hosts inside the window of their own show. Every use is logged.
 export async function POST(req: Request) {
   return handle(async () => {
     const db = adminDb()
     const c = await hostContext(req, db)
-    if (!c.staff) throw new HttpError(403, 'Only admins can skip songs.', 'BR-HST-001')
+    if (!c.staff && c.open.length === 0) throw new HttpError(403, 'Skipping opens 4 hours before your show.', 'BR-HST-001')
     if (!azuraConfigured()) throw new HttpError(503, 'The radio controls are not connected yet.', 'BR-HST-003')
 
     // One skip every 8 seconds per person, so a double tap does not skip two songs.

@@ -10,6 +10,7 @@ import ImagePicker from '@/components/ImagePicker'
 import PublicAgreement, { type PublicSignature } from '@/components/PublicAgreement'
 import type { AdultStatus } from '@/lib/publicContent'
 import HostGate from '@/components/HostGate'
+import HostAgreements from '@/components/HostAgreements'
 import HostOptions from '@/components/HostOptions'
 
 interface Mine {
@@ -42,6 +43,8 @@ export default function SlotsPage() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [location, setLocation] = useState('')
+  const [receiveRatings, setReceiveRatings] = useState(true) // the host sees ratings; listeners can always rate
+  const [signing, setSigning] = useState(false) // the request is in; now sign the on-air agreements
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [reason, setReason] = useState('')
   const [type, setType] = useState<SlotType>('live')
@@ -67,10 +70,11 @@ export default function SlotsPage() {
       const startAt = new Date(start).getTime()
       if (!Number.isFinite(startAt)) throw new Error('Pick a start time.')
       if (sharePublic && !sig) throw new Error('Tick every box and type your full name to share publicly, or turn that off.')
-      await api('/api/slots/request', { title, description, location, type, category, startAt, durationMin, audioURL, imageUrl: image?.url ?? '', imagePath: image?.path ?? '', ...(sharePublic && sig ? { publicConsent: sig } : {}) })
+      const sent = await api<{ needsAgreement?: boolean }>('/api/slots/request', { title, description, location, type, category, startAt, durationMin, audioURL, imageUrl: image?.url ?? '', imagePath: image?.path ?? '', receiveRatings, ...(sharePublic && sig ? { publicConsent: sig } : {}) })
       setSharePublic(false); setSig(null)
       setTitle(''); setDescription(''); setLocation(''); setAudioURL(''); setImage(null)
-      setNotice('Request sent. Staff review every request, and the answer shows up below.')
+      if (sent?.needsAgreement) setSigning(true)
+      else setNotice('Request sent. Staff review every request, and the answer shows up below.')
       await load()
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not send the request.') }
     setBusy(false)
@@ -107,6 +111,19 @@ export default function SlotsPage() {
         </p>
       </div>
 
+      {signing && (
+        <section className="sk-raised rounded-2xl p-5 space-y-4">
+          <h2 className="font-display text-br-gold tracking-widest text-sm">ONE LAST STEP</h2>
+          <p className="text-sm text-br-dk-text">Your request is in. Read and sign the on-air agreements so staff can approve it.</p>
+          <HostAgreements busy={busy} error={error} onSign={async sig => {
+            setBusy(true); setError('')
+            try { await api('/api/host/readiness', sig); setSigning(false); setNotice('Signed. Staff review every request, and the answer shows up below.'); await load() }
+            catch (err) { setError(err instanceof Error ? err.message : 'Could not sign.') }
+            setBusy(false)
+          }} />
+        </section>
+      )}
+
       <HostGate>
       <form onSubmit={submit} className="sk-raised rounded-2xl p-5 space-y-4">
         <Field label="Title" value={title} onChange={e => setTitle(e.target.value)} maxLength={80} required />
@@ -135,6 +152,11 @@ export default function SlotsPage() {
           <Field label="Link to your audio" type="url" value={audioURL} onChange={e => setAudioURL(e.target.value)} placeholder="https://…" />
         )}
         <ImagePicker scope="slot" value={image} onChange={setImage} />
+        <label className="flex items-start gap-2 text-sm text-br-dk-text">
+          <input type="checkbox" className="mt-0.5" checked={receiveRatings} onChange={e => setReceiveRatings(e.target.checked)} />
+          <span>Receive ratings during my show
+            <span className="block text-xs text-br-dk-sub">Listeners can always rate. Off just hides the ratings from you.</span></span>
+        </label>
         <div className="space-y-2 border-t border-br-dk-border pt-4">
           <label className="flex items-center gap-2 text-sm text-br-dk-text">
             <input type="checkbox" checked={sharePublic} disabled={adult !== 'adult'} onChange={e => { setSharePublic(e.target.checked); if (!e.target.checked) setSig(null) }} />

@@ -45,7 +45,7 @@ class SlotsManager: ObservableObject {
     /// Throws a BackendError with a user-readable message if the server rejects the request.
     func submit(title: String, details: String, type: String, category: String,
                 start: Date, durationMin: Int, audioURL: String, image: UploadedImage? = nil,
-                location: String = "", publicConsent: [String: Any]? = nil) async throws {
+                location: String = "", receiveRatings: Bool = true, publicConsent: [String: Any]? = nil) async throws -> Bool {
         var body: [String: Any] = [
             "title": title,
             "description": details,
@@ -57,10 +57,12 @@ class SlotsManager: ObservableObject {
             "imageUrl": image?.url ?? "",
             "imagePath": image?.path ?? "",
             "location": location,
+            "receiveRatings": receiveRatings,
         ]
         if let publicConsent { body["publicConsent"] = publicConsent }
-        let _: EmptyResponse = try await BackendAPI.post("/api/slots/request", body)
+        let sent: SlotSent = try await BackendAPI.post("/api/slots/request", body)
         await refresh()
+        return sent.needsAgreement ?? false
     }
 
     func cancel(_ requestId: String) async {
@@ -73,6 +75,9 @@ class SlotsManager: ObservableObject {
     }
 }
 
+
+/// The server saves the request, then says whether the account still has to sign the on-air agreements.
+nonisolated struct SlotSent: Decodable { let needsAgreement: Bool? }
 
 // MARK: - Reminders (bells)
 // On-device notifications 5 minutes before a show. Bells are saved on the account (so the website and the

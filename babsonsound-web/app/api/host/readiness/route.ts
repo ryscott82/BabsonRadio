@@ -16,6 +16,9 @@ export async function POST(req: Request) {
     const b = await readJson(req)
     const db = adminDb()
     await signConduct(db, t, b)
+    // Their pending requests were sent before they signed; mark them signed now.
+    const pending = await db.collection('slotRequests').where('requesterUid', '==', t.uid).where('status', '==', 'pending').get()
+    await Promise.all(pending.docs.map(d => d.ref.update({ conductSigned: true })))
     return readiness(db, t)
   })
 }

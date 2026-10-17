@@ -3,7 +3,7 @@ import Combine
 
 // MARK: - Host gate
 // Everything a new host does before booking a show: in-person training, check-in, a 10-question quiz,
-// then the four host agreements. Shows `content` (the booking screen) once they are certified and signed.
+// (the agreements are signed after the first show request). Shows `content` (the booking screen) once they are certified.
 // The questions and the agreement text come from the server, so the website and the app always match.
 
 nonisolated struct TrainingQuestion: Decodable, Identifiable {
@@ -80,12 +80,9 @@ struct HostGateView<Content: View>: View {
     var body: some View {
         Group {
             if let info = model.info {
-                if info.trained && info.conductSigned {
+                if info.trained {
+                    // The on-air agreements come after the show request is sent (see RequestSlotForm), not before.
                     content()
-                } else if info.trained {
-                    AgreementsForm(info: info, busy: model.busy, error: model.error) { name in
-                        Task { await model.sign(name: name, version: info.agreementsVersion) }
-                    }
                 } else if info.checkIn == "approved" && !info.questions.isEmpty {
                     quiz(info)
                 } else {
@@ -232,7 +229,7 @@ struct HostGateView<Content: View>: View {
 
 // MARK: - The four agreements, signed once
 
-private struct AgreementsForm: View {
+struct AgreementsForm: View {
     let info: TrainingInfo
     let busy: Bool
     let error: String?

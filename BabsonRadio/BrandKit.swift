@@ -224,17 +224,17 @@ struct ProfileCircleButton: View {
         Button { showProfile = true } label: {
             ZStack {
                 Circle()
-                    .fill(AvatarPalette.color(profile.me?.avatarColor))
+                    .fill(AvatarPalette.color(profile.avatarColor))
                     .shadow(color: .black.opacity(0.28), radius: 0, x: 0, y: 2)
                 if let user = auth.currentUser {
                     Text(user.initials)
                         .font(BRFont.display(14))
                         .kerning(0.5)
-                        .foregroundColor(AvatarPalette.ink(profile.me?.avatarColor))
+                        .foregroundColor(AvatarPalette.ink(profile.avatarColor))
                 } else {
                     Image(systemName: "person.fill")
                         .font(.system(size: 14))
-                        .foregroundColor(AvatarPalette.ink(profile.me?.avatarColor))
+                        .foregroundColor(AvatarPalette.ink(profile.avatarColor))
                 }
             }
             .frame(width: 34, height: 34)

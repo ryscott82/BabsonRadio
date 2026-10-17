@@ -8,44 +8,10 @@ import { ErrorText, Field, PrimaryButton } from '@/components/AuthUI'
 import ImagePicker from '@/components/ImagePicker'
 import MyRecordings from '@/components/MyRecordings'
 
-// Songs listeners asked to have added to a playlist while this show was on air.
-function PlaylistRequests({ st, reload }: { st: Status; reload: () => void }) {
-  const choices = st.shows.filter(s => s.open && st.insights[s.id])
-  const sel = choices.find(s => s.startAt <= st.now && s.endAt >= st.now) ?? choices[0]
-  const [err, setErr] = useState('')
-  if (!sel) return null
-  const list = st.insights[sel.id].playlistRequests ?? []
-  async function mark(id: string, done: boolean) {
-    setErr('')
-    try { await api('/api/host/playlist-request', { id, done }); reload() }
-    catch (e) { setErr(e instanceof Error ? e.message : 'Could not save.') }
-  }
-  return (
-    <section className="sk-raised rounded-2xl p-5 space-y-3">
-      <h2 className="font-display text-br-gold tracking-widest text-sm">PLAYLIST REQUESTS · {sel.title.toUpperCase()}</h2>
-      <ErrorText>{err}</ErrorText>
-      {list.length ? (
-        <ul className="text-sm text-br-dk-text divide-y divide-br-dk-border">
-          {list.map(r => (
-            <li key={r.id} className="py-2 flex items-center justify-between gap-3">
-              <span className={`min-w-0 ${r.done ? 'line-through text-br-dk-sub' : ''}`}>
-                {r.title} <span className="text-br-dk-sub">· {r.artist}</span>
-                <span className="block text-xs text-br-dk-sub">For {r.playlist} · {r.count > 1 ? `${r.count} people` : r.names[0]}</span>
-              </span>
-              <button className="text-xs text-br-gold shrink-0" onClick={() => mark(r.id, !r.done)}>{r.done ? 'Undo' : 'Added'}</button>
-            </li>
-          ))}
-        </ul>
-      ) : <p className="text-xs text-br-dk-sub">No playlist requests yet.</p>}
-    </section>
-  )
-}
-
 interface HShow { id: string; key: string; kind: 'weekly' | 'slot'; refId: string; title: string; startAt: number; endAt: number; open: boolean }
 interface NowPlaying { song: string; elapsed: number; duration: number; isLive: boolean; streamer: string; listeners: number }
 interface Insight {
   comments?: { stars: number; text: string; at: number }[]
-  playlistRequests?: { id: string; title: string; artist: string; playlist: string; names: string[]; count: number; done: boolean }[]
   requestsOpen?: boolean; colorChanging?: boolean; requests?: { id: string; text: string; name: string; at: number }[]
   note: { headline: string; message: string } | null
   reactions: Record<string, number>; recentReactions: Record<string, number>
@@ -106,7 +72,7 @@ export default function HostPage() {
                       className={`font-display tracking-widest text-sm px-4 py-2 -mb-px border-b-2 ${tab === k ? 'border-br-gold text-br-gold' : 'border-transparent text-br-dk-sub hover:text-br-dk-text'}`}>{l}</button>
             ))}
           </div>
-          {tab === 'live' && (<><Controls st={st} /><LiveNote st={st} reload={load} /><SongRequests st={st} reload={load} /><PlaylistRequests st={st} reload={load} /><Insights st={st} /></>)}
+          {tab === 'live' && (<><Controls st={st} /><LiveNote st={st} reload={load} /><SongRequests st={st} reload={load} /><Insights st={st} /></>)}
           {tab === 'stats' && <Stats />}
           {tab === 'setlist' && <SetList st={st} />}
           {tab === 'shows' && (<><Shows st={st} /><MyRecordings /><ChangeRequest st={st} reload={load} /></>)}

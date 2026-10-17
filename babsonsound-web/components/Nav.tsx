@@ -8,12 +8,13 @@ import { useEffect, useState } from 'react'
 import { apiGet } from '@/lib/auth'
 import ThemeToggle from './ThemeToggle'
 
-// Four links in the bar. Everything else (profile, requesting a spot, host panel, admin) lives in the profile menu.
+// Five links in the bar. Everything else (profile, requesting a spot, host panel, admin) lives in the profile menu.
 const NAV_LINKS = [
   { href: '/', label: 'Live' },
   { href: '/schedule', label: 'Schedule' },
   { href: '/library', label: 'Library' },
   { href: '/browse', label: 'Search' },
+  { href: '/submit', label: 'Suggest' },
 ]
 
 export default function Nav() {

@@ -50,7 +50,7 @@ private struct SignedInProfileView: View {
     // Guest invite
     @State private var guestEmail = ""
     @State private var selectedDuration: InviteDuration = .sevenDays
-    @State private var activeInvites: [GuestInvite] = []
+    @State private var selectedPhone: String? = nil
     @State private var inviteSent = false
     @State private var inviteError: String? = nil
 
@@ -84,10 +84,7 @@ private struct SignedInProfileView: View {
 
                     // Students only: developers have no babson.edu identity to sponsor guests with.
                     if !user.isDeveloper {
-                        guestInviteSection
-                            .padding(.bottom, 16)
-
-                        inviteSection
+                        inviteFriendsSection
                             .padding(.bottom, 16)
                     }
 
@@ -179,10 +176,9 @@ private struct SignedInProfileView: View {
             switch sheet {
             case .contactPicker:
                 ContactPickerView(contacts: contacts) { phoneNumber in
+                    selectedPhone = phoneNumber
+                    guestEmail = ""
                     activeSheet = nil
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                        activeSheet = .messageComposer(phoneNumber)
-                    }
                 }
             case .messageComposer(let number):
                 MessageComposer(
@@ -209,19 +205,43 @@ private struct SignedInProfileView: View {
     // MARK: - Account card
 
     private var accountCard: some View {
-        VStack(spacing: 6) {
-            Button { withAnimation { avatarPicker.toggle() } } label: {
-                ProfileAvatar(name: user.displayName, colorId: store.me?.avatarColor, size: 84)
+        VStack(spacing: 10) {
+            HStack(spacing: 16) {
+                Button { withAnimation { avatarPicker.toggle() } } label: {
+                    ProfileAvatar(initials: user.initials, colorId: store.me?.avatarColor, size: 64)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Change profile color")
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(user.displayName)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                        .lineLimit(1)
+                    if !user.isDeveloper, AuthManager.isBabsonEmail(user.email) {
+                        Text("@" + String(user.email.prefix(while: { $0 != "@" })))
+                            .font(BRFont.display(14)).kerning(1.5)
+                            .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                    }
+                    if user.isDeveloper { BRTagChip(text: "DEVELOPER", style: .gold) }
+                    if let by = auth.verifyDeadline {
+                        Text("Verify your email by \(by.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())).")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.brRed)
+                    }
+                    Text("Member since \(user.joinedDate.formatted(.dateTime.month(.wide).year()))")
+                        .font(.system(size: 13))
+                        .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                }
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Change profile color")
 
             if avatarPicker {
-                HStack(spacing: 12) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 38), spacing: 12)], spacing: 12) {
                     ForEach(AvatarPalette.all, id: \.id) { c in
                         Button { Task { await store.setColor(c.id) } } label: {
                             Circle().fill(Color(hex: c.hex)).frame(width: 30, height: 30)
-                                .overlay(Circle().stroke(scheme == .dark ? Color.brGold : Color.brGreen, lineWidth: store.me?.avatarColor == c.id || (store.me?.avatarColor == nil && c.id == "green") ? 3 : 0).padding(-4))
+                                .overlay(Circle().stroke(scheme == .dark ? Color.brGold : Color.brGreen, lineWidth: store.me?.avatarColor == c.id || (store.me?.avatarColor == nil && c.id == "babson-green") ? 3 : 0).padding(-4))
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(c.id)
@@ -229,25 +249,6 @@ private struct SignedInProfileView: View {
                 }
                 .padding(.vertical, 8)
             }
-
-            Text(user.displayName)
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                .padding(.top, 4)
-            if !user.isDeveloper, AuthManager.isBabsonEmail(user.email) {
-                Text("@" + String(user.email.prefix(while: { $0 != "@" })))
-                    .font(BRFont.display(14)).kerning(1.5)
-                    .foregroundColor(scheme == .dark ? .brGold : .brGreen)
-            }
-            if user.isDeveloper { BRTagChip(text: "DEVELOPER", style: .gold) }
-            if let by = auth.verifyDeadline {
-                Text("Verify your email by \(by.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())).")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.brRed)
-            }
-            Text("Member since \(user.joinedDate.formatted(.dateTime.month(.wide).year()))")
-                .font(.system(size: 13))
-                .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
         }
         .frame(maxWidth: .infinity)
     }
@@ -393,275 +394,57 @@ private struct SignedInProfileView: View {
         .padding(.horizontal, 20)
     }
 
-    // MARK: - Guest Access section
+    // MARK: - Invite friends
 
-    private var guestInviteSection: some View {
+    /// A text goes through Messages; an email goes out from the station and gives the friend guest access when they sign up with it.
+    private var selectedContactName: String? {
+        selectedPhone.flatMap { p in contacts.list.first { $0.primaryPhone == p }?.name }
+    }
+    private var emailLooksValid: Bool {
+        let e = guestEmail.trimmingCharacters(in: .whitespaces)
+        return e.contains("@") && e.contains(".") && !e.contains(" ")
+    }
+    private var canSendInvite: Bool { (selectedPhone != nil || emailLooksValid) && !inviteSent }
+    private var line: Color { scheme == .dark ? .brDkBorder : .brLtBorder }
+
+    private var inviteFriendsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             BRSectionHeader(title: "INVITE FRIENDS")
                 .padding(.horizontal, 20)
 
             VStack(spacing: 0) {
-                // ── Form ───────────────────────────────────────────
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Friends you invite get guest access automatically. Pick how long it lasts.")
-                        .font(.system(size: 13))
-                        .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-
-                    // Email input
-                    HStack(spacing: 10) {
-                        Image(systemName: "envelope")
-                            .font(.system(size: 14))
-                            .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-                            .frame(width: 20)
-                        TextField("Guest email address", text: $guestEmail)
-                            .font(.system(size: 15))
-                            .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                            .keyboardType(.emailAddress)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10)
-                        .stroke(scheme == .dark ? Color.brDkBorder2 : Color.brLtBorder, lineWidth: 1))
-
-                    // Duration picker
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("ACCESS DURATION")
-                            .font(BRFont.display(10))
-                            .kerning(2)
-                            .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
-
-                        HStack(spacing: 8) {
-                            ForEach(InviteDuration.allCases) { duration in
-                                DurationPill(
-                                    duration: duration,
-                                    isSelected: selectedDuration == duration
-                                ) {
-                                    withAnimation(.easeInOut(duration: 0.15)) {
-                                        selectedDuration = duration
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Send button
-                    Button(action: sendGuestInvite) {
-                        HStack {
-                            Spacer()
-                            Image(systemName: "paperplane")
-                                .font(.system(size: 14, weight: .medium))
-                            Text(inviteSent ? "INVITE SENT" : "SEND INVITE")
-                                .font(BRFont.display(14))
-                                .kerning(2)
-                            Spacer()
-                        }
-                        .padding(.vertical, 13)
-                        .foregroundColor(scheme == .dark && !inviteSent ? Color.brDkBg : .white)
-                        .brGlass(
-                            in: RoundedRectangle(cornerRadius: 12),
-                            tint: inviteSent
-                                ? Color.brGreen.opacity(0.7)
-                                : (scheme == .dark ? Color.brGold : Color.brGreen),
-                            interactive: true,
-                            fallback: inviteSent
-                                ? Color.brGreen.opacity(0.7)
-                                : (scheme == .dark ? Color.brGold : Color.brGreen))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(guestEmail.trimmingCharacters(in: .whitespaces).isEmpty || inviteSent)
-                    .animation(.easeInOut(duration: 0.2), value: inviteSent)
-
-                    if let inviteError {
-                        Text(inviteError)
-                            .font(.system(size: 12))
-                            .foregroundColor(.brRed)
-                    }
-                }
-                .padding(18)
-
-                // ── Active invites list ────────────────────────────
-                if !activeInvites.isEmpty {
-                    Divider()
-                        .background(scheme == .dark ? Color.brDkBorder : Color.brLtBorder)
-
-                    VStack(spacing: 0) {
-                        HStack {
-                            Text("ACTIVE INVITES")
-                                .font(BRFont.display(10))
-                                .kerning(2)
-                                .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
-                            Spacer()
-                        }
-                        .padding(.horizontal, 18)
-                        .padding(.top, 14)
-                        .padding(.bottom, 10)
-
-                        ForEach(activeInvites) { invite in
-                            ActiveInviteRow(invite: invite) {
-                                withAnimation {
-                                    activeInvites.removeAll { $0.id == invite.id }
-                                }
-                                // TODO: Firebase — delete invite doc from Firestore
-                            }
-                            if invite.id != activeInvites.last?.id {
-                                Divider()
-                                    .background(scheme == .dark ? Color.brDkBorder : Color.brLtBorder)
-                                    .padding(.leading, 18)
-                            }
-                        }
-                        .padding(.bottom, 6)
-                    }
-                }
-            }
-            .brCard()
-            .padding(.horizontal, 20)
-
-            Text("Invites expire on their own.")
-                .font(.system(size: 11))
-                .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
-                .padding(.horizontal, 24)
-        }
-    }
-
-    private func sendGuestInvite() {
-        let trimmed = guestEmail.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-
-        let invite = GuestInvite(
-            id: UUID().uuidString,
-            email: trimmed,
-            duration: selectedDuration,
-            expiresAt: selectedDuration.expiresAt,
-            invitedBy: user.displayName
-        )
-
-        inviteError = nil
-        Task {
-            do {
-                let _: EmptyResponse = try await BackendAPI.post("/api/guest/invite", [
-                    "guestEmail": trimmed.lowercased(),
-                    "duration": selectedDuration.apiKey,
-                ])
-                withAnimation {
-                    activeInvites.insert(invite, at: 0)
-                    inviteSent = true
-                }
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                withAnimation {
-                    guestEmail = ""
-                    inviteSent = false
-                }
-            } catch {
-                inviteError = (error as? BackendError)?.message ?? error.localizedDescription
-            }
-        }
-    }
-
-    // MARK: - Invite section
-
-    private var inviteSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            BRSectionHeader(title: "OR TEXT A LINK")
-                .padding(.horizontal, 20)
-
-            VStack(spacing: 0) {
-                // Explanation row
-                HStack(spacing: 14) {
-                    Image(systemName: "person.badge.plus")
-                        .font(.system(size: 22))
-                        .foregroundColor(scheme == .dark ? .brGold : .brGreen)
-                        .frame(width: 32)
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Rather text them?")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                        Text("Pick a contact.")
+                // 1. People you probably know
+                if contacts.accessGranted {
+                    if contacts.babson.isEmpty {
+                        Text("No suggestions yet.")
                             .font(.system(size: 13))
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-                    }
-                }
-                .padding(.horizontal, 18)
-                .padding(.top, 18)
-                .padding(.bottom, 16)
-
-                Divider()
-                    .background(scheme == .dark ? Color.brDkBorder : Color.brLtBorder)
-
-                // Contact list (if access granted) or permission prompt
-                if contacts.accessGranted {
-                    if contacts.list.isEmpty {
-                        Text("No contacts found.")
-                            .font(.system(size: 14))
-                            .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-                            .padding()
-                    } else {
-                        // Show up to 5 contacts inline; "Choose from contacts" for all
-                        VStack(spacing: 0) {
-                            // Contacts who look like Babson people go first, with the reason.
-                            if !contacts.babson.isEmpty {
-                                Spacer().frame(height: 6)
-                                ForEach(contacts.babson.prefix(5)) { contact in
-                                    ContactInviteRow(contact: contact, caption: contact.caption) {
-                                        if let phone = contact.primaryPhone {
-                                            activeSheet = .messageComposer(phone)
-                                        }
-                                    }
-                                    Divider()
-                                        .background(scheme == .dark ? Color.brDkBorder : Color.brLtBorder)
-                                        .padding(.leading, 60)
-                                }
-                            }
-                            if contacts.babson.isEmpty {
-                                Text("No suggestions yet.")
-                                    .font(.system(size: 13))
-                                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 18)
-                                    .padding(.vertical, 16)
-                            }
-                        }
-
-                        Divider()
-                            .background(scheme == .dark ? Color.brDkBorder : Color.brLtBorder)
-
-                        // Shared-contact suggestions are on for everyone; Invisible mode is the way out.
-                        Text(auth.isInvisible
-                             ? "Shared-contact suggestions are off in Invisible mode."
-                             : (contacts.suggestionsNote.isEmpty
-                                ? "Partly based on contacts other members saved."
-                                : contacts.suggestionsNote))
-                            .font(.system(size: 12))
-                            .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 12)
-
-                        Divider()
-                            .background(scheme == .dark ? Color.brDkBorder : Color.brLtBorder)
-
-                        Button(action: { activeSheet = .contactPicker }) {
-                            HStack {
-                                Image(systemName: "person.2")
-                                    .font(.system(size: 14))
-                                Text("Choose from all contacts")
-                                    .font(.system(size: 14))
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 12))
+                            .padding(.horizontal, 18).padding(.vertical, 16)
+                    } else {
+                        ForEach(contacts.babson.prefix(5)) { contact in
+                            ContactInviteRow(contact: contact, caption: contact.caption, selected: selectedPhone == contact.primaryPhone && selectedPhone != nil) {
+                                selectedPhone = contact.primaryPhone
+                                guestEmail = ""
                             }
-                            .foregroundColor(scheme == .dark ? .brGold : .brGreen)
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 14)
+                            Divider().background(line).padding(.leading, 60)
                         }
-                        .buttonStyle(.plain)
                     }
+                    Divider().background(line)
+
+                    // 2. Everyone else
+                    Button(action: { activeSheet = .contactPicker }) {
+                        HStack {
+                            Image(systemName: "person.2").font(.system(size: 14))
+                            Text("Show all contacts").font(.system(size: 14))
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.system(size: 12))
+                        }
+                        .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                        .padding(.horizontal, 18).padding(.vertical, 14)
+                    }
+                    .buttonStyle(.plain)
                 } else {
-                    // Permission not granted
                     Button(action: { contacts.requestAccess() }) {
                         HStack(spacing: 12) {
                             Image(systemName: "person.crop.circle.badge.plus")
@@ -675,19 +458,117 @@ private struct SignedInProfileView: View {
                                 .font(.system(size: 12))
                                 .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         }
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 16)
+                        .padding(.horizontal, 18).padding(.vertical, 16)
                     }
                     .buttonStyle(.plain)
                 }
+
+                Divider().background(line)
+
+                // 3. Or an email, with how long the access lasts
+                VStack(alignment: .leading, spacing: 14) {
+                    if let name = selectedContactName ?? selectedPhone {
+                        HStack {
+                            Image(systemName: "message.fill").font(.system(size: 13))
+                            Text("Text \(name)").font(.system(size: 14, weight: .medium))
+                            Spacer()
+                            Button { selectedPhone = nil } label: { Image(systemName: "xmark.circle.fill").font(.system(size: 16)) }
+                                .buttonStyle(.plain)
+                        }
+                        .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                    }
+
+                    HStack(spacing: 10) {
+                        Image(systemName: "envelope")
+                            .font(.system(size: 14))
+                            .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                            .frame(width: 20)
+                        TextField("Or enter their email address", text: $guestEmail)
+                            .font(.system(size: 15))
+                            .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .onChange(of: guestEmail) { _, new in if !new.isEmpty { selectedPhone = nil } }
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 12)
+                    .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10)
+                        .stroke(scheme == .dark ? Color.brDkBorder2 : Color.brLtBorder, lineWidth: 1))
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("ACCESS DURATION")
+                            .font(BRFont.display(10)).kerning(2)
+                            .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
+                        HStack(spacing: 8) {
+                            ForEach(InviteDuration.allCases) { duration in
+                                DurationPill(duration: duration, isSelected: selectedDuration == duration) {
+                                    withAnimation(.easeInOut(duration: 0.15)) { selectedDuration = duration }
+                                }
+                            }
+                        }
+                    }
+
+                    Button(action: sendInvite) {
+                        HStack {
+                            Spacer()
+                            Image(systemName: "paperplane").font(.system(size: 14, weight: .medium))
+                            Text(inviteSent ? "INVITE SENT" : "SEND INVITE")
+                                .font(BRFont.display(14)).kerning(2)
+                            Spacer()
+                        }
+                        .padding(.vertical, 13)
+                        .foregroundColor(scheme == .dark && !inviteSent ? Color.brDkBg : .white)
+                        .brGlass(
+                            in: RoundedRectangle(cornerRadius: 12),
+                            tint: inviteSent ? Color.brGreen.opacity(0.7) : (scheme == .dark ? Color.brGold : Color.brGreen),
+                            interactive: true,
+                            fallback: inviteSent ? Color.brGreen.opacity(0.7) : (scheme == .dark ? Color.brGold : Color.brGreen))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canSendInvite)
+                    .opacity(canSendInvite || inviteSent ? 1 : 0.5)
+                    .animation(.easeInOut(duration: 0.2), value: inviteSent)
+
+                    if let inviteError {
+                        Text(inviteError).font(.system(size: 12)).foregroundColor(.brRed)
+                    }
+                }
+                .padding(18)
             }
             .brCard()
             .padding(.horizontal, 20)
 
-            Text("Suggestions use scrambled phone numbers, never names. Invisible mode turns them off.")
+            Text("Friends you invite get guest access. Suggestions use scrambled phone numbers, never names. Invisible mode turns them off.")
                 .font(.system(size: 11))
                 .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
                 .padding(.horizontal, 24)
+        }
+    }
+
+    /// A contact: open Messages. An email: the station sends it and the pass is ready when they sign up.
+    private func sendInvite() {
+        inviteError = nil
+        if let phone = selectedPhone {
+            activeSheet = .messageComposer(phone)
+            selectedPhone = nil
+            return
+        }
+        let email = guestEmail.trimmingCharacters(in: .whitespaces).lowercased()
+        guard emailLooksValid else { return }
+        Task {
+            do {
+                let _: EmptyResponse = try await BackendAPI.post("/api/guest/invite", [
+                    "guestEmail": email,
+                    "duration": selectedDuration.apiKey,
+                ])
+                withAnimation { inviteSent = true }
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                withAnimation { guestEmail = ""; inviteSent = false }
+            } catch {
+                inviteError = (error as? BackendError)?.message ?? error.localizedDescription
+            }
         }
     }
 }
@@ -697,6 +578,7 @@ private struct SignedInProfileView: View {
 private struct ContactInviteRow: View {
     let contact: BRContact
     var caption: String? = nil
+    var selected = false
     let onInvite: () -> Void
     @Environment(\.colorScheme) var scheme
 
@@ -730,12 +612,12 @@ private struct ContactInviteRow: View {
             Spacer()
 
             Button(action: onInvite) {
-                Text("Invite")
+                Text(selected ? "Selected" : "Select")
                     .font(BRFont.display(12))
                     .kerning(1)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
-                    .background(scheme == .dark ? Color.brGold : Color.brGreen)
+                    .background((scheme == .dark ? Color.brGold : Color.brGreen).opacity(selected ? 1 : 0.85))
                     .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
             }

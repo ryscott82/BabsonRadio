@@ -237,21 +237,25 @@ export default function ProfilePage() {
   return (
     <Card title="YOUR PROFILE">
       <div className="space-y-4">
-        <div className="text-center space-y-1">
-          <button type="button" aria-label="Change profile color" aria-expanded={open === 'color'} onClick={() => toggle('color')} className="rounded-full">
-            <Avatar name={first} color={me?.avatarColor} size={84} />
-          </button>
+        <div>
+          <div className="flex items-center gap-4">
+            <button type="button" aria-label="Change profile color" aria-expanded={open === 'color'} onClick={() => toggle('color')} className="rounded-full shrink-0">
+              <Avatar name={fullName || first} color={me?.avatarColor} size={64} />
+            </button>
+            <div className="min-w-0">
+              <p className="text-br-dk-text text-lg leading-tight truncate">{fullName}</p>
+              {userDoc?.username && <p className="text-br-gold text-sm font-display tracking-widest">@{userDoc.username}</p>}
+              {since && <p className="text-br-dk-sub text-sm">Member since {since}</p>}
+            </div>
+          </div>
           {open === 'color' && (
-            <div className="flex justify-center gap-3 pt-2 pb-1" role="radiogroup" aria-label="Profile color">
+            <div className="flex flex-wrap justify-center gap-3 pt-3 pb-1" role="radiogroup" aria-label="Profile color">
               {AVATAR_COLORS.map(c => (
                 <button key={c.id} type="button" role="radio" aria-checked={me?.avatarColor === c.id} aria-label={c.id} onClick={() => pickColor(c.id)}
                         className={`h-8 w-8 rounded-full ${me?.avatarColor === c.id ? 'ring-2 ring-offset-2 ring-br-gold ring-offset-br-dk-bg' : ''}`} style={{ background: c.hex }} />
               ))}
             </div>
           )}
-          <p className="text-br-dk-text text-lg pt-2">{fullName}</p>
-          {userDoc?.username && <p className="text-br-gold text-sm font-display tracking-widest">@{userDoc.username}</p>}
-          {since && <p className="text-br-dk-sub text-sm">Member since {since}</p>}
         </div>
 
         {member && (

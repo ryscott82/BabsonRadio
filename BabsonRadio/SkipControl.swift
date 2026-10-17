@@ -84,23 +84,40 @@ struct SkipControl: View {
     }
 }
 
-/// The little equalizer bars beside the play button while music plays.
+/// The equalizer icon beside the play button. Playing: the bars hit on the same beat as the background (the song's real tempo
+/// when known, else 118 BPM). Paused: the same icon, still.
 struct EqualizerBars: View {
     let color: Color
+    var playing = true
+    var beat: BeatClock? = nil
+
+    private static let rest: [Double] = [0.45, 0.8, 0.6, 0.95]   // heights when still, 0...1
+    private static let lift: [Double] = [0.5, 0.2, 0.4, 0.05]    // how far each bar jumps on the beat
+
+    private func bars(_ values: [Double]) -> some View {
+        HStack(alignment: .center, spacing: 4) {
+            ForEach(0..<4, id: \.self) { i in
+                Capsule().fill(color).frame(width: 4, height: 8 + 22 * values[i])
+            }
+        }
+        .frame(width: 28, height: 32)
+    }
 
     /// Driven by the clock, not by a looping animation on state. A repeat-forever animation tied to state also animates the view's
     /// position whenever the layout changes (rotating, unfolding, split view), which scattered the bars around the screen.
     var body: some View {
-        TimelineView(.animation) { tl in
-            let t = tl.date.timeIntervalSinceReferenceDate
-            HStack(alignment: .center, spacing: 4) {
-                ForEach(0..<4, id: \.self) { i in
-                    let wave = (sin(t * (2.6 + Double(i) * 0.55) + Double(i) * 1.3) + 1) / 2
-                    Capsule().fill(color)
-                        .frame(width: 4, height: 8 + 22 * wave)
+        Group {
+            if playing {
+                TimelineView(.animation) { tl in
+                    // The same pulse the background uses, so they hit together.
+                    let t = tl.date.timeIntervalSinceReferenceDate
+                    let pulse = beat.map { pow(max(0, cos(2 * .pi * $0.phase(at: tl.date))), 5) }
+                        ?? pow(max(0, sin(t * 2 * .pi * 118 / 60)), 5)
+                    bars((0..<4).map { min(1, Self.rest[$0] * 0.55 + Self.lift[$0] * pulse + 0.2) })
                 }
+            } else {
+                bars(Self.rest).opacity(0.55)
             }
-            .frame(width: 28, height: 32)
         }
         .fixedSize()
         .accessibilityHidden(true)

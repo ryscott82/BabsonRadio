@@ -3,13 +3,22 @@ import Combine
 
 // MARK: - Pieces shared by the Profile screen and Go on air (mirrors the website's profile page)
 
-/// The six profile colors. Same ids and colors as the website (lib/profile.ts).
+/// The profile colors. Same ids and colors as the website (lib/profile.ts).
 enum AvatarPalette {
     static let all: [(id: String, hex: String)] = [
-        ("green", "2E7D57"), ("teal", "2A8C8C"), ("blue", "3B6FB6"),
-        ("plum", "7B4B94"), ("rust", "B5543A"), ("slate", "556070"),
+        ("babson-green", "006644"), ("courtyard", "597C31"), ("sherwood", "9EB28F"), ("alfresco", "567B8A"),
+        ("bright-gold", "DDD055"), ("mango", "EEAF00"), ("ochre", "AD9001"), ("peacock", "368180"),
+        ("summer-nights", "005172"), ("englewood", "6C6F70"), ("daphne", "C7D28A"), ("cedar-key", "DAD7CB"),
+        ("blue-heather", "C6D3D7"), ("beach-haven", "EDE8C4"),
     ]
-    static func color(_ id: String?) -> Color { Color(hex: all.first(where: { $0.id == id })?.hex ?? all[0].hex) }
+    private static func hex(_ id: String?) -> String { all.first(where: { $0.id == id })?.hex ?? all[0].hex }
+    static func color(_ id: String?) -> Color { Color(hex: hex(id)) }
+    /// Letter color on the circle: dark on the light brand colors, white on the rest.
+    static func ink(_ id: String?) -> Color {
+        let n = Int(hex(id), radix: 16) ?? 0
+        let lum = (0.299 * Double(n >> 16) + 0.587 * Double((n >> 8) & 255) + 0.114 * Double(n & 255)) / 255
+        return lum > 0.62 ? Color(hex: "1A1710") : .white
+    }
 }
 
 nonisolated struct ProfileMe: Decodable {
@@ -49,16 +58,16 @@ final class ProfileStore: ObservableObject {
     }
 }
 
-/// Colored circle with the first initial.
+/// Colored circle with the person's initials (RS, not just R).
 struct ProfileAvatar: View {
-    let name: String
+    let initials: String
     let colorId: String?
     var size: CGFloat = 84
     var body: some View {
         ZStack {
             Circle().fill(AvatarPalette.color(colorId))
-            Text(String(name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "?"))
-                .font(BRFont.display(size * 0.5)).foregroundColor(.white)
+            Text(initials)
+                .font(BRFont.display(size * (initials.count > 1 ? 0.4 : 0.5))).foregroundColor(AvatarPalette.ink(colorId))
         }
         .frame(width: size, height: size)
     }

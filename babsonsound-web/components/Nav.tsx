@@ -1,5 +1,6 @@
 'use client'
 
+import { avatarHex, avatarInk } from '@/lib/profile'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -31,6 +32,7 @@ export default function Nav() {
     const t = setInterval(() => { if (!document.hidden) load() }, 60_000)
     return () => clearInterval(t)
   }, [user, isBabson, isDeveloper])
+  const avatarId = typeof userDoc?.avatarColor === 'string' ? userDoc.avatarColor : undefined
   const initials = (() => {
     const first = (userDoc?.firstName ?? userDoc?.displayName ?? user?.displayName ?? user?.email ?? 'U').trim()
     const last = (userDoc?.lastName ?? '').trim()
@@ -80,7 +82,8 @@ export default function Nav() {
                 onClick={() => { setMenuOpen(!menuOpen); setMobileOpen(false) }}
                 aria-label="Profile menu"
                 aria-expanded={menuOpen}
-                className="sk-btn rounded-full w-9 h-9 flex items-center justify-center font-display text-sm"
+                className="rounded-full w-9 h-9 flex items-center justify-center font-display text-sm select-none"
+                style={{ background: avatarHex(avatarId), color: avatarInk(avatarHex(avatarId)) }}
               >
                 {initials}
               </button>

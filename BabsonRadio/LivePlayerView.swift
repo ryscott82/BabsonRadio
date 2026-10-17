@@ -7,6 +7,9 @@ import MediaPlayer
 struct LivePlayerView: View {
     /// True for the left page that stays beside the other tabs on an open foldable in landscape (like two phones side by side).
     var sidePane = false
+    @Environment(\.globalProfile) private var globalProfile
+    /// Width of the left page when sidePane is true. The view itself fills the whole screen so its glow can spill under the page beside it.
+    var paneWidth: CGFloat = 0
     @StateObject private var audio = AudioPlayerManager.shared
     @StateObject private var auth = AuthManager.shared
     @ObservedObject private var presence = PresenceManager.shared
@@ -50,7 +53,8 @@ struct LivePlayerView: View {
     private var sidePlayer: some View {
         GeometryReader { g in
             let top = g.safeAreaInsets.top
-            let side = max(120, min(g.size.width - 56, g.size.height - top - 360))
+            let w = paneWidth > 0 ? paneWidth : g.size.width
+            let side = max(120, min(w - 56, g.size.height - top - 360))
             VStack(spacing: 0) {
                 headerRow(topInset: top, showProfile: false)
                     .padding(.leading, 40).padding(.trailing, 20)
@@ -69,15 +73,21 @@ struct LivePlayerView: View {
                 controlNotes
                 Spacer(minLength: 24)
             }
-            .frame(width: g.size.width, height: g.size.height)
+            .frame(width: w, height: g.size.height)
         }
-        .background {
+        .background(alignment: .leading) {
+            // The page's own background: solid base, with the glow fading out toward the page beside it (never over that page).
             ZStack {
                 (scheme == .dark ? Color.brDkBg : Color.brLtBg)
-                theme.wash(scheme)
-                LiveVisualizer(color: glowColor, playing: audio.isPlaying, beat: audio.beatClock)
+                ZStack {
+                    theme.wash(scheme)
+                    LiveVisualizer(color: glowColor, playing: audio.isPlaying, beat: audio.beatClock)
+                }
+                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.8), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
             }
+            .frame(width: paneWidth > 0 ? paneWidth : nil)
             .ignoresSafeArea()
+            .allowsHitTesting(false)
         }
         .ignoresSafeArea(edges: .top)
         .onAppear { audio.startPolling() }
@@ -225,7 +235,7 @@ struct LivePlayerView: View {
         }
         .sheet(isPresented: $showProfileSheet) { ProfileView() }
         .sheet(isPresented: $showVote) { VoteView() }
-        .onAppear { audio.startPolling(); ArtTheme.shared.start(); BoardState.shared.phoneBoard = landscapePhone; BoardState.shared.duoBoard = showBoard
+        .onAppear { audio.startPolling(); ArtTheme.shared.start(); Task { await VoteStore.shared.refresh() }; BoardState.shared.phoneBoard = landscapePhone; BoardState.shared.duoBoard = showBoard
             // Open Duo: the system leaves the tab bar hidden after a tab switch, and only a change in this flag brings it back.
             // So on every return to Live, flip the Duo tracker on and straight off again (the board itself never shows).
             if hSize == .regular && !showBoard { BoardState.shared.nudgeDuo() } }
@@ -298,7 +308,8 @@ struct LivePlayerView: View {
                 VStack(spacing: 14) {
                     HStack {
                         Spacer()
-                        ProfileCircleButton()
+                        // On a wide window ContentView draws the profile button; keep its room here.
+                        if globalProfile { Color.clear.frame(width: 34, height: 34) } else { ProfileCircleButton() }
                     }
                     .padding(.trailing, 20).padding(.top, top + 12)
                     // The poll is first (a button when half folded), then the ratings, then the reactions.
@@ -513,7 +524,7 @@ struct LivePlayerView: View {
         // Three equal slots around the play button: the same width on each side, the same gap, all centered on one line.
         HStack(spacing: 30) {
             ZStack {
-                if audio.isPlaying { EqualizerBars(color: theme.accent(scheme)) }
+                EqualizerBars(color: theme.accent(scheme), playing: audio.isPlaying, beat: audio.beatClock)
             }
             .frame(width: 48, height: 48)
             playControl.opacity(canPlay ? 1 : 0.4)

@@ -37,6 +37,7 @@ struct ContentView: View {
                 }
 
             ScheduleView()
+                .padding(.leading, sideW)
                 .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
                 .tag(1)
                 .tabItem {
@@ -44,6 +45,7 @@ struct ContentView: View {
                 }
 
             LibraryView()
+                .padding(.leading, sideW)
                 .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
                 .tag(2)
                 .tabItem {
@@ -52,6 +54,7 @@ struct ContentView: View {
 
             if profile.hosting {
                 NavigationStack { HostPanelView() }
+                    .padding(.leading, sideW)
                     .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
                         .tag(3)
                     .tabItem { BRTabIcon(systemName: "mic.fill", label: "Host") }
@@ -59,6 +62,7 @@ struct ContentView: View {
 
             // Search is the right-most tab; Profile is the circle button in the top corner of every page.
             SearchView()
+                .padding(.leading, sideW)
                 .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
                 .tag(4)
                 .tabItem {
@@ -66,16 +70,22 @@ struct ContentView: View {
                 }
         }
         // Measured on the full-size TabView (before the padding); the pane appears and disappears with no animation.
+        .environment(\.globalProfile, hSize == .regular)
         .background { Color.clear.onGeometryChange(for: CGSize.self, of: { $0.size }) { paneSize = $0 } }
-        .padding(.leading, sideW)
+        // One profile button for every tab on a wide window, so it stays put when you switch.
+        .overlay(alignment: .topTrailing) {
+            if hSize == .regular { ProfileCircleButton().padding(.trailing, 20).padding(.top, 12) }
+        }
         .overlay(alignment: .leading) {
-            if sideW > 0 { LivePlayerView(sidePane: true).frame(width: sideW) }
+            if sideW > 0 { LivePlayerView(sidePane: true, paneWidth: sideW) }
         }
         .onChange(of: tab) { old, new in if new == 0 && old != 0 { liveLoad += 1 } }
         .tint(ArtTheme.full(scheme) ? theme.accent(scheme) : (scheme == .dark ? .brGold : .brGreen))
         .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
         .overlay(alignment: .top) { if hSize != .regular && tab != 0 { StatusBarBlur() } }
         .task(id: auth.isSignedIn) { ContactsManager.shared.promptOnFirstOpen() }
+        // The profile circle in the corner needs the chosen color from the start.
+        .task(id: auth.isSignedIn) { if auth.isSignedIn { await ProfileStore.shared.load() } }
         .task(id: auth.isSignedIn) {
             // Host tab appears while the host window is open; re-check every minute.
             while auth.isSignedIn && !Task.isCancelled {

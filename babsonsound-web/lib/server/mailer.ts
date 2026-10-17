@@ -73,3 +73,16 @@ export function slotDecisionMail(o: { approved: boolean; title: string; when: st
     ['Hi,', ...lines, 'Babson Radio'].map(l => (l === '' ? '' : `<p style="white-space:pre-wrap">${esc(l)}</p>`)).join('')}</div>`
   return { subject, text, html }
 }
+
+/** A student invites a friend by email: "[First name] wants you to join them on Babson Radio!" */
+export function friendInviteMail(o: { firstName: string; email: string }) {
+  const subject = `${o.firstName} wants you to join them on Babson Radio!`
+  const link = 'https://babsonradio.com/auth'
+  const line = `${o.firstName} wants you to join them on Babson Radio! Sign up at babsonradio.com with this email to get access!`
+  const text = [line, '', link, '', 'Babson Radio'].join('\n')
+  const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1710;line-height:1.5">
+<p><strong>${esc(o.firstName)}</strong> wants you to join them on Babson Radio!</p>
+<p>Sign up at <a href="${link}" style="color:#006644">babsonradio.com</a> with this email (<strong>${esc(o.email)}</strong>) to get access!</p>
+<p>Babson Radio</p></div>`
+  return { subject, text, html }
+}

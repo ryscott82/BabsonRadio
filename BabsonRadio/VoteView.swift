@@ -1,9 +1,10 @@
 import SwiftUI
+import Combine
 
 // MARK: - "What would you like to hear": live votes for the next hour
 
-nonisolated struct VoteState: Decodable {
-    struct Option: Decodable, Identifiable {
+nonisolated struct VoteState: Codable {
+    struct Option: Codable, Identifiable {
         let label: String
         let count: Int
         var id: String { label }
@@ -14,11 +15,39 @@ nonisolated struct VoteState: Decodable {
     let options: [Option]
     let myVote: String?
     let winner: String?
-    struct UpNext: Decodable { let blockStart: Double; let label: String }
+    struct UpNext: Codable { let blockStart: Double; let label: String }
     let upNext: UpNext?
     let canVote: Bool?
     let requestsOpen: Bool?
     let requestsShow: String?
+}
+
+/// Keeps the last poll on the phone, so the options are on screen the instant the panel opens. The options only change on the hour,
+/// so a saved poll is good until its block ends; the counts and your vote refresh quietly in the background.
+@MainActor final class VoteStore: ObservableObject {
+    static let shared = VoteStore()
+    @Published var state: VoteState?
+    private let key = "br.vote.cache"
+
+    init() {
+        if let d = UserDefaults.standard.data(forKey: key), let s = try? JSONDecoder().decode(VoteState.self, from: d), Self.isCurrent(s) {
+            state = s
+        }
+    }
+
+    private static func isCurrent(_ s: VoteState) -> Bool { s.blockEnd / 1000 > Date().timeIntervalSince1970 }
+
+    func set(_ s: VoteState) {
+        state = s
+        if let d = try? JSONEncoder().encode(s) { UserDefaults.standard.set(d, forKey: key) }
+    }
+
+    /// The saved poll if its hour is still running, otherwise nothing (the options may have changed).
+    var current: VoteState? { state.flatMap { Self.isCurrent($0) ? $0 : nil } }
+
+    func refresh() async {
+        if let s: VoteState = try? await BackendAPI.get("/api/vote") { set(s) }
+    }
 }
 
 /// The poll and song requests, without a sheet around it. Used inline on the open foldable, and inside VoteView on a phone.
@@ -26,7 +55,8 @@ struct VotePanel: View {
     @Environment(\.colorScheme) var scheme
     /// Compact: two columns, no request forms, for the open foldable where the poll shares the page with reactions.
     var compact = false
-    @State private var state: VoteState?
+    @ObservedObject private var store = VoteStore.shared
+    private var state: VoteState? { store.current }
     @State private var message: String?
     @State private var request = ""
     @State private var busy = false
@@ -99,7 +129,7 @@ struct VotePanel: View {
         .task {
             // Near real time: refresh every 10 seconds while the sheet is open.
             while !Task.isCancelled {
-                if let s: VoteState = try? await BackendAPI.get("/api/vote") { state = s }
+                await store.refresh()
                 try? await Task.sleep(nanoseconds: 10_000_000_000)
             }
         }
@@ -109,7 +139,7 @@ struct VotePanel: View {
         busy = true; message = nil
         Task {
             defer { busy = false }
-            do { state = try await BackendAPI.post("/api/vote", ["genre": genre]) }
+            do { store.set(try await BackendAPI.post("/api/vote", ["genre": genre])) }
             catch { message = (error as? BackendError)?.message ?? "Try again." }
         }
     }

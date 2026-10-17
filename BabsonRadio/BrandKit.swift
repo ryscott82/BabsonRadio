@@ -217,24 +217,24 @@ enum BabsonLinks {
 struct ProfileCircleButton: View {
     @StateObject private var auth = AuthManager.shared
     @Environment(\.colorScheme) var scheme
-    @ObservedObject private var theme = ArtTheme.shared
+    @ObservedObject private var profile = ProfileStore.shared
     @State private var showProfile = false
 
     var body: some View {
         Button { showProfile = true } label: {
             ZStack {
                 Circle()
-                    .fill(ArtTheme.full(scheme) ? theme.button(scheme) : (scheme == .dark ? Color.brGold : Color.brGreen))
+                    .fill(AvatarPalette.color(profile.me?.avatarColor))
                     .shadow(color: .black.opacity(0.28), radius: 0, x: 0, y: 2)
                 if let user = auth.currentUser {
                     Text(user.initials)
                         .font(BRFont.display(14))
                         .kerning(0.5)
-                        .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
+                        .foregroundColor(AvatarPalette.ink(profile.me?.avatarColor))
                 } else {
                     Image(systemName: "person.fill")
                         .font(.system(size: 14))
-                        .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
+                        .foregroundColor(AvatarPalette.ink(profile.me?.avatarColor))
                 }
             }
             .frame(width: 34, height: 34)
@@ -245,11 +245,25 @@ struct ProfileCircleButton: View {
     }
 }
 
-extension View {
-    /// Adds the profile circle to the top-right of a page that has a navigation bar.
-    func profileButton() -> some View {
-        toolbar { ToolbarItem(placement: .topBarTrailing) { ProfileCircleButton() } }
+/// True on a wide window (open Duo, iPad), where ContentView draws one profile button for every tab so it never moves.
+private struct GlobalProfileKey: EnvironmentKey { static let defaultValue = false }
+extension EnvironmentValues {
+    var globalProfile: Bool {
+        get { self[GlobalProfileKey.self] }
+        set { self[GlobalProfileKey.self] = newValue }
     }
+}
+
+private struct ProfileButtonModifier: ViewModifier {
+    @Environment(\.globalProfile) private var global
+    func body(content: Content) -> some View {
+        if global { content } else { content.toolbar { ToolbarItem(placement: .topBarTrailing) { ProfileCircleButton() } } }
+    }
+}
+
+extension View {
+    /// Adds the profile circle to the top-right of a page that has a navigation bar (narrow windows only).
+    func profileButton() -> some View { modifier(ProfileButtonModifier()) }
 }
 
 

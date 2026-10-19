@@ -76,6 +76,9 @@ body:has(.hw-stage) {
               var(--hw-wood-bg) var(--hw-wood) center top / cover fixed;
 }
 .hw-stage { position: relative; }
+/* While the page is first loading, skip the big wood photo so the radio controls get the bandwidth; it fades in after load. */
+html.hw-lite body:has(.hw-stage) { background: var(--hw-wood-bg) !important; }
+body:has(.hw-stage) { transition: background-color .4s; }
 
 /* ── Leather panel ───────────────────────────────────────────── */
 .hw-panel, .hw-main > div[class*="max-w-"]:not(.hw-stage) {
@@ -283,13 +286,13 @@ body:has(.hw-stage) {
 .art-ui { --hw-eq: var(--br-accent); }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) .art-ui .hw-panel {
-    background: var(--hw-wear), linear-gradient(rgba(0,0,0,.02), rgba(0,0,0,.14)), linear-gradient(var(--art-1), var(--art-1)), linear-gradient(rgba(255,255,255,.34), rgba(255,255,255,.34)), var(--hw-leather) center / 300px auto, #333;
-    background-blend-mode: normal, normal, color, normal, normal, normal;
+    background: var(--hw-wear), linear-gradient(rgba(0,0,0,.02), rgba(0,0,0,.14)), linear-gradient(color-mix(in srgb, var(--art-1) 11%, transparent), color-mix(in srgb, var(--art-1) 11%, transparent)), linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0)), url(/hw/leather-black.jpg) center / 300px auto, #333;
+    background-blend-mode: normal, normal, normal, normal, normal, normal;
   }
 }
 :root[data-theme="light"] .art-ui .hw-panel {
-  background: var(--hw-wear), linear-gradient(rgba(0,0,0,.02), rgba(0,0,0,.14)), linear-gradient(var(--art-1), var(--art-1)), linear-gradient(rgba(255,255,255,.34), rgba(255,255,255,.34)), var(--hw-leather) center / 300px auto, #333;
-  background-blend-mode: normal, normal, color, normal, normal, normal;
+  background: var(--hw-wear), linear-gradient(rgba(0,0,0,.02), rgba(0,0,0,.14)), linear-gradient(color-mix(in srgb, var(--art-1) 11%, transparent), color-mix(in srgb, var(--art-1) 11%, transparent)), linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0)), url(/hw/leather-black.jpg) center / 300px auto, #333;
+  background-blend-mode: normal, normal, normal, normal, normal, normal;
 }
 
 /* ── Every other page (Oct 2026) ──────────────────────────────────────────────
@@ -412,11 +415,11 @@ body:has(.hw-stage) {
 :root[data-art] .hw-banner { --hw-banner-tint: linear-gradient(color-mix(in srgb, var(--nav-1) 40%, var(--br-bg)), color-mix(in srgb, var(--nav-1) 40%, var(--br-bg))); --hw-eq: var(--br-accent); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .art-ui .hw-panel {
-    background: var(--hw-wear), linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.30)), linear-gradient(color-mix(in srgb, var(--art-1) 55%, transparent), color-mix(in srgb, var(--art-1) 55%, transparent)), #1A1A18 var(--hw-leather) center / 300px auto;
-    background-blend-mode: normal, normal, color, normal;
+    background: var(--hw-wear), linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.30)), linear-gradient(color-mix(in srgb, var(--art-1) 11%, transparent), color-mix(in srgb, var(--art-1) 11%, transparent)), #1A1A18 var(--hw-leather) center / 300px auto;
+    background-blend-mode: normal, normal, normal, normal;
   }
 }
 :root[data-theme="dark"] .art-ui .hw-panel {
-  background: var(--hw-wear), linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.30)), linear-gradient(color-mix(in srgb, var(--art-1) 55%, transparent), color-mix(in srgb, var(--art-1) 55%, transparent)), #1A1A18 var(--hw-leather) center / 300px auto;
-  background-blend-mode: normal, normal, color, normal;
+  background: var(--hw-wear), linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.30)), linear-gradient(color-mix(in srgb, var(--art-1) 11%, transparent), color-mix(in srgb, var(--art-1) 11%, transparent)), #1A1A18 var(--hw-leather) center / 300px auto;
+  background-blend-mode: normal, normal, normal, normal;
 }

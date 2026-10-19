@@ -14,7 +14,7 @@ import { ExtrasStack, ReactionKeys } from '@/components/LiveExtras'
 import { useArtColor } from '@/lib/artColor'
 import { useArtMain } from '@/components/ArtTheme'
 import { useListenGuard } from '@/lib/listenGuard'
-import { attachSpectrum, probeCors, registerAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
+import { attachSpectrum, probeCors, registerAudio, sharedAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 
@@ -29,6 +29,19 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   const [friends, setFriends] = useState<{ firstName: string }[]>([])
   const [groups, setGroups] = useState<{ text: string }[]>([])
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  // The audio element outlives this component (it's shared at module level), so coming back to Live from another page
+  // re-adopts the stream that's still playing instead of showing "paused".
+  useEffect(() => {
+    const el = sharedAudio()
+    if (!el) return
+    audioRef.current = el
+    const onWait = () => setIsBuffering(true)
+    const onPlay = () => { setIsBuffering(false); setIsPlaying(true) }
+    const onPause = () => { setIsBuffering(false); setIsPlaying(false) }
+    el.addEventListener('waiting', onWait); el.addEventListener('playing', onPlay); el.addEventListener('pause', onPause)
+    queueMicrotask(() => { if (!el.paused && !el.ended) setIsPlaying(true) })
+    return () => { el.removeEventListener('waiting', onWait); el.removeEventListener('playing', onPlay); el.removeEventListener('pause', onPause) }
+  }, [])
   const { loading, user, canListenLive: memberListen, isGuest } = useAuth()
   // Signed-out visitors can preview the live stream; they get a sign-up prompt every 5 minutes of listening.
   const previewing = !loading && !user
@@ -175,8 +188,9 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
       audioRef.current = el
       registerAudio(el)
       audioRef.current.volume = Math.min(1, level / UNITY); setBoostDb(boostDb)
-      audioRef.current.addEventListener('waiting', () => setIsBuffering(true))
-      audioRef.current.addEventListener('playing', () => setIsBuffering(false))
+      el.addEventListener('waiting', () => setIsBuffering(true))
+      el.addEventListener('playing', () => setIsBuffering(false))
+      el.addEventListener('pause', () => { setIsBuffering(false); setIsPlaying(false) })
     }
 
     if (isPlaying) {

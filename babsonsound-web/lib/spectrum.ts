@@ -126,6 +126,7 @@ export function readBands(out: number[]): boolean {
 // The player registers its audio element so the visuals can tell whether anything is playing (the element is never in the page).
 let player: HTMLAudioElement | null = null
 export function registerAudio(el: HTMLAudioElement | null) { player = el }
+export const sharedAudio = () => player
 export const audioPlaying = () => !!player && !player.paused && !player.ended
 
 /**

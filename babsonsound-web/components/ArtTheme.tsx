@@ -3,7 +3,8 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useNowPlaying } from '@/lib/nowplaying'
 import { ART_THEME, BABSON_GREEN, useArtPalette } from '@/lib/artColor'
-import ArtDesk from '@/components/ArtDesk'
+import dynamic from 'next/dynamic'
+const ArtDesk = dynamic(() => import('@/components/ArtDesk'), { ssr: false })
 import { getArtTest, onPartyChange, setColorChanging, useParty } from '@/lib/party'
 
 /** Fixed palettes for the admin test switch: [main, green, second]. */

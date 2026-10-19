@@ -65,7 +65,7 @@ struct SkipControl: View {
                 }
             } else if auth.isSignedIn {
                 // Not skippable right now (a live show, or the station's skip link isn't set up): show it dimmed so it never just vanishes.
-                ZStack { HWRoundKeyFace(size: size, pressed: true); knobIcon(true).foregroundStyle(Color.hwKnobInk).offset(y: 2) }
+                ZStack { HWRoundKeyFace(size: size, pressed: true); knobIcon(true).hwEngraved().offset(y: 2) }
                     .frame(width: size, height: size)
                     .opacity(0.5)
                     .accessibilityLabel("Skip is not available right now")

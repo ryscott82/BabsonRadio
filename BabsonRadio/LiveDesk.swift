@@ -90,7 +90,7 @@ struct HWRoundKeyStyle: ButtonStyle {
         ZStack {
             HWRoundKeyFace(size: size, pressed: down)
             configuration.label
-                .foregroundStyle(Color.hwKnobInk)
+                .hwEngraved()
                 .offset(y: down ? 2 : 0)
         }
         .frame(width: size, height: size)
@@ -527,7 +527,7 @@ struct PhoneLiveDesk<Drawer: View>: View {
                     .multilineTextAlignment(.center).lineLimit(2)
                     .padding(.horizontal, 14).padding(.vertical, 8)
                     .frame(width: 330)
-                    .background(HWPlate(color: Color(hex: "F7F5F0")))
+                    .background(HWPlate(color: Color(hex: "F6F2E8")))
                     .offset(x: 30, y: 292)
             }
 

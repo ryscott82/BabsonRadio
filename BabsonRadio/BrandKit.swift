@@ -112,7 +112,7 @@ struct HWCardSurface: View {
                 LinearGradient(colors: [.black.opacity(0.16), .black.opacity(0.30)], startPoint: .top, endPoint: .bottom)
                 let face = RoundedRectangle(cornerRadius: max(4, corner - rimW + 1), style: .continuous)
                 ZStack {
-                    Color(hex: "F7F5F0")
+                    Color(hex: "F6F2E8")
                     HWTile(name: HWTex.cface, opacity: 0.39, blend: .multiply)
                     LinearGradient(colors: [.white.opacity(0.45), .clear], startPoint: .top, endPoint: .center)
                 }
@@ -132,7 +132,7 @@ struct BRCardModifier: ViewModifier {
     @Environment(\.colorScheme) var scheme
 
     func body(content: Content) -> some View {
-        content.background(HWCardSurface(dark: scheme == .dark))
+        content.background(HWCardSurface(dark: scheme == .dark)).textRenderer(HWInscribedText(light: scheme != .dark))
     }
 }
 

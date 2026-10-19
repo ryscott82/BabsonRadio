@@ -15,7 +15,7 @@
   --hw-leather: url(/hw/leather-green.jpg);
   --hw-leather-bg: #0b5a3d;
   --hw-wear: linear-gradient(transparent, transparent); /* generated wear removed; a real texture goes here later */
-  --hw-face-bg: linear-gradient(rgba(247,245,240,.3), rgba(247,245,240,.3)), url(/hw/cface.jpg) center / cover, #F7F5F0; /* texture 30% fainter */
+  --hw-face-bg: linear-gradient(rgba(246,242,232,.3), rgba(246,242,232,.3)), url(/hw/cface.jpg) center / cover, #F6F2E8; /* texture 30% fainter */
   --hw-face-blend: multiply;
   --hw-face-ring: 0 0 0 1.5px rgba(0,102,68,.75);
   --hw-stitch: rgba(246,236,200,.6);
@@ -25,7 +25,7 @@
   --hw-field: rgba(110,88,40,.16);
   --hw-eq: #1fbf7f;
   --hw-sub: #5b5444;
-  --hw-bar-bg: linear-gradient(#FCFAF6, #E9E6DF);
+  --hw-bar-bg: linear-gradient(#FBF8F0, #E8E3D6);
   --hw-bar-edge: rgba(40,42,38,.26);
   --hw-banner-tint: linear-gradient(rgba(150,186,160,.84), rgba(150,186,160,.84));
 }
@@ -89,6 +89,11 @@ body:has(.hw-stage) { transition: background-color .4s; }
   box-shadow: inset 0 0 22px rgba(240,230,205,.07), 0 14px 24px rgba(24,16,8,.45), 0 2px 4px rgba(24,16,8,.3), inset 0 1px 0 rgba(250,246,236,.5), inset 0 -2px 0 rgba(24,26,18,.14);
   outline: 1.5px dashed var(--hw-stitch); outline-offset: -8px;
 }
+/* Lettering looks cut into the amp: a thin lit lip under each letter on the ivory face; pressed into the black leather in dark mode. */
+.hw-panel, .hw-main > div[class*="max-w-"]:not(.hw-stage) { text-shadow: 0 1px 0 rgba(255,255,255,.85); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hw-panel, :root:not([data-theme="light"]) .hw-main > div[class*="max-w-"]:not(.hw-stage) { text-shadow: 0 -1px 0 rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.13); } }
+:root[data-theme="dark"] .hw-panel, :root[data-theme="dark"] .hw-main > div[class*="max-w-"]:not(.hw-stage) { text-shadow: 0 -1px 0 rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.13); }
+.hw-panel .hw-well, .hw-panel .hw-glass-screen { text-shadow: none; }
 /* The face: ivory ceramic in light mode, nothing (bare leather) in dark mode. */
 .hw-panel::before, .hw-main > div[class*="max-w-"]:not(.hw-stage)::before {
   content: ''; position: absolute; inset: 15px; z-index: -1; border-radius: 12px; pointer-events: none;
@@ -163,6 +168,8 @@ body:has(.hw-stage) { transition: background-color .4s; }
   box-shadow: 0 0 0 6px rgba(0,0,0,.28), 0 0 0 7px rgba(255,255,255,.08), 0 10px 16px rgba(0,0,0,.5), inset 0 2px 2px rgba(255,255,255,.65), inset 0 -3px 4px rgba(0,0,0,.35);
   filter: none;
 }
+/* Icons look engraved into the metal: dark cut, thin lit lip along the lower edge. */
+.sk-btn.hw-knob svg, .hw-panel .sk-key svg, .hw-key svg, .hw-pill svg { color: #0d0e0b; filter: drop-shadow(0 1px 0 rgba(255,255,255,.6)) drop-shadow(0 -.5px 0 rgba(0,0,0,.28)); }
 .sk-btn.hw-knob:hover:not(:disabled) { filter: brightness(1.05); }
 .sk-btn.hw-knob:active:not(:disabled), .sk-btn.hw-knob[aria-pressed="true"] {
   transform: translateY(2px); filter: brightness(.93);
@@ -243,9 +250,9 @@ body:has(.hw-stage) { transition: background-color .4s; }
 .hw-bar { background: var(--hw-bar-bg); border-bottom: 1px solid rgba(255,255,255,.45);
   box-shadow: 0 2px 0 var(--hw-bar-edge), 0 8px 16px rgba(24,16,8,.32); font-family: 'Barlow', system-ui, sans-serif; }
 .hw-bar .sk-key { height: 36px; }
-.hw-bar a[aria-current="page"] { color: var(--hw-eq);
-  background: linear-gradient(rgba(0,0,0,.14), rgba(255,255,255,.16)), var(--hw-key-tint), url(/hw/steel.jpg) center / 220px auto;
-  box-shadow: 0 1px 0 var(--hw-key-edge), inset 0 3px 5px rgba(0,0,0,.28), inset 0 0 0 1px rgba(24,26,18,.25); }
+.hw-bar a[aria-current="page"] { color: color-mix(in srgb, var(--hw-eq) 55%, #fff); text-shadow: 0 0 6px color-mix(in srgb, var(--hw-eq) 45%, transparent);
+  background: url(/hw/scratch.png) 0 0 / 200px auto, linear-gradient(rgba(0,0,0,.4), rgba(0,0,0,.12)), linear-gradient(#171815, #1F211D);
+  box-shadow: 0 1px 0 var(--hw-key-edge), inset 0 3px 6px rgba(0,0,0,.7), inset 0 0 0 1px rgba(0,0,0,.5); }
 .hw-foot { background: var(--hw-bar-bg); border-top: 4px solid var(--br-accent); font-family: 'Barlow', system-ui, sans-serif; box-shadow: 0 -6px 14px rgba(24,16,8,.25); }
 .hw-banner { background: var(--hw-banner-tint), url(/hw/steel.jpg) center / 320px auto; border-bottom: 1px solid rgba(255,255,255,.3);
   box-shadow: inset 0 -2px 4px rgba(0,0,0,.18); font-family: 'Barlow', system-ui, sans-serif; }
@@ -286,7 +293,7 @@ body:has(.hw-stage) { transition: background-color .4s; }
 /* Tuned-in initials */
 .hw-chip { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
   font-size: 10px; font-weight: 700; color: #2b2418; box-shadow: 0 0 0 2px #1f1f1c, 0 2px 3px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.6); }
-.hw-chip-more { background: #F6F4EF; font-size: 9px; }
+.hw-chip-more { background: #F5F1E7; font-size: 9px; }
 
 /* Poll keys: steel key with a fill that shows the votes */
 .hw-vote { height: 44px; }
@@ -324,7 +331,7 @@ body:has(.hw-stage) { transition: background-color .4s; }
 @media (min-width: 1024px) { .hw-main > .fit { height: auto; max-height: calc(100dvh - 9.5rem); } .hw-main > .fit > .fit-body { flex: 0 1 auto; } }
 
 /* Cards on a sheet: a raised plate (cream in light, lifted black leather in dark). */
-:root { --hw-plate: linear-gradient(#FFFEFB, #F0EDE7); --hw-plate-edge: rgba(50,52,46,.28); --hw-plate-hi: #fff; }
+:root { --hw-plate: linear-gradient(#FFFDF7, #F0EADE); --hw-plate-edge: rgba(50,52,46,.28); --hw-plate-hi: #fff; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --hw-plate: linear-gradient(rgba(255,255,255,.07), rgba(255,255,255,.07)), #1B1B18 url(/hw/leather-black.jpg) center / 300px auto;
   --hw-plate-edge: rgba(232,212,160,.2); --hw-plate-hi: rgba(255,255,255,.1); } }

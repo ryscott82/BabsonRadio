@@ -28,6 +28,9 @@ extension Color {
     static let hwKeyShadow = Color(hex: "0F0F0D")
     static let hwInk = Color(hex: "181A12")
     static let hwKnobInk = Color(hex: "1A1710")
+    /// Engraved icon ink: darkest at the top where the cut's wall shades it, lighter lower down.
+    static let hwEngraveTop = Color(hex: "0B0C0A")
+    static let hwEngraveBottom = Color(hex: "3C3D38")
     static let hwSlot = Color(hex: "05080B")
     static let hwLamp = Color(hex: "FF5A48")
     static let hwLED = Color(hex: "6FCF93")
@@ -165,7 +168,7 @@ struct HWLeather: View {
             if face {
                 let inner = RoundedRectangle(cornerRadius: 12, style: .continuous)
                 ZStack {
-                    Color(hex: "F7F5F0")
+                    Color(hex: "F6F2E8")
                     HWTile(name: HWTex.cface, opacity: 0.39, blend: .multiply)
                     inner.strokeBorder(Color(hex: "232823").opacity(0.28), lineWidth: 5).blur(radius: 3)
                 }
@@ -202,6 +205,7 @@ struct HWPanelModifier: ViewModifier {
             .padding(mode.isLight && tintOverride == nil ? padding + 14 : padding)
             .background(HWLeather(tint: tintOverride ?? mode.leatherTint, corner: corner))
             .foregroundStyle(mode.onPanelText)
+            .textRenderer(HWInscribedText(light: mode.isLight))
     }
 }
 
@@ -498,7 +502,7 @@ struct HWPanelTitle: View {
 extension Color {
     /// Flat color for places that need a Color (cards, chips): the recessed field tone.
     static func hwField(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color(hex: "1B1B17") : Color(hex: "F6F4EF")
+        scheme == .dark ? Color(hex: "1B1B17") : Color(hex: "F5F1E7")
     }
 }
 
@@ -544,6 +548,7 @@ struct HWPageModifier: ViewModifier {
                 .scrollContentBackground(.hidden)
                 .safeAreaPadding(EdgeInsets(top: light ? 14 : 4, leading: light ? 14 : 4, bottom: light ? 14 : 4, trailing: light ? 14 : 4))
                 .environment(\.hwMode, m)
+                .textRenderer(HWInscribedText(light: light))
                 .clipShape(shape)
                 .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, flushBottom ? 0 : 8)
         }
@@ -553,4 +558,33 @@ struct HWPageModifier: ViewModifier {
 extension View {
     /// Puts the whole page on a leather / ceramic panel over the oak desk.
     func hwPage() -> some View { modifier(HWPageModifier()) }
+}
+
+
+extension View {
+    /// Makes an icon look cut into the metal: a dark cut that is deepest along its upper edge, and a thin lit lip along the lower edge
+    /// where the light catches the bevel.
+    func hwEngraved() -> some View {
+        self
+            .foregroundStyle(LinearGradient(colors: [.hwEngraveTop, .hwEngraveBottom], startPoint: .top, endPoint: .bottom))
+            .shadow(color: .white.opacity(0.6), radius: 0, x: 0, y: 1)
+            .shadow(color: .black.opacity(0.25), radius: 0.4, x: 0, y: -0.5)
+    }
+}
+
+
+/// Text that looks cut into the amp, like the lettering on real gear: on the ivory face a thin lit lip along the lower edge of each
+/// letter; on black leather a darker upper edge as well, so the letters read as pressed in.
+struct HWInscribedText: TextRenderer {
+    var light: Bool
+    func draw(layout: Text.Layout, in ctx: inout GraphicsContext) {
+        var c = ctx
+        if light {
+            c.addFilter(.shadow(color: .white.opacity(0.85), radius: 0, x: 0, y: 1))
+        } else {
+            c.addFilter(.shadow(color: .black.opacity(0.6), radius: 0, x: 0, y: -0.8))
+            c.addFilter(.shadow(color: .white.opacity(0.13), radius: 0, x: 0, y: 1))
+        }
+        for line in layout { for run in line { c.draw(run) } }
+    }
 }

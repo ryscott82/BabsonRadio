@@ -183,7 +183,9 @@ export function makeShaper(n: number) {
       avg[i] += (u - avg[i]) * 0.03
       const burst = Math.max(0, u - avg[i])
       const base = Math.pow(u, 1.6) * 0.78 + burst * 1.6
-      const target = quiet ? 0.02 : Math.min(1, base * (1 - 0.15 * mid) + flash * 0.1)
+      // While music plays the upper bands never go fully dark: a quiet treble still shows a segment or two.
+      const lift = i / n > 0.4 ? 0.16 * Math.min(1, (i / n - 0.4) / 0.25) : 0
+      const target = quiet ? 0.02 : Math.max(lift, Math.min(1, base * (1 - 0.15 * mid) + flash * 0.1))
       const atk = Math.min(1, 0.15 + burst * 5)
       shown[i] = target > shown[i] ? shown[i] + (target - shown[i]) * atk : Math.max(target, shown[i] * (quiet ? 0.45 : 0.8))
     }

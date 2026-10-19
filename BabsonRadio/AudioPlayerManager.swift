@@ -45,6 +45,8 @@ nonisolated struct NowPlayingInfo: Decodable, Equatable {
     let showOnly: Bool?
     /// Admin switch: show the ON AIR sign even when no show is live.
     let onAirManual: Bool?
+    /// The host of this set (or the auto DJ setting) allows the night-time color-changing background. Missing = no.
+    let colorChanging: Bool?
 
     /// ON AIR sign: only for live shows (or the admin's manual switch).
     var onAir: Bool { isLive || (isShow ?? false) || (onAirManual ?? false) }
@@ -195,14 +197,14 @@ class AudioPlayerManager: ObservableObject {
 
     // MARK: - Playback Controls
 
-    func play() {
+    func play(takeOver: Bool = false) {
         // Also covers lock-screen / Control Center play: live radio needs an account with access.
         // Signed-out visitors can preview the live stream; everyone who is signed in can listen.
         guard AuthManager.shared.canListenLive || !AuthManager.shared.isSignedIn else { return }
         isBuffering = true
         Task { @MainActor in
             // The server decides whether listening is open right now (quiet hours, limits, one device at a time).
-            if await ListenGuard.shared.begin() { startPlayback() } else { isBuffering = false }
+            if await ListenGuard.shared.begin(takeOver: takeOver) { startPlayback() } else { isBuffering = false }
         }
     }
 
@@ -300,6 +302,7 @@ class AudioPlayerManager: ObservableObject {
         guard let np: NowPlayingInfo = try? await BackendAPI.get("/api/nowplaying"), np.configured else { return }
         let changed = np.title != nowPlaying?.title || np.artist != nowPlaying?.artist
         nowPlaying = np
+        ArtTheme.shared.colorChanging = np.colorChanging == true
         beatClock = Self.makeBeatClock(np, delay: beatDelay)
         nowPlayingFetchedAt = Date()
         if !np.title.isEmpty {

@@ -38,6 +38,8 @@ struct SearchView: View {
             .navigationTitle("")
             .profileButton()
             .task(id: canUse) { if canUse { await lib.loadAll() } }
+            .onChange(of: isSearching) { _, now in SearchState.shared.active = now }
+            .onDisappear { SearchState.shared.active = false }
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $query,

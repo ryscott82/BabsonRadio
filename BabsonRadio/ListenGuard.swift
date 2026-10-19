@@ -12,9 +12,11 @@ final class ListenGuard: ObservableObject {
 
     @Published var asking = false
     @Published var notice: String?
+    /// Set when the account is already playing on another device (the person can switch to this one).
+    @Published var elsewhere: String?
     @Published var sleepEnd: Date?
 
-    private nonisolated struct Reply: Decodable { let ok: Bool; let message: String?; let idleMin: Int? }
+    private nonisolated struct Reply: Decodable { let ok: Bool; let reason: String?; let message: String?; let idleMin: Int? }
 
     private var sessionId = ""
     private var lastActive = Date()
@@ -24,19 +26,30 @@ final class ListenGuard: ObservableObject {
     private var loop: Task<Void, Never>?
     private let promptSeconds: TimeInterval = 120
     private let sleepOffKey = "br_sleep_off"
+    /// Stable for this install, so reopening the app isn't mistaken for a second device.
+    private static let deviceId: String = {
+        if let id = UserDefaults.standard.string(forKey: "br_device_id") { return id }
+        let id = UUID().uuidString
+        UserDefaults.standard.set(id, forKey: "br_device_id")
+        return id
+    }()
 
     /// Any touch or the app coming forward counts as being there.
     func markActive() { lastActive = Date(); askedAt = nil; asking = false }
 
     /// Call before starting the stream. False (with a notice) when listening isn't allowed right now.
-    func begin() async -> Bool {
-        notice = nil
+    func begin(takeOver: Bool = false) async -> Bool {
+        notice = nil; elsewhere = nil
         guard AuthManager.shared.isSignedIn else { return true }
         sessionId = UUID().uuidString
         lastActive = Date(); lastBeat = Date(); askedAt = nil
         do {
-            let r: Reply = try await BackendAPI.post("/api/listen", ["action": "start", "sessionId": sessionId, "device": "ios"])
-            if !r.ok { notice = r.message ?? "Listening is paused right now."; sessionId = ""; return false }
+            let r: Reply = try await BackendAPI.post("/api/listen", ["action": "start", "sessionId": sessionId, "device": "ios", "deviceId": Self.deviceId, "takeOver": takeOver])
+            if !r.ok {
+                if r.reason == "elsewhere" { elsewhere = r.message ?? "You are already listening on another device. Switch to this one?" }
+                else { notice = r.message ?? "Listening is paused right now." }
+                sessionId = ""; return false
+            }
             if let m = r.idleMin { idleMin = m }
         } catch { /* offline or a server hiccup: let them listen */ }
         // After 10pm (and before 5am) a sleep timer starts on its own, so a stream isn't left running all night.
@@ -81,7 +94,7 @@ final class ListenGuard: ObservableObject {
         if let a = askedAt, now.timeIntervalSince(a) >= promptSeconds {
             halt("Stopped because no one seemed to be listening. Tap play to start again."); return
         }
-        guard now.timeIntervalSince(lastBeat) >= 60, !sessionId.isEmpty else { return }
+        guard now.timeIntervalSince(lastBeat) >= 30, !sessionId.isEmpty else { return }
         lastBeat = now
         let id = sessionId
         if let r: Reply = try? await BackendAPI.post("/api/listen", ["action": "beat", "sessionId": id, "activeAgoSec": Int(idleFor)]) {

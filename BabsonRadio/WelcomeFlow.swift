@@ -81,7 +81,7 @@ private struct FieldBox: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(.horizontal, 14).padding(.vertical, 12)
-            .background(style.field)
+            .background(HWFieldFill())
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(style.border, lineWidth: 1))
             .clipShape(RoundedRectangle(cornerRadius: 10))
     }
@@ -98,7 +98,6 @@ struct WelcomeView: View {
 
     var body: some View {
         ZStack {
-            style.background.ignoresSafeArea()
             VStack(spacing: 0) {
                 Spacer()
                 Image("LaunchLogo").resizable().scaledToFit().frame(width: 130)
@@ -136,6 +135,7 @@ struct WelcomeView: View {
             }
             if auth.isLoading { ProgressView().controlSize(.large) }
         }
+        .hwPage()
         .sheet(isPresented: $showEmail) { AuthView() }
     }
 }
@@ -198,7 +198,7 @@ struct AppleSchoolEmailView: View {
             .padding(.horizontal, 28)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(style.background.ignoresSafeArea())
+        .hwPage()
     }
 }
 
@@ -311,7 +311,7 @@ struct OnboardingView: View {
             .padding(.horizontal, 28).padding(.bottom, 40)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(style.background.ignoresSafeArea())
+        .hwPage()
         .interactiveDismissDisabled()
         .task {
             // Fill in whatever we already have (a name from Apple, or details from an email sign-up).

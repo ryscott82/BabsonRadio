@@ -245,7 +245,7 @@ private struct SignedInProfileView: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 38), spacing: 12)], spacing: 12) {
                     ForEach(AvatarPalette.all, id: \.id) { c in
                         Button { Task { await store.setColor(c.id) } } label: {
-                            Circle().fill(Color(hex: c.hex)).frame(width: 30, height: 30)
+                            HWAvatar(text: "", color: Color(hex: c.hex), size: 30)
                                 .overlay(Circle().stroke(scheme == .dark ? Color.brGold : Color.brGreen, lineWidth: store.avatarColor == c.id || (store.avatarColor == nil && c.id == "babson-green") ? 3 : 0).padding(-4))
                         }
                         .buttonStyle(.plain)
@@ -762,6 +762,7 @@ struct ContactPickerView: View {
                     }
                 }
             }
+            .hwPage()
             .searchable(text: $search, prompt: "Search contacts")
             .navigationTitle("Choose a Contact")
             .navigationBarTitleDisplayMode(.inline)
@@ -1127,6 +1128,7 @@ struct BRContact: Identifiable {
 
 struct FeedbackView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var scheme
     @State private var type = "bug"
     @State private var message = ""
     @State private var isSending = false
@@ -1149,12 +1151,15 @@ struct FeedbackView: View {
                     }
                     .pickerStyle(.segmented)
                 }
+                .listRowBackground(HWFieldFill())
                 Section(type == "bug" ? "What happened? What did you expect?" : "What would make Babson Radio better?") {
                     TextEditor(text: $message).frame(minHeight: 140)
                 }
-                if let errorText { Section { Text(errorText).foregroundStyle(.red) } }
-                if sent { Section { Text("Sent. Thank you, we read every one.").foregroundStyle(.green) } }
+                .listRowBackground(HWFieldFill())
+                if let errorText { Section { Text(errorText).foregroundStyle(.red) }.listRowBackground(HWFieldFill()) }
+                if sent { Section { Text("Sent. Thank you, we read every one.").foregroundStyle(scheme == .dark ? Color.brGold : Color.brGreen) }.listRowBackground(HWFieldFill()) }
             }
+            .hwPage()
             .navigationTitle("Report or suggest")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

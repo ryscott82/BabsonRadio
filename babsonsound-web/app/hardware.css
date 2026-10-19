@@ -207,10 +207,21 @@ body:has(.hw-stage) { transition: background-color .4s; }
 .hw-prog { height: 10px; border-radius: 6px; background: #0d0f0c; box-shadow: inset 0 2px 4px rgba(0,0,0,.8), 0 1px 0 rgba(255,255,255,.2); padding: 2px; }
 .hw-prog > i { display: block; height: 100%; min-width: 10px; border-radius: 4px;
   background: linear-gradient(rgba(250,246,236,.45), rgba(250,246,236,0) 55%), var(--hw-eq); box-shadow: 0 0 0 1px rgba(24,26,18,.35); }
+.hw-well:not(.absolute) { position: relative; }
 .hw-well {
+  overflow: hidden;
   border-radius: 14px; padding: 10px 12px; background: linear-gradient(#0b0f0c, #151b17);
   box-shadow: inset 0 3px 8px rgba(0,0,0,.85), 0 0 0 3px #1B1B19, 0 0 0 4px #4A4A44, 0 6px 10px rgba(24,16,8,.35);
 }
+/* Glass over the meter: the same pane as the clock (texture, scratches, a slanted reflection), above the lit segments. */
+.hw-well::before { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; border-radius: inherit;
+  background: url(/hw/scratch.png) center / 260px auto, url(/hw/glass.jpg) center / cover; mix-blend-mode: screen; opacity: .55; }
+.hw-well::after { content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(112deg, rgba(250,246,236,.16) 0, rgba(250,246,236,.16) 30%, rgba(250,246,236,0) 42%), linear-gradient(rgba(250,246,236,.09), rgba(250,246,236,0) 45%); }
+.hw-board-well::before, .hw-board-well::after { inset: 8px; border-radius: 9px; }
+.hw-well > * { position: relative; z-index: 1; }
+/* Meter colors, like a real level meter: saturated station green, yellow near the top, red at the peak. */
+:root { --eq-g: #00B86F; --eq-y: #F5C400; --eq-r: #FF4A2E; }
 .hw-eq { display: flex; align-items: flex-end; gap: 3px; height: 44px; }
 .hw-eq > i { flex: 1; height: 100%; border-radius: 1.5px; transform-origin: bottom; transform: scaleY(.12);
   background: linear-gradient(rgba(255,255,255,.35), rgba(255,255,255,0) 40%), var(--hw-eq); }
@@ -241,15 +252,17 @@ body:has(.hw-stage) { transition: background-color .4s; }
    With real audio (data-real="true", set by lib/spectrum.ts) --lv and --pk come from the analyser; otherwise a synthetic motion plays. */
 .hw-eq.hw-led { height: 56px; gap: 4px; }
 .hw-eq.hw-led > i { position: relative; align-self: stretch; height: auto; transform: none; border-radius: 0; animation: none; background: none; }
-.hw-eq.hw-led > i::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 12%;
-  background: repeating-linear-gradient(to top, var(--hw-eq) 0 5px, transparent 5px 8px); }
+.hw-eq.hw-led > i::before { content: ''; position: absolute; inset: 0;
+  background: linear-gradient(to top, var(--eq-g) 0 57%, var(--eq-y) 57% 86%, var(--eq-r) 86%);
+  -webkit-mask: repeating-linear-gradient(to top, #000 0 5px, transparent 5px 8px); mask: repeating-linear-gradient(to top, #000 0 5px, transparent 5px 8px);
+  clip-path: inset(88% 0 0 0); }
 .hw-eq.hw-led > i::after { content: ''; position: absolute; left: 0; right: 0; height: 3px; bottom: 0; background: #CAE7DD; opacity: 0; }
 .hw-eq.hw-led[data-on="true"] > i::before { animation: hw-led 1s ease-in-out infinite; animation-delay: inherit; animation-duration: inherit; }
-@keyframes hw-led { 0%, 100% { height: 18%; } 50% { height: calc(var(--h, .8) * 100%); } }
-.hw-eq.hw-led[data-real="true"] > i::before { animation: none; height: calc(var(--lv, 0) * 100%); transition: height .06s linear; }
+@keyframes hw-led { 0%, 100% { clip-path: inset(82% 0 0 0); } 50% { clip-path: inset(calc(100% - var(--h, .8) * 100%) 0 0 0); } }
+.hw-eq.hw-led[data-real="true"] > i::before { animation: none; clip-path: inset(calc(100% - var(--lv, 0) * 100%) 0 0 0); transition: clip-path .06s linear; }
 .hw-eq.hw-led[data-real="true"] > i::after { opacity: min(1, calc(var(--pk, 0) * 20)); bottom: calc(var(--pk, 0) * 100% - 3px); }
 .hw-eq.hw-led[data-real="true"] > i[data-hot="1"]::after { background: #E0412A; }
-@media (prefers-reduced-motion: reduce) { .hw-eq.hw-led[data-on="true"] > i::before { animation: none; height: 55%; } }
+@media (prefers-reduced-motion: reduce) { .hw-eq.hw-led[data-on="true"] > i::before { animation: none; clip-path: inset(45% 0 0 0); } }
 
 /* Small steel knobs (volume, skip) with a ring of level dots */
 .hw-knob-sm {
@@ -284,7 +297,7 @@ body:has(.hw-stage) { transition: background-color .4s; }
 .hw-star:hover { transform: translateY(-1px); }
 
 /* Album-colour mode: leather takes the cover's hue (light mode), accents follow the cover */
-.art-ui { --hw-eq: var(--br-accent); }
+.art-ui { --hw-eq: var(--br-accent); --eq-g: var(--br-accent); --eq-y: var(--art-y, var(--br-accent)); --eq-r: var(--art-r, var(--br-accent)); }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) .art-ui .hw-panel {
     background: var(--hw-wear), linear-gradient(rgba(0,0,0,.02), rgba(0,0,0,.14)), linear-gradient(color-mix(in srgb, var(--art-1) 4%, transparent), color-mix(in srgb, var(--art-1) 4%, transparent)), linear-gradient(rgba(0,0,0,.3), rgba(0,0,0,.45)), url(/hw/leather-black.jpg) center / 300px auto, #333;
@@ -355,9 +368,8 @@ body:has(.hw-stage) { transition: background-color .4s; }
 
 /* ── Full screen board ───────────────────────────────────────── */
 .hw-board { background: radial-gradient(ellipse at 50% 45%, rgba(24,26,18,0) 50%, rgba(24,12,3,.6) 100%), var(--hw-wood-bg) var(--hw-wood) center / cover; font-family: 'Barlow', system-ui, sans-serif; color: var(--br-text); }
-.hw-board.art-board { background: #070605; --hw-lit: color-mix(in srgb, var(--art-1) 88%, #fff); }
+.hw-board.art-board { background: #070605; --hw-lit: color-mix(in srgb, var(--art-1) 88%, #fff); --eq-g: var(--hw-lit); --eq-y: var(--art-y, var(--hw-lit)); --eq-r: var(--art-r, var(--hw-lit)); }
 .art-board .hw-glass-time, .art-board .hw-glass-ampm, .art-board .hw-glass-date { color: var(--hw-lit); }
-.art-board .hw-eq.hw-big-led > i::before { background: repeating-linear-gradient(to top, var(--hw-lit) 0 6px, transparent 6px 7px); }
 .hw-board .hw-panel, .hw-board .hw-board-well { z-index: 2; }
 .hw-board .hw-glass-frame { z-index: 20; } /* the clock sits on top of the cover where they overlap */
 .hw-glass-frame { position: absolute; border-radius: 16px; padding: 8px; box-sizing: border-box; z-index: 2;
@@ -381,7 +393,7 @@ body:has(.hw-stage) { transition: background-color .4s; }
 .hw-board-well { border-radius: 14px; padding: 8px; background: linear-gradient(#2A2A27, #141413); box-shadow: 0 10px 22px rgba(24,26,18,.5), 0 1px 0 rgba(250,246,236,.5); }
 .hw-board-well > .hw-eq { height: 100%; padding: 6px; border-radius: 9px; background: #05080B; box-shadow: inset 0 4px 10px rgba(24,26,18,.85); }
 .hw-eq.hw-big-led { gap: 3px; }
-.hw-eq.hw-big-led > i::before { background: repeating-linear-gradient(to top, #15ECA4 0 6px, transparent 6px 7px); }
+.hw-eq.hw-big-led > i::before { -webkit-mask: repeating-linear-gradient(to top, #000 0 6px, transparent 6px 7px); mask: repeating-linear-gradient(to top, #000 0 6px, transparent 6px 7px); }
 .hw-eq.hw-big-led > i::after { height: 6px; }
 .hw-eq.hw-big-led[data-real="true"] > i::after { bottom: calc(var(--pk, 0) * 100% - 6px); }
 .hw-board-react > div { display: flex; align-items: center; justify-content: center; }

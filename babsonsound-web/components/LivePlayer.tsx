@@ -200,10 +200,24 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
       setIsPlaying(false)
     } else {
       if (!(await guard.begin())) return
-      setIsBuffering(true)
-      audioRef.current.src = STREAM_URL
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(console.error)
+      startAudio()
     }
+  }
+
+  function startAudio() {
+    if (!audioRef.current) {
+      audioRef.current = new Audio(STREAM_URL)
+      audioRef.current.addEventListener('waiting', () => setIsBuffering(true))
+      audioRef.current.addEventListener('playing', () => setIsBuffering(false))
+    }
+    setIsBuffering(true)
+    audioRef.current.src = STREAM_URL
+    audioRef.current.play().then(() => setIsPlaying(true)).catch(console.error)
+  }
+
+  /** The person chose to listen here: the other device stops at its next check-in. */
+  async function playHere() {
+    if (await guard.begin(true)) startAudio()
   }
 
   return (
@@ -352,6 +366,16 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
           </div>
         </div>
       </div>
+      {guard.elsewhere && (
+        <div className="fixed inset-0 z-[70] bg-black/60 flex items-end sm:items-center justify-center p-4">
+          <div role="alertdialog" aria-modal="true" aria-label="Already listening on another device" className="sk-raised rounded-2xl p-6 w-full max-w-sm space-y-4 text-center">
+            <h3 className="font-display text-br-dk-text text-2xl tracking-wide">Already listening</h3>
+            <p className="text-sm text-br-dk-sub">{guard.notice || 'You are listening on another device.'}</p>
+            <button onClick={playHere} className="sk-btn block w-full rounded-xl py-3 text-sm font-display tracking-[0.2em]">PLAY HERE</button>
+            <button onClick={guard.dismissElsewhere} className="text-sm text-br-dk-sub">Keep listening there</button>
+          </div>
+        </div>
+      )}
       {guard.asking && (
         <div className="fixed inset-0 z-[70] bg-black/60 flex items-end sm:items-center justify-center p-4">
           <div role="alertdialog" aria-modal="true" aria-label="Still listening?" className="sk-raised rounded-2xl p-6 w-full max-w-sm space-y-4 text-center">

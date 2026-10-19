@@ -21,6 +21,26 @@ export const ART_PRESETS: Record<string, { label: string; colors: string[] }> = 
 // fades to the three main colors of the current cover, one per kind of element (see .art-ui in globals.css).
 // Switch it off with ART_THEME = false in lib/artColor.ts.
 
+function hue(hex: string): { h: number; s: number } {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim()); if (!m) return { h: -1, s: 0 }
+  const n = parseInt(m[1], 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, l = (mx + mn) / 2
+  if (d === 0) return { h: -1, s: 0 }
+  const s = d / (1 - Math.abs(2 * l - 1))
+  const h = mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4
+  return { h: h * 60, s }
+}
+/** Meter colors for album mode: yellow and red only when the cover itself has them. */
+export function eqZoneVars(colors: string[]): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const c of colors) {
+    const { h, s } = hue(c); if (s < 0.4) continue
+    if (!out['--art-y'] && h >= 40 && h <= 70) out['--art-y'] = c
+    if (!out['--art-r'] && (h <= 15 || h >= 345)) out['--art-r'] = c
+  }
+  return out
+}
+
 interface Theme { on: boolean; main: string; full: boolean; badge: string; colors: string[] | null }
 const Ctx = createContext<Theme>({ on: false, main: '', full: false, badge: '', colors: null })
 /** The main color to tint the visualizer with ('' when the theme is off or hasn't faded in yet). */
@@ -75,7 +95,7 @@ export default function ArtTheme({ className, children }: { className?: string; 
   const [a, b, c] = use ? palette : [BABSON_GREEN, BABSON_GREEN, BABSON_GREEN]
   // Up to three more real cover colors for the desk; when the cover has fewer, they repeat the ones it has.
   const d = use && palette[3] ? palette[3] : c, e = use && palette[4] ? palette[4] : a, f = use && palette[5] ? palette[5] : c
-  const style = { '--art-1': a, '--art-2': b, '--art-3': c } as React.CSSProperties
+  const style = { '--art-1': a, '--art-2': b, '--art-3': c, ...(use ? eqZoneVars([a, b, c, d, e, f]) : {}) } as React.CSSProperties
   return (
     <Ctx.Provider value={{ on: night, main: use ? a : '', full: night, badge: ok ? palette[2] : '', colors: use ? [a, b, c, d, e, f] : null }}>
       <div className={`${night ? 'art-ui ' : ''}${className ?? ''}`} style={night ? style : undefined}>{children}</div>

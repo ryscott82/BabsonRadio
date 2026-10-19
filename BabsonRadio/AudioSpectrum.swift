@@ -26,6 +26,8 @@ nonisolated final class AudioSpectrum: @unchecked Sendable {
         /// How quickly the automatic level follows the song (per update). Slower = more contrast between quiet and loud parts.
         static let followUp: Float = 0.03
         static let followDown: Float = 0.008
+        /// While music plays the top bands never go fully dark: a quiet treble still shows a segment or two (fraction of full height, reached at the last band).
+        static let trebleFloor: Float = 0.16
     }
 
     private struct State { var levels = [Float](repeating: 0, count: AudioSpectrum.bands); var stamp = 0.0 }
@@ -178,7 +180,9 @@ nonisolated final class SpectrumTapContext {
                 let target = pow(lin, AudioSpectrum.Tuning.gamma)
                 let old = smooth[b]
                 smooth[b] = target > old ? old + (target - old) * AudioSpectrum.Tuning.attack : old * AudioSpectrum.Tuning.release + target * (1 - AudioSpectrum.Tuning.release)
-                out[b] = smooth[b]
+                let pos = Float(b) / Float(max(1, ranges.count - 1))
+                let lift = AudioSpectrum.Tuning.trebleFloor * min(1, max(0, (pos - 0.4) / 0.25))
+                out[b] = max(smooth[b], lift)
             }
         }
         AudioSpectrum.shared.publish(out)

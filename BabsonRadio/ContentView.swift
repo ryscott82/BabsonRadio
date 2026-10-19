@@ -28,7 +28,10 @@ struct ContentView: View {
     var body: some View {
         // An open foldable in landscape, on any tab but Live: the player stays on the left half, the tab fills the right half.
         let customBar = hSize == .regular && paneSize.width > paneSize.height
-        let sideW: CGFloat = (customBar && tab != 0) ? paneSize.width / 2 : 0
+        // The left page is always exactly half of the real screen (the window), the same width it has on the Live tab, so it
+        // does not shift or rescale when you change tabs. The system's right-hand strip is not part of the tab area.
+        let windowW = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first?.keyWindow?.bounds.width ?? paneSize.width
+        let sideW: CGFloat = (customBar && tab != 0) ? max(paneSize.width, windowW) / 2 : 0
         // One explicit answer, recomputed on every tab switch as well as when the board opens or closes:
         // hidden only while you are on Live with the full screen board up, shown in every other case.
         let hideBar = tab == 0 && board.open
@@ -128,7 +131,11 @@ struct ContentView: View {
 
     private func alerts<V: View>(_ content: V) -> some View {
         content
-            .alert("Still listening?", isPresented: $listen.asking) {
+            .alert("Already listening", isPresented: Binding(get: { listen.elsewhere != nil }, set: { if !$0 { listen.elsewhere = nil } })) {
+            Button("Play here") { AudioPlayerManager.shared.play(takeOver: true) }
+            Button("Keep listening there", role: .cancel) {}
+        } message: { Text(listen.elsewhere ?? "") }
+        .alert("Still listening?", isPresented: $listen.asking) {
                 Button("Keep listening") { listen.markActive() }
             } message: { Text("The music stops in a couple of minutes unless you tap.") }
             .alert("Listening stopped", isPresented: noticeShown) {

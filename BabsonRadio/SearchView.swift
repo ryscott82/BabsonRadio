@@ -24,7 +24,7 @@ struct SearchView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
-                (scheme == .dark ? Color.brDkBg : Color.brLtBg)
+                HWDesk()
                     .ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
@@ -50,11 +50,11 @@ struct SearchView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 0) {
-                        Text("BABSON ")
+                        Text("Babson ")
                             .font(BRFont.display(18))
                             .foregroundColor(scheme == .dark ? .brGold : .brGreen)
                             .kerning(3)
-                        Text("RADIO")
+                        Text("Radio")
                             .font(BRFont.display(18))
                             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                             .kerning(3)
@@ -92,11 +92,11 @@ struct SearchView: View {
 
                 if !canUse {
                     Text(auth.isSignedIn ? "Ask a Babson student to sponsor you." : "Sign in with your Babson email to browse episodes.")
-                        .font(.system(size: 14)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                        .font(BRFont.body(14, .regular)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .padding(.horizontal, 20)
                 } else if lib.all.isEmpty {
                     Text(lib.loaded ? "No episodes yet." : "Loading…")
-                        .font(.system(size: 14)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                        .font(BRFont.body(14, .regular)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .padding(.horizontal, 20)
                 }
                 LazyVStack(spacing: 10) {
@@ -153,7 +153,7 @@ struct SearchView: View {
                 .multilineTextAlignment(.center)
 
             Text("Try a show, episode or category.")
-                .font(.system(size: 14))
+                .font(BRFont.body(14, .regular))
                 .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)

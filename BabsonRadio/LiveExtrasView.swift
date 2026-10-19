@@ -219,10 +219,12 @@ private struct RainDropView: View {
 // MARK: - Buttons and star rows under the player
 
 struct LiveExtrasView: View {
-    enum Mode { case reactions, rest, board, emojis }
+    @Environment(\.hwMode) private var hwm
+    enum Mode { case reactions, rest, board, emojis, ratings }
     /// `.emojis` is just the emoji row (a second copy that does no polling of its own).
     /// `.board` is the emoji row plus the song rating, for the full screen board.
     /// `.reactions` is the emoji row that stays on the main screen; `.rest` is ratings and feedback, which live in the drawer.
+    /// `.ratings` is just the star rows and the song links (the open foldable's ratings panel).
     var mode: Mode = .rest
     @ObservedObject private var audio = AudioPlayerManager.shared
     @ObservedObject private var model = LiveExtrasModel.shared
@@ -277,67 +279,75 @@ struct LiveExtrasView: View {
 
     private func feedbackCard(_ t: (occId: String, title: String)) -> some View {
         VStack(spacing: 8) {
-            Text("How was \(t.title)?").font(.system(size: 14, weight: .semibold)).foregroundColor(text).multilineTextAlignment(.center)
+            Text("How was \(t.title)?").font(BRFont.body(14, .semibold)).foregroundColor(hwm.onPanelText).multilineTextAlignment(.center)
             if fbSent == t.occId {
-                Text("Thanks! Sent to the host.").font(.system(size: 13)).foregroundColor(gold)
+                Text("Thanks for rating.").font(BRFont.body(13, .regular)).foregroundColor(gold)
             } else {
-                HStack(spacing: 6) {
+                HStack(spacing: 4) {
                     ForEach(1...5, id: \.self) { n in
-                        Button { fbStars = n } label: {
-                            Image(systemName: n <= fbStars ? "star.fill" : "star").font(.system(size: 28)).foregroundColor(n <= fbStars ? gold : sub)
-                        }.buttonStyle(.plain)
+                        Button { fbStars = n } label: { HWStar(filled: n <= fbStars, size: 30) }.buttonStyle(.plain)
                     }
                 }
-                TextField("Anything the host should know? (optional)", text: $fbComment, axis: .vertical)
-                    .lineLimit(1...3).font(.system(size: 14)).padding(10)
-                    .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                Button("SEND FEEDBACK") {
+                Button("Send rating") {
                     Task {
-                        if await model.sendFeedback(stars: fbStars, comment: fbComment, occId: t.occId, title: t.title) {
+                        if await model.sendFeedback(stars: fbStars, comment: "", occId: t.occId, title: t.title) {
                             fbSent = t.occId; fbComment = ""; fbStars = 0
                         }
                     }
                 }
-                .font(BRFont.display(14)).kerning(2).foregroundColor(gold).disabled(fbStars == 0)
+                .buttonStyle(HWKeyStyle())
+                .disabled(fbStars == 0).opacity(fbStars == 0 ? 0.5 : 1)
             }
         }
         .padding(14)
         .frame(maxWidth: .infinity)
-        .brGlass(in: RoundedRectangle(cornerRadius: 16), tint: theme.glassTint(scheme))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.black.opacity(0.35)))
     }
 
     var body: some View {
         VStack(spacing: 14) {
-            if mode != .rest, let occ = np?.occId, !occ.isEmpty, auth.isInvisible {
+            if mode != .rest, mode != .ratings, let occ = np?.occId, !occ.isEmpty, auth.isInvisible {
                 Text("Reactions are off in Invisible mode.")
-                    .font(.system(size: 12)).foregroundColor(sub).multilineTextAlignment(.center)
-            } else if mode != .rest, let occ = np?.occId, !occ.isEmpty {
-                BRGlassGroup(spacing: 10) {
-                    // Rows of up to 5, so a full set of 10 fits as two tidy rows.
-                    let rows = stride(from: 0, to: reactionRow.count, by: 5).map { Array(reactionRow[$0..<min($0 + 5, reactionRow.count)]) }
-                    VStack(spacing: 10) {
-                        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                            HStack(spacing: 10) {
-                                ForEach(row, id: \.self) { e in
-                                    Button { Task { await model.react(e) } } label: {
-                                        ReactionGlyph(emoji: e, size: 24).frame(width: 52, height: 44)
-                                            .brGlass(in: Capsule(), interactive: true)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .accessibilityLabel(e.hasPrefix(":pgh-") ? "React" : "React with \(e)")
+                    .font(BRFont.body(12, .regular)).foregroundColor(sub).multilineTextAlignment(.center)
+            } else if mode != .rest, mode != .ratings, let occ = np?.occId, !occ.isEmpty {
+                // Steel keys. On the amp panel: four 60 x 44 keys. In the drawer and on the board: a grid of 38 pt keys, five across.
+                let panel = mode == .reactions
+                let list = panel ? Array(reactionRow.prefix(4)) : reactionRow
+                let perRow = panel ? 4 : 5
+                let rows = stride(from: 0, to: list.count, by: perRow).map { Array(list[$0..<min($0 + perRow, list.count)]) }
+                VStack(spacing: panel ? 0 : 12) {
+                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                        HStack(spacing: panel ? 0 : 8) {
+                            ForEach(row, id: \.self) { e in
+                                if panel { Spacer(minLength: 0) }
+                                Button { Task { await model.react(e) } } label: {
+                                    ReactionGlyph(emoji: e, size: panel ? 23 : 21)
+                                        .frame(maxWidth: .infinity)
                                 }
+                                .buttonStyle(HWKeyStyle(corner: panel ? 12 : 10, lit: false, height: panel ? 44 : 38))
+                                .frame(width: panel ? 60 : nil)
+                                .accessibilityLabel(e.hasPrefix(":pgh-") ? "React" : "React with \(e)")
+                                if panel { Spacer(minLength: 0) }
                             }
                         }
+                        .padding(.bottom, panel ? 0 : 4)
                     }
                 }
             }
 
-            if mode == .rest || mode == .board {
+            if mode == .rest || mode == .board || mode == .ratings {
             if ratingsOn, let np, !np.title.isEmpty, np.showOnly != true {
                     starRow(label: "Rate this song", value: model.songStars) { n in
                         Task { await model.rateSong(n, title: np.title, artist: np.artist) }
                     }
+                }
+                if ratingsOn, let r = rateable {
+                    starRow(label: "Rate this show", value: model.showStars) { n in
+                        Task { await model.rateShow(n, occId: r.occId, title: r.title) }
+                    }
+                }
+                if let np, !np.title.isEmpty, np.showOnly != true {
+                    SongLinksRow(title: np.title, artist: np.artist)
                 }
     
                 if mode == .rest, let t = feedbackTarget {
@@ -346,7 +356,7 @@ struct LiveExtrasView: View {
             }
 
             if mode != .rest, !model.message.isEmpty {
-                Text(model.message).font(.system(size: 12)).foregroundColor(gold).multilineTextAlignment(.center)
+                Text(model.message).font(BRFont.body(12, .semibold)).foregroundColor(Color(hex: "FFD9A0")).multilineTextAlignment(.center)
             }
         }
         .padding(.horizontal, 24)
@@ -365,18 +375,41 @@ struct LiveExtrasView: View {
     }
 
     private func starRow(label: String, value: Int, set: @escaping (Int) -> Void) -> some View {
-        VStack(spacing: 4) {
-            Text(label).font(.system(size: 12, weight: .semibold)).foregroundColor(sub).lineLimit(1)
-            HStack(spacing: 6) {
+        HStack {
+            Text(label).font(BRFont.body(13, .semibold)).foregroundColor(hwm.onPanelSub).lineLimit(1)
+            Spacer(minLength: 8)
+            HStack(spacing: 2) {
                 ForEach(1...5, id: \.self) { n in
-                    Button { set(n) } label: {
-                        Image(systemName: n <= value ? "star.fill" : "star").font(.system(size: 24)).foregroundColor(n <= value ? gold : sub)
-                    }
+                    Button { set(n) } label: { HWStar(filled: n <= value, size: 24) }
                     .buttonStyle(.plain)
                     .accessibilityLabel("\(n) star\(n == 1 ? "" : "s")")
                 }
             }
         }
+    }
+}
+
+
+/// "Find this song" keys: plain search links, so there is no account or key to keep up. Same links as the website.
+struct SongLinksRow: View {
+    let title: String
+    let artist: String
+    @Environment(\.openURL) private var openURL
+
+    private var q: String { enc([title, artist].filter { !$0.isEmpty }.joined(separator: " ")) }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            key("Apple Music", "https://music.apple.com/us/search?term=\(q)")
+            key("Spotify", "https://open.spotify.com/search/\(q)")
+        }
+    }
+
+    private func key(_ label: String, _ url: String) -> some View {
+        Button { if let u = URL(string: url) { openURL(u) } } label: {
+            Text(label).font(BRFont.body(12, .semibold)).frame(maxWidth: .infinity)
+        }
+        .buttonStyle(HWKeyStyle(corner: 14, lit: false, height: 28))
     }
 }
 
@@ -487,5 +520,50 @@ struct PittsburghGlyph: View {
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)
+    }
+}
+
+
+// MARK: - Reaction keys (board)
+
+/// A row of steel reaction keys at any size, with the same rules as the main row: the person's most used first, an admin easter-egg
+/// set while it matches the song or show, and the Pittsburgh set in the test lab. No polling here; the Live screen already does that.
+struct ReactionKeys: View {
+    @Environment(\.hwMode) private var hwm
+    var count = 4
+    var keyW: CGFloat = 60
+    var keyH: CGFloat = 44
+    var glyph: CGFloat = 23
+    var corner: CGFloat = 12
+    @ObservedObject private var model = LiveExtrasModel.shared
+    @ObservedObject private var audio = AudioPlayerManager.shared
+    @ObservedObject private var lab = TestLab.shared
+    @ObservedObject private var auth = AuthManager.shared
+
+    private var row: [String] {
+        let list: [String]
+        if lab.pittsburgh { list = [":pgh-bridge:", ":pgh-helmet:", ":pgh-pirate:", ":pgh-heart:"] }
+        else if let n = audio.nowPlaying, let e = model.eggs.first(where: { $0.matches(artist: n.artist, title: n.title, show: n.showTitle ?? "") }) { list = e.emojis }
+        else { list = model.topEmojis }
+        return Array(list.prefix(count))
+    }
+
+    var body: some View {
+        if auth.isInvisible {
+            Text("Reactions are off in Invisible mode.").font(BRFont.body(12)).foregroundStyle(hwm.onPanelSub)
+        } else {
+            HStack(spacing: 0) {
+                ForEach(row, id: \.self) { e in
+                    Spacer(minLength: 0)
+                    Button { Task { await model.react(e) } } label: {
+                        ReactionGlyph(emoji: e, size: glyph).frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(HWKeyStyle(corner: corner, lit: false, height: keyH))
+                    .frame(width: keyW)
+                    .accessibilityLabel(e.hasPrefix(":pgh-") ? "React" : "React with \(e)")
+                    Spacer(minLength: 0)
+                }
+            }
+        }
     }
 }

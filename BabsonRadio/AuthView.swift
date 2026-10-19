@@ -36,16 +36,16 @@ struct AuthView: View {
 
                 // ── Logo block ─────────────────────────────────
                 VStack(spacing: 4) {
-                    Text("BABSON")
+                    Text("Babson")
                         .font(BRFont.display(16))
                         .foregroundColor(scheme == .dark ? .brGold : .brGreen)
                         .kerning(6)
-                    Text("RADIO")
+                    Text("Radio")
                         .font(BRFont.display(52))
                         .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                         .kerning(8)
                     Text("Student Radio — Babson College")
-                        .font(.system(size: 13))
+                        .font(BRFont.body(13, .regular))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 }
                 .padding(.top, 72)
@@ -60,7 +60,7 @@ struct AuthView: View {
                         withAnimation { mode = .createAccount }
                     }
                 }
-                .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
+                .background(HWFieldFill())
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
@@ -105,7 +105,7 @@ struct AuthView: View {
                             Spacer()
                         }
                         .padding(.horizontal, 14).padding(.vertical, 8)
-                        .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
+                        .background(HWFieldFill())
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .transition(.move(edge: .top).combined(with: .opacity))
                     }
@@ -146,7 +146,7 @@ struct AuthView: View {
                         Image(systemName: "exclamationmark.circle")
                             .font(.system(size: 13))
                         Text(err)
-                            .font(.system(size: 13))
+                            .font(BRFont.body(13, .regular))
                     }
                     .foregroundColor(.brRed)
                     .padding(.horizontal, 24)
@@ -190,7 +190,7 @@ struct AuthView: View {
                 }
                 if let info = auth.infoMessage {
                     Text(info)
-                        .font(.system(size: 12))
+                        .font(BRFont.body(12, .regular))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .padding(.horizontal, 24)
                         .padding(.top, 8)
@@ -199,13 +199,13 @@ struct AuthView: View {
                 // ── Guests ─────────────────────────────────────
                 Button(action: { showGuest = true }) {
                     Text("No Babson email? Continue as a guest")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(BRFont.body(13, .medium))
                         .foregroundColor(scheme == .dark ? .brGold : .brGreen)
                 }
                 .padding(.horizontal, 32)
                 .padding(.top, 20)
                 Text("Live radio is free. A student can unlock the rest.")
-                    .font(.system(size: 12))
+                    .font(BRFont.body(12, .regular))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
@@ -217,7 +217,7 @@ struct AuthView: View {
                     .padding(.bottom, 40)
             }
         }
-        .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+        .background(HWDesk())
         .ignoresSafeArea()
         .onTapGesture { focusedField = nil }
         .animation(.easeInOut(duration: 0.2), value: auth.errorMessage)
@@ -268,7 +268,7 @@ struct AuthView: View {
                             .font(.system(size: 11))
                             .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
                         Text("Developer Mode")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(BRFont.body(11, .medium))
                             .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
                     }
 
@@ -279,14 +279,14 @@ struct AuthView: View {
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                             .frame(width: 18)
                         TextField("Email (leave empty for the developer password)", text: $devEmail)
-                            .font(.system(size: 14))
+                            .font(BRFont.body(14, .regular))
                             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 11)
-                    .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
+                    .background(HWFieldFill())
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10)
                         .stroke(scheme == .dark ? Color.brDkBorder : Color.brLtBorder, lineWidth: 1))
@@ -298,20 +298,20 @@ struct AuthView: View {
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                             .frame(width: 18)
                         SecureField("Password", text: $devPassword)
-                            .font(.system(size: 14))
+                            .font(BRFont.body(14, .regular))
                             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                             .focused($devFieldFocused)
                             .onSubmit { tryDevBypass() }
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 11)
-                    .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
+                    .background(HWFieldFill())
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10)
                         .stroke(scheme == .dark ? Color.brDkBorder : Color.brLtBorder, lineWidth: 1))
 
                     Button(action: tryDevBypass) {
-                        Text("ENTER")
+                        Text("Enter")
                             .font(BRFont.display(12))
                             .kerning(2)
                             .padding(.horizontal, 24)
@@ -328,7 +328,7 @@ struct AuthView: View {
                         ProgressView().controlSize(.small)
                     } else if let err = auth.errorMessage {
                         Text(err)
-                            .font(.system(size: 12))
+                            .font(BRFont.body(12, .regular))
                             .foregroundColor(.brRed)
                             .multilineTextAlignment(.center)
                     }
@@ -413,7 +413,7 @@ struct BRTextField: View {
                         .autocorrectionDisabled()
                 }
             }
-            .font(.system(size: 15))
+            .font(BRFont.body(15, .regular))
             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
             .if(textContentType != nil) { v in
                 v.textContentType(textContentType!)
@@ -435,7 +435,7 @@ struct BRTextField: View {
                     }
                 } label: {
                     HStack(spacing: 3) {
-                        Text(choice.wrappedValue).font(.system(size: 15))
+                        Text(choice.wrappedValue).font(BRFont.body(15, .regular))
                         Image(systemName: "chevron.up.chevron.down").font(.system(size: 10))
                     }
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
@@ -443,14 +443,14 @@ struct BRTextField: View {
                 }
             } else if let suffix {
                 Text(suffix)
-                    .font(.system(size: 15))
+                    .font(BRFont.body(15, .regular))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                     .fixedSize()
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
+        .background(HWFieldFill())
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
@@ -475,7 +475,7 @@ struct PhoneField: View {
             TextField("Phone number", text: $phoneNumber)
                 .keyboardType(.phonePad)
                 .textContentType(.telephoneNumber)
-                .font(.system(size: 15))
+                .font(BRFont.body(15, .regular))
                 .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                 .onChange(of: phoneNumber) { _, new in
                     phoneNumber = Self.format(new)
@@ -483,7 +483,7 @@ struct PhoneField: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
+        .background(HWFieldFill())
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)

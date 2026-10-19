@@ -35,11 +35,11 @@ struct SplashView: View {
                 .shadow(color: party ? Color.white.opacity(0.18) : Color.clear, radius: 30)
                 .overlay(alignment: .top) {
                     VStack(spacing: 0) {
-                        Text("BABSON")
+                        Text("Babson")
                             .font(BRFont.display(14))
                             .foregroundColor(night ? .brGold : .brGreen)
                             .kerning(5)
-                        Text("RADIO")
+                        Text("Radio")
                             .font(BRFont.display(30))
                             .foregroundColor(night ? .white : .brLtText)
                             .kerning(5)

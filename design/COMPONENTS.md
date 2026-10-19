@@ -33,3 +33,10 @@ Used on the home/live page. Mockups: the Babson Radio design canvas (Web*, Duo*,
 
 Not done yet on web: album-art mode hue-shift of leather/wood, per-corner random cap wear, grainy stars, volume knob, schedule card on the live page.
 Listeners cannot send feedback to hosts: the end-of-show comment box was removed from `LiveExtras.tsx`; stars remain.
+
+# iOS hardware components (Oct 2026)
+See `IOS_MAPPING.md` for the full table. Rules that apply to every screen:
+- Backgrounds are `HWDesk()`; cards are `.brCard()` (black leather in dark, ceramic in light); inputs use `HWFieldFill()`.
+- Buttons use `HWKeyStyle`. One lit (pushed in) key per view at most.
+- No glows or pulsing dots. ON AIR only for live shows.
+- Album-art mode: `HWMode.album(color)` tints desk and leather from the cover hue. Neutral covers go graphite.

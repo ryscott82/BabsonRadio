@@ -96,15 +96,15 @@ struct LibraryView: View {
                         Text(auth.isSignedIn
                              ? "Ask a Babson student to sponsor you."
                              : "Sign in with your Babson email to save episodes.")
-                            .font(.system(size: 14)).foregroundColor(sub)
+                            .font(BRFont.body(14, .regular)).foregroundColor(sub)
                     } else {
-                        if let e = lib.error { Text(e).font(.system(size: 13)).foregroundColor(.brRed) }
+                        if let e = lib.error { Text(e).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
 
                         VStack(alignment: .leading, spacing: 12) {
                             BRSectionHeader(title: "SAVED")
                             if lib.saved.isEmpty {
                                 Text(lib.loaded ? "Nothing saved yet." : "Loading…")
-                                    .font(.system(size: 14)).foregroundColor(sub)
+                                    .font(BRFont.body(14, .regular)).foregroundColor(sub)
                             }
                             ForEach(lib.saved) { EpisodeListRow(ep: $0) }
                         }
@@ -122,7 +122,7 @@ struct LibraryView: View {
                 .padding(20)
                 .animation(.easeInOut(duration: 0.25), value: lib.savedIds)
             }
-            .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+            .background(HWDesk())
             .navigationTitle("Library")
             .navigationBarTitleDisplayMode(.inline)
             .profileButton()
@@ -156,17 +156,18 @@ struct EpisodeListRow: View {
             .accessibilityLabel("Play \(ep.title)")
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(ep.title).font(.system(size: 14, weight: .semibold)).lineLimit(2)
+                Text(ep.title).font(BRFont.body(14, .semibold)).lineLimit(2)
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                Text(ep.subtitle).font(.system(size: 12)).lineLimit(1)
+                Text(ep.subtitle).font(BRFont.body(12, .regular)).lineLimit(1)
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             }
             Spacer(minLength: 0)
 
             Button { Task { await lib.toggle(ep) } } label: {
-                Image(systemName: lib.savedIds.contains(ep.id) ? "star.fill" : "star")
-                    .font(.system(size: 18))
-                    .foregroundColor(lib.savedIds.contains(ep.id) ? (scheme == .dark ? .brGold : .brGreen) : (scheme == .dark ? .brDkSub : .brLtSub))
+                Group {
+                    if lib.savedIds.contains(ep.id) { HWStar(filled: true, size: 20) }
+                    else { Image(systemName: "star").font(.system(size: 18)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub) }
+                }
                     .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
@@ -193,22 +194,22 @@ struct EpisodePlayerSheet: View {
                 .frame(maxWidth: .infinity)
                 .background(Color.black)
             VStack(alignment: .leading, spacing: 8) {
-                Text(ep.title).font(.system(size: 18, weight: .semibold))
+                Text(ep.title).font(BRFont.body(18, .semibold))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                Text(ep.subtitle).font(.system(size: 13))
+                Text(ep.subtitle).font(BRFont.body(13, .regular))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 if !ep.description.isEmpty {
-                    Text(ep.description).font(.system(size: 14))
+                    Text(ep.description).font(BRFont.body(14, .regular))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 }
                 Button("Done") { dismiss() }
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(BRFont.body(15, .semibold))
                     .padding(.top, 8)
             }
             .padding(20)
             Spacer()
         }
-        .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+        .background(HWDesk())
         .presentationDragIndicator(.visible)
         // The live stream would play over the video, so pause it.
         .onAppear { if AudioPlayerManager.shared.isPlaying { AudioPlayerManager.shared.stop() } }

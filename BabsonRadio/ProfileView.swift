@@ -130,7 +130,7 @@ private struct SignedInProfileView: View {
                     if let ig = BabsonLinks.instagram {
                         Link(destination: ig) {
                             Label { Text("Follow Babson Sound on Instagram") } icon: { InstagramGlyph(size: 18) }
-                                .font(.system(size: 14, weight: .medium))
+                                .font(BRFont.body(14, .medium))
                                 .foregroundColor(scheme == .dark ? .brGold : .brGreen)
                         }
                         .frame(maxWidth: .infinity)
@@ -145,17 +145,17 @@ private struct SignedInProfileView: View {
                         .padding(.bottom, 24)
                 }
             }
-            .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+            .background(HWDesk())
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 0) {
-                        Text("BABSON ")
+                        Text("Babson ")
                             .font(BRFont.display(18))
                             .foregroundColor(scheme == .dark ? .brGold : .brGreen)
                             .kerning(3)
-                        Text("RADIO")
+                        Text("Radio")
                             .font(BRFont.display(18))
                             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                             .kerning(3)
@@ -220,7 +220,7 @@ private struct SignedInProfileView: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(user.displayName)
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(BRFont.body(20, .semibold))
                         .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                         .lineLimit(1)
                     if !user.isDeveloper, AuthManager.isBabsonEmail(user.email) {
@@ -231,11 +231,11 @@ private struct SignedInProfileView: View {
                     if user.isDeveloper { BRTagChip(text: "DEVELOPER", style: .gold) }
                     if let by = auth.verifyDeadline {
                         Text("Verify your email by \(by.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())).")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(BRFont.body(12, .medium))
                             .foregroundColor(.brRed)
                     }
                     Text("Member since \(user.joinedDate.formatted(.dateTime.month(.wide).year()))")
-                        .font(.system(size: 13))
+                        .font(BRFont.body(13, .regular))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 }
                 Spacer(minLength: 0)
@@ -254,7 +254,7 @@ private struct SignedInProfileView: View {
                 }
                 .padding(.vertical, 8)
                 if let e = store.colorError {
-                    Text(e).font(.system(size: 12)).foregroundColor(.brRed)
+                    Text(e).font(BRFont.body(12, .regular)).foregroundColor(.brRed)
                 }
             }
         }
@@ -272,11 +272,11 @@ private struct SignedInProfileView: View {
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Report a bug or suggest a feature")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(BRFont.body(16, .semibold))
                         .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                         .multilineTextAlignment(.leading)
                     Text("Something wrong, or an idea? Tell us.")
-                        .font(.system(size: 13))
+                        .font(BRFont.body(13, .regular))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 }
                 Spacer()
@@ -304,10 +304,10 @@ private struct SignedInProfileView: View {
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Admin")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(BRFont.body(16, .semibold))
                         .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                     Text("Station tools")
-                        .font(.system(size: 13))
+                        .font(BRFont.body(13, .regular))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .multilineTextAlignment(.leading)
                 }
@@ -334,10 +334,10 @@ private struct SignedInProfileView: View {
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Host panel")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(BRFont.body(16, .semibold))
                         .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                     Text("Live feed and set list")
-                        .font(.system(size: 13))
+                        .font(BRFont.body(13, .regular))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .multilineTextAlignment(.leading)
                 }
@@ -358,13 +358,13 @@ private struct SignedInProfileView: View {
             EmojiUnlocksView()
         } label: {
             HStack(spacing: 14) {
-                Text("🔥").font(.system(size: 20)).frame(width: 28)
+                Text("🔥").font(BRFont.body(20, .regular)).frame(width: 28)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Reaction emojis")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(BRFont.body(16, .semibold))
                         .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                     Text("See what you can unlock")
-                        .font(.system(size: 13))
+                        .font(BRFont.body(13, .regular))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 }
                 Spacer()
@@ -390,10 +390,10 @@ private struct SignedInProfileView: View {
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Go on air")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(BRFont.body(16, .semibold))
                         .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                     Text("Request airtime")
-                        .font(.system(size: 13))
+                        .font(BRFont.body(13, .regular))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .multilineTextAlignment(.leading)
                 }
@@ -415,10 +415,10 @@ private struct SignedInProfileView: View {
         Toggle(isOn: Binding(get: { auth.isInvisible }, set: { auth.setInvisible($0) })) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Invisible mode")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(BRFont.body(15, .semibold))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                 Text("Friends can't see you tuned in. Reactions and contact suggestions are off.")
-                    .font(.system(size: 12))
+                    .font(BRFont.body(12, .regular))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             }
         }
@@ -451,7 +451,7 @@ private struct SignedInProfileView: View {
                 if contacts.accessGranted {
                     if contacts.featured.isEmpty {
                         Text("No suggestions yet.")
-                            .font(.system(size: 13))
+                            .font(BRFont.body(13, .regular))
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 18).padding(.vertical, 16)
@@ -470,7 +470,7 @@ private struct SignedInProfileView: View {
                     Button(action: { activeSheet = .contactPicker }) {
                         HStack {
                             Image(systemName: "person.2").font(.system(size: 14))
-                            Text("Show all contacts").font(.system(size: 14))
+                            Text("Show all contacts").font(BRFont.body(14, .regular))
                             Spacer()
                             Image(systemName: "chevron.right").font(.system(size: 12))
                         }
@@ -485,7 +485,7 @@ private struct SignedInProfileView: View {
                                 .font(.system(size: 18))
                                 .foregroundColor(scheme == .dark ? .brGold : .brGreen)
                             Text("Allow access to contacts")
-                                .font(.system(size: 14, weight: .medium))
+                                .font(BRFont.body(14, .medium))
                                 .foregroundColor(scheme == .dark ? .brGold : .brGreen)
                             Spacer()
                             Image(systemName: "chevron.right")
@@ -504,7 +504,7 @@ private struct SignedInProfileView: View {
                     if let name = selectedContactName ?? selectedPhone {
                         HStack {
                             Image(systemName: "message.fill").font(.system(size: 13))
-                            Text("Text \(name)").font(.system(size: 14, weight: .medium))
+                            Text("Text \(name)").font(BRFont.body(14, .medium))
                             Spacer()
                             Button { selectedPhone = nil } label: { Image(systemName: "xmark.circle.fill").font(.system(size: 16)) }
                                 .buttonStyle(.plain)
@@ -518,7 +518,7 @@ private struct SignedInProfileView: View {
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                             .frame(width: 20)
                         TextField("Or enter their email address", text: $guestEmail)
-                            .font(.system(size: 15))
+                            .font(BRFont.body(15, .regular))
                             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                             .keyboardType(.emailAddress)
                             .textInputAutocapitalization(.never)
@@ -526,13 +526,13 @@ private struct SignedInProfileView: View {
                             .onChange(of: guestEmail) { _, new in if !new.isEmpty { selectedPhone = nil } }
                     }
                     .padding(.horizontal, 14).padding(.vertical, 12)
-                    .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+                    .background(HWDesk())
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10)
                         .stroke(scheme == .dark ? Color.brDkBorder2 : Color.brLtBorder, lineWidth: 1))
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("ACCESS DURATION")
+                        Text("Access duration")
                             .font(BRFont.display(10)).kerning(2)
                             .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
                         HStack(spacing: 8) {
@@ -566,7 +566,7 @@ private struct SignedInProfileView: View {
                     .animation(.easeInOut(duration: 0.2), value: inviteSent)
 
                     if let inviteError {
-                        Text(inviteError).font(.system(size: 12)).foregroundColor(.brRed)
+                        Text(inviteError).font(BRFont.body(12, .regular)).foregroundColor(.brRed)
                     }
                 }
                 .padding(18)
@@ -575,7 +575,7 @@ private struct SignedInProfileView: View {
             .padding(.horizontal, 20)
 
             Text("Friends you invite get guest access. Suggestions use scrambled phone numbers, never names. Invisible mode turns them off.")
-                .font(.system(size: 11))
+                .font(BRFont.body(11, .regular))
                 .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
                 .padding(.horizontal, 24)
         }
@@ -630,15 +630,15 @@ private struct ContactInviteRow: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(contact.name)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(BRFont.body(15, .medium))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                 if let caption {
                     Text(caption)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(BRFont.body(12, .semibold))
                         .foregroundColor(scheme == .dark ? .brGold : .brGreen)
                 } else if let phone = contact.primaryPhone {
                     Text(phone)
-                        .font(.system(size: 12))
+                        .font(BRFont.body(12, .regular))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 }
             }
@@ -707,11 +707,11 @@ struct ContactPickerView: View {
                     Text(contact.initials).font(BRFont.display(13)).foregroundColor(.white)
                 }
                 VStack(alignment: .leading) {
-                    Text(contact.name).font(.system(size: 15, weight: .medium))
+                    Text(contact.name).font(BRFont.body(15, .medium))
                     if contact.savedBy >= 1 {
-                        Text("\(contact.savedBy)+ mutuals").font(.system(size: 12, weight: .semibold)).foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                        Text("\(contact.savedBy)+ mutuals").font(BRFont.body(12, .semibold)).foregroundColor(scheme == .dark ? .brGold : .brGreen)
                     } else if let p = contact.primaryPhone {
-                        Text(p).font(.system(size: 12)).foregroundColor(.secondary)
+                        Text(p).font(BRFont.body(12, .regular)).foregroundColor(.secondary)
                     }
                 }
                 Spacer()
@@ -743,7 +743,7 @@ struct ContactPickerView: View {
                             VStack(spacing: 0) {
                                 ForEach(keys, id: \.self) { k in
                                     Text(k == "★" ? "★" : k)
-                                        .font(.system(size: 10, weight: .bold))
+                                        .font(BRFont.body(10, .bold))
                                         .foregroundColor(scheme == .dark ? .brGold : .brGreen)
                                         .frame(maxHeight: .infinity)
                                 }
@@ -825,14 +825,14 @@ private struct ActiveInviteRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(invite.email)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(BRFont.body(14, .medium))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                     .lineLimit(1)
                 HStack(spacing: 6) {
                     Image(systemName: "clock")
                         .font(.system(size: 10))
                     Text(invite.expiresLabel)
-                        .font(.system(size: 12))
+                        .font(BRFont.body(12, .regular))
                 }
                 .foregroundColor(
                     invite.isExpired
@@ -1263,7 +1263,7 @@ struct HostPanelView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                if let err = host.error { Text(err).font(.system(size: 13)).foregroundColor(.brRed) }
+                if let err = host.error { Text(err).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
                 if let s = host.status {
                     controls(s)
                     if s.controlsOpen, selected != nil {
@@ -1281,7 +1281,7 @@ struct HostPanelView: View {
             }
             .padding(20)
         }
-        .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+        .background(HWDesk())
         .navigationTitle("Host panel")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await host.load() }
@@ -1303,10 +1303,10 @@ struct HostPanelView: View {
             if s.controlsOpen {
                 let np = s.nowPlaying
                 Text((np?.isLive ?? false) ? "LIVE" + ((np?.streamer ?? "").isEmpty ? "" : " · \(np!.streamer)") : "NOW PLAYING")
-                    .font(.system(size: 11, weight: .semibold)).foregroundColor(sub)
+                    .font(BRFont.body(11, .semibold)).foregroundColor(sub)
                 Text((np?.song ?? "").isEmpty ? "Nothing reported right now" : np!.song)
-                    .font(.system(size: 18, weight: .semibold)).foregroundColor(text)
-                if let np { Text("\(np.listeners) listening").font(.system(size: 12)).foregroundColor(sub) }
+                    .font(BRFont.body(18, .semibold)).foregroundColor(text)
+                if let np { Text("\(np.listeners) listening").font(BRFont.body(12, .regular)).foregroundColor(sub) }
                 Button {
                     Task {
                         skipping = true; skipMessage = nil
@@ -1316,21 +1316,20 @@ struct HostPanelView: View {
                     }
                 } label: {
                     HStack(spacing: 8) {
-                        if skipping { ProgressView().tint(.white) } else { Image(systemName: "forward.fill"); Text("SKIP TRACK").font(BRFont.display(14)).kerning(2) }
+                        if skipping { ProgressView().tint(.white) } else { Image(systemName: "forward.fill"); Text("Skip track").font(BRFont.display(14)).kerning(2) }
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    .background(accent).foregroundColor(scheme == .dark ? .brDkBg : .white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
+                .buttonStyle(HWKeyStyle(corner: 12, lit: false, height: nil))
                 .disabled(skipping)
-                if let m = skipMessage { Text(m).font(.system(size: 12)).foregroundColor(sub) }
+                if let m = skipMessage { Text(m).font(BRFont.body(12, .regular)).foregroundColor(sub) }
                 Text("Open \(s.windowHours) hours before to \(s.windowHours) hours after your show.")
-                    .font(.system(size: 11)).foregroundColor(sub)
+                    .font(BRFont.body(11, .regular)).foregroundColor(sub)
             } else if let next = s.shows.first(where: { $0.startAt.timeIntervalSinceNow > Double(s.windowHours) * 3600 }) {
                 Text("Opens \(s.windowHours) hours before \(next.title).")
-                    .font(.system(size: 14)).foregroundColor(sub)
+                    .font(BRFont.body(14, .regular)).foregroundColor(sub)
             } else {
-                Text("You have no upcoming shows this week.").font(.system(size: 14)).foregroundColor(sub)
+                Text("You have no upcoming shows this week.").font(BRFont.body(14, .regular)).foregroundColor(sub)
             }
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
@@ -1340,9 +1339,9 @@ struct HostPanelView: View {
 
     private func field(_ placeholder: String, _ binding: Binding<String>, axis: Axis = .horizontal) -> some View {
         TextField(placeholder, text: binding, axis: axis)
-            .font(.system(size: 15)).foregroundColor(text)
+            .font(BRFont.body(15, .regular)).foregroundColor(text)
             .padding(12)
-            .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+            .background(HWDesk())
             .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
@@ -1356,7 +1355,7 @@ struct HostPanelView: View {
             .pickerStyle(.segmented)
             if target == 0 {
                 if let n = insight(s)?.note, !(n.headline ?? "").isEmpty || !(n.message ?? "").isEmpty {
-                    Text("Pinned now: \(n.headline ?? "") \(n.message ?? "")").font(.system(size: 12)).foregroundColor(sub)
+                    Text("Pinned now: \(n.headline ?? "") \(n.message ?? "")").font(BRFont.body(12, .regular)).foregroundColor(sub)
                 }
                 field("Headline", $noteHeadline)
                 field("Message (optional)", $noteBody, axis: .vertical)
@@ -1367,20 +1366,19 @@ struct HostPanelView: View {
                 Button { Task { await sendMessage() } } label: {
                     Text(sending ? "SENDING…" : (target == 0 ? "PIN TO LISTENERS" : "SEND TO STAFF")).font(BRFont.display(13)).kerning(1.5)
                         .frame(maxWidth: .infinity).padding(.vertical, 13)
-                        .background(accent).foregroundColor(scheme == .dark ? .brDkBg : .white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
+                .buttonStyle(HWKeyStyle(corner: 12, lit: false, height: nil))
                 .disabled(sending || (target == 0 ? noteHeadline.trimmingCharacters(in: .whitespaces).isEmpty && noteBody.trimmingCharacters(in: .whitespaces).isEmpty : staffText.trimmingCharacters(in: .whitespaces).count < 2))
                 if target == 0 {
                     Button { Task { noteHeadline = ""; noteBody = ""; await sendMessage(clear: true) } } label: {
-                        Text("CLEAR").font(BRFont.display(13)).kerning(1.5).padding(.vertical, 13).padding(.horizontal, 16)
+                        Text("Clear").font(BRFont.display(13)).kerning(1.5).padding(.vertical, 13).padding(.horizontal, 16)
                             .foregroundColor(accent)
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(accent, lineWidth: 1.5))
                     }
                     .disabled(sending)
                 }
             }
-            if let m = msgStatus { Text(m).font(.system(size: 12)).foregroundColor(sub) }
+            if let m = msgStatus { Text(m).font(BRFont.body(12, .regular)).foregroundColor(sub) }
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
     }
@@ -1407,21 +1405,21 @@ struct HostPanelView: View {
             BRSectionHeader(title: "LIVE RATINGS")
             if i?.ratingsHidden == true {
                 Text("Ratings are off for you. Listeners can still rate, and the station still sees them. That was chosen when the show was booked and can't change during the show.")
-                    .font(.system(size: 13)).foregroundColor(sub)
+                    .font(BRFont.body(13, .regular)).foregroundColor(sub)
             } else if (i?.ratingCount ?? 0) == 0 {
-                Text("No ratings yet.").font(.system(size: 14)).foregroundColor(sub)
+                Text("No ratings yet.").font(BRFont.body(14, .regular)).foregroundColor(sub)
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(String(format: "%.1f", i?.ratingAvg ?? 0)).font(.system(size: 32, weight: .bold)).foregroundColor(text)
-                    Text("★  ·  \(i?.ratingCount ?? 0) rating\((i?.ratingCount ?? 0) == 1 ? "" : "s")").font(.system(size: 13)).foregroundColor(sub)
+                    Text(String(format: "%.1f", i?.ratingAvg ?? 0)).font(BRFont.body(32, .bold)).foregroundColor(text)
+                    Text("★  ·  \(i?.ratingCount ?? 0) rating\((i?.ratingCount ?? 0) == 1 ? "" : "s")").font(BRFont.body(13, .regular)).foregroundColor(sub)
                 }
                 ForEach(Array((i?.comments ?? []).enumerated()), id: \.offset) { _, c in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(String(repeating: "★", count: Int((c.stars ?? 0).rounded()))).font(.system(size: 11)).foregroundColor(accent)
-                        Text(c.text ?? "").font(.system(size: 14)).foregroundColor(text)
+                        Text(String(repeating: "★", count: Int((c.stars ?? 0).rounded()))).font(BRFont.body(11, .regular)).foregroundColor(accent)
+                        Text(c.text ?? "").font(BRFont.body(14, .regular)).foregroundColor(text)
                     }
                     .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+                    .background(HWDesk())
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
             }
@@ -1436,14 +1434,14 @@ struct HostPanelView: View {
         VStack(alignment: .leading, spacing: 10) {
             BRSectionHeader(title: "LIVE REACTIONS")
             if total.isEmpty {
-                Text("No reactions yet.").font(.system(size: 14)).foregroundColor(sub)
+                Text("No reactions yet.").font(BRFont.body(14, .regular)).foregroundColor(sub)
             } else {
                 ForEach(total, id: \.key) { e, n in
                     HStack {
-                        Text(e).font(.system(size: 26))
-                        Text("\(n)").font(.system(size: 20, weight: .semibold)).foregroundColor(text)
+                        Text(e).font(BRFont.body(26, .regular))
+                        Text("\(n)").font(BRFont.body(20, .semibold)).foregroundColor(text)
                         Spacer()
-                        if let r = recent[e], r > 0 { Text("+\(r) just now").font(.system(size: 12, weight: .semibold)).foregroundColor(accent) }
+                        if let r = recent[e], r > 0 { Text("+\(r) just now").font(BRFont.body(12, .semibold)).foregroundColor(accent) }
                     }
                 }
             }
@@ -1462,16 +1460,16 @@ struct HostPanelView: View {
                     .pickerStyle(.menu)
                 }
                 Text("\(sel.title) · \(sel.startAt.formatted(.dateTime.weekday(.wide).hour().minute()))")
-                    .font(.system(size: 12)).foregroundColor(sub)
+                    .font(BRFont.body(12, .regular)).foregroundColor(sub)
                 TextEditor(text: $songs)
                     .frame(minHeight: 200)
                     .scrollContentBackground(.hidden)
                     .padding(8)
-                    .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
+                    .background(HWFieldFill())
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(alignment: .topLeading) {
                         if songs.isEmpty {
-                            Text("One song per line:\nArtist – Song title").font(.system(size: 14)).foregroundColor(sub.opacity(0.7))
+                            Text("One song per line:\nArtist – Song title").font(BRFont.body(14, .regular)).foregroundColor(sub.opacity(0.7))
                                 .padding(.horizontal, 14).padding(.vertical, 16).allowsHitTesting(false)
                         }
                     }
@@ -1486,17 +1484,16 @@ struct HostPanelView: View {
                         saving = false
                     }
                 } label: {
-                    HStack { if saving { ProgressView().tint(.white) } else { Text("SAVE SET LIST").font(BRFont.display(14)).kerning(2) } }
+                    HStack { if saving { ProgressView().tint(.white) } else { Text("Save set list").font(BRFont.display(14)).kerning(2) } }
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(accent).foregroundColor(scheme == .dark ? .brDkBg : .white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
+                .buttonStyle(HWKeyStyle(corner: 12, lit: false, height: nil))
                 .disabled(saving)
-                if let m = setlistMessage { Text(m).font(.system(size: 12)).foregroundColor(sub) }
+                if let m = setlistMessage { Text(m).font(BRFont.body(12, .regular)).foregroundColor(sub) }
                 Text("Type as you go or paste the list at the end.")
-                    .font(.system(size: 11)).foregroundColor(sub)
+                    .font(BRFont.body(11, .regular)).foregroundColor(sub)
             } else {
-                Text("Opens \(s.windowHours) hours before your show.").font(.system(size: 14)).foregroundColor(sub)
+                Text("Opens \(s.windowHours) hours before your show.").font(BRFont.body(14, .regular)).foregroundColor(sub)
             }
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
@@ -1509,9 +1506,9 @@ struct HostPanelView: View {
                 ForEach(s.shows) { show in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(show.title).font(.system(size: 15, weight: .semibold)).foregroundColor(text)
+                            Text(show.title).font(BRFont.body(15, .semibold)).foregroundColor(text)
                             Text("\(show.startAt.formatted(.dateTime.weekday(.abbreviated).month().day().hour().minute()))")
-                                .font(.system(size: 12)).foregroundColor(sub)
+                                .font(BRFont.body(12, .regular)).foregroundColor(sub)
                         }
                         Spacer()
                         Text(show.open ? "PANEL OPEN" : "UPCOMING").font(BRFont.display(10)).kerning(1.5)
@@ -1546,14 +1543,13 @@ struct HostPanelView: View {
                         } catch { changeMessage = (error as? BackendError)?.message ?? error.localizedDescription }
                     }
                 } label: {
-                    Text("SEND REQUEST").font(BRFont.display(14)).kerning(2)
+                    Text("Send request").font(BRFont.display(14)).kerning(2)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(accent).foregroundColor(scheme == .dark ? .brDkBg : .white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
+                .buttonStyle(HWKeyStyle(corner: 12, lit: false, height: nil))
                 .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty && newDescription.trimmingCharacters(in: .whitespaces).isEmpty)
-                if let m = changeMessage { Text(m).font(.system(size: 12)).foregroundColor(sub) }
-                Text("Change the picture on the website.").font(.system(size: 11)).foregroundColor(sub)
+                if let m = changeMessage { Text(m).font(BRFont.body(12, .regular)).foregroundColor(sub) }
+                Text("Change the picture on the website.").font(BRFont.body(11, .regular)).foregroundColor(sub)
             }
             .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
         }
@@ -1588,14 +1584,14 @@ struct AboutYouSection: View {
 
     private func field(_ title: String, _ placeholder: String, _ text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.system(size: 12, weight: .semibold))
+            Text(title).font(BRFont.body(12, .semibold))
                 .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             TextField(placeholder, text: text)
-                .font(.system(size: 15))
+                .font(BRFont.body(15, .regular))
                 .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                 .textInputAutocapitalization(.words)
                 .padding(12)
-                .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+                .background(HWDesk())
                 .clipShape(RoundedRectangle(cornerRadius: 10))
         }
     }
@@ -1604,14 +1600,14 @@ struct AboutYouSection: View {
         VStack(alignment: .leading, spacing: 12) {
             if !bare {
                 Text("About you")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(BRFont.body(15, .semibold))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                 Text("All optional.")
-                    .font(.system(size: 12))
+                    .font(BRFont.body(12, .regular))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text("Graduation year").font(.system(size: 12, weight: .semibold))
+                Text("Graduation year").font(BRFont.body(12, .semibold))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 Picker("Graduation year", selection: $gradYear) {
                     Text("Not set").tag("")
@@ -1624,7 +1620,7 @@ struct AboutYouSection: View {
                 field("Concentration", "Entrepreneurship", $concentration)
             } else {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Concentration").font(.system(size: 12, weight: .semibold))
+                    Text("Concentration").font(BRFont.body(12, .semibold))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                     Picker("Concentration", selection: $concentration) {
                         Text("Not set").tag("")
@@ -1636,7 +1632,7 @@ struct AboutYouSection: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Birthday (optional)").font(.system(size: 12, weight: .semibold))
+                Text("Birthday (optional)").font(BRFont.body(12, .semibold))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 HStack {
                     Picker("Month", selection: $bMonth) {
@@ -1651,12 +1647,12 @@ struct AboutYouSection: View {
                 .pickerStyle(.menu)
                 .tint(scheme == .dark ? .brGold : .brGreen)
                 Text("Only used for a birthday notification and so the DJ knows. We never ask for the year.")
-                    .font(.system(size: 12))
+                    .font(BRFont.body(12, .regular))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             }
 
             if let message {
-                Text(message).font(.system(size: 12)).foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                Text(message).font(BRFont.body(12, .regular)).foregroundColor(scheme == .dark ? .brGold : .brGreen)
             }
             if dirty || saving {
             Button {
@@ -1681,10 +1677,8 @@ struct AboutYouSection: View {
                 Text(saving ? "SAVING…" : "SAVE DETAILS")
                     .font(BRFont.display(14)).kerning(2)
                     .frame(maxWidth: .infinity).padding(.vertical, 12)
-                    .background(scheme == .dark ? Color.brGold : Color.brGreen)
-                    .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
             }
+            .buttonStyle(HWKeyStyle(corner: 10, lit: false, height: nil))
             .disabled(saving)
             }
         }
@@ -1713,16 +1707,16 @@ struct NotificationChoicesSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if !bare {
-                Text("Notifications").font(.system(size: 15, weight: .semibold))
+                Text("Notifications").font(BRFont.body(15, .semibold))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
             }
             Toggle("Happy birthday message", isOn: Binding(get: { push.birthdayOn }, set: { v in Task { await push.setMine(birthday: v) } }))
             Toggle("Station announcements (live events and news)", isOn: Binding(get: { push.announcementsOn }, set: { v in Task { await push.setMine(announcements: v) } }))
             if !push.status.isEmpty {
-                Text(push.status).font(.system(size: 12)).foregroundColor(.brRed)
+                Text(push.status).font(BRFont.body(12, .regular)).foregroundColor(.brRed)
             }
         }
-        .font(.system(size: 14))
+        .font(BRFont.body(14, .regular))
         .tint(scheme == .dark ? .brGold : .brGreen)
         .padding(bare ? 12 : 18)
         .modifier(CardIf(on: !bare))
@@ -1742,7 +1736,7 @@ private struct BeatDelayRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Beat delay").font(.system(size: 15, weight: .semibold))
+                Text("Beat delay").font(BRFont.body(15, .semibold))
                 Spacer()
                 Text(String(format: "%.2f s", audio.beatDelay))
                     .font(.system(size: 14, design: .monospaced))
@@ -1751,7 +1745,7 @@ private struct BeatDelayRow: View {
             Slider(value: $audio.beatDelay, in: 0...12, step: 0.25)
                 .tint(scheme == .dark ? .brGold : .brGreen)
             Text("Lower if the pulse lands late, raise if early.")
-                .font(.system(size: 12))
+                .font(BRFont.body(12, .regular))
                 .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
         }
         .padding(16)

@@ -10,8 +10,24 @@ import SwiftUI
 // ─────────────────────────────────────────────────────────────
 
 struct BRFont {
+    /// Track titles, ON AIR sign, big headings: Barlow Condensed (sentence case, not all caps).
     static func display(_ size: CGFloat) -> Font {
-        Font.custom("BebasNeue-Regular", size: size)
+        Font.custom("BarlowCondensed-Bold", size: size)
+    }
+    static func displaySemi(_ size: CGFloat) -> Font {
+        Font.custom("BarlowCondensed-SemiBold", size: size)
+    }
+    /// Everything else: Barlow 400/500/600/700/800.
+    static func body(_ size: CGFloat, _ weight: Font.Weight = .medium) -> Font {
+        let name: String
+        switch weight {
+        case .regular, .light, .thin, .ultraLight: name = "Barlow-Regular"
+        case .medium: name = "Barlow-Medium"
+        case .semibold: name = "Barlow-SemiBold"
+        case .heavy, .black: name = "Barlow-ExtraBold"
+        default: name = "Barlow-Bold"
+        }
+        return Font.custom(name, size: size)
     }
 }
 
@@ -73,23 +89,37 @@ extension Color {
 
 // MARK: - View Modifiers
 
-/// Card surface — adapts to dark/light mode
+/// Card surface: black leather in dark mode, warm white ceramic in light mode. Raised, with a highlight edge and a drop shadow.
+struct HWCardSurface: View {
+    var dark: Bool
+    var corner: CGFloat = 12
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)
+        ZStack {
+            if dark {
+                Color(hex: "0C0C0A")
+                HWTile(name: HWTex.leatherBlack)
+                Color.black.opacity(0.35)
+                LinearGradient(colors: [.white.opacity(0.08), .clear, .black.opacity(0.22)], startPoint: .top, endPoint: .bottom)
+            } else {
+                Color(hex: "F4EFE2")
+                HWTile(name: HWTex.cface, opacity: 0.45, blend: .multiply)
+                LinearGradient(colors: [.white.opacity(0.55), .clear], startPoint: .top, endPoint: .center)
+            }
+        }
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(dark ? Color.black.opacity(0.55) : Color.black.opacity(0.14), lineWidth: 1))
+        .overlay(shape.inset(by: 1).strokeBorder(Color.white.opacity(dark ? 0.08 : 0.6), lineWidth: 1).mask(
+            LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: .center)))
+        .shadow(color: .black.opacity(dark ? 0.5 : 0.22), radius: dark ? 8 : 6, x: 0, y: dark ? 5 : 3)
+    }
+}
+
 struct BRCardModifier: ViewModifier {
     @Environment(\.colorScheme) var scheme
 
     func body(content: Content) -> some View {
-        content
-            .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(scheme == .dark ? Color.brDkBorder2 : Color.brLtBorder, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(
-                color: Color.black.opacity(scheme == .dark ? 0.55 : 0.07),
-                radius: scheme == .dark ? 10 : 8,
-                x: 0, y: 3
-            )
+        content.background(HWCardSurface(dark: scheme == .dark))
     }
 }
 
@@ -130,26 +160,7 @@ struct BRSectionHeader: View {
 // MARK: - ON AIR Badge
 
 struct OnAirBadge: View {
-    @ObservedObject private var theme = ArtTheme.shared
-    @Environment(\.colorScheme) private var scheme
-    /// Station red, unless the whole UI is following the album art.
-    private var color: Color { .brRed }
-    var body: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .frame(width: 5, height: 5)
-                .foregroundColor(.white.opacity(0.75))
-            Text("On Air")
-                .font(BRFont.display(12))
-                .foregroundColor(.white)
-                .kerning(2.5)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 3)
-        .background(color)
-        .clipShape(RoundedRectangle(cornerRadius: 3))
-        .shadow(color: color.opacity(0.35), radius: 6, x: 0, y: 2)
-    }
+    var body: some View { HWOnAirSign() }
 }
 
 // MARK: - Tag Chips
@@ -177,7 +188,7 @@ struct BRTagChip: View {
         switch style {
         case .gold:   return ArtTheme.full(scheme) ? theme.button(scheme) : .brGold
         case .green:  return ArtTheme.full(scheme) ? theme.button(scheme) : .brGreen
-        case .subtle: return Color.gray.opacity(0.15)
+        case .subtle: return Color.black.opacity(0.28)
         case .live:   return .brRed
         }
     }
@@ -186,7 +197,7 @@ struct BRTagChip: View {
         switch style {
         case .gold:   return Color(hex: "080808")
         case .green:  return .white
-        case .subtle: return .gray
+        case .subtle: return Color.hwCream.opacity(0.8)
         case .live:   return .white
         }
     }
@@ -222,22 +233,12 @@ struct ProfileCircleButton: View {
 
     var body: some View {
         Button { showProfile = true } label: {
-            ZStack {
-                Circle()
-                    .fill(AvatarPalette.color(profile.avatarColor))
-                    .shadow(color: .black.opacity(0.28), radius: 0, x: 0, y: 2)
-                if let user = auth.currentUser {
-                    Text(user.initials)
-                        .font(BRFont.display(14))
-                        .kerning(0.5)
-                        .foregroundColor(AvatarPalette.ink(profile.avatarColor))
-                } else {
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 14))
-                        .foregroundColor(AvatarPalette.ink(profile.avatarColor))
+            HWAvatar(text: auth.currentUser?.initials ?? "", color: AvatarPalette.color(profile.avatarColor), size: 38)
+                .overlay {
+                    if auth.currentUser == nil {
+                        Image(systemName: "person.fill").font(.system(size: 15)).foregroundColor(Color(hex: "22221F").opacity(0.82))
+                    }
                 }
-            }
-            .frame(width: 34, height: 34)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Profile")
@@ -292,7 +293,7 @@ struct AgreeToggle: View {
     var body: some View {
         Toggle(isOn: $agreed) {
             Text("I agree to the [Terms of Use](https://babsonradio.com/terms) and [Privacy Policy](https://babsonradio.com/privacy).")
-                .font(.system(size: 13))
+                .font(BRFont.body(13, .regular))
                 .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
         }
         .toggleStyle(.switch)

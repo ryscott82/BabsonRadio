@@ -27,10 +27,36 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             FirebaseApp.configure()
         }
 #endif
+        Self.styleNavigationBars()
         // Boot audio session immediately so the system knows this is a playback app
         _ = AudioPlayerManager.shared
         PresenceManager.shared.start()
         Task { @MainActor in ReminderManager.shared.start() }
+    }
+
+    /// Hardware look for every navigation bar: scratched glass (dark) or ceramic (light) once content scrolls under it,
+    /// nothing at all at the top, Barlow Condensed titles.
+    private static func styleNavigationBars() {
+        let ink = UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.957, green: 0.925, blue: 0.855, alpha: 1) : UIColor(red: 0.102, green: 0.09, blue: 0.063, alpha: 1) }
+        let title = UIFont(name: "BarlowCondensed-Bold", size: 20) ?? .systemFont(ofSize: 18, weight: .bold)
+        let large = UIFont(name: "BarlowCondensed-Bold", size: 34) ?? .systemFont(ofSize: 32, weight: .bold)
+
+        let standard = UINavigationBarAppearance()
+        standard.configureWithDefaultBackground()
+        standard.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
+        standard.backgroundColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.094, green: 0.094, blue: 0.082, alpha: 0.74) : UIColor(red: 0.937, green: 0.918, blue: 0.851, alpha: 0.82) }
+        standard.titleTextAttributes = [.font: title, .foregroundColor: ink]
+        standard.largeTitleTextAttributes = [.font: large, .foregroundColor: ink]
+
+        let edge = UINavigationBarAppearance()
+        edge.configureWithTransparentBackground()
+        edge.titleTextAttributes = [.font: title, .foregroundColor: ink]
+        edge.largeTitleTextAttributes = [.font: large, .foregroundColor: ink]
+
+        let bar = UINavigationBar.appearance()
+        bar.standardAppearance = standard
+        bar.compactAppearance = standard
+        bar.scrollEdgeAppearance = edge
     }
 
     var body: some Scene {

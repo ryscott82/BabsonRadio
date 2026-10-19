@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
-import { readBands } from '@/lib/spectrum'
+import { audioPlaying, makeShaper, readBands } from '@/lib/spectrum'
 
 // Album-color mode for the desk itself (matches the album-art mock-ups): the oak (dark) or silver (light) desk takes the
 // cover's colors, and three layers of topographic wood-grain lines pulse with the music. With the real analyser they follow
@@ -15,25 +15,22 @@ export default function ArtDesk({ colors, on }: { colors: [string, string, strin
     const el = ref.current
     if (!on || !host || !el) return
     const lines = Array.from(el.querySelectorAll<HTMLElement>('.ln'))
-    const out = new Array<number>(6).fill(0), avg = [0, 0, 0], shown = [0, 0, 0]
+    const out = new Array<number>(3).fill(0)
+    const shape = makeShaper(3) // bass, mids (transients only), highs: same shaping as the LED bars
     let raf = 0
     const tick = () => {
       raf = requestAnimationFrame(tick)
       if (document.hidden) return
-      const a = document.querySelector('audio')
-      const playing = !!a && !a.paused
+      const playing = audioPlaying()
       el.dataset.play = playing ? '1' : '0'
       const real = playing && readBands(out)
       el.dataset.real = real ? '1' : '0'
+      if (!real) { lines.forEach(l => { l.style.opacity = ''; l.style.transform = '' }); return }
+      const { shown, flash } = shape(out)
       lines.forEach((l, i) => {
-        if (!real) { l.style.opacity = ''; l.style.transform = ''; return }
-        const raw = (out[i * 2] + out[i * 2 + 1]) / 2
-        avg[i] += (raw - avg[i]) * 0.04
-        const target = Math.max(0, Math.min(1, raw * 1.1 + (raw - avg[i]) * 2.2))
-        const atk = Math.min(1, 0.08 + Math.max(0, raw - avg[i]) * 7) // loud bursts jump, soft sounds ease in
-        shown[i] = target > shown[i] ? shown[i] + (target - shown[i]) * atk : Math.max(target, shown[i] * 0.82)
-        l.style.opacity = String(0.3 + 0.7 * shown[i])
-        l.style.transform = `scale(${1 + 0.015 * shown[i]})`
+        const v = Math.min(1, shown[i] + flash * 0.35)
+        l.style.opacity = String(0.2 + 0.8 * v)
+        l.style.transform = `scale(${1 + 0.02 * v})`
       })
     }
     raf = requestAnimationFrame(tick)

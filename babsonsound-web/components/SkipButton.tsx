@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
 import type { NowPlaying } from '@/lib/nowplaying'
@@ -13,19 +13,26 @@ export default function SkipButton({ np }: { np: NowPlaying | null }) {
   const autoPlay = !!np?.title && !np.isLive && !np.isShow
   const [skip, setSkip] = useState<Skip | null>(null)
   const [err, setErr] = useState('')
+  const pending = useRef(false)
 
   useEffect(() => {
     if (!user || !autoPlay) { queueMicrotask(() => setSkip(null)); return }
-    const load = () => { if (!document.hidden) apiGet<Skip>('/api/skip').then(setSkip).catch(() => {}) }
+    const load = () => { if (!document.hidden) apiGet<Skip>('/api/skip').then(v => { if (!pending.current) setSkip(v) }).catch(() => {}) }
     load()
     const t = setInterval(load, 10_000)
     return () => clearInterval(t)
   }, [user, autoPlay, np?.playedAt, np?.title])
 
+  // Optimistic: the button and count change the instant it is pressed; the server's answer replaces them, and an error puts them back.
   async function ask() {
+    if (!skip || skip.mine || pending.current) return
     setErr('')
+    const before = skip
+    pending.current = true
+    setSkip({ ...skip, mine: true, votes: Math.min(skip.needed, skip.votes + 1) })
     try { setSkip(await api<Skip>('/api/skip', {})) }
-    catch (e) { setErr(e instanceof Error ? e.message : 'Could not send your skip.') }
+    catch (e) { setSkip(before); setErr(e instanceof Error ? e.message : 'Could not send your skip.') }
+    finally { pending.current = false }
   }
 
   if (!skip?.eligible) return null
@@ -37,7 +44,7 @@ export default function SkipButton({ np }: { np: NowPlaying | null }) {
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path d="M6 6l9 6-9 6V6zm10 0h2v12h-2V6z" /></svg>
       </button>
       <span className="text-xs font-semibold text-br-dk-text">Ask to skip</span>
-      <span className="text-[11px] hw-sub tabular-nums -mt-1" role="status">{skip.votes}/{skip.needed} requested</span>
+      <span className="text-[11px] hw-sub tabular-nums -mt-1" role="status">{skip.mine ? 'Skip requested · ' : ''}{skip.votes}/{skip.needed}{skip.mine ? '' : ' requested'}</span>
       {err && <span role="alert" className="text-[11px] text-br-red max-w-[10rem] text-center">{err}</span>}
     </div>
   )

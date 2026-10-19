@@ -93,8 +93,8 @@ export function readBands(out: number[]): boolean {
   const n = out.length, hz = ctx.sampleRate / an.fftSize
   let any = 0
   // Bands are spread unevenly: the lows and highs get more of them (finer detail), the crowded mids are squeezed into a few,
-  // and the mids are scooped a little so they don't sit high and make the display look static.
-  const warp = (u: number) => u - (0.6 * Math.sin(2 * Math.PI * u)) / (2 * Math.PI)
+  // (the shaper below keeps the mids from sitting high).
+  const warp = (u: number) => u - (0.35 * Math.sin(2 * Math.PI * u)) / (2 * Math.PI)
   for (let i = 0; i < n; i++) {
     const g0 = warp(i / n), g1 = warp((i + 1) / n)
     const lo = Math.max(1, Math.floor((50 * Math.pow(300, g0)) / hz))
@@ -103,10 +103,60 @@ export function readBands(out: number[]): boolean {
     for (let k = lo; k < hi && k < data.length; k++) sum += data[k]
     const v = sum / (hi - lo) / 255
     any += v
-    const u = (i + 0.5) / n, mid = Math.sin(Math.PI * u) // 0 at the ends, 1 in the middle
-    out[i] = Math.min(1, v * (1 - 0.4 * mid * mid) * (1 + 0.5 * u)) // scoop the mids, lift the quieter highs; shaping happens in the caller
+    out[i] = Math.min(1, v * (1 + 0.5 * ((i + 0.5) / n))) // lift the quieter highs; the shaper below does the rest
   }
   return any > 0.01
+}
+
+// The player registers its audio element so the visuals can tell whether anything is playing (the element is never in the page).
+let player: HTMLAudioElement | null = null
+export function registerAudio(el: HTMLAudioElement | null) { player = el }
+export const audioPlaying = () => !!player && !player.paused && !player.ended
+
+/**
+ * Turns raw band levels into what the eyes should see, so the display dances instead of sitting still:
+ *  - auto gain: every band is scaled between its own recent floor and ceiling, so quiet and loud tracks both fill the display;
+ *  - lows and highs show their level; the mids (voice and melody) show how much each band stands out from its neighbours, and hold notes a little longer;
+ *  - the attack follows how hard a band hit: loud bursts shoot up at once, soft or steady sound creeps;
+ *  - a kick (a sudden jump in the lowest bands) flashes every band a little (`flash`, 0..1);
+ *  - silence drops everything to the floor within about a tenth of a second.
+ * Call the returned function once per frame with the raw 0..1 levels; it returns `shown` (0..1 per band) and `flash`.
+ */
+export function makeShaper(n: number) {
+  const avg = new Array<number>(n).fill(0), lo = new Array<number>(n).fill(0), hi = new Array<number>(n).fill(0.2), shown = new Array<number>(n).fill(0)
+  let flash = 0, kickAvg = 0, cool = 0
+  return (raw: number[]) => {
+    let mean = 0
+    for (let i = 0; i < n; i++) mean += raw[i]
+    mean /= n
+    const quiet = mean < 0.03
+    const kr = n > 1 ? (raw[0] + raw[1]) / 2 : raw[0]
+    kickAvg += (kr - kickAvg) * 0.05
+    if (cool > 0) cool--
+    if (!quiet && cool === 0 && kr - kickAvg > 0.1 && kr > 0.22) { flash = 1; cool = 8 }
+    flash *= 0.86
+    const gs = new Array<number>(n)
+    for (let i = 0; i < n; i++) {
+      const r = raw[i]
+      hi[i] = r > hi[i] ? r : hi[i] + (r - hi[i]) * 0.004 // ceiling: up at once, down over a few seconds
+      lo[i] = r < lo[i] ? r : lo[i] + (r - lo[i]) * 0.002
+      gs[i] = Math.max(0, Math.min(1, (r - lo[i]) / Math.max(0.12, hi[i] - lo[i])))
+    }
+    for (let i = 0; i < n; i++) {
+      const mid = Math.pow(Math.sin((Math.PI * (i + 0.5)) / n), 2) // 0 at the ends, 1 in the middle
+      // Mids (voice and melody): judge each band against its neighbours, so sung notes and instrument lines stand out of the
+      // broadband wash that drums make, and let a held note hold; lows and highs just show level.
+      const nb = ((gs[Math.max(0, i - 1)] + gs[Math.min(n - 1, i + 1)]) / 2)
+      const g = gs[i] * (1 - 0.75 * mid) + Math.max(0, Math.min(1, (gs[i] - nb) * 2.2 + gs[i] * 0.45)) * 0.75 * mid
+      avg[i] += (g - avg[i]) * 0.05
+      const burst = Math.max(0, g - avg[i])
+      const target0 = Math.pow(g, 1.4) * 0.62 + burst * 1.4
+      const target = quiet ? 0.02 : Math.min(1, target0 + flash * 0.22)
+      const atk = Math.min(1, 0.08 + burst * 7 + mid * 0.25)
+      shown[i] = target > shown[i] ? shown[i] + (target - shown[i]) * atk : Math.max(target, shown[i] * (quiet ? 0.45 : 0.7 + 0.14 * mid))
+    }
+    return { shown, flash }
+  }
 }
 
 /**
@@ -120,24 +170,17 @@ export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: bool
     const bars = Array.from(box.children) as HTMLElement[]
     if (!playing || !bars.length) { box.dataset.real = 'false'; return }
     const N = bars.length
-    const lv = new Array(N).fill(0), pk = new Array(N).fill(0), hold = new Array(N).fill(0)
-    const avg = new Array(N).fill(0), shown = new Array(N).fill(0)
+    const lv = new Array<number>(N).fill(0), pk = new Array<number>(N).fill(0), hold = new Array<number>(N).fill(0)
+    const shape = makeShaper(N)
     let raf = 0, quiet = 0
     const tick = () => {
       raf = requestAnimationFrame(tick)
       if (document.hidden) return
       const ok = readBands(lv)
-      if (!ok) { quiet++; if (quiet > 180) box.dataset.real = 'false'; return }
-      quiet = 0; box.dataset.real = 'true'
+      if (!ok) { quiet++; if (quiet > 180) box.dataset.real = 'false'; if (quiet <= 4) return; lv.fill(0) } // silence: let the bars fall to the floor
+      else { quiet = 0; box.dataset.real = 'true' }
+      const { shown } = shape(lv)
       for (let i = 0; i < N; i++) {
-        // Each band is judged against its own recent average: sustained energy settles to mid-height and only hits jump above it,
-        // lulls drop below it. Rise is instant; the fall is fast (about a tenth of a second), so nothing stays stuck on top.
-        const raw = lv[i]
-        avg[i] += (raw - avg[i]) * 0.04
-        const target = Math.max(0, Math.min(1, Math.pow(raw, 1.5) * 0.6 + (raw - avg[i]) * 2.6 + 0.04))
-        // Attack follows how hard the band just hit: a loud burst (well above its recent average) shoots up at once, a soft or steady rise creeps.
-        const atk = Math.min(1, 0.08 + Math.max(0, raw - avg[i]) * 7)
-        shown[i] = target > shown[i] ? shown[i] + (target - shown[i]) * atk : Math.max(target, shown[i] * 0.7)
         const segs = Math.round(shown[i] * segments)
         if (segs >= pk[i]) { pk[i] = segs; hold[i] = 20 } else if (hold[i]-- <= 0) pk[i] = Math.max(0, pk[i] - 0.2)
         bars[i].style.setProperty('--lv', String(segs / segments))

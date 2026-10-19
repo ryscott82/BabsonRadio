@@ -14,7 +14,7 @@ import { ExtrasStack, ReactionKeys } from '@/components/LiveExtras'
 import { useArtColor } from '@/lib/artColor'
 import { useArtMain } from '@/components/ArtTheme'
 import { useListenGuard } from '@/lib/listenGuard'
-import { attachSpectrum, probeCors, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
+import { attachSpectrum, probeCors, registerAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 
@@ -173,6 +173,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
       // Real equalizer needs a cross-origin-readable stream. Only opt in when the server allows it, so playback never breaks.
       if (fxRef.current && await probeCors(STREAM_URL)) { el.crossOrigin = 'anonymous'; if (!attachSpectrum(el)) el.removeAttribute('crossorigin') }
       audioRef.current = el
+      registerAudio(el)
       audioRef.current.volume = Math.min(1, level / UNITY); setBoostDb(boostDb)
       audioRef.current.addEventListener('waiting', () => setIsBuffering(true))
       audioRef.current.addEventListener('playing', () => setIsBuffering(false))

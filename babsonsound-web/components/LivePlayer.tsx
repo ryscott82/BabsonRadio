@@ -42,7 +42,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   const guard = useListenGuard(isPlaying, stopPlayback)
   const hasSong = !!np?.configured && !!np.title
   // Live shows get the ON AIR sign and "Show name with Host" where the artist goes. The auto DJ keeps the artist, no sign.
-  const onAir = !!(np?.isLive || np?.isShow)
+  const onAir = !!(np?.isLive || np?.isShow || np?.onAirManual)
   const subline = onAir && np?.showTitle && !np.showOnly
     ? `${np.showTitle}${np.streamer ? ` with ${np.streamer}` : ''}`
     : (np?.artist || 'Babson Radio')

@@ -10,6 +10,7 @@ interface Data {
   shows: Show[]
   announcement: { text: string; until: number } | null
   audioFx?: boolean
+  onAirSign?: boolean
 }
 
 const when = (ms: number) => new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
@@ -105,6 +106,15 @@ export default function StationPanel() {
           </ul>
         )}
         <p className="text-xs text-br-dk-muted">Goes to the front of the line, ahead of votes and the schedule. Not for live shows.</p>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs text-br-dk-sub font-display tracking-widest">on air sign</p>
+        <p className="text-sm text-br-dk-sub">The ON AIR sign shows by itself during live shows. Use this to turn it on by hand, for example for a live event the schedule does not know about. Remember to turn it off afterwards.</p>
+        <button type="button" disabled={!!busy} aria-pressed={d.onAirSign === true}
+                onClick={() => run('sign', { action: 'on-air-sign', on: d.onAirSign !== true }, d.onAirSign === true ? 'ON AIR sign is off.' : 'ON AIR sign is on.')} className={`sk-key ${btn}`}>
+          {d.onAirSign === true ? 'On: tap to turn off' : 'Off: tap to turn on'}
+        </button>
       </div>
 
       <div className="space-y-2">

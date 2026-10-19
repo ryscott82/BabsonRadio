@@ -276,7 +276,7 @@ body:has(.hw-stage) {
 
 /* Stars: worn steel, lit ones darker (light) or brighter (dark) */
 .hw-star { color: color-mix(in srgb, var(--hw-key-ink) 24%, transparent); text-shadow: 0 1px 0 rgba(255,255,255,.55), 0 2px 2px rgba(0,0,0,.35); cursor: pointer; }
-.hw-star.on { color: color-mix(in srgb, var(--hw-key-ink) 78%, transparent); }
+.hw-star.on { color: var(--hw-eq); text-shadow: 0 1px 0 rgba(255,255,255,.35), 0 2px 2px rgba(0,0,0,.4); }
 .hw-star:hover { transform: translateY(-1px); }
 
 /* Album-colour mode: leather takes the cover's hue (light mode), accents follow the cover */
@@ -327,7 +327,7 @@ body:has(.hw-stage) {
   }
   :root:not([data-theme="light"]) .hw-bar::before {
     content: ''; position: absolute; inset: 0; pointer-events: none;  z-index: -1;
-    background: linear-gradient(112deg, rgba(250,246,236,.07) 0, rgba(250,246,236,.07) 22%, rgba(250,246,236,0) 34%), linear-gradient(rgba(250,246,236,.04), rgba(250,246,236,0) 50%);
+    background: linear-gradient(112deg, rgba(250,246,236,.025) 0, rgba(250,246,236,.025) 22%, rgba(250,246,236,0) 34%), linear-gradient(rgba(250,246,236,.015), rgba(250,246,236,0) 50%);
   }
 }
 :root[data-theme="dark"] .hw-bar {
@@ -338,7 +338,7 @@ body:has(.hw-stage) {
 }
 :root[data-theme="dark"] .hw-bar::before {
   content: ''; position: absolute; inset: 0; pointer-events: none;  z-index: -1;
-  background: linear-gradient(112deg, rgba(250,246,236,.07) 0, rgba(250,246,236,.07) 22%, rgba(250,246,236,0) 34%), linear-gradient(rgba(250,246,236,.04), rgba(250,246,236,0) 50%);
+  background: linear-gradient(112deg, rgba(250,246,236,.025) 0, rgba(250,246,236,.025) 22%, rgba(250,246,236,0) 34%), linear-gradient(rgba(250,246,236,.015), rgba(250,246,236,0) 50%);
 }
 
 /* ── Full screen board ───────────────────────────────────────── */
@@ -406,9 +406,17 @@ body:has(.hw-stage) {
 :root[data-theme="dark"] .art-desk .ln1 { -webkit-mask-image: url(/hw/lnd1.png); mask-image: url(/hw/lnd1.png); }
 :root[data-theme="dark"] .art-desk .ln2 { -webkit-mask-image: url(/hw/lnd2.png); mask-image: url(/hw/lnd2.png); }
 
-/* ── Gaffer tape label: a strip of matte black tape with a torn end, a musician's channel label ── */
-.hw-tape { display: inline-block; padding: 3px 14px 4px 11px; transform: rotate(-1.6deg); margin-bottom: 6px;
-  font-family: 'Barlow Condensed', 'Barlow', system-ui, sans-serif; font-weight: 700; font-size: 15px; line-height: 1.2; letter-spacing: .03em; color: #E9E2CE;
-  background: linear-gradient(rgba(255,255,255,.07), rgba(255,255,255,0) 40%, rgba(0,0,0,.18)), #1B1B19;
-  box-shadow: 0 1px 2px rgba(0,0,0,.45);
-  clip-path: polygon(0 0, 100% 0, 98% 22%, 100% 48%, 97.5% 74%, 100% 100%, 0 100%, 1.5% 70%, 0 40%); }
+/* ── Album-color mode: no stock green anywhere (leather, face ring, banner, top bar, footer) ── */
+.art-ui { --hw-face-ring: 0 0 0 1.5px color-mix(in srgb, var(--art-1) 75%, #000); }
+:root[data-art] .art-nav, :root[data-art] footer { --hw-eq: var(--br-accent); }
+:root[data-art] .hw-banner { --hw-banner-tint: linear-gradient(color-mix(in srgb, var(--nav-1) 40%, var(--br-bg)), color-mix(in srgb, var(--nav-1) 40%, var(--br-bg))); --hw-eq: var(--br-accent); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .art-ui .hw-panel {
+    background: var(--hw-wear), linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.30)), linear-gradient(color-mix(in srgb, var(--art-1) 55%, transparent), color-mix(in srgb, var(--art-1) 55%, transparent)), #1A1A18 var(--hw-leather) center / 300px auto;
+    background-blend-mode: normal, normal, color, normal;
+  }
+}
+:root[data-theme="dark"] .art-ui .hw-panel {
+  background: var(--hw-wear), linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.30)), linear-gradient(color-mix(in srgb, var(--art-1) 55%, transparent), color-mix(in srgb, var(--art-1) 55%, transparent)), #1A1A18 var(--hw-leather) center / 300px auto;
+  background-blend-mode: normal, normal, color, normal;
+}

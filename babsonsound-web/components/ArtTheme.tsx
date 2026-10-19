@@ -8,12 +8,12 @@ import { getArtTest, onPartyChange, setColorChanging, useParty } from '@/lib/par
 
 /** Fixed palettes for the admin test switch: [main, green, second]. */
 export const ART_PRESETS: Record<string, { label: string; colors: string[] }> = {
-  ocean: { label: 'Ocean', colors: ['#2E78C7', '#0B7A5A', '#4FB3D9'] },
-  sunset: { label: 'Sunset', colors: ['#E0572F', '#0F7A4B', '#F2A33A'] },
-  violet: { label: 'Violet', colors: ['#8A4FD0', '#1E7F5C', '#D05FA8'] },
-  gold: { label: 'Gold', colors: ['#D9A21B', '#2E7D32', '#C8602A'] },
-  lime: { label: 'Acid green', colors: ['#8ACE00', '#2E7D32', '#F2E94E'] },
-  rose: { label: 'Rose', colors: ['#D6456E', '#13785A', '#E8884F'] },
+  ocean: { label: 'Ocean', colors: ['#2E78C7', '#3B8FDD', '#4FB3D9'] },
+  sunset: { label: 'Sunset', colors: ['#E0572F', '#E8703F', '#F2A33A'] },
+  violet: { label: 'Violet', colors: ['#8A4FD0', '#9D68DC', '#D05FA8'] },
+  gold: { label: 'Gold', colors: ['#D9A21B', '#E2B13A', '#C8602A'] },
+  lime: { label: 'Acid green', colors: ['#8ACE00', '#9BD626', '#F2E94E'] },
+  rose: { label: 'Rose', colors: ['#D6456E', '#E0587F', '#E8884F'] },
 }
 
 // Wraps the home page body (not the top bar). Everyone starts on the station green; a few seconds in, the page

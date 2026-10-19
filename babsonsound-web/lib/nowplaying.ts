@@ -27,6 +27,8 @@ export interface NowPlaying {
   announcement: { text: string; updatedAt: number; until: number } | null
   /** False when staff turned the browser audio processing off. */
   audioFx?: boolean
+  /** Staff switched the ON AIR sign on by hand. */
+  onAirManual?: boolean
   updatedAt: number
   /** client clock (ms) when this was fetched, for the progress bar */
   receivedAt: number

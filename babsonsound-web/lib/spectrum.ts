@@ -133,30 +133,35 @@ export const audioPlaying = () => !!player && !player.paused && !player.ended
  *  - a band sitting steadily at some level shows mid-height; only real hits (well above its own recent average) jump up, and only
  *    genuinely loud bands reach the top;
  *  - the attack follows how hard a band hit: loud bursts shoot up, soft or steady sound creeps;
- *  - loudness-first auto gain: the loudest band lately is scaled to about 85% whatever its frequency, so sparse music (one instrument) still shows;
+ *  - the noise floor adapts fast (each band's recent minimum counts as zero) while the ceiling barely adapts, so a thumping bass gets lots of movement;
+ *  - loudness-first gain: the loudest band lately is scaled to about 85% whatever its frequency, so sparse music (one instrument) still shows;
  *  - a kick (a sudden jump in the lowest bands) flashes every band slightly (`flash`, 0..1);
  *  - silence drops everything to the floor within about a tenth of a second.
  * Call the returned function once per frame with the levels from readBands; it returns `shown` (0..1 per band) and `flash`.
  */
 export function makeShaper(n: number) {
-  const avg = new Array<number>(n).fill(0), shown = new Array<number>(n).fill(0)
+  const avg = new Array<number>(n).fill(0), shown = new Array<number>(n).fill(0), floor = new Array<number>(n).fill(0)
   let flash = 0, kickAvg = 0, cool = 0, gmax = 0.8
   return (raw: number[]) => {
     let mean = 0, top = 0
     for (let i = 0; i < n; i++) { mean += raw[i]; top = Math.max(top, raw[i]) }
     mean /= n
     const quiet = mean < 0.04
-    gmax = top > gmax ? top : gmax + (top - gmax) * 0.003 // loudest band lately: up at once, down over several seconds
+    gmax = top > gmax ? top : gmax + (top - gmax) * 0.0012 // loudest band lately: up at once, down very slowly (the ceiling barely adapts)
     // Loudest thing first: whichever band is loudest lately is brought to about 85%, wherever it sits in the spectrum, so a lone
     // melody line fills the display the same as a full band does (quiet bands next to it stay low).
-    const gain = Math.max(0.85, Math.min(2.2, 0.85 / Math.max(0.3, gmax)))
+    const gain = Math.max(0.85, Math.min(1.6, 0.85 / Math.max(0.3, gmax)))
     const kr = n > 1 ? (raw[0] + raw[1]) / 2 : raw[0]
     kickAvg += (kr - kickAvg) * 0.05
     if (cool > 0) cool--
     if (!quiet && cool === 0 && kr - kickAvg > 0.12 && kr > 0.3) { flash = 1; cool = 9 }
     flash *= 0.88
     for (let i = 0; i < n; i++) {
-      const u = Math.min(1, raw[i] * gain)
+      // The floor adapts quickly: each band's own recent minimum (the gaps between kicks, the hush under a held note) counts as zero, so
+      // what is left is movement. A thumping bass swings the whole height; steady wash sinks away instead of holding the bar up.
+      floor[i] = raw[i] < floor[i] ? raw[i] : floor[i] + (raw[i] - floor[i]) * 0.02
+      const fl = floor[i] * 0.9
+      const u = Math.min(1, Math.max(0, (raw[i] - fl) * gain) / Math.max(0.35, 1 - fl * gain))
       const mid = Math.pow(Math.sin((Math.PI * (i + 0.5)) / n), 2) // 0 at the ends, 1 in the middle
       avg[i] += (u - avg[i]) * 0.03
       const burst = Math.max(0, u - avg[i])

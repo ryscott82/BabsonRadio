@@ -50,22 +50,25 @@ nonisolated struct VoteState: Codable {
     }
 }
 
-/// The poll and song requests, without a sheet around it. Used inline on the open foldable, and inside VoteView on a phone.
+/// The poll and song requests, without a sheet around it. Used inline on the open foldable, in the phone's drawer, and inside VoteView.
+/// Each option is a steel key with a fill that shows its share; your vote is the key that stays pressed.
 struct VotePanel: View {
-    @Environment(\.colorScheme) var scheme
     /// Compact: two columns, no request forms, for the open foldable where the poll shares the page with reactions.
     var compact = false
+    var title = "Select the next hour of music"
+    /// A big heading (the open foldable) instead of the small one in the drawer.
+    var large = false
     @ObservedObject private var store = VoteStore.shared
     private var state: VoteState? { store.current }
     @State private var message: String?
     @State private var request = ""
     @State private var busy = false
 
-    private var text: Color { scheme == .dark ? .brDkText : .brLtText }
-    private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
+    @Environment(\.hwMode) private var hwm
+    private var text: Color { hwm.onPanelText }
+    private var sub: Color { hwm.onPanelSub }
     @ObservedObject private var theme = ArtTheme.shared
-    private var accent: Color { ArtTheme.full(scheme) ? theme.accent(scheme) : (scheme == .dark ? .brGold : .brGreen) }
-    private var card: Color { theme.glassTint(scheme) ?? (scheme == .dark ? .brDkSurface : .brLtSurface) }
+    private var win: Color { Color(hex: "6FCF93") }
 
     private static let clock: DateFormatter = {
         let f = DateFormatter(); f.timeStyle = .short; f.dateStyle = .none; return f
@@ -73,59 +76,60 @@ struct VotePanel: View {
     private func time(_ ms: Double) -> String { Self.clock.string(from: Date(timeIntervalSince1970: ms / 1000)) }
 
     var body: some View {
-                VStack(alignment: .leading, spacing: 14) {
-                    if let s = state {
-                        Text("Select the next hour of music")
-                            .font(.system(size: 13, weight: .semibold)).foregroundColor(sub)
-                        if let u = s.upNext, !u.label.isEmpty {
-                            Text("\(u.label) won \(time(u.blockStart)).")
-                                .font(.system(size: 13)).foregroundColor(accent)
-                        }
-                        let top = max(1, s.options.map(\.count).max() ?? 1)
-                        LazyVGrid(columns: compact ? [GridItem(.flexible(), spacing: 8), GridItem(.flexible())] : [GridItem(.flexible())], spacing: compact ? 8 : 10) {
-                        ForEach(s.options) { o in
-                            Button { vote(o.label) } label: {
-                                ZStack(alignment: .leading) {
-                                    GeometryReader { g in
-                                        Rectangle().fill(accent.opacity(0.2))
-                                            .frame(width: g.size.width * CGFloat(min(1, Double(o.count) / Double(top))))
-                                    }
-                                    HStack {
-                                        Text(o.label)
-                                            .font(.system(size: 15, weight: s.myVote == o.label ? .bold : .regular))
-                                            .foregroundColor(text)
-                                        Spacer()
-                                        Text("\(o.count)").font(.system(size: 14).monospacedDigit()).foregroundColor(sub)
-                                    }
-                                    .padding(.horizontal, 14)
-                                }
-                                .frame(height: compact ? 38 : 44)
-                                .background(card)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(s.myVote == o.label ? accent : .clear, lineWidth: 1.5))
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(busy || s.canVote == false)
-                        }
-                        }
-                        if s.canVote == false {
-                            Text("Voting opens once a Babson student sponsors you.")
-                                .font(.system(size: 12)).foregroundColor(sub)
-                        } else if !compact, s.requestsOpen == true {
-                            Text(s.requestsShow.map { "Request a song for \($0)" } ?? "Request a song")
-                                .font(.system(size: 13, weight: .semibold)).foregroundColor(text).padding(.top, 8)
-                            HStack {
-                                BRTextField(placeholder: "Artist or song", text: $request, icon: "music.note")
-                                Button("SEND") { sendRequest() }
-                                    .font(BRFont.display(14)).kerning(2).foregroundColor(accent)
-                                    .disabled(busy || request.trimmingCharacters(in: .whitespaces).count < 2)
-                            }
-                        }
-                    } else {
-                        ProgressView().frame(maxWidth: .infinity).padding(.top, 40)
+        VStack(alignment: .leading, spacing: 12) {
+            if let s = state {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(BRFont.body(large ? 19 : 14, large ? .bold : .semibold)).foregroundColor(large ? text : text.opacity(0.78))
+                    if let u = s.upNext, !u.label.isEmpty {
+                        Text("\(u.label) won \(time(u.blockStart)).")
+                            .font(BRFont.body(13, .semibold)).foregroundColor(win)
                     }
-                    if let m = message { Text(m).font(.system(size: 13)).foregroundColor(sub) }
                 }
+                let top = max(1, s.options.map(\.count).max() ?? 1)
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
+                    ForEach(s.options) { o in
+                        let mine = s.myVote == o.label
+                        Button { vote(o.label) } label: {
+                            ZStack(alignment: .leading) {
+                                GeometryReader { g in
+                                    Rectangle().fill(text.opacity(0.3))
+                                        .frame(width: g.size.width * CGFloat(mine ? 1 : min(1, Double(o.count) / Double(top))))
+                                }
+                                HStack {
+                                    Text(o.label).font(BRFont.body(14, mine ? .bold : .regular)).foregroundColor(text).lineLimit(1)
+                                    Spacer(minLength: 4)
+                                    Text("\(o.count)").font(BRFont.body(14, .regular).monospacedDigit()).foregroundColor(text.opacity(0.78))
+                                }
+                                .padding(.horizontal, 12)
+                            }
+                            .frame(height: 38)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .background(HWKeyFace(corner: 10, pressed: mine, lit: mine))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(busy || s.canVote == false)
+                    }
+                }
+                .padding(.bottom, 4)
+                if s.canVote == false {
+                    Text("Voting opens once a Babson student sponsors you.")
+                        .font(BRFont.body(12)).foregroundColor(sub)
+                } else if !compact, s.requestsOpen == true {
+                    Text(s.requestsShow.map { "Request a song for \($0)" } ?? "Request a song")
+                        .font(BRFont.body(13, .semibold)).foregroundColor(text).padding(.top, 8)
+                    HStack {
+                        BRTextField(placeholder: "Artist or song", text: $request, icon: "music.note")
+                        Button("Send") { sendRequest() }
+                            .buttonStyle(HWKeyStyle())
+                            .disabled(busy || request.trimmingCharacters(in: .whitespaces).count < 2)
+                    }
+                }
+            } else {
+                ProgressView().tint(Color.hwCream).frame(maxWidth: .infinity).padding(.top, 40)
+            }
+            if let m = message { Text(m).font(BRFont.body(13)).foregroundColor(sub) }
+        }
         .task {
             // Near real time: refresh every 10 seconds while the sheet is open.
             while !Task.isCancelled {
@@ -159,16 +163,17 @@ struct VotePanel: View {
 
 
 struct VoteView: View {
-    @Environment(\.colorScheme) var scheme
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
-            ScrollView { VotePanel().padding(20) }
-                .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
-                .navigationTitle("What would you like to hear?")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
+            ZStack {
+                HWDesk()
+                ScrollView { VotePanel().hwPanel(corner: 18, padding: 20).padding(16) }
+            }
+            .navigationTitle("What would you like to hear?")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
         }
     }
 }

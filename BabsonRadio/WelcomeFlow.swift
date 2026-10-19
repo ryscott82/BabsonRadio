@@ -103,18 +103,18 @@ struct WelcomeView: View {
                 Spacer()
                 Image("LaunchLogo").resizable().scaledToFit().frame(width: 130)
                 VStack(spacing: 0) {
-                    Text("BABSON").font(BRFont.display(14)).foregroundColor(style.accent).kerning(5)
-                    Text("RADIO").font(BRFont.display(40)).foregroundColor(style.text).kerning(5)
+                    Text("Babson").font(BRFont.display(14)).foregroundColor(style.accent).kerning(5)
+                    Text("Radio").font(BRFont.display(40)).foregroundColor(style.text).kerning(5)
                 }
                 .padding(.top, 8)
                 Text("Student radio for Babson College.")
-                    .font(.system(size: 14)).foregroundColor(style.sub).padding(.top, 6)
+                    .font(BRFont.body(14, .regular)).foregroundColor(style.sub).padding(.top, 6)
                 Spacer()
 
                 VStack(spacing: 12) {
                     AppleSignInButton()
                     Button { showEmail = true } label: {
-                        Text("CONTINUE WITH EMAIL").font(BRFont.display(16)).kerning(3)
+                        Text("Continue with email").font(BRFont.display(16)).kerning(3)
                             .frame(maxWidth: .infinity).padding(.vertical, 14)
                             .foregroundColor(style.text)
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(style.border, lineWidth: 1.5))
@@ -122,13 +122,13 @@ struct WelcomeView: View {
                     .buttonStyle(.plain)
 
                     if let error = auth.errorMessage {
-                        Text(error).font(.system(size: 13)).foregroundColor(.brRed).multilineTextAlignment(.center)
+                        Text(error).font(BRFont.body(13, .regular)).foregroundColor(.brRed).multilineTextAlignment(.center)
                     }
                     Text("Students: add your school email and verify it within 7 days.")
-                        .font(.system(size: 12)).foregroundColor(style.sub).multilineTextAlignment(.center)
+                        .font(BRFont.body(12, .regular)).foregroundColor(style.sub).multilineTextAlignment(.center)
                         .padding(.top, 4)
                     Button("Just listen for now", action: onSkip)
-                        .font(.system(size: 12)).foregroundColor(style.sub).underline()
+                        .font(BRFont.body(12, .regular)).foregroundColor(style.sub).underline()
                         .padding(.top, 6)
                 }
                 .padding(.horizontal, 28)
@@ -155,9 +155,9 @@ struct AppleSchoolEmailView: View {
         ScrollView {
             VStack(spacing: 18) {
                 Image(systemName: "graduationcap").font(.system(size: 38)).foregroundColor(style.accent).padding(.top, 70)
-                Text("ADD YOUR SCHOOL EMAIL").font(BRFont.display(30)).kerning(3).foregroundColor(style.text)
+                Text("Add your school email").font(BRFont.display(30)).kerning(3).foregroundColor(style.text)
                 Text("Add your school email and verify it within 7 days.")
-                    .font(.system(size: 14)).foregroundColor(style.sub).multilineTextAlignment(.center)
+                    .font(BRFont.body(14, .regular)).foregroundColor(style.sub).multilineTextAlignment(.center)
 
                 HStack(spacing: 6) {
                     TextField("username", text: $username)
@@ -177,7 +177,7 @@ struct AppleSchoolEmailView: View {
                 Toggle(isOn: $agreed) {
                     (Text("I agree to the ") + Text("[Terms of Use](https://babsonradio.com/terms)") + Text(" and ")
                      + Text("[Privacy Policy](https://babsonradio.com/privacy)") + Text("."))
-                        .font(.system(size: 12)).foregroundColor(style.sub)
+                        .font(BRFont.body(12, .regular)).foregroundColor(style.sub)
                 }
                 .tint(style.accent)
 
@@ -187,13 +187,13 @@ struct AppleSchoolEmailView: View {
                 }
 
                 if let info = auth.infoMessage {
-                    Text(info).font(.system(size: 13)).foregroundColor(style.sub).multilineTextAlignment(.center)
+                    Text(info).font(BRFont.body(13, .regular)).foregroundColor(style.sub).multilineTextAlignment(.center)
                 }
                 if let error = auth.errorMessage {
-                    Text(error).font(.system(size: 13)).foregroundColor(.brRed).multilineTextAlignment(.center)
+                    Text(error).font(BRFont.body(13, .regular)).foregroundColor(.brRed).multilineTextAlignment(.center)
                 }
                 Button("Sign out") { auth.signOut() }
-                    .font(.system(size: 13)).foregroundColor(style.sub)
+                    .font(BRFont.body(13, .regular)).foregroundColor(style.sub)
             }
             .padding(.horizontal, 28)
         }
@@ -241,10 +241,10 @@ struct OnboardingView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("ABOUT YOU").font(BRFont.display(32)).kerning(3).foregroundColor(style.text).padding(.top, 56)
-                Text("Almost done.").font(.system(size: 14)).foregroundColor(style.sub)
+                Text("About you").font(BRFont.display(32)).kerning(3).foregroundColor(style.text).padding(.top, 56)
+                Text("Almost done.").font(BRFont.body(14, .regular)).foregroundColor(style.sub)
                 if let info = auth.infoMessage {
-                    Text(info).font(.system(size: 13)).foregroundColor(style.accent)
+                    Text(info).font(BRFont.body(13, .regular)).foregroundColor(style.accent)
                 }
 
                 Group {
@@ -260,13 +260,13 @@ struct OnboardingView: View {
                     .pickerStyle(.menu).tint(style.accent)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .font(.system(size: 16)).foregroundColor(style.text)
+                .font(BRFont.body(16, .regular)).foregroundColor(style.text)
                 .modifier(fieldBox(style))
 
                 // Birthday, or an age range for people who would rather not share it.
                 VStack(alignment: .leading, spacing: 8) {
                     Text(useRange ? "Your age range" : "Your birthday")
-                        .font(.system(size: 15, weight: .semibold)).foregroundColor(style.text)
+                        .font(BRFont.body(15, .semibold)).foregroundColor(style.text)
                     if useRange {
                         Picker("Age range", selection: $range) {
                             ForEach(Self.ranges, id: \.value) { Text($0.label).tag($0.value) }
@@ -274,7 +274,7 @@ struct OnboardingView: View {
                         .pickerStyle(.segmented)
                         if isUnder13 {
                             Text("Babson Radio is for people 13 and older. If you continue, your account will be deleted.")
-                                .font(.system(size: 12)).foregroundColor(.brRed)
+                                .font(BRFont.body(12, .regular)).foregroundColor(.brRed)
                         }
                     } else {
                         DatePicker("Birthday", selection: $birthday, in: ...Date(), displayedComponents: .date)
@@ -283,7 +283,7 @@ struct OnboardingView: View {
                             .frame(maxWidth: .infinity)
                         if isUnder13 {
                             Text("Babson Radio is for people 13 and older. If you continue, your account will be deleted.")
-                                .font(.system(size: 12)).foregroundColor(.brRed)
+                                .font(BRFont.body(12, .regular)).foregroundColor(.brRed)
                         }
                     }
                     Button(useRange ? "Use birthday instead" : "use age range instead") {
@@ -291,13 +291,13 @@ struct OnboardingView: View {
                     }
                     .font(.system(size: 12)).foregroundColor(style.sub).underline()
                     Text("Never shown to others.")
-                        .font(.system(size: 11)).foregroundColor(style.sub)
+                        .font(BRFont.body(11, .regular)).foregroundColor(style.sub)
                 }
 
                 if isMinor {
                     Toggle(isOn: $parentOK) {
                         Text("A parent or guardian knows I'm using Babson Radio and is okay with it.")
-                            .font(.system(size: 13)).foregroundColor(style.text)
+                            .font(BRFont.body(13, .regular)).foregroundColor(style.text)
                     }
                     .tint(style.accent)
                 }
@@ -305,7 +305,7 @@ struct OnboardingView: View {
                 PrimaryButton(title: saving ? "SAVING…" : "CONTINUE", style: style, enabled: canContinue) { save() }
 
                 if let error = auth.errorMessage {
-                    Text(error).font(.system(size: 13)).foregroundColor(.brRed)
+                    Text(error).font(BRFont.body(13, .regular)).foregroundColor(.brRed)
                 }
             }
             .padding(.horizontal, 28).padding(.bottom, 40)

@@ -27,47 +27,47 @@ struct SkipControl: View {
     @ObservedObject private var theme = ArtTheme.shared
     /// Light-on-dark styling for the full screen board.
     var onDark = false
+    /// Diameter of the key (52 on the phone, 48 on the open foldable).
+    var size: CGFloat = 52
 
     private var np: NowPlayingInfo? { audio.nowPlaying }
     private var autoPlay: Bool { (np?.title.isEmpty == false) && np?.isLive != true && np?.isShow != true }
     private var key: String { "\(np?.title ?? "")|\(np?.playedAt ?? 0)|\(auth.isSignedIn)|\(autoPlay)" }
 
+    private func knobIcon(_ dim: Bool = false) -> some View {
+        Image(systemName: "forward.end.fill")
+            .font(.system(size: 18, weight: .semibold))
+            .opacity(dim ? 0.55 : 1)
+    }
+
     var body: some View {
         Group {
             if auth.isSignedIn, let sk = model.skip, sk.eligible {
-                Button { Task { await model.ask() } } label: {
-                    Image(systemName: "forward.end.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(onDark ? .white : (scheme == .dark ? .brDkText : .brLtText))
-                        .frame(width: 48, height: 48)
-                        .brGlass(in: Circle(), interactive: true)
-                }
-                .buttonStyle(.plain)
+                Button { Task { await model.ask() } } label: { knobIcon() }
+                .buttonStyle(HWRoundKeyStyle(size: size, lit: sk.mine))
                 .disabled(sk.mine)
-                .opacity(sk.mine ? 0.6 : 1)
                 .accessibilityLabel(sk.mine ? "You asked to skip this song" : "Ask to skip this song")
-                // The count hangs below the button without changing its size, so the button lines up with the play button.
-                .overlay(alignment: .top) {
+                // The count sits on the key like a small badge, so the key keeps the volume knob's size.
+                .overlay(alignment: .topTrailing) {
                     VStack(spacing: 2) {
                         Text("\(sk.votes)/\(sk.needed)")
-                            .font(.system(size: 11)).monospacedDigit()
-                            .foregroundColor(onDark ? .white.opacity(0.7) : (scheme == .dark ? .brDkSub : .brLtSub))
+                            .font(BRFont.body(11, .semibold)).monospacedDigit()
+                            .foregroundColor(Color.hwCream.opacity(0.78))
                         if !model.error.isEmpty {
-                            Text(model.error).font(.system(size: 11)).foregroundColor(.brRed)
+                            Text(model.error).font(BRFont.body(11)).foregroundColor(Color(hex: "FFB4A8"))
                                 .multilineTextAlignment(.center).frame(width: 150)
                         }
                     }
                     .fixedSize()
-                    .offset(y: 52)
+                    .padding(.horizontal, 5).padding(.vertical, 1)
+                    .background(Capsule().fill(Color.black.opacity(0.7)))
+                    .offset(x: 12, y: -8)
                 }
             } else if auth.isSignedIn {
                 // Not skippable right now (a live show, or the station's skip link isn't set up): show it dimmed so it never just vanishes.
-                Image(systemName: "forward.end.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(onDark ? .white : (scheme == .dark ? .brDkText : .brLtText))
-                    .frame(width: 48, height: 48)
-                    .brGlass(in: Circle(), interactive: false)
-                    .opacity(0.35)
+                ZStack { HWRoundKeyFace(size: size, pressed: true); knobIcon(true).foregroundStyle(Color.hwKnobInk).offset(y: 2) }
+                    .frame(width: size, height: size)
+                    .opacity(0.5)
                     .accessibilityLabel("Skip is not available right now")
             }
         }

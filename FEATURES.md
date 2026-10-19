@@ -130,6 +130,13 @@ Legend: [x] built, [ ] planned.
 - Green-only theme; color-changing background is a per-set host switch (and an auto-DJ switch for admins), night only. Server: `liveColor/{occId}` docs, `colorChanging` in the now-playing feed, `POST /api/live/color`.
 - Home is a one-screen desktop layout: player left, Today / Episodes / Shows tabs right.
 
+## iOS hardware overhaul (Oct 2026)
+- [x] Live screen rebuilt as a desk: cover sleeve with a record, leather panel with title, LED equalizer, volume dial (sets system volume), play and skip keys, reaction keys, pull-up drawer (poll, ratings, Apple Music / Spotify, tuned-in avatars, emojis).
+- [x] Open Duo and iPad: two-page layout with schedule and sleep timer, floating vertical tab bar.
+- [x] Full-screen boards (sideways phone and open Duo / iPad) with a QR code to react from a phone.
+- [x] Every other screen (Schedule, Library, Search, Profile, sign-in, Host, Admin) uses the same desk, ceramic / leather cards, steel keys and recessed fields.
+- [x] Cover color is picked quickly; the previous cover lingers briefly while the new one loads.
+
 ## Public sharing (opt-in, adults only)
 - [x] Everything is students-only by default. A missing `visibility` on an episode means private (Firestore rules changed: only `visibility == 'public'` is readable by non-members). Episodes added before this are now private until a host signs.
 - [x] Go On Air (`/slots`): optional "share my recordings with the public", off by default, needs all 5 agreement boxes ticked and a typed full name. The signed record is saved in `publicConsents` and the request/airSlot carries `makePublic` + `publicConsentId`.

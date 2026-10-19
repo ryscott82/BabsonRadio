@@ -5,7 +5,8 @@ import UIKit
 #endif
 
 // The album-color theme, same idea as the website (components/ArtTheme.tsx):
-// everything starts on official Babson Green, then about 6 seconds in fades (12 s) to the current cover:
+// Album-color mode: once someone presses play and a cover is showing, the whole UI switches to the cover's colors
+// right away (no slow fade from green). With no cover (or paused) the UI uses the normal light/dark look, never a stock green.
 //   main   = the cover's main color: visualizer glow and the washes behind cards
 //   green  = a green that pairs with it: accents, progress, stars, links
 //   second = the cover's second color: buttons in light mode
@@ -59,32 +60,39 @@ final class ArtTheme: ObservableObject {
     @Published private(set) var main = ArtRGB.babson
     @Published private(set) var green = ArtRGB.babson
     @Published private(set) var second = ArtRGB.babson
+    /// Up to five distinct cover colors, strongest first (the website hunts the same way). Feeds the visualizer and the desk tint.
+    @Published private(set) var palette: [ArtRGB] = []
+    /// A cover is on screen.
+    @Published private(set) var hasCover = false
+    /// Someone is listening (set by the audio manager). Album-color mode needs both.
+    @Published var listening = false
 
     private var pending: (ArtRGB, ArtRGB, ArtRGB)?
-    private var ready = false
-    private var started = false
+    private var pendingExtra: [ArtRGB] = []
+    private var ready = true
 
-    /// Call when the player screen appears. The first fade starts a few seconds later.
-    func start() {
-        guard Self.enabled, !started else { return }
-        started = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in
-            self?.ready = true
-            self?.applyPending()
-        }
-    }
+    /// Kept so existing call sites still compile; colors now apply immediately.
+    func start() { ready = true; applyPending() }
+
+    /// Album-color mode is on: playing with a cover showing.
+    var albumOn: Bool { Self.enabled && listening && hasCover }
 
     #if canImport(UIKit)
     func update(from image: UIImage?) {
         guard Self.enabled else { return }
-        if let image, let p = Self.palette(from: image) { pending = p } else { pending = (.babson, .babson, .babson) }
+        if let image, let p = Self.palette(from: image) {
+            pending = (p.0, p.1, p.2); pendingExtra = p.3; hasCover = true
+        } else {
+            pending = nil; pendingExtra = []; hasCover = false
+            main = .babson; green = .babson; second = .babson; palette = []
+        }
         applyPending()
     }
     #endif
 
     private func applyPending() {
         guard ready, let p = pending else { return }
-        withAnimation(.easeInOut(duration: 12)) { main = p.0; green = p.1; second = p.2 }
+        withAnimation(.easeInOut(duration: 0.5)) { main = p.0; green = p.1; second = p.2; palette = pendingExtra }
     }
 
     // MARK: When the cover colors are used
@@ -97,14 +105,14 @@ final class ArtTheme: ObservableObject {
         return h >= 19 || h < 6
     }
     /// True when the whole UI should follow the cover.
-    static func full(_ scheme: ColorScheme) -> Bool { enabled && scheme == .dark && isNight }
+    static func full(_ scheme: ColorScheme) -> Bool { shared.albumOn }
 
     /// The drawer lip: the cover's main color in every mode (Babson green until a cover has faded in), plus a deeper shade for its gradient.
-    var lip: Color { main == .babson ? .brGreenMid : main.color }
-    var lipDeep: Color { main == .babson ? .brGreen : main.mixed(with: ArtRGB(r: 0, g: 0, b: 0), 0.35).color }
+    var lip: Color { hasCover ? main.color : .brGreenMid }
+    var lipDeep: Color { hasCover ? main.mixed(with: ArtRGB(r: 0, g: 0, b: 0), 0.35).color : .brGreen }
 
     /// The On Air badge: the cover's color in every mode, station red until a cover has faded in.
-    var badge: Color { second == .babson ? .brRed : second.color }
+    var badge: Color { hasCover ? second.color : .brRed }
 
     /// Keeps a color colorful enough to read, but leaves a true gray gray.
     private static func sat(_ s: Double, _ lo: Double, _ hi: Double) -> Double { s < 0.08 ? s : min(max(s, lo), hi) }
@@ -165,7 +173,7 @@ final class ArtTheme: ObservableObject {
     }
 
     /// [main color, accent, second color] from a cover.
-    static func palette(from image: UIImage) -> (ArtRGB, ArtRGB, ArtRGB)? {
+    static func palette(from image: UIImage) -> (ArtRGB, ArtRGB, ArtRGB, [ArtRGB])? {
         let n = 48
         guard let cg = image.cgImage else { return nil }
         var px = [UInt8](repeating: 0, count: n * n * 4)
@@ -242,7 +250,7 @@ final class ArtTheme: ObservableObject {
         // A cover with no real color (black and white photo, plain gray): a neutral, never a made-up hue.
         guard let first = cands.first else {
             let gray = ArtRGB(r: 0.5, g: 0.5, b: 0.5)
-            return (gray, gray, gray)
+            return (gray, gray, gray, [gray])
         }
         let second = cands.dropFirst().first { dist($0.lab, first.lab) >= 0.12 }
 
@@ -254,7 +262,12 @@ final class ArtTheme: ObservableObject {
         let h = main.hsl
         let accent = ArtRGB.hsl(h.h, min(max(h.s, 0.45), 0.75), 0.31)
         let sec = second.map { cover($0.rgb) } ?? ArtRGB.hsl((h.h + 35).truncatingRemainder(dividingBy: 360), h.s, h.l)
-        return (main, accent, sec)
+        // Up to five distinct colors, in score order.
+        var picked: [Cand] = []
+        for c in cands where picked.allSatisfy({ dist($0.lab, c.lab) >= 0.09 }) {
+            picked.append(c); if picked.count == 5 { break }
+        }
+        return (main, accent, sec, picked.map { cover($0.rgb) })
     }
     #endif
 }

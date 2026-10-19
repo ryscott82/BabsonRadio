@@ -21,13 +21,13 @@ struct GuestAuthView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 16) {
-                Text("GUEST ACCESS")
+                Text("Guest access")
                     .font(BRFont.display(26))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                     .kerning(4)
                     .padding(.top, 56)
                 Text("Live radio is free. A student can unlock the rest.")
-                    .font(.system(size: 13))
+                    .font(BRFont.body(13, .regular))
                     .foregroundColor(sub)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
@@ -51,10 +51,10 @@ struct GuestAuthView: View {
                     AgreeToggle(agreed: $agreed).padding(.horizontal, 24)
                 }
                 if let err = auth.errorMessage {
-                    Text(err).font(.system(size: 13)).foregroundColor(.brRed).padding(.horizontal, 24)
+                    Text(err).font(BRFont.body(13, .regular)).foregroundColor(.brRed).padding(.horizontal, 24)
                 }
                 if let info = auth.infoMessage {
-                    Text(info).font(.system(size: 13)).foregroundColor(sub).padding(.horizontal, 24)
+                    Text(info).font(BRFont.body(13, .regular)).foregroundColor(sub).padding(.horizontal, 24)
                 }
 
                 Button(action: submit) {
@@ -85,7 +85,7 @@ struct GuestAuthView: View {
                     .padding(.bottom, 40)
             }
         }
-        .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+        .background(HWDesk())
         .ignoresSafeArea()
         .onAppear { auth.errorMessage = nil; auth.infoMessage = nil }
     }
@@ -118,7 +118,7 @@ struct GuestProfileView: View {
     private var text: Color { scheme == .dark ? .brDkText : .brLtText }
     private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
     private var accent: Color { scheme == .dark ? .brGold : .brGreen }
-    private var card: Color { scheme == .dark ? .brDkSurface : .brLtSurface }
+    private var card: Color { Color.hwField(scheme) }
 
     var body: some View {
         NavigationStack {
@@ -128,10 +128,10 @@ struct GuestProfileView: View {
                         .font(BRFont.display(28)).foregroundColor(text)
 
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(statusTitle).font(.system(size: 16, weight: .semibold)).foregroundColor(text)
-                        Text(statusDetail).font(.system(size: 13)).foregroundColor(sub)
+                        Text(statusTitle).font(BRFont.body(16, .semibold)).foregroundColor(text)
+                        Text(statusDetail).font(BRFont.body(13, .regular)).foregroundColor(sub)
                         Text("Live radio is open to everyone.")
-                            .font(.system(size: 12)).foregroundColor(sub).padding(.top, 4)
+                            .font(BRFont.body(12, .regular)).foregroundColor(sub).padding(.top, 4)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
@@ -139,11 +139,11 @@ struct GuestProfileView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 14))
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Are you a Babson, Olin or Wellesley student?").font(.system(size: 15, weight: .semibold)).foregroundColor(text)
+                        Text("Are you a Babson, Olin or Wellesley student?").font(BRFont.body(15, .semibold)).foregroundColor(text)
                         Text("Add your school email to unlock the rest.")
-                            .font(.system(size: 13)).foregroundColor(sub)
+                            .font(BRFont.body(13, .regular)).foregroundColor(sub)
                         Button("Add my school email") { showSchoolEmail = true }
-                            .font(.system(size: 13, weight: .semibold)).foregroundColor(accent)
+                            .font(BRFont.body(13, .semibold)).foregroundColor(accent)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
@@ -153,20 +153,20 @@ struct GuestProfileView: View {
                     if auth.guestStatus?.emailVerified != true && !user.emailVerifiedHint {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Verify your email to ask for more time.")
-                                .font(.system(size: 13)).foregroundColor(sub)
+                                .font(BRFont.body(13, .regular)).foregroundColor(sub)
                             HStack(spacing: 12) {
                                 Button("Resend link") { auth.resendVerification() }
                                 Button("I've verified") { auth.refreshGuestStatus() }
                             }
-                            .font(.system(size: 13, weight: .semibold)).foregroundColor(accent)
+                            .font(BRFont.body(13, .semibold)).foregroundColor(accent)
                         }
                     } else if auth.guestStatus?.requestStatus == "pending" {
                         Text("Waiting for your Babson contact to approve.")
-                            .font(.system(size: 13)).foregroundColor(sub)
+                            .font(BRFont.body(13, .regular)).foregroundColor(sub)
                     } else {
                         VStack(alignment: .leading, spacing: 10) {
                             if auth.guestStatus?.requestStatus == "denied" {
-                                Text("That request wasn't approved.").font(.system(size: 13)).foregroundColor(.brRed)
+                                Text("That request wasn't approved.").font(BRFont.body(13, .regular)).foregroundColor(.brRed)
                             }
                             BRTextField(placeholder: "Student's Babson username", text: $sponsorEmail, icon: "person.badge.plus",
                                         keyboardType: .emailAddress, autocapitalization: .never,
@@ -177,8 +177,8 @@ struct GuestProfileView: View {
                         }
                     }
 
-                    if let err = auth.errorMessage { Text(err).font(.system(size: 13)).foregroundColor(.brRed) }
-                    if let info = auth.infoMessage { Text(info).font(.system(size: 13)).foregroundColor(sub) }
+                    if let err = auth.errorMessage { Text(err).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
+                    if let info = auth.infoMessage { Text(info).font(BRFont.body(13, .regular)).foregroundColor(sub) }
 
                     DeleteAccountButton().padding(.top, 16)
 
@@ -186,7 +186,7 @@ struct GuestProfileView: View {
                 }
                 .padding(20)
             }
-            .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+            .background(HWDesk())
             .navigationTitle("Guest")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -233,11 +233,11 @@ struct DeleteAccountButton: View {
         }
         .sheet(isPresented: $confirmingApple) {
             VStack(spacing: 16) {
-                Text("DELETE YOUR ACCOUNT?").font(BRFont.display(24)).kerning(2)
+                Text("Delete your account?").font(BRFont.display(24)).kerning(2)
                 Text("This permanently deletes your account. Confirm with Apple.")
-                    .font(.system(size: 14)).multilineTextAlignment(.center)
+                    .font(BRFont.body(14, .regular)).multilineTextAlignment(.center)
                 AppleSignInButton(purpose: .confirmDelete)
-                Button("Cancel") { confirmingApple = false }.font(.system(size: 13))
+                Button("Cancel") { confirmingApple = false }.font(BRFont.body(13, .regular))
             }
             .padding(28)
             .presentationDetents([.medium])
@@ -261,9 +261,9 @@ struct GuestLockedNote: View {
     @Environment(\.colorScheme) var scheme
     var body: some View {
         VStack(spacing: 8) {
-            Text("BABSON STUDENTS ONLY").font(BRFont.display(18)).kerning(2)
+            Text("Babson students only").font(BRFont.display(18)).kerning(2)
                 .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-            Text(text).font(.system(size: 13)).multilineTextAlignment(.center)
+            Text(text).font(BRFont.body(13, .regular)).multilineTextAlignment(.center)
                 .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
         }
         .padding(32)
@@ -297,13 +297,13 @@ struct AddSchoolEmailView: View {
                     if let sent = auth.schoolEmailSentTo {
                         Text("Check \(sent)").font(BRFont.display(22)).foregroundColor(scheme == .dark ? .brDkText : .brLtText).padding(.top, 24)
                         Text("Open the link we sent, then sign back in with your school email.")
-                            .font(.system(size: 14)).foregroundColor(sub).multilineTextAlignment(.center)
+                            .font(BRFont.body(14, .regular)).foregroundColor(sub).multilineTextAlignment(.center)
                         Button("Sign out now") { auth.schoolEmailSentTo = nil; auth.signOut(); dismiss() }
-                            .font(.system(size: 14, weight: .semibold)).foregroundColor(accent).padding(.top, 8)
+                            .font(BRFont.body(14, .semibold)).foregroundColor(accent).padding(.top, 8)
                     } else {
                         Text("Add your school email").font(BRFont.display(22)).foregroundColor(scheme == .dark ? .brDkText : .brLtText).padding(.top, 24)
                         Text("We'll send you a confirmation link.")
-                            .font(.system(size: 13)).foregroundColor(sub).multilineTextAlignment(.center)
+                            .font(BRFont.body(13, .regular)).foregroundColor(sub).multilineTextAlignment(.center)
                         BRTextField(placeholder: "School username", text: $username, icon: "envelope",
                                     keyboardType: .emailAddress, autocapitalization: .never,
                                     suffix: domain, domainChoice: $domain, domainOptions: AuthManager.schoolDomains)
@@ -315,7 +315,7 @@ struct AddSchoolEmailView: View {
                         }.pickerStyle(.menu).tint(accent).frame(maxWidth: .infinity, alignment: .leading)
                         BRTextField(placeholder: "Your current password", text: $password, icon: "lock",
                                     textContentType: .password, isSecure: true)
-                        if let err = auth.errorMessage { Text(err).font(.system(size: 13)).foregroundColor(.brRed) }
+                        if let err = auth.errorMessage { Text(err).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
                         Button(action: {
                             auth.addSchoolEmail(email: username.trimmingCharacters(in: .whitespaces).lowercased() + domain,
                                                 firstName: firstName.trimmingCharacters(in: .whitespaces),
@@ -325,7 +325,7 @@ struct AddSchoolEmailView: View {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 12).fill(accent).frame(height: 52)
                                 if auth.isLoading { ProgressView() } else {
-                                    Text("SEND CONFIRMATION LINK").font(BRFont.display(15)).kerning(2)
+                                    Text("Send confirmation link").font(BRFont.display(15)).kerning(2)
                                         .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
                                 }
                             }
@@ -335,7 +335,7 @@ struct AddSchoolEmailView: View {
                 }
                 .padding(.horizontal, 24).padding(.bottom, 40)
             }
-            .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+            .background(HWDesk())
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }
         .onAppear { auth.errorMessage = nil; auth.infoMessage = nil }

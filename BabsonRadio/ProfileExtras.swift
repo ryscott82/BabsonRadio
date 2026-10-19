@@ -94,9 +94,9 @@ struct ProfileDisclosure<Content: View>: View {
             Button { withAnimation(.easeInOut(duration: 0.2)) { open.toggle() } } label: {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(title).font(.system(size: 16, weight: .semibold))
+                        Text(title).font(BRFont.body(16, .semibold))
                             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                        if let hint { Text(hint).font(.system(size: 13)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub) }
+                        if let hint { Text(hint).font(BRFont.body(13, .regular)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub) }
                     }
                     Spacer()
                     Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold))
@@ -137,11 +137,11 @@ struct HostOptionsView: View {
             BRSectionHeader(title: "YOUR SHOW OPTIONS").padding(.horizontal, inset)
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Look during your show").font(.system(size: 15, weight: .semibold)).foregroundColor(text)
+                    Text("Look during your show").font(BRFont.body(15, .semibold)).foregroundColor(text)
                     HStack(spacing: 8) {
                         ForEach(Self.themes, id: \.id) { t in
                             Button { theme = t.id; save() } label: {
-                                Text(t.label).font(.system(size: 13, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8)
+                                Text(t.label).font(BRFont.body(13, .medium)).lineLimit(1).minimumScaleFactor(0.8)
                                     .frame(maxWidth: .infinity).padding(.vertical, 10)
                                     .foregroundColor(theme == t.id ? (scheme == .dark ? Color.brDkBg : .white) : text)
                                     .background(theme == t.id ? accent : (scheme == .dark ? Color.brDkSurface2 : Color.brLtSurface2))
@@ -152,13 +152,13 @@ struct HostOptionsView: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Reactions (\(emojis.count)/6)").font(.system(size: 15, weight: .semibold)).foregroundColor(text)
+                    Text("Reactions (\(emojis.count)/6)").font(BRFont.body(15, .semibold)).foregroundColor(text)
                     Text(emojis.isEmpty ? "None picked: listeners see the usual ones." : "Listeners see these during your show.")
-                        .font(.system(size: 12)).foregroundColor(sub)
+                        .font(BRFont.body(12, .regular)).foregroundColor(sub)
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 6), spacing: 8) {
                         ForEach(Self.choices + emojis.filter { !Self.choices.contains($0) }, id: \.self) { e in
                             Button { toggle(e) } label: {
-                                Text(e).font(.system(size: 24)).frame(height: 44).frame(maxWidth: .infinity)
+                                Text(e).font(BRFont.body(24, .regular)).frame(height: 44).frame(maxWidth: .infinity)
                                     .background(emojis.contains(e) ? accent.opacity(0.25) : (scheme == .dark ? Color.brDkSurface2 : Color.brLtSurface2))
                                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(emojis.contains(e) ? accent : .clear, lineWidth: 2))
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -169,7 +169,7 @@ struct HostOptionsView: View {
                 }
                 HStack(spacing: 10) {
                     TextField("Add your own emoji", text: $custom)
-                        .font(.system(size: 18))
+                        .font(BRFont.body(18, .regular))
                         .padding(10)
                         .background(scheme == .dark ? Color.brDkSurface2 : Color.brLtSurface2)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -187,7 +187,7 @@ struct HostOptionsView: View {
                     }
                     .buttonStyle(.plain).disabled(custom.isEmpty)
                 }
-                if let error { Text(error).font(.system(size: 12)).foregroundColor(.brRed) }
+                if let error { Text(error).font(BRFont.body(12, .regular)).foregroundColor(.brRed) }
             }
             .padding(18).brCard().padding(.horizontal, inset)
         }
@@ -236,17 +236,17 @@ struct PhoneChangeSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text((info.map { $0.current.isEmpty ? "" : "Current number ends in \($0.current). " } ?? "") + "An admin approves changes.")
-                .font(.system(size: 12)).foregroundColor(sub)
+                .font(BRFont.body(12, .regular)).foregroundColor(sub)
             if let p = info?.pending {
                 Text("Waiting for approval: number ending in \(p.last4).")
-                    .font(.system(size: 14)).foregroundColor(text)
+                    .font(BRFont.body(14, .regular)).foregroundColor(text)
                 Button("Cancel request") { Task { await cancel() } }
-                    .font(.system(size: 14, weight: .semibold)).foregroundColor(accent).disabled(busy)
+                    .font(BRFont.body(14, .semibold)).foregroundColor(accent).disabled(busy)
             } else {
                 PhoneField(phoneNumber: $phone)
-                if !message.isEmpty { Text(message).font(.system(size: 13)).foregroundColor(.brRed) }
+                if !message.isEmpty { Text(message).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
                 Button { Task { await send() } } label: {
-                    Text("Request change").font(.system(size: 15, weight: .semibold))
+                    Text("Request change").font(BRFont.body(15, .semibold))
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
                         .foregroundColor(scheme == .dark ? .black : .white)
                         .background(accent, in: RoundedRectangle(cornerRadius: 12))

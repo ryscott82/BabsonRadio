@@ -51,7 +51,7 @@ struct SlotsView: View {
         .refreshable {
             if auth.isSignedIn { await slots.refresh() }
         }
-        .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+        .background(HWDesk())
     }
 
     // MARK: - Signed in
@@ -60,29 +60,26 @@ struct SlotsView: View {
         VStack(alignment: .leading, spacing: 28) {
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("GO ON AIR")
+                Text("Go ON AIR")
                     .font(BRFont.display(34))
                     .kerning(3)
                     .foregroundColor(textColor)
                 Text("Have a show idea? Request a time on the radio.")
-                    .font(.system(size: 14))
+                    .font(BRFont.body(14, .regular))
                     .foregroundColor(subColor)
 
                 Button { showForm = true } label: {
                     HStack(spacing: 8) {
                         Spacer()
                         Image(systemName: "mic.fill")
-                        Text("REQUEST A SLOT")
+                        Text("Request a slot")
                             .font(BRFont.display(15))
                             .kerning(2)
                         Spacer()
                     }
                     .padding(.vertical, 14)
-                    .background(accent)
-                    .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(HWKeyStyle(corner: 12, lit: false, height: nil))
                 .padding(.top, 6)
             }
             .padding(.horizontal, 20)
@@ -90,7 +87,7 @@ struct SlotsView: View {
 
             if let error = slots.errorMessage {
                 Text(error)
-                    .font(.system(size: 13))
+                    .font(BRFont.body(13, .regular))
                     .foregroundColor(.brRed)
                     .padding(.horizontal, 20)
             }
@@ -123,12 +120,12 @@ struct SlotsView: View {
             Image(systemName: "mic.slash")
                 .font(.system(size: 34))
                 .foregroundColor(subColor)
-            Text("SIGN IN TO REQUEST A SLOT")
+            Text("Sign in to request a slot")
                 .font(BRFont.display(22))
                 .kerning(2)
                 .foregroundColor(textColor)
             Text("Sign in with your Babson email to request airtime.")
-                .font(.system(size: 14))
+                .font(BRFont.body(14, .regular))
                 .foregroundColor(subColor)
                 .multilineTextAlignment(.center)
         }
@@ -139,7 +136,7 @@ struct SlotsView: View {
 
     private func emptyText(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 13))
+            .font(BRFont.body(13, .regular))
             .foregroundColor(subColor)
             .padding(.horizontal, 20)
     }
@@ -181,7 +178,7 @@ private struct SlotRequestRow: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top) {
                 Text(request.title)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(BRFont.body(16, .semibold))
                     .foregroundColor(textColor)
                 Spacer()
                 Text(statusLabel)
@@ -191,12 +188,12 @@ private struct SlotRequestRow: View {
             }
 
             Text("\(request.startAt.formatted(date: .abbreviated, time: .shortened)) · \(request.durationMin) min · \(request.type == "live" ? "Live" : "Pre-recorded")")
-                .font(.system(size: 13))
+                .font(BRFont.body(13, .regular))
                 .foregroundColor(subColor)
 
             if !request.staffNote.isEmpty {
                 Text("Staff note: \(request.staffNote)")
-                    .font(.system(size: 13))
+                    .font(BRFont.body(13, .regular))
                     .foregroundColor(textColor)
             }
 
@@ -207,13 +204,13 @@ private struct SlotRequestRow: View {
                         .kerning(2)
                         .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
                     Text(request.connectionInfo)
-                        .font(.system(size: 13))
+                        .font(BRFont.body(13, .regular))
                         .foregroundColor(textColor)
                         .textSelection(.enabled)
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+                .background(HWDesk())
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             }
 
@@ -236,24 +233,24 @@ private struct AutoBlockRow: View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(block.label)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(BRFont.body(15, .semibold))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                 Text("On the radio")
-                    .font(.system(size: 12))
+                    .font(BRFont.body(12, .regular))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 3) {
                 Text(block.startAt.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
-                    .font(.system(size: 12, weight: .medium))
+                    .font(BRFont.body(12, .medium))
                 Text("\(block.startAt.formatted(date: .omitted, time: .shortened)) – \(block.endAt.formatted(date: .omitted, time: .shortened))")
-                    .font(.system(size: 12))
+                    .font(BRFont.body(12, .regular))
             }
             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+        .background(HWDesk())
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12)
             .stroke(scheme == .dark ? Color.brDkBorder : Color.brLtBorder, lineWidth: 1))
@@ -268,18 +265,18 @@ private struct AirSlotRow: View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(slot.title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(BRFont.body(15, .semibold))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                 Text("with \(slot.hostName) · \(slot.type == "live" ? "Live" : "Pre-recorded")")
-                    .font(.system(size: 12))
+                    .font(BRFont.body(12, .regular))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 3) {
                 Text(slot.startAt.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
-                    .font(.system(size: 12, weight: .medium))
+                    .font(BRFont.body(12, .medium))
                 Text("\(slot.startAt.formatted(date: .omitted, time: .shortened)) – \(slot.endAt.formatted(date: .omitted, time: .shortened))")
-                    .font(.system(size: 12))
+                    .font(BRFont.body(12, .regular))
             }
             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
         }
@@ -682,7 +679,7 @@ struct ScheduleView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     if lineup.isEmpty {
                         Text(slots.isLoading ? "Loading…" : "No live shows coming up.")
-                            .font(.system(size: 14)).foregroundColor(subColor)
+                            .font(BRFont.body(14, .regular)).foregroundColor(subColor)
                     }
                     ForEach(lineup, id: \.day) { group in
                         VStack(alignment: .leading, spacing: 10) {
@@ -694,7 +691,7 @@ struct ScheduleView: View {
                     Button { showAuto = true } label: {
                         HStack(spacing: 10) {
                             Image(systemName: "music.note.list")
-                            Text("AUTO DJ SCHEDULE").font(BRFont.display(14)).kerning(2)
+                            Text("Auto DJ schedule").font(BRFont.display(14)).kerning(2)
                             Spacer()
                             Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
                         }
@@ -708,16 +705,16 @@ struct ScheduleView: View {
                 .padding(20)
             }
             .refreshable { await slots.loadFeed() }
-            .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+            .background(HWDesk())
             .navigationTitle("")
             .profileButton()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 0) {
-                        Text("BABSON ").font(BRFont.display(18))
+                        Text("Babson ").font(BRFont.display(18))
                             .foregroundColor(scheme == .dark ? .brGold : .brGreen).kerning(3)
-                        Text("RADIO").font(BRFont.display(18)).foregroundColor(textColor).kerning(3)
+                        Text("Radio").font(BRFont.display(18)).foregroundColor(textColor).kerning(3)
                     }
                 }
             }
@@ -741,7 +738,7 @@ struct ScheduleView: View {
                     ScrollView(showsIndicators: false) {
                         if slots.feed.isEmpty {
                             Text(slots.isLoading ? "Loading…" : "Nothing is scheduled yet.")
-                                .font(.system(size: 13)).foregroundColor(subColor).padding(20)
+                                .font(BRFont.body(13, .regular)).foregroundColor(subColor).padding(20)
                         } else {
                             grid
                         }
@@ -751,7 +748,7 @@ struct ScheduleView: View {
                     .onChange(of: first) { _, _ in scrollToNow(proxy) }
                 }
             }
-            .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+            .background(HWDesk())
             .navigationTitle("Auto DJ schedule")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showAuto = false } } }
@@ -779,7 +776,7 @@ struct ScheduleView: View {
             Text(rangeText).font(BRFont.display(13)).kerning(2)
                 .foregroundColor(scheme == .dark ? .brGold : .brGreen)
         }
-        .font(.system(size: 15, weight: .semibold))
+        .font(BRFont.body(15, .semibold))
         .foregroundColor(scheme == .dark ? .brGold : .brGreen)
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
@@ -795,7 +792,7 @@ struct ScheduleView: View {
                         .font(BRFont.display(11)).kerning(1.5)
                         .foregroundColor(isToday ? (scheme == .dark ? .brGold : .brGreen) : subColor)
                     Text(day.formatted(.dateTime.month(.abbreviated).day()))
-                        .font(.system(size: 13, weight: .medium)).foregroundColor(textColor)
+                        .font(BRFont.body(13, .medium)).foregroundColor(textColor)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 6)
@@ -809,7 +806,7 @@ struct ScheduleView: View {
             VStack(spacing: 0) {
                 ForEach(0..<24, id: \.self) { h in
                     Text(h == 0 ? "" : Calendar.current.date(from: DateComponents(hour: h))!.formatted(.dateTime.hour()))
-                        .font(.system(size: 10)).foregroundColor(subColor)
+                        .font(BRFont.body(10, .regular)).foregroundColor(subColor)
                         .frame(width: gutter - 4, height: hourH, alignment: .topTrailing)
                         .offset(y: -6)
                         .id(h)
@@ -867,13 +864,13 @@ private struct CalendarBlock: View {
         ZStack(alignment: .topTrailing) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(entry.title)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(BRFont.body(11, .semibold))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                 if height >= 44 {
                     Text(entry.startAt.formatted(date: .omitted, time: .shortened))
-                        .font(.system(size: 9))
+                        .font(BRFont.body(9, .regular))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .lineLimit(1)
                 }
@@ -914,21 +911,21 @@ private struct ScheduleEntryRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             VStack(alignment: .leading, spacing: 3) {
                 Text(entry.title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(BRFont.body(15, .semibold))
                     .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                     .lineLimit(1)
                 Text((entry.hosts.isEmpty ? "" : "with \(entry.hosts.joined(separator: ", ")) · ") + entry.formatLabel)
-                    .font(.system(size: 12))
+                    .font(BRFont.body(12, .regular))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                     .lineLimit(1)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 3) {
                 if onNow {
-                    Text("ON NOW").font(BRFont.display(10)).kerning(1.5).foregroundColor(.brRed)
+                    Text("ON now").font(BRFont.display(10)).kerning(1.5).foregroundColor(.brRed)
                 }
                 Text("\(entry.startAt.formatted(date: .omitted, time: .shortened)) – \(entry.endAt.formatted(date: .omitted, time: .shortened))")
-                    .font(.system(size: 12))
+                    .font(BRFont.body(12, .regular))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             }
         }
@@ -964,16 +961,16 @@ struct ScheduleDetailView: View {
                             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                         if !entry.hosts.isEmpty {
                             Text("with \(entry.hosts.joined(separator: ", "))")
-                                .font(.system(size: 15))
+                                .font(BRFont.body(15, .regular))
                                 .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         }
                         Text("\(entry.startAt.formatted(.dateTime.weekday(.wide).month(.wide).day()))\n\(entry.startAt.formatted(date: .omitted, time: .shortened)) – \(entry.endAt.formatted(date: .omitted, time: .shortened))")
-                            .font(.system(size: 14))
+                            .font(BRFont.body(14, .regular))
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         DetailBellRow(entry: entry)
                         if !entry.description.isEmpty {
                             Text(entry.description)
-                                .font(.system(size: 15))
+                                .font(BRFont.body(15, .regular))
                                 .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                         }
                     }
@@ -981,7 +978,7 @@ struct ScheduleDetailView: View {
                     .padding(.bottom, 30)
                 }
             }
-            .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+            .background(HWDesk())
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
         .presentationDetents([.large])
@@ -999,7 +996,7 @@ private struct DetailBellRow: View {
             HStack(spacing: 8) {
                 Image(systemName: on ? "bell.fill" : "bell")
                 Text(on ? "Reminder on" : "Remind me 5 minutes before")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(BRFont.body(14, .semibold))
             }
             .foregroundColor(on ? .brGold : (scheme == .dark ? .brDkText : .brLtText))
             .padding(.vertical, 10).padding(.horizontal, 16)

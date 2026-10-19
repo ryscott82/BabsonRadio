@@ -13,7 +13,7 @@ private struct Sheet<Content: View>: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) { content }.padding(20)
         }
-        .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+        .background(HWDesk())
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -39,7 +39,7 @@ struct AdminToolLinks: View {
         NavigationLink { dest() } label: {
             HStack(spacing: 12) {
                 Image(systemName: icon).frame(width: 24)
-                Text(title).font(.system(size: 15, weight: .medium))
+                Text(title).font(BRFont.body(15, .medium))
                 Spacer()
                 Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).opacity(0.5)
             }
@@ -89,15 +89,15 @@ struct ShowRequestsView: View {
 
     var body: some View {
         Sheet(title: "Show requests") {
-            if let e = model.error { Text(e).font(.system(size: 13)).foregroundColor(.brRed) }
-            if model.loaded && model.items.isEmpty { Text("Nothing waiting.").font(.system(size: 14)).foregroundColor(sub) }
+            if let e = model.error { Text(e).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
+            if model.loaded && model.items.isEmpty { Text("Nothing waiting.").font(BRFont.body(14, .regular)).foregroundColor(sub) }
             ForEach(model.items) { r in
                 Button { open = r } label: {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(r.title).font(.system(size: 16, weight: .semibold)).foregroundColor(text)
+                        Text(r.title).font(BRFont.body(16, .semibold)).foregroundColor(text)
                         Text("\(r.requesterName) · \(when(r.startAt)) · \(r.durationMin) min · \(r.type == "live" ? "Live" : "Pre-recorded")")
-                            .font(.system(size: 12)).foregroundColor(sub)
-                        if r.cleanHours { Text("Clean hours").font(.system(size: 11, weight: .semibold)).foregroundColor(.brRed) }
+                            .font(BRFont.body(12, .regular)).foregroundColor(sub)
+                        if r.cleanHours { Text("Clean hours").font(BRFont.body(11, .semibold)).foregroundColor(.brRed) }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading).padding(14).brCard()
                 }
@@ -199,10 +199,10 @@ struct TrainingAdminView: View {
 
     var body: some View {
         Sheet(title: "Training") {
-            if let e = model.error { Text(e).font(.system(size: 13)).foregroundColor(.brRed) }
+            if let e = model.error { Text(e).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
             TextField("Find a student", text: $query)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
-                .padding(12).background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
+                .padding(12).background(HWFieldFill())
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             if !checkIns.isEmpty {
                 BRSectionHeader(title: "AT TRAINING NOW")
@@ -220,7 +220,7 @@ struct TrainingAdminView: View {
                 }
             }
             if model.loaded && checkIns.isEmpty && requests.isEmpty && found.isEmpty {
-                Text("No one waiting. Search for a student to certify or remove.").font(.system(size: 14)).foregroundColor(sub)
+                Text("No one waiting. Search for a student to certify or remove.").font(BRFont.body(14, .regular)).foregroundColor(sub)
             }
         }
         .task { await model.load() }
@@ -229,9 +229,9 @@ struct TrainingAdminView: View {
 
     private func row(_ r: TrainRow, primary: (String, String), secondary: (String, String)? = nil, destructive: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(r.name.isEmpty ? r.email : r.name).font(.system(size: 16, weight: .semibold)).foregroundColor(text)
+            Text(r.name.isEmpty ? r.email : r.name).font(BRFont.body(16, .semibold)).foregroundColor(text)
             Text("\(r.email)\(r.trained ? " · certified" : "")\(r.conductSigned ? " · signed" : "")")
-                .font(.system(size: 12)).foregroundColor(sub)
+                .font(BRFont.body(12, .regular)).foregroundColor(sub)
             HStack(spacing: 10) {
                 Button(primary.0, role: destructive ? .destructive : nil) { Task { await model.act(r, primary.1) } }
                     .buttonStyle(.borderedProminent).tint(destructive ? .red : accent)
@@ -258,15 +258,15 @@ struct AnnounceView: View {
     @State private var confirm = false
     private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
     private var accent: Color { scheme == .dark ? .brGold : .brGreen }
-    private var field: Color { scheme == .dark ? .brDkSurface : .brLtSurface }
+    private var field: Color { Color.hwField(scheme) }
 
     var body: some View {
         Sheet(title: "Announcement") {
-            if let i = info { Text("\(i.phones) phone\(i.phones == 1 ? "" : "s") will get it.").font(.system(size: 13)).foregroundColor(sub) }
+            if let i = info { Text("\(i.phones) phone\(i.phones == 1 ? "" : "s") will get it.").font(BRFont.body(13, .regular)).foregroundColor(sub) }
             TextField("Title", text: $title).padding(12).background(field).clipShape(RoundedRectangle(cornerRadius: 10))
             TextField("Message", text: $body_, axis: .vertical).lineLimit(2...4)
                 .padding(12).background(field).clipShape(RoundedRectangle(cornerRadius: 10))
-            if let m = message { Text(m).font(.system(size: 13)).foregroundColor(accent) }
+            if let m = message { Text(m).font(BRFont.body(13, .regular)).foregroundColor(accent) }
             Button { confirm = true } label: { Text(busy ? "Sending…" : "Send").frame(maxWidth: .infinity) }
                 .buttonStyle(.borderedProminent).tint(accent)
                 .disabled(busy || title.trimmingCharacters(in: .whitespaces).isEmpty || body_.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -274,9 +274,9 @@ struct AnnounceView: View {
                 BRSectionHeader(title: "RECENT")
                 ForEach(h) { b in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(b.title).font(.system(size: 14, weight: .semibold))
-                        Text(b.body).font(.system(size: 13)).foregroundColor(sub)
-                        Text("\(when(b.at)) · \(b.sent) sent").font(.system(size: 11)).foregroundColor(sub)
+                        Text(b.title).font(BRFont.body(14, .semibold))
+                        Text(b.body).font(BRFont.body(13, .regular)).foregroundColor(sub)
+                        Text("\(when(b.at)) · \(b.sent) sent").font(BRFont.body(11, .regular)).foregroundColor(sub)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading).padding(12).brCard()
                 }
@@ -334,21 +334,21 @@ struct UsersAdminView: View {
         Sheet(title: "People and roles") {
             TextField("Find someone", text: $query)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
-                .padding(12).background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
+                .padding(12).background(HWFieldFill())
                 .clipShape(RoundedRectangle(cornerRadius: 10))
-            if let m = message { Text(m).font(.system(size: 13)).foregroundColor(.brGold) }
-            if query.trimmingCharacters(in: .whitespaces).count < 2 { Text("Hosts and staff. Search to find anyone else.").font(.system(size: 12)).foregroundColor(sub) }
+            if let m = message { Text(m).font(BRFont.body(13, .regular)).foregroundColor(.brGold) }
+            if query.trimmingCharacters(in: .whitespaces).count < 2 { Text("Hosts and staff. Search to find anyone else.").font(BRFont.body(12, .regular)).foregroundColor(sub) }
             ForEach(found) { u in
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(u.name.isEmpty ? u.email : u.name).font(.system(size: 15, weight: .semibold)).foregroundColor(text)
-                        Text(u.email).font(.system(size: 12)).foregroundColor(sub)
+                        Text(u.name.isEmpty ? u.email : u.name).font(BRFont.body(15, .semibold)).foregroundColor(text)
+                        Text(u.email).font(BRFont.body(12, .regular)).foregroundColor(sub)
                     }
                     Spacer()
                     Menu {
                         ForEach(roles, id: \.0) { r in Button(r.1) { Task { await setRole(u, r.0) } } }
                     } label: {
-                        Text(Self.labels.first { $0.0 == u.role }?.1 ?? u.role.capitalized).font(.system(size: 13, weight: .semibold))
+                        Text(Self.labels.first { $0.0 == u.role }?.1 ?? u.role.capitalized).font(BRFont.body(13, .semibold))
                             .padding(.horizontal, 12).padding(.vertical, 6).background(Capsule().fill(Color.brGreen.opacity(0.15)))
                     }
                 }

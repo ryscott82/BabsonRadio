@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 #if canImport(UIKit)
 import UIKit
@@ -38,7 +39,7 @@ struct ContentView: View {
         TabView(selection: $tab) {
             LivePlayerView()
                 .id(liveLoad)
-                .modifier(TabBarStyle(hidden: hideBar))
+                .modifier(TabBarStyle(hidden: true))
                 .tag(0)
                 .tabItem {
                     BRTabIcon(systemName: "radio", label: "Live")
@@ -46,7 +47,8 @@ struct ContentView: View {
 
             ScheduleView()
                 .padding(.leading, sideW)
-                .modifier(TabBarStyle(hidden: hideBar))
+                .modifier(BarClearance(on: !hideBar && hSize != .regular))
+                .modifier(TabBarStyle(hidden: true))
                 .tag(1)
                 .tabItem {
                     BRTabIcon(systemName: "calendar", label: "Schedule")
@@ -54,7 +56,8 @@ struct ContentView: View {
 
             LibraryView()
                 .padding(.leading, sideW)
-                .modifier(TabBarStyle(hidden: hideBar))
+                .modifier(BarClearance(on: !hideBar && hSize != .regular))
+                .modifier(TabBarStyle(hidden: true))
                 .tag(2)
                 .tabItem {
                     BRTabIcon(systemName: "books.vertical", label: "Library")
@@ -63,7 +66,8 @@ struct ContentView: View {
             if profile.hosting {
                 NavigationStack { HostPanelView() }
                     .padding(.leading, sideW)
-                    .modifier(TabBarStyle(hidden: hideBar))
+                    .modifier(BarClearance(on: !hideBar && hSize != .regular))
+                    .modifier(TabBarStyle(hidden: true))
                     .tag(3)
                     .tabItem { BRTabIcon(systemName: "mic.fill", label: "Host") }
             }
@@ -71,7 +75,8 @@ struct ContentView: View {
             // Search is the right-most tab; Profile is the circle button in the top corner of every page.
             SearchView()
                 .padding(.leading, sideW)
-                .modifier(TabBarStyle(hidden: hideBar))
+                .modifier(BarClearance(on: !hideBar && hSize != .regular))
+                .modifier(TabBarStyle(hidden: true))
                 .tag(4)
                 .tabItem {
                     BRTabIcon(systemName: "magnifyingglass", label: "Search")
@@ -82,11 +87,20 @@ struct ContentView: View {
         .background { Color.clear.onGeometryChange(for: CGSize.self, of: { $0.size }) { paneSize = $0 } }
         // One profile button for every tab on a wide window, so it stays put when you switch.
         .overlay(alignment: .topTrailing) {
-            if hSize == .regular { ProfileCircleButton().padding(.trailing, 20).padding(.top, 12) }
+            if hSize == .regular { ProfileCircleButton().padding(.trailing, 22).padding(.top, 30) }
         }
         .overlay(alignment: .leading) {
             if sideW > 0 { LivePlayerView(sidePane: true, paneWidth: sideW) }
         }
+        // Our own bars: glass or ceramic at the bottom of a phone, a floating vertical bar on a wide screen.
+        .environment(\.hwBarInset, (hSize == .regular && !hideBar) ? 76 : 0)
+        .overlay(alignment: .bottom) {
+            if hSize != .regular && !hideBar { HWTabBar(tab: $tab, hosting: profile.hosting).transition(.move(edge: .bottom)) }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if hSize == .regular && !hideBar { HWSideBar(tab: $tab, hosting: profile.hosting).transition(.move(edge: .trailing)) }
+        }
+        .animation(.easeInOut(duration: 0.25), value: hideBar)
     }
 
     fileprivate func chrome<V: View>(_ content: V) -> some View {
@@ -97,7 +111,7 @@ struct ContentView: View {
         if ArtTheme.full(scheme) { return theme.accent(scheme) }
         return scheme == .dark ? Color.brGold : Color.brGreen
     }
-    private var pageBackground: Color { scheme == .dark ? Color.brDkBg : Color.brLtBg }
+    private var pageBackground: some View { HWDesk(album: theme.albumOn ? theme.main.color : nil) }
     private var noticeShown: Binding<Bool> {
         Binding(get: { listen.notice != nil }, set: { if !$0 { listen.notice = nil } })
     }
@@ -108,6 +122,7 @@ struct ContentView: View {
     private func lifecycle<V: View>(_ content: V) -> some View {
         content
             .onChange(of: tab) { old, new in if new == 0 && old != 0 { liveLoad += 1 } }
+            .onReceive(TabRouter.shared.$request.compactMap { $0 }) { t in tab = t; TabRouter.shared.request = nil }
             .tint(tintColor)
             .background(pageBackground)
             .overlay(alignment: .top) { statusBlur }
@@ -282,20 +297,18 @@ struct HostWelcomeView: View {
 
     var body: some View {
         ZStack {
-            (scheme == .dark ? Color.brDkBg : Color.brLtBg).ignoresSafeArea()
+            HWDesk()
             VStack(spacing: 16) {
                 Spacer()
                 Image(systemName: "mic.fill").font(.system(size: 44)).foregroundColor(scheme == .dark ? .brGold : .brGreen)
                 Text("Welcome, Host").font(BRFont.display(34)).foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                Text("Your Host tab is ready.").font(.system(size: 15)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                Text("Your Host tab is ready.").font(BRFont.body(15, .regular)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 Spacer()
                 Button(action: onContinue) {
-                    Text("CONTINUE").font(BRFont.display(15)).kerning(2)
+                    Text("Continue").font(BRFont.display(15)).kerning(2)
                         .frame(maxWidth: .infinity).padding(.vertical, 16)
-                        .background(scheme == .dark ? Color.brGold : Color.brGreen)
-                        .foregroundColor(scheme == .dark ? .brDkBg : .white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
+                .buttonStyle(HWKeyStyle(corner: 14, lit: false, height: nil))
                 .padding(.horizontal, 32).padding(.bottom, 40)
             }
             .opacity(shown ? 1 : 0)
@@ -314,4 +327,20 @@ struct TabBarStyle: ViewModifier {
             .toolbarBackground(.ultraThinMaterial, for: .tabBar)
             .toolbarBackgroundVisibility(.visible, for: .tabBar)
     }
+}
+
+
+/// Keeps a page's last row clear of the bottom bar.
+struct BarClearance: ViewModifier {
+    let on: Bool
+    func body(content: Content) -> some View {
+        content.safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: on ? 49 : 0) }
+    }
+}
+
+
+/// Lets any screen ask for a tab ("See the week" on the Live page opens Schedule).
+final class TabRouter: ObservableObject {
+    static let shared = TabRouter()
+    @Published var request: Int?
 }

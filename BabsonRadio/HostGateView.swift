@@ -89,7 +89,7 @@ struct HostGateView<Content: View>: View {
                     training(info)
                 }
             } else if let e = model.error {
-                Text(e).font(.system(size: 13)).foregroundColor(.brRed).padding(20)
+                Text(e).font(BRFont.body(13, .regular)).foregroundColor(.brRed).padding(20)
             } else {
                 ProgressView().frame(maxWidth: .infinity).padding(.top, 80)
             }
@@ -109,21 +109,21 @@ struct HostGateView<Content: View>: View {
 
     private func training(_ info: TrainingInfo) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("HOST TRAINING")
+            Text("Host training")
                 .font(BRFont.display(28)).kerning(2).foregroundColor(text)
             if info.checkIn == "pending" {
                 Text("Waiting for a director to confirm you are at training. This updates on its own.")
-                    .font(.system(size: 14)).foregroundColor(text)
+                    .font(BRFont.body(14, .regular)).foregroundColor(text)
                 ProgressView().padding(.top, 4)
             } else {
                 Text("Training happens in person. Then you take a short quiz and sign the host agreements.")
-                    .font(.system(size: 14)).foregroundColor(text)
+                    .font(BRFont.body(14, .regular)).foregroundColor(text)
                 if info.requested {
-                    Text("Requested. A director will reach out.").font(.system(size: 13)).foregroundColor(sub)
+                    Text("Requested. A director will reach out.").font(BRFont.body(13, .regular)).foregroundColor(sub)
                 } else {
                     Button { Task { await model.requestTraining() } } label: {
                         Text("Schedule a training")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(BRFont.body(15, .semibold))
                             .frame(maxWidth: .infinity).padding(.vertical, 13)
                             .foregroundColor(text)
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(scheme == .dark ? Color.brDkBorder : Color.brLtBorder, lineWidth: 1))
@@ -132,15 +132,12 @@ struct HostGateView<Content: View>: View {
                 }
                 Button { Task { await model.checkIn() } } label: {
                     Text("I'm at my training")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(BRFont.body(15, .semibold))
                         .frame(maxWidth: .infinity).padding(.vertical, 13)
-                        .background(accent)
-                        .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .buttonStyle(.plain).disabled(model.busy)
+                .buttonStyle(HWKeyStyle(corner: 12, lit: false, height: nil)).disabled(model.busy)
             }
-            if let e = model.error { Text(e).font(.system(size: 13)).foregroundColor(.brRed) }
+            if let e = model.error { Text(e).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
         }
         .padding(20)
     }
@@ -156,14 +153,14 @@ struct HostGateView<Content: View>: View {
                 let q = qs[step]
                 Text("QUESTION \(step + 1) OF \(qs.count)")
                     .font(BRFont.display(16)).kerning(2).foregroundColor(accent)
-                Text(q.q).font(.system(size: 17, weight: .semibold)).foregroundColor(text)
+                Text(q.q).font(BRFont.body(17, .semibold)).foregroundColor(text)
                 VStack(spacing: 10) {
                     ForEach(Array(q.options.enumerated()), id: \.offset) { i, option in
                         Button { answers[q.id] = i } label: {
                             HStack(alignment: .top, spacing: 10) {
                                 Image(systemName: answers[q.id] == i ? "largecircle.fill.circle" : "circle")
                                     .foregroundColor(answers[q.id] == i ? accent : sub)
-                                Text(option).font(.system(size: 15)).foregroundColor(text).multilineTextAlignment(.leading)
+                                Text(option).font(BRFont.body(15, .regular)).foregroundColor(text).multilineTextAlignment(.leading)
                                 Spacer(minLength: 0)
                             }
                             .padding(14).frame(maxWidth: .infinity, alignment: .leading).brCard()
@@ -176,18 +173,15 @@ struct HostGateView<Content: View>: View {
                     Spacer()
                     Button { advance(qs, info) } label: {
                         Text(step == qs.count - 1 ? "Submit" : "Next")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(BRFont.body(15, .semibold))
                             .padding(.horizontal, 28).padding(.vertical, 12)
-                            .background(accent)
-                            .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(HWKeyStyle(corner: 12, lit: false, height: nil))
                     .disabled(answers[q.id] == nil || model.busy)
                     .opacity(answers[q.id] == nil ? 0.5 : 1)
                 }
             }
-            if let e = model.error { Text(e).font(.system(size: 13)).foregroundColor(.brRed) }
+            if let e = model.error { Text(e).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
         }
         .padding(20)
     }
@@ -206,23 +200,21 @@ struct HostGateView<Content: View>: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("YOU GOT \(r.percent)%").font(BRFont.display(26)).kerning(2).foregroundColor(.brRed)
             Text("You need \(r.passPercent)%. Here is what to review, then try again.")
-                .font(.system(size: 14)).foregroundColor(text)
+                .font(BRFont.body(14, .regular)).foregroundColor(text)
             ForEach(r.wrong) { w in
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(qs.first(where: { $0.id == w.id })?.q ?? "").font(.system(size: 13, weight: .semibold)).foregroundColor(text)
-                    Text(w.why).font(.system(size: 13)).foregroundColor(sub)
+                    Text(qs.first(where: { $0.id == w.id })?.q ?? "").font(BRFont.body(13, .semibold)).foregroundColor(text)
+                    Text(w.why).font(BRFont.body(13, .regular)).foregroundColor(sub)
                 }
                 .padding(14).frame(maxWidth: .infinity, alignment: .leading).brCard()
             }
             Button {
                 answers = [:]; step = 0; result = nil
             } label: {
-                Text("Try again").font(.system(size: 15, weight: .semibold))
+                Text("Try again").font(BRFont.body(15, .semibold))
                     .frame(maxWidth: .infinity).padding(.vertical, 13)
-                    .background(accent).foregroundColor(scheme == .dark ? Color.brDkBg : .white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(HWKeyStyle(corner: 12, lit: false, height: nil))
         }
     }
 }
@@ -251,13 +243,13 @@ struct AgreementsForm: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("ONE LAST STEP").font(BRFont.display(28)).kerning(2).foregroundColor(text)
-            Text("Read and sign the host agreements.").font(.system(size: 14)).foregroundColor(sub)
+            Text("One last step").font(BRFont.display(28)).kerning(2).foregroundColor(text)
+            Text("Read and sign the host agreements.").font(BRFont.body(14, .regular)).foregroundColor(sub)
 
             ForEach(info.agreements) { a in
                 VStack(alignment: .leading, spacing: 10) {
                     Text(a.title).font(BRFont.display(16)).kerning(2).foregroundColor(accent)
-                    if let intro = a.intro { Text(intro).font(.system(size: 12)).foregroundColor(sub) }
+                    if let intro = a.intro { Text(intro).font(BRFont.body(12, .regular)).foregroundColor(sub) }
                     ForEach(Array(a.clauses.enumerated()), id: \.offset) { i, clause in
                         let key = "\(a.id)#\(i)"
                         Button {
@@ -266,7 +258,7 @@ struct AgreementsForm: View {
                             HStack(alignment: .top, spacing: 10) {
                                 Image(systemName: ticks.contains(key) ? "checkmark.square.fill" : "square")
                                     .foregroundColor(ticks.contains(key) ? accent : sub)
-                                Text(clause).font(.system(size: 13)).foregroundColor(text).multilineTextAlignment(.leading)
+                                Text(clause).font(BRFont.body(13, .regular)).foregroundColor(text).multilineTextAlignment(.leading)
                                 Spacer(minLength: 0)
                             }
                         }
@@ -277,25 +269,23 @@ struct AgreementsForm: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("SIGN BY TYPING YOUR FULL NAME").font(.system(size: 12, weight: .semibold)).foregroundColor(sub)
+                Text("Sign by typing your full name").font(BRFont.body(12, .semibold)).foregroundColor(sub)
                 TextField("First Last", text: $name)
                     .textInputAutocapitalization(.words).autocorrectionDisabled()
-                    .font(.system(size: 16)).foregroundColor(text)
+                    .font(BRFont.body(16, .regular)).foregroundColor(text)
                     .padding(12)
-                    .background(scheme == .dark ? Color.brDkSurface : Color.brLtSurface)
+                    .background(HWFieldFill())
                     .clipShape(RoundedRectangle(cornerRadius: 10))
             }
 
-            if let error { Text(error).font(.system(size: 13)).foregroundColor(.brRed) }
+            if let error { Text(error).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
 
             Button { onSign(name.trimmingCharacters(in: .whitespaces)) } label: {
                 Text(busy ? "One moment…" : "Sign")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(BRFont.body(15, .semibold))
                     .frame(maxWidth: .infinity).padding(.vertical, 13)
-                    .background(accent).foregroundColor(scheme == .dark ? Color.brDkBg : .white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(HWKeyStyle(corner: 12, lit: false, height: nil))
             .disabled(!(allTicked && nameOK) || busy)
             .opacity(allTicked && nameOK ? 1 : 0.5)
         }

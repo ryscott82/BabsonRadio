@@ -5,6 +5,13 @@
 	<key>UIAppFonts</key>
 	<array>
 		<string>BebasNeue-Regular.ttf</string>
+		<string>Barlow-Regular.ttf</string>
+		<string>Barlow-Medium.ttf</string>
+		<string>Barlow-SemiBold.ttf</string>
+		<string>Barlow-Bold.ttf</string>
+		<string>Barlow-ExtraBold.ttf</string>
+		<string>BarlowCondensed-SemiBold.ttf</string>
+		<string>BarlowCondensed-Bold.ttf</string>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>

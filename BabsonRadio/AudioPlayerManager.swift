@@ -43,6 +43,11 @@ nonisolated struct NowPlayingInfo: Decodable, Equatable {
     let ratingsOn: Bool?
     /// A show is on air without track info: title and artist are the show and host names, so there is no song to rate.
     let showOnly: Bool?
+    /// Admin switch: show the ON AIR sign even when no show is live.
+    let onAirManual: Bool?
+
+    /// ON AIR sign: only for live shows (or the admin's manual switch).
+    var onAir: Bool { isLive || (isShow ?? false) || (onAirManual ?? false) }
 }
 
 /// Where the beat lands right now: `origin` is when a beat last (or first) fell, in seconds since the reference date.
@@ -96,6 +101,15 @@ class AudioPlayerManager: ObservableObject {
     @Published var nowPlaying: NowPlayingInfo?
     /// When `nowPlaying` was fetched, so the progress bar can run between polls.
     @Published var nowPlayingFetchedAt = Date()
+    /// The current cover (decoded), kept across songs until a new one actually arrives.
+    @Published var coverImage: UIImage?
+    /// The song has no cover yet but one is probably on its way (we poll quickly until it shows up).
+    @Published var coverPending = false
+    private var lastCoverAt = Date.distantPast
+    private var coverHuntUntil = Date.distantPast
+    /// How long an old cover stays up while the next song's cover is missing.
+    private let coverLinger: TimeInterval = 90
+    private let coverHuntWindow: TimeInterval = 120
 
     /// Set every 5 minutes of listening while signed out; the player screen shows the sign-in invitation.
     @Published var showSignInPrompt = false
@@ -160,6 +174,7 @@ class AudioPlayerManager: ObservableObject {
                 self.shouldResumeAfterInterruption = self.isPlaying
                 self.player?.pause()
                 self.isPlaying = false
+                ArtTheme.shared.listening = false
             case .ended:
                 let optRaw = note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
                 if AVAudioSession.InterruptionOptions(rawValue: optRaw).contains(.shouldResume),
@@ -208,6 +223,8 @@ class AudioPlayerManager: ObservableObject {
                 DispatchQueue.main.async {
                     if status == .readyToPlay {
                         self?.isBuffering = false
+                        // Let the equalizer listen to what is playing.
+                        Task { @MainActor in await SpectrumTap.attach(to: item) }
                     }
                 }
             }
@@ -220,6 +237,7 @@ class AudioPlayerManager: ObservableObject {
 
         player?.play()
         isPlaying = true
+        Task { @MainActor in ArtTheme.shared.listening = true }
         startPreviewPrompts()
         startPolling()
         updateNowPlayingInfo()
@@ -230,6 +248,7 @@ class AudioPlayerManager: ObservableObject {
         player?.pause()
         isPlaying = false
         isBuffering = false
+        Task { @MainActor in ArtTheme.shared.listening = false }
         previewTimer?.invalidate(); previewTimer = nil
         stopPolling()
         updateNowPlayingInfo()
@@ -266,7 +285,8 @@ class AudioPlayerManager: ObservableObject {
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.refreshNowPlaying()
-                try? await Task.sleep(nanoseconds: 12_000_000_000)
+                let hunting = (self?.coverHuntUntil ?? .distantPast) > Date()
+                try? await Task.sleep(nanoseconds: hunting ? 1_500_000_000 : 12_000_000_000)
             }
         }
     }
@@ -286,7 +306,21 @@ class AudioPlayerManager: ObservableObject {
             nowPlayingTitle = np.title
             nowPlayingSubtitle = np.artist
         }
-        if np.art != artworkURL { await loadArtwork(np.art) }
+        if changed && np.art.isEmpty { coverHuntUntil = Date().addingTimeInterval(coverHuntWindow) }
+        if np.art.isEmpty {
+            // No cover yet. Keep the old one for a while; if it was recent, assume the new one is coming and poll fast.
+            if coverImage != nil {
+                if Date().timeIntervalSince(lastCoverAt) > coverLinger && Date() > coverHuntUntil { clearCover() }
+                else if coverHuntUntil < Date() && Date().timeIntervalSince(lastCoverAt) <= coverLinger {
+                    coverHuntUntil = Date().addingTimeInterval(coverHuntWindow)
+                }
+            }
+            coverPending = coverHuntUntil > Date()
+        } else {
+            coverPending = false
+            coverHuntUntil = .distantPast
+            if np.art != artworkURL { await loadArtwork(np.art) }
+        }
         if changed || artworkURL.isEmpty == false { updateNowPlayingInfo() }
         scheduleAdvance(for: np)
     }
@@ -329,15 +363,21 @@ class AudioPlayerManager: ObservableObject {
     }
 
     private func loadArtwork(_ urlString: String) async {
-        artworkURL = urlString
-        artwork = nil
-#if canImport(UIKit)
         guard let url = URL(string: urlString),
               let (data, _) = try? await URLSession.shared.data(from: url),
-              let image = UIImage(data: data) else { ArtTheme.shared.update(from: nil); return }
+              let image = UIImage(data: data) else { return }   // keep what we have; the next poll retries
+        artworkURL = urlString
         artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+        coverImage = image
+        lastCoverAt = Date()
         ArtTheme.shared.update(from: image)
-#endif
+    }
+
+    private func clearCover() {
+        artworkURL = ""
+        artwork = nil
+        coverImage = nil
+        ArtTheme.shared.update(from: nil)
     }
 
     // MARK: - Lock Screen / Control Center

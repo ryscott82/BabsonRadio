@@ -385,3 +385,7 @@ body::before {
   .fit { height: calc(100dvh - 6.75rem); overflow: hidden; display: flex; flex-direction: column; }
   .fit-body { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
 }
+
+/* First switch to the cover colors is instant (see ArtTheme); later changes glide. */
+html[data-art-snap], html[data-art-snap] .art-ui, html[data-art-snap] .art-desk { transition-duration: 0s !important; }
+html[data-art-snap] .art-desk { transition: opacity 1s ease !important; }

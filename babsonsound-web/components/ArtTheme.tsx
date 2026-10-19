@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useState } from 'react'
 import { useNowPlaying } from '@/lib/nowplaying'
 import { ART_THEME, BABSON_GREEN, useArtPalette } from '@/lib/artColor'
 import dynamic from 'next/dynamic'
@@ -20,7 +20,6 @@ export const ART_PRESETS: Record<string, { label: string; colors: string[] }> = 
 // Wraps the home page body (not the top bar). Everyone starts on the station green; a few seconds in, the page
 // fades to the three main colors of the current cover, one per kind of element (see .art-ui in globals.css).
 // Switch it off with ART_THEME = false in lib/artColor.ts.
-const FADE_DELAY_MS = 6000
 
 interface Theme { on: boolean; main: string; full: boolean; badge: string }
 const Ctx = createContext<Theme>({ on: false, main: '', full: false, badge: '' })
@@ -43,11 +42,7 @@ export default function ArtTheme({ className, children }: { className?: string; 
   const allow = np?.colorChanging === true
   useEffect(() => { setColorChanging(allow) }, [allow])
   useEffect(() => () => setColorChanging(false), [])
-  useEffect(() => {
-    if (!ART_THEME) return
-    const t = setTimeout(() => setReady(true), FADE_DELAY_MS)
-    return () => clearTimeout(t)
-  }, [])
+  useEffect(() => { if (ART_THEME) queueMicrotask(() => setReady(true)) }, [])
 
   // The top bar sits outside this wrapper, so mirror the two colors it needs onto the page root while the home page is open.
   const live = night && ready && palette.length >= 3
@@ -64,9 +59,17 @@ export default function ArtTheme({ className, children }: { className?: string; 
     r.style.setProperty('--nav-1', rootA); r.style.setProperty('--nav-2', rootB)
   }, [rootA, rootB, night])
 
-  if (!ART_THEME) return <div className={className}>{children}</div>
   const ok = ready && palette.length >= 3
   const use = night && ok
+  // The first time the cover colors switch on they appear at once (no slow fade up from green); later song changes still glide.
+  useLayoutEffect(() => {
+    if (!use) return
+    const r = document.documentElement
+    r.dataset.artSnap = '1'
+    const t = setTimeout(() => { delete r.dataset.artSnap }, 400)
+    return () => clearTimeout(t)
+  }, [use])
+  if (!ART_THEME) return <div className={className}>{children}</div>
   const [a, b, c] = use ? palette : [BABSON_GREEN, BABSON_GREEN, BABSON_GREEN]
   // Up to three more real cover colors for the desk; when the cover has fewer, they repeat the ones it has.
   const d = use && palette[3] ? palette[3] : c, e = use && palette[4] ? palette[4] : a, f = use && palette[5] ? palette[5] : c

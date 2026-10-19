@@ -35,6 +35,10 @@ struct ContentView: View {
         return chrome(tabs(hideBar: hideBar, sideW: sideW))
     }
 
+    /// Screens that are wide for their height (an open or half-open foldable, the iPhone Duo) get the small floating bar in the
+    /// bottom corner instead of a full-width bar along the bottom.
+    private var wideBar: Bool { hSize == .regular || (paneSize.height > 0 && (0.62...1.3).contains(paneSize.width / paneSize.height)) }
+
     private func tabs(hideBar: Bool, sideW: CGFloat) -> some View {
         TabView(selection: $tab) {
             LivePlayerView()
@@ -47,7 +51,7 @@ struct ContentView: View {
 
             ScheduleView()
                 .padding(.leading, sideW)
-                .modifier(BarClearance(on: !hideBar && hSize != .regular))
+                .modifier(BarClearance(on: !hideBar && !wideBar))
                 .modifier(TabBarStyle(hidden: true))
                 .tag(1)
                 .tabItem {
@@ -56,7 +60,7 @@ struct ContentView: View {
 
             LibraryView()
                 .padding(.leading, sideW)
-                .modifier(BarClearance(on: !hideBar && hSize != .regular))
+                .modifier(BarClearance(on: !hideBar && !wideBar))
                 .modifier(TabBarStyle(hidden: true))
                 .tag(2)
                 .tabItem {
@@ -66,7 +70,7 @@ struct ContentView: View {
             if profile.hosting {
                 NavigationStack { HostPanelView() }
                     .padding(.leading, sideW)
-                    .modifier(BarClearance(on: !hideBar && hSize != .regular))
+                    .modifier(BarClearance(on: !hideBar && !wideBar))
                     .modifier(TabBarStyle(hidden: true))
                     .tag(3)
                     .tabItem { BRTabIcon(systemName: "mic.fill", label: "Host") }
@@ -75,7 +79,7 @@ struct ContentView: View {
             // Search is the right-most tab; Profile is the circle button in the top corner of every page.
             SearchView()
                 .padding(.leading, sideW)
-                .modifier(BarClearance(on: !hideBar && hSize != .regular))
+                .modifier(BarClearance(on: !hideBar && !wideBar))
                 .modifier(TabBarStyle(hidden: true))
                 .tag(4)
                 .tabItem {
@@ -93,12 +97,12 @@ struct ContentView: View {
             if sideW > 0 { LivePlayerView(sidePane: true, paneWidth: sideW) }
         }
         // Our own bars: glass or ceramic at the bottom of a phone, a floating vertical bar on a wide screen.
-        .environment(\.hwBarInset, (hSize == .regular && !hideBar) ? 76 : 0)
+        .environment(\.hwBarInset, (wideBar && !hideBar) ? 76 : 0)
         .overlay(alignment: .bottom) {
-            if hSize != .regular && !hideBar { HWTabBar(tab: $tab, hosting: profile.hosting).transition(.move(edge: .bottom)) }
+            if !wideBar && !hideBar { HWTabBar(tab: $tab, hosting: profile.hosting).transition(.move(edge: .bottom)) }
         }
         .overlay(alignment: .bottomTrailing) {
-            if hSize == .regular && !hideBar { HWSideBar(tab: $tab, hosting: profile.hosting).transition(.move(edge: .trailing)) }
+            if wideBar && !hideBar { HWSideBar(tab: $tab, hosting: profile.hosting).transition(.move(edge: .trailing)) }
         }
         .animation(.easeInOut(duration: 0.25), value: hideBar)
     }

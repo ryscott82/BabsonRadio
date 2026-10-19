@@ -381,33 +381,45 @@ struct PhoneLiveDesk<Drawer: View>: View {
         return np.artist.isEmpty ? "Babson Radio" : np.artist
     }
 
+    /// A wide, nearly square screen (the iPhone Duo): no bar along the bottom and no notch to clear at the top.
+    private func isWide(_ size: CGSize) -> Bool { size.height > 0 && (0.62...1.3).contains(size.width / size.height) }
+    private func topInset() -> CGFloat {
+        UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first?.keyWindow?.safeAreaInsets.top ?? 0
+    }
+    /// How much of the desk's 56 pt top margin a wide screen can give back.
+    private func topShift(_ size: CGSize) -> CGFloat { isWide(size) ? max(0, 56 - topInset()) : 0 }
+
     var body: some View {
         GeometryReader { geo in
-            let k = min(geo.size.width / 390, geo.size.height / 844)
+            let shift = topShift(geo.size)
             let W: CGFloat = 390, H: CGFloat = 844
+            let k = min(geo.size.width / W, geo.size.height / (H - shift))
             ZStack(alignment: .top) {
                 HWDesk(album: album ? theme.main.color : nil)
                 canvas
                     .frame(width: W, height: H, alignment: .topLeading)
+                    .offset(y: -shift)
                     .scaleEffect(k, anchor: .topLeading)
-                    .frame(width: W * k, height: H * k, alignment: .topLeading)
+                    .frame(width: W * k, height: (H - shift) * k, alignment: .topLeading)
             }
             .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
             .background(VolumeHost().frame(width: 1, height: 1).allowsHitTesting(false), alignment: .topLeading)
-            .onAppear { updateLip(k: k, geo: geo) }
-            .onChange(of: geo.size) { _, _ in updateLip(k: k, geo: geo) }
-            .onChange(of: panelUp) { _, _ in updateLip(k: k, geo: geo) }
+            .onAppear { updateLip(k: k, shift: shift, geo: geo) }
+            .onChange(of: geo.size) { _, _ in updateLip(k: k, shift: shift, geo: geo) }
+            .onChange(of: panelUp) { _, _ in updateLip(k: k, shift: shift, geo: geo) }
         }
         .ignoresSafeArea()
         .environment(\.hwMode, mode)
     }
 
-    private func updateLip(k: CGFloat, geo: GeometryProxy) {
-        let screenH = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first?.screen.bounds.height ?? geo.size.height
+    private func updateLip(k: CGFloat, shift: CGFloat, geo: GeometryProxy) {
+        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        let screenH = scene?.screen.bounds.height ?? geo.size.height
         let originY = geo.frame(in: .global).minY
-        let bottomInset = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first?.keyWindow?.safeAreaInsets.bottom ?? 34
-        let tabTop = screenH - (49 + bottomInset)
-        let y = (tabTop - 56 - originY) / k
+        let bottomInset = scene?.keyWindow?.safeAreaInsets.bottom ?? 34
+        // A phone has a bar along the bottom; a wide screen has only the small floating bar in the corner.
+        let barHeight: CGFloat = isWide(geo.size) ? 0 : 49 + bottomInset
+        let y = (screenH - barHeight - 56 - originY) / k + shift
         lipY = min(722, max(panelBottom + 10, y))
     }
 

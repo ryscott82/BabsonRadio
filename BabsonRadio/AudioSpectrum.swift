@@ -2,6 +2,7 @@ import AVFoundation
 import MediaToolbox
 import Accelerate
 import os
+import Combine
 
 // MARK: - Live spectrum for the equalizer
 // A tap on the player's audio (MTAudioProcessingTap) listens to exactly what is being played, runs a 1024 point FFT, and
@@ -28,14 +29,26 @@ nonisolated final class AudioSpectrum: @unchecked Sendable {
         static let followDown: Float = 0.008
         /// While music plays the top bands never go fully dark: a quiet treble still shows a segment or two (fraction of full height, reached at the last band).
         static let trebleFloor: Float = 0.16
+        /// Moving bands: how much narrower the busiest part of the spectrum's bands get (0 = off, 1 = up to twice as many bars there),
+        /// and how quickly the bar edges glide to a new layout (per update; small = slow).
+        static let adaptStrength: Double = 1.0
+        static let adaptGlide: Double = 0.012
+        /// Below this much average movement (dB per update) the layout stays even, so steady or quiet music does not reshuffle the bars.
+        static let adaptMinFlux: Float = 0.6
     }
 
-    private struct State { var levels = [Float](repeating: 0, count: AudioSpectrum.bands); var stamp = 0.0 }
+    private struct State { var levels = [Float](repeating: 0, count: AudioSpectrum.bands); var fixed = [Float](repeating: 0, count: AudioSpectrum.bands); var stamp = 0.0 }
     private let lock = OSAllocatedUnfairLock(initialState: State())
 
-    func publish(_ levels: [Float]) {
+    func publish(_ levels: [Float], fixed: [Float]) {
         let now = Date().timeIntervalSinceReferenceDate
-        lock.withLock { $0.levels = levels; $0.stamp = now }
+        lock.withLock { $0.levels = levels; $0.fixed = fixed; $0.stamp = now }
+    }
+
+    /// The same bands on a fixed, even layout (bass stays bass). The lamp uses these; the equalizer uses the moving ones.
+    func snapshotFixed(at date: Date) -> [Float]? {
+        let t = date.timeIntervalSinceReferenceDate
+        return lock.withLock { s in t - s.stamp < 0.35 ? s.fixed : nil }
     }
 
     /// The latest band levels, or nil when the tap has not delivered anything in the last third of a second.
@@ -65,6 +78,12 @@ nonisolated final class SpectrumTapContext {
     private var setup: FFTSetup
     private var ranges: [(lo: Int, hi: Int, tilt: Float)] = []
     private var smooth = [Float](repeating: 0, count: AudioSpectrum.bands)
+    // Moving bands: the display layout glides toward the busiest parts of the spectrum (see retarget()).
+    private var dispRanges: [(lo: Int, hi: Int, tilt: Float)] = []
+    private var smoothD = [Float](repeating: 0, count: AudioSpectrum.bands)
+    private var edgeU: [Double] = (0...AudioSpectrum.bands).map { Double($0) / Double(AudioSpectrum.bands) }
+    private var prevDb = [Float](repeating: -120, count: AudioSpectrum.bands)
+    private var flux = [Float](repeating: 0, count: AudioSpectrum.bands)
     private var ref: Float = -60
 
     init() {
@@ -90,23 +109,54 @@ nonisolated final class SpectrumTapContext {
     }
 
     private func buildRanges() {
-        let count = AudioSpectrum.bands
+        ranges = makeRanges((0...AudioSpectrum.bands).map { Double($0) / Double(AudioSpectrum.bands) })
+        dispRanges = makeRanges(edgeU)
+    }
+
+    /// Bands between the given edges (0...1 along the log frequency axis).
+    private func makeRanges(_ edges: [Double]) -> [(lo: Int, hi: Int, tilt: Float)] {
+        let count = edges.count - 1
         let lowF = 50.0, highF = min(13000.0, sampleRate / 2 - 500)
-        var out: [(Int, Int, Float)] = []
+        var out: [(lo: Int, hi: Int, tilt: Float)] = []
         for b in 0..<count {
-            let f0 = lowF * pow(highF / lowF, Double(b) / Double(count))
-            let f1 = lowF * pow(highF / lowF, Double(b + 1) / Double(count))
+            let f0 = lowF * pow(highF / lowF, edges[b])
+            let f1 = lowF * pow(highF / lowF, edges[b + 1])
             let lo = min(n / 2 - 2, max(1, Int(f0 * Double(n) / sampleRate)))
             let hi = min(n / 2 - 1, max(lo + 1, Int(f1 * Double(n) / sampleRate)))
             let center = sqrt(f0 * f1)
             out.append((lo, hi, Float(3.2 * log2(center / 100))))   // a gentle lift for the highs, like a pink noise weighting
         }
-        ranges = out
+        return out
+    }
+
+    /// Moves the display band edges toward the parts of the spectrum that are changing the most, slowly, and never by more than
+    /// a factor of two in band width, so what is moving gets more bars without the whole display shuffling.
+    private func retarget() {
+        let n = AudioSpectrum.bands
+        let mx = flux.max() ?? 0
+        var w = [Double](repeating: 1, count: n)
+        if mx > AudioSpectrum.Tuning.adaptMinFlux, AudioSpectrum.Tuning.adaptStrength > 0 {
+            for i in 0..<n { w[i] = 1 + AudioSpectrum.Tuning.adaptStrength * Double(flux[i] / mx) }
+        }
+        var sm = w
+        for i in 0..<n { sm[i] = 0.25 * w[max(0, i - 1)] + 0.5 * w[i] + 0.25 * w[min(n - 1, i + 1)] }
+        var cum = [Double](repeating: 0, count: n + 1)
+        for i in 0..<n { cum[i + 1] = cum[i] + sm[i] }
+        let total = cum[n]
+        var seg = 0
+        for k in 1..<n {
+            let want = total * Double(k) / Double(n)
+            while seg < n - 1, cum[seg + 1] < want { seg += 1 }
+            let u = (Double(seg) + (want - cum[seg]) / max(1e-9, sm[seg])) / Double(n)
+            edgeU[k] += (u - edgeU[k]) * AudioSpectrum.Tuning.adaptGlide
+        }
+        dispRanges = makeRanges(edgeU)
     }
 
     func ingest(_ abl: UnsafeMutablePointer<AudioBufferList>, frames: Int) {
         let list = UnsafeMutableAudioBufferListPointer(abl)
         guard frames > 0, list.count > 0 else { return }
+        if ProcessInfo.processInfo.isLowPowerModeEnabled { return }     // visualizers are off in Low Power Mode: no analysis at all
 
         // Down-mix to mono into the ring.
         for i in 0..<frames {
@@ -168,10 +218,25 @@ nonisolated final class SpectrumTapContext {
             db[b] = d
             peak = max(peak, d)
         }
+        // How much each fixed region is changing right now (slow average), used to move the display bands.
+        for b in 0..<db.count {
+            let loud = db[b] > peak - 35
+            let step = loud ? min(12, abs(db[b] - prevDb[b])) : 0
+            flux[b] += (step - flux[b]) * 0.012
+            prevDb[b] = db[b]
+        }
+        retarget()
+        var ddb = [Float](repeating: -120, count: dispRanges.count)
+        for (b, r) in dispRanges.enumerated() {
+            var sum: Float = 0
+            for k in r.lo...r.hi { sum += mags[k] }
+            ddb[b] = 20 * log10(sqrt(sum / Float(r.hi - r.lo + 1)) / Float(n) + 1e-7) + r.tilt
+        }
         // The reference follows the song's recent level instead of its instant peak, so hits stand out and quiet parts stay low.
         if peak > ref + 25 { ref = peak }
         ref += (peak - ref) * (peak > ref ? AudioSpectrum.Tuning.followUp : AudioSpectrum.Tuning.followDown)
         var out = [Float](repeating: 0, count: ranges.count)
+        var disp = [Float](repeating: 0, count: dispRanges.count)
         if peak > -88 {
             let ceiling = ref + AudioSpectrum.Tuning.headroomDB
             let floor = ceiling - AudioSpectrum.Tuning.rangeDB
@@ -183,9 +248,14 @@ nonisolated final class SpectrumTapContext {
                 let pos = Float(b) / Float(max(1, ranges.count - 1))
                 let lift = AudioSpectrum.Tuning.trebleFloor * min(1, max(0, (pos - 0.4) / 0.25))
                 out[b] = max(smooth[b], lift)
+                let lind = min(1, max(0, (ddb[b] - floor) / AudioSpectrum.Tuning.rangeDB))
+                let td = pow(lind, AudioSpectrum.Tuning.gamma)
+                let od = smoothD[b]
+                smoothD[b] = td > od ? od + (td - od) * AudioSpectrum.Tuning.attack : od * AudioSpectrum.Tuning.release + td * (1 - AudioSpectrum.Tuning.release)
+                disp[b] = max(smoothD[b], lift)
             }
         }
-        AudioSpectrum.shared.publish(out)
+        AudioSpectrum.shared.publish(disp, fixed: out)
     }
 }
 
@@ -242,5 +312,19 @@ enum SpectrumTap {
         let mix = AVMutableAudioMix()
         mix.inputParameters = [params]
         item.audioMix = mix
+    }
+}
+
+
+/// Low Power Mode, observed. The visualizers (equalizer, ON AIR flicker, beat bars) stop animating while it is on.
+@MainActor
+final class PowerState: ObservableObject {
+    static let shared = PowerState()
+    @Published private(set) var lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+    private var token: NSObjectProtocol?
+    private init() {
+        token = NotificationCenter.default.addObserver(forName: .NSProcessInfoPowerStateDidChange, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled }
+        }
     }
 }

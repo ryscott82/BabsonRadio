@@ -149,20 +149,18 @@ struct HWLeather: View {
                 HWTile(name: HWTex.leatherBlack)
                 Color.black.opacity(0.6)
             }
-            HWTile(name: HWTex.wear, opacity: 0.35, blend: .multiply)
             LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.28)],
                            startPoint: .top, endPoint: .bottom)
             if stitch {
                 shape.inset(by: 7)
-                    .stroke(Color(hex: face ? "F6ECC8" : "F6F2E7").opacity(face ? 0.6 : 0.32), style: StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
+                    .stroke(Color(hex: face ? "F6F2E7" : "F6F2E7").opacity(face ? 0.6 : 0.32), style: StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
             }
             if face {
                 let inner = RoundedRectangle(cornerRadius: 12, style: .continuous)
                 ZStack {
-                    Color(hex: "F4E9CF")
-                    HWTile(name: HWTex.cface, opacity: 0.9, blend: .multiply)
-                    HWTile(name: "hw_wear_face", opacity: 0.5, blend: .multiply)
-                    inner.strokeBorder(Color(hex: "3C280A").opacity(0.28), lineWidth: 5).blur(radius: 3)
+                    Color(hex: "F7F5F0")
+                    HWTile(name: HWTex.cface, opacity: 0.55, blend: .multiply)
+                    inner.strokeBorder(Color(hex: "232823").opacity(0.28), lineWidth: 5).blur(radius: 3)
                 }
                 .clipShape(inner)
                 .overlay(inner.strokeBorder(ringColor.opacity(0.75), lineWidth: 1.5))
@@ -493,7 +491,7 @@ struct HWPanelTitle: View {
 extension Color {
     /// Flat color for places that need a Color (cards, chips): the recessed field tone.
     static func hwField(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color(hex: "1B1B17") : Color(hex: "F4EFE2")
+        scheme == .dark ? Color(hex: "1B1B17") : Color(hex: "F6F4EF")
     }
 }
 

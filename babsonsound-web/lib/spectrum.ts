@@ -110,7 +110,45 @@ let lastPeak = 0
 let td: Uint8Array<ArrayBuffer> | null = null
 /** Highest sample of the last frame, 0..1 (1 = 0 dBFS). Before any boost. */
 export const streamPeak = () => lastPeak
-export function readBands(out: number[]): boolean {
+// Moving bands (the equalizer only): the bar edges glide slowly toward the busiest parts of the spectrum, at most twice as dense
+// there as elsewhere, and stay even when the music is steady or quiet.
+const ADAPT_R = 24, ADAPT_STRENGTH = 1, ADAPT_GLIDE = 0.01, ADAPT_MIN_FLUX = 1.2
+const adapt = { edges: [] as number[], flux: new Array<number>(ADAPT_R).fill(0), prev: new Array<number>(ADAPT_R).fill(0) }
+function adaptEdges(an: AnalyserNode, data: Uint8Array, hz: number, n: number): number[] {
+  if (adapt.edges.length !== n + 1) adapt.edges = Array.from({ length: n + 1 }, (_, i) => i / n)
+  const dbPerByte = (an.maxDecibels - an.minDecibels) / 255
+  const lv: number[] = []
+  let top = 0
+  for (let r = 0; r < ADAPT_R; r++) {
+    const lo = Math.max(1, Math.floor((50 * Math.pow(300, r / ADAPT_R)) / hz)), hi = Math.max(lo + 1, Math.ceil((50 * Math.pow(300, (r + 1) / ADAPT_R)) / hz))
+    let mx = 0
+    for (let k = lo; k < hi && k < data.length; k++) if (data[k] > mx) mx = data[k]
+    const d = an.minDecibels + mx * dbPerByte
+    lv.push(d); top = Math.max(top, d)
+  }
+  let fmax = 0
+  for (let r = 0; r < ADAPT_R; r++) {
+    const step = lv[r] > top - 35 ? Math.min(12, Math.abs(lv[r] - adapt.prev[r])) : 0
+    adapt.flux[r] += (step - adapt.flux[r]) * 0.02
+    adapt.prev[r] = lv[r]
+    fmax = Math.max(fmax, adapt.flux[r])
+  }
+  const w = new Array<number>(ADAPT_R).fill(1)
+  if (fmax > ADAPT_MIN_FLUX) for (let r = 0; r < ADAPT_R; r++) w[r] = 1 + ADAPT_STRENGTH * (adapt.flux[r] / fmax)
+  const sm = w.map((v, r) => 0.25 * w[Math.max(0, r - 1)] + 0.5 * v + 0.25 * w[Math.min(ADAPT_R - 1, r + 1)])
+  const cum = [0]; for (let r = 0; r < ADAPT_R; r++) cum.push(cum[r] + sm[r])
+  const total = cum[ADAPT_R]
+  let seg = 0
+  for (let k = 1; k < n; k++) {
+    const want = (total * k) / n
+    while (seg < ADAPT_R - 1 && cum[seg + 1] < want) seg++
+    const u = (seg + (want - cum[seg]) / sm[seg]) / ADAPT_R
+    adapt.edges[k] += (u - adapt.edges[k]) * ADAPT_GLIDE
+  }
+  return adapt.edges
+}
+
+export function readBands(out: number[], moving = false): boolean {
   if (!current) return false
   const { an, data, ctx } = current
   an.getByteFrequencyData(data)
@@ -124,8 +162,9 @@ export function readBands(out: number[]): boolean {
   let any = 0
   // Bands are spread unevenly: the lows and highs get a little more room, the crowded mids a little less.
   const warp = (u: number) => u - (0.3 * Math.sin(2 * Math.PI * u)) / (2 * Math.PI)
+  const edges = moving ? adaptEdges(an, data, hz, n) : null
   for (let i = 0; i < n; i++) {
-    const g0 = warp(i / n), g1 = warp((i + 1) / n)
+    const g0 = warp(edges ? edges[i] : i / n), g1 = warp(edges ? edges[i + 1] : (i + 1) / n)
     const lo = Math.max(1, Math.floor((50 * Math.pow(300, g0)) / hz))
     const hi = Math.max(lo + 1, Math.ceil((50 * Math.pow(300, g1)) / hz))
     // A band shows mostly its loudest bin (a single note or voice is a narrow spike, an average would bury it), plus some of the average.
@@ -198,6 +237,16 @@ export function makeShaper(n: number) {
  * and --pk (peak cap) on each, and marks the container data-real="true" once real audio is flowing.
  */
 const ledLast = new WeakMap<HTMLElement, { lv: number[]; pk: number[] }>()
+/** True on a low or draining battery (Chrome and Android report it; Safari does not, so iPhones fall back to the reduced-motion setting). */
+let lowBattery = false
+if (typeof navigator !== 'undefined' && 'getBattery' in navigator) {
+  (navigator as unknown as { getBattery: () => Promise<{ level: number; charging: boolean; addEventListener: (t: string, f: () => void) => void }> }).getBattery().then(b => {
+    const upd = () => { lowBattery = !b.charging && b.level <= 0.2 }
+    upd(); b.addEventListener('levelchange', upd); b.addEventListener('chargingchange', upd)
+  }).catch(() => {})
+}
+export const lowPowerHint = () => lowBattery
+
 export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: boolean, segments = 7) {
   useEffect(() => {
     const box = ref.current
@@ -228,7 +277,8 @@ export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: bool
     const tick = () => {
       raf = requestAnimationFrame(tick)
       if (document.hidden) return
-      const ok = readBands(lv)
+      if (lowBattery) { box.dataset.real = 'false'; return }
+      const ok = readBands(lv, true)
       if (!ok) { quiet++; if (quiet > 180) box.dataset.real = 'false'; if (quiet <= 4) return; lv.fill(0) } // silence: let the bars fall to the floor
       else { quiet = 0; box.dataset.real = 'true' }
       const { shown } = shape(lv)

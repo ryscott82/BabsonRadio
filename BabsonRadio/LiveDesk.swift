@@ -190,13 +190,16 @@ struct HWEQ: View {
     var beat: BeatClock?
     @State private var energy = EQEnergy()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ObservedObject private var power = PowerState.shared
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: reduceMotion && !playing)) { tl in
-            let e = energy.step(playing: playing, at: tl.date)
+        // Low Power Mode: the meter stops (all segments unlit) instead of animating.
+        TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: (reduceMotion && !playing) || power.lowPower)) { tl in
+            let still = power.lowPower
+            let e = still ? 0 : energy.step(playing: playing, at: tl.date)
             let c = color, bc = beat, d = tl.date
             let z = HWEQ.zones(base: color)
-            let live = playing ? AudioSpectrum.shared.snapshot(at: d) : nil     // real bands from the audio; nil falls back to the beat motion
+            let live = playing && !still ? AudioSpectrum.shared.snapshot(at: d) : nil     // real bands from the audio; nil falls back to the beat motion
             Canvas { ctx, size in HWEQ.draw(&ctx, size, d, z, e, bc, live) }
         }
         .accessibilityHidden(true)
@@ -281,14 +284,16 @@ struct HWOnAirLamp: View {
     var playing: Bool
     var beat: BeatClock?
     @State private var level = LampLevel()
+    @ObservedObject private var power = PowerState.shared
+    @ObservedObject private var theme = ArtTheme.shared
     var body: some View {
         // Follows the music live: the same real bass and level readings the equalizer uses. If the audio tap is not up yet,
         // it falls back to the song's tempo, then to a steady 118 bpm, so it is never dead while music plays.
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { tl in
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: power.lowPower)) { tl in
             let t = tl.date.timeIntervalSinceReferenceDate
             let target: Double = {
-                guard playing else { return 0 }
-                if let bands = AudioSpectrum.shared.snapshot(at: tl.date), bands.count >= 8 {
+                guard playing, !power.lowPower else { return 0 }
+                if let bands = AudioSpectrum.shared.snapshotFixed(at: tl.date), bands.count >= 8 {
                     let bass = Double(bands[0..<8].reduce(0, +)) / 8
                     let all = Double(bands.reduce(0, +)) / Double(bands.count)
                     let v = 0.65 * bass + 0.35 * all
@@ -299,13 +304,16 @@ struct HWOnAirLamp: View {
             }()
             let pulse = level.step(target: target, at: tl.date)
             // Deep enough to read as a flicker: dim between beats, full on the beat.
-            let lamp = 0.55 + 0.45 * pulse
+            // Only in album-color mode does it flicker properly; otherwise it just breathes a little. Low Power Mode holds it steady.
+            let deep = theme.albumOn ? 1.0 : 0.12
+            let lamp = power.lowPower ? 0.85 : (1 - 0.45 * deep) + 0.45 * deep * pulse
+            let glow = power.lowPower ? 0.3 : (theme.albumOn ? 0.7 * pulse : 0.3 + 0.12 * pulse)
             let shape = RoundedRectangle(cornerRadius: 4, style: .continuous)
             Text("ON AIR")
                 .font(.custom("BarlowCondensed-Bold", size: 28))
                 .tracking(0.8)
                 .foregroundStyle(Color(hex: "EE3A22").opacity(lamp))
-                .shadow(color: Color(hex: "EE3A22").opacity(0.7 * pulse), radius: 2 + 4 * pulse)
+                .shadow(color: Color(hex: "EE3A22").opacity(glow), radius: theme.albumOn ? 2 + 4 * pulse : 3 + 0.8 * pulse)
                 .frame(width: 94, height: 33)
                 .background(
                     ZStack {
@@ -518,7 +526,7 @@ struct PhoneLiveDesk<Drawer: View>: View {
                     .multilineTextAlignment(.center).lineLimit(2)
                     .padding(.horizontal, 14).padding(.vertical, 8)
                     .frame(width: 330)
-                    .background(HWPlate(color: Color(hex: "F4E9CF")))
+                    .background(HWPlate(color: Color(hex: "F7F5F0")))
                     .offset(x: 30, y: 292)
             }
 
@@ -657,7 +665,6 @@ struct HWDrawerSheet<Content: View>: View {
                 HWTile(name: HWTex.leatherGreen, opacity: 0.55)
                 tint.opacity(0.8).blendMode(.color)
                 Color.black.opacity(0.24)
-                HWTile(name: HWTex.wear, opacity: 0.3, blend: .multiply)
                 LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.25)], startPoint: .top, endPoint: .bottom)
             }
             .clipShape(shape)

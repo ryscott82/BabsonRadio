@@ -103,7 +103,6 @@ struct HWCardSurface: View {
                 Color(hex: "0C0C0A")
                 HWTile(name: HWTex.leatherBlack)
                 Color.black.opacity(0.42)
-                HWTile(name: HWTex.wear, opacity: 0.3, blend: .multiply)
                 LinearGradient(colors: [.white.opacity(0.09), .clear, .black.opacity(0.25)], startPoint: .top, endPoint: .bottom)
                 shape.inset(by: 5).stroke(Color(hex: "F6F2E7").opacity(0.30), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
             } else {
@@ -114,14 +113,14 @@ struct HWCardSurface: View {
                 Color.black.opacity(0.24)
                 let face = RoundedRectangle(cornerRadius: max(4, corner - rimW + 1), style: .continuous)
                 ZStack {
-                    Color(hex: "F4E9CF")
+                    Color(hex: "F7F5F0")
                     HWTile(name: HWTex.cface, opacity: 0.55, blend: .multiply)
                     LinearGradient(colors: [.white.opacity(0.45), .clear], startPoint: .top, endPoint: .center)
                 }
                 .clipShape(face)
-                .overlay(face.strokeBorder(Color(hex: "3C280A").opacity(0.25), lineWidth: 1))
+                .overlay(face.strokeBorder(Color(hex: "232823").opacity(0.25), lineWidth: 1))
                 .padding(rimW)
-                shape.inset(by: 2).stroke(Color(hex: "F6ECC8").opacity(0.5), style: StrokeStyle(lineWidth: 0.8, dash: [3, 2.5]))
+                shape.inset(by: 2).stroke(Color(hex: "F6F2E7").opacity(0.5), style: StrokeStyle(lineWidth: 0.8, dash: [3, 2.5]))
             }
         }
         .clipShape(shape)

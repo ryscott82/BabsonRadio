@@ -21,7 +21,7 @@ const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 
 // Equalizer bars: fixed pseudo-random heights and timings so server and client render the same markup.
 const CHIP = ['#E8A9A0', '#EBCB8B', '#A8D0A2', '#9CC3DB', '#C9A9D8', '#E6B88A', '#A7D4C7', '#D9A0B8']
-const EQ_BARS = Array.from({ length: 24 }, (_, i) => ({ h: 0.4 + ((i * 37) % 10) / 16, d: ((i * 13) % 10) / 10, t: 0.7 + ((i * 53) % 7) / 10 }))
+const EQ_BARS = Array.from({ length: 40 }, (_, i) => ({ h: 0.4 + ((i * 37) % 10) / 16, d: ((i * 13) % 10) / 10, t: 0.7 + ((i * 53) % 7) / 10 }))
 
 export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   const [isPlaying, setIsPlaying]     = useState(false)

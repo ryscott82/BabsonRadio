@@ -3,37 +3,77 @@ import SwiftUI
 import UIKit
 
 // MARK: - Open foldable / iPad Live pages
-// Two 391 x 844 desks side by side, like the design board (design/DuoD): the record, sleeve and amp on the left,
-// a stack of leather panels (poll, ratings, controls, schedule, sleep timer) on the right.
-// Each page scales to its own half, so the hinge never cuts through anything.
+// Two pages side by side (like the design board, design/DuoD), each holding one big amp:
+//   left:  the record and sleeve, and the "now playing" amp (title, progress, EQ, volume, play, skip)
+//   right: the "join in" amp (reactions, poll, ratings, today's schedule)
+// Each page is laid out on a 391 pt wide canvas and scaled to fill its half, so the hinge never cuts through anything
+// and the content is as large as the screen allows.
 
-/// A leather panel designed at a fixed size and scaled to fit.
-struct ScaledPanel<Content: View>: View {
-    var designW: CGFloat = 350
-    var designH: CGFloat
-    var scale: CGFloat = 0.9
-    var corner: CGFloat = 18
-    @Environment(\.hwMode) private var mode
-    @ViewBuilder var content: () -> Content
+/// Lays a page out on a canvas at least 391 pt wide and `minH` tall, scaled up to fill the space.
+/// The canvas grows wider or taller than that to match the half, and the closure gets its width, height and the scale,
+/// so the page can spread out instead of leaving wood on the sides.
+private struct DuoCanvas<Content: View>: View {
+    /// Strip kept clear on the right (where the system corner bar and clock live on a phone-sized foldable).
+    var rightReserve: CGFloat = 0
+    var minH: CGFloat = 680
+    @ViewBuilder var content: (_ w: CGFloat, _ h: CGFloat, _ k: CGFloat) -> Content
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            HWLeather(tint: mode.leatherTint, corner: corner, stitch: true)
-                .frame(width: designW, height: designH)
-            ForEach(0..<4, id: \.self) { i in
-                HWScrew().offset(x: i % 2 == 0 ? 8 : designW - 17, y: i < 2 ? 8 : designH - 17)
-            }
-            content()
-                .foregroundStyle(mode.onPanelText)
-                .frame(width: designW, height: designH, alignment: .topLeading)
+        GeometryReader { geo in
+            let availW = max(1, geo.size.width - rightReserve)
+            let availH = max(1, geo.size.height)
+            let k = min(availW / 391, availH / minH)
+            let wc = availW / k, hc = availH / k
+            content(wc, hc, k)
+                .frame(width: wc, height: hc, alignment: .top)
+                .scaleEffect(k, anchor: .topLeading)
+                .frame(width: availW, height: availH, alignment: .topLeading)
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
+                .background(VolumeHost().frame(width: 1, height: 1).allowsHitTesting(false), alignment: .topLeading)
         }
-        .frame(width: designW, height: designH, alignment: .topLeading)
-        .scaleEffect(scale, anchor: .topLeading)
-        .frame(width: designW * scale, height: designH * scale, alignment: .topLeading)
     }
 }
 
-/// Today's schedule for the little panel on the right page.
+/// Letters carved into the wood: a dark floor that is deepest under the top edge, and a thin light line where the
+/// bottom edge catches the light. The grain shows through the carved part.
+private struct EtchedText: View {
+    var text: String
+    var size: CGFloat
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        let t = Text(text).font(BRFont.display(size)).tracking(2.5)
+        let night = scheme == .dark
+        ZStack {
+            // On the dark oak the carved part is near black and the lit lower edge does most of the work.
+            t.foregroundStyle(Color(hex: "F7DDB3").opacity(night ? 0.42 : 0.55)).offset(y: night ? 1.6 : 1.3)
+            t.foregroundStyle(LinearGradient(colors: night ? [Color.black, Color(hex: "1C1008")] : [Color(hex: "180B03"), Color(hex: "5A3515")],
+                                             startPoint: .top, endPoint: .bottom))
+                .opacity(night ? 0.95 : 0.9)
+                .blendMode(.multiply)
+        }
+        .lineLimit(1).minimumScaleFactor(0.6)
+        .accessibilityRepresentation { Text(text) }
+    }
+}
+
+/// One big amp: leather (or the ivory face in light mode) with screws, sized by its content or by `height`.
+private struct DuoAmp<Content: View>: View {
+    var height: CGFloat? = nil
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        content()
+            .frame(maxWidth: .infinity, maxHeight: height == nil ? nil : .infinity, alignment: .topLeading)
+            .hwPanel(corner: 20, padding: 20)
+            .overlay(alignment: .topLeading) { HWScrew().padding(9) }
+            .overlay(alignment: .topTrailing) { HWScrew().padding(9) }
+            .overlay(alignment: .bottomLeading) { HWScrew().padding(9) }
+            .overlay(alignment: .bottomTrailing) { HWScrew().padding(9) }
+            .frame(height: height)
+    }
+}
+
+/// Today's schedule, one slim block inside the right amp.
 @MainActor
 final class TodayModel: ObservableObject {
     @Published var items: [ScheduleEntry] = []
@@ -54,73 +94,28 @@ struct DuoSchedulePanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("On the air today").font(BRFont.body(14, .bold))
+                Text("On the air today").font(BRFont.body(15, .bold))
                 Spacer()
                 Button { TabRouter.shared.request = 1 } label: {
-                    Text("See the week").font(BRFont.body(12, .semibold)).foregroundColor(Color(hex: "6FCF93"))
+                    Text("See the week").font(BRFont.body(13, .semibold)).foregroundColor(hwm.isLight ? Color(hex: "006644") : Color(hex: "6FCF93"))
                 }.buttonStyle(.plain)
             }
             ForEach(Array(model.items.prefix(2))) { e in
                 let live = e.startAt <= Date() && e.endAt > Date()
                 HStack(spacing: 8) {
-                    Text(hourFmt.string(from: e.startAt)).font(BRFont.body(13, .bold)).frame(width: 46, alignment: .leading)
-                    Text(e.title).font(BRFont.body(13, .semibold)).lineLimit(1)
+                    Text(hourFmt.string(from: e.startAt)).font(BRFont.body(14, .bold)).frame(width: 50, alignment: .leading)
+                    Text(e.title).font(BRFont.body(14, .semibold)).lineLimit(1)
                     Spacer(minLength: 0)
-                    if live { Text("LIVE").font(BRFont.body(10, .bold)).foregroundColor(Color(hex: "FF6B55")) }
+                    if live { Text("LIVE").font(BRFont.body(11, .bold)).foregroundColor(Color(hex: "D9402A")) }
                 }
             }
-            if model.items.isEmpty { Text("Nothing scheduled. The station is playing its own music.").font(BRFont.body(12)).foregroundColor(hwm.onPanelSub) }
+            if model.items.isEmpty {
+                Text("Nothing scheduled. The station is playing its own music.")
+                    .font(BRFont.body(13)).foregroundColor(hwm.onPanelSub)
+            }
         }
-        .padding(.horizontal, 18).padding(.top, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .task { await model.load() }
-    }
-}
-
-struct DuoSleepPanel: View {
-    @Environment(\.hwMode) private var hwm
-    @ObservedObject private var guardian = ListenGuard.shared
-    @ObservedObject private var audio = AudioPlayerManager.shared
-    @ObservedObject private var auth = AuthManager.shared
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("Sleep timer").font(BRFont.body(14, .semibold))
-                Spacer()
-                if let end = guardian.sleepEnd {
-                    TimelineView(.periodic(from: .now, by: 30)) { _ in
-                        Text("Stops in \(max(1, Int((end.timeIntervalSinceNow / 60).rounded(.up)))) min")
-                            .font(BRFont.body(12)).foregroundColor(hwm.onPanelSub)
-                    }
-                }
-            }
-            HStack(spacing: 0) {
-                ForEach([("Off", 0), ("15", 15), ("30", 30), ("60", 60)], id: \.1) { item in
-                    let chosen = item.1 == 0 ? guardian.sleepEnd == nil : isChosen(item.1)
-                    Spacer(minLength: 0)
-                    Button { guardian.setSleep(item.1 == 0 ? nil : item.1) } label: {
-                        Text(item.0).font(BRFont.body(15, .bold))
-                            .foregroundColor(chosen ? Color(hex: "6FCF93") : hwm.onPanelText)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(HWKeyStyle(corner: 12, lit: chosen, height: 40))
-                    .frame(width: 70)
-                    Spacer(minLength: 0)
-                }
-            }
-            .disabled(!(audio.isPlaying && auth.isSignedIn))
-            .opacity(audio.isPlaying && auth.isSignedIn ? 1 : 0.5)
-        }
-        .padding(.horizontal, 18).padding(.top, 16)
-    }
-
-    /// Which preset the running timer is closest to (the timer only stores when it ends).
-    private func isChosen(_ m: Int) -> Bool {
-        guard let end = guardian.sleepEnd else { return false }
-        let left = end.timeIntervalSinceNow / 60
-        guard left > 0 else { return false }
-        let preset = left <= 15 ? 15 : (left <= 30 ? 30 : 60)
-        return preset == m
     }
 }
 
@@ -157,11 +152,25 @@ struct TunedInRow: View {
 
 // MARK: Left page
 
+/// The record peeking out from behind its sleeve, `s` is the sleeve's side.
+private struct DuoArt: View {
+    var s: CGFloat
+    var image: UIImage?
+    var label: Color
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            DeskRecord(size: s * 0.925, label: label).offset(x: s * 0.346, y: s * 0.053)
+            DeskSleeve(image: image, size: s).rotationEffect(.degrees(-2))
+        }
+        .frame(width: s * 1.27, height: s, alignment: .topLeading)
+    }
+}
+
 struct DuoLeftPage: View {
     @Environment(\.hwMode) private var hwm
     @Binding var showBoard: Bool
     var canPlay: Bool
-    /// Beside another tab (landscape foldable): the bottom panel holds the transport instead of "tuned in".
+    /// Beside another tab (landscape foldable). Looks exactly the same; only the full screen button acts differently.
     var sidePane = false
     @ObservedObject private var vol = SystemVolume.shared
     @ObservedObject private var audio = AudioPlayerManager.shared
@@ -180,88 +189,122 @@ struct DuoLeftPage: View {
     }
 
     var body: some View {
-        GeometryReader { geo in
-            let k = min(geo.size.width / 391, geo.size.height / 844)
-            canvas
-                .frame(width: 391, height: 844, alignment: .topLeading)
-                .scaleEffect(k, anchor: .topLeading)
-                .frame(width: 391 * k, height: 844 * k, alignment: .topLeading)
-                .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
-                .background(VolumeHost().frame(width: 1, height: 1).allowsHitTesting(false), alignment: .topLeading)
+        DuoCanvas { w, hc, _ in
+            // The amp is about 350 pt tall; the sleeve takes what is left (and never more than the width allows).
+            let s = max(150, min((w - 24) / 1.27, 330, hc - 350 - 56))
+            VStack(spacing: 0) {
+                artRow(s).padding(.leading, 12)
+                Spacer(minLength: 10)
+                amp
+            }
+            // The amp runs into the bottom left corner of the screen; its corner lines up with the phone's.
+            .padding(.leading, 0).padding(.trailing, 12).padding(.top, 24).padding(.bottom, 0)
         }
     }
 
-    private var canvas: some View {
+    private func artRow(_ s: CGFloat) -> some View {
         ZStack(alignment: .topLeading) {
-            DeskRecord(size: 296, label: album ? theme.main.color : Color(hex: "3A3A36")).offset(x: 88, y: 87)
-            DeskSleeve(image: audio.coverImage, size: 338).rotationEffect(.degrees(-2)).offset(x: 22, y: 66)
+            DuoArt(s: s, image: audio.coverImage, label: album ? theme.main.color : Color(hex: "3A3A36"))
+                .overlay(alignment: .bottomTrailing) {
+                    // Full screen: small, in the corner of the art so it stays out of the way. The same on every tab:
+                    // beside another tab it goes back to Live and opens the board there.
+                    Button {
+                        if sidePane {
+                            BoardState.shared.wantBoard = true
+                            TabRouter.shared.request = 0
+                        } else {
+                            withAnimation(.easeInOut(duration: 0.25)) { showBoard = true }
+                        }
+                    } label: {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right").font(.system(size: 13, weight: .bold))
+                    }
+                    .buttonStyle(HWRoundKeyStyle(size: 34))
+                    .offset(x: 2, y: 2)
+                    .accessibilityLabel("Full screen")
+                }
+                .frame(maxWidth: .infinity)
             if np?.onAir == true {
                 HWOnAirLamp(playing: audio.isPlaying, beat: audio.beatClock)
-                    .scaleEffect(1.2, anchor: .topLeading).offset(x: 10, y: 49)
+                    .scaleEffect(1.2, anchor: .topLeading).offset(x: -2, y: -18)
             }
-            if !sidePane {
-                Button { withAnimation(.easeInOut(duration: 0.25)) { showBoard = true } } label: {
-                    Image(systemName: "arrow.up.left.and.arrow.down.right").font(.system(size: 15, weight: .bold))
-                }
-                .buttonStyle(HWRoundKeyStyle(size: 40))
-                .offset(x: 338, y: 22)
-                .accessibilityLabel("Full screen")
-            }
+        }
+        .frame(height: s)
+    }
 
-            // Amp: what is playing.
-            ZStack(alignment: .topLeading) {
-                HWLeather(tint: HWModeResolver.tint(album: album, color: theme.main.color), corner: 20, stitch: true)
-                    .frame(width: 342, height: 252)
-                ForEach(0..<4, id: \.self) { i in HWScrew().offset(x: i % 2 == 0 ? 9 : 342 - 18, y: i < 2 ? 9 : 252 - 18) }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(titleText).font(BRFont.display(44)).foregroundStyle(hwm.onPanelText)
-                        .lineLimit(1).minimumScaleFactor(0.5).frame(height: 46, alignment: .bottomLeading)
-                    Text(subText).font(BRFont.body(18, .medium)).foregroundStyle(hwm.onPanelSub).lineLimit(1).minimumScaleFactor(0.7)
-                }
-                .frame(width: 298, alignment: .leading).offset(x: 24, y: 22)
+    // MARK: The now playing amp
+
+    private var amp: some View {
+        DuoAmp {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(titleText)
+                    .font(BRFont.display(40)).foregroundStyle(hwm.onPanelText)
+                    .lineLimit(1).minimumScaleFactor(0.5)
+                    .shadow(color: .black.opacity(0.45), radius: 0, x: 0, y: 1)
+                Text(subText)
+                    .font(BRFont.body(18, .medium)).foregroundStyle(hwm.onPanelSub)
+                    .lineLimit(1).minimumScaleFactor(0.7)
 
                 if let song = np, song.duration > 0 {
                     TimelineView(.periodic(from: .now, by: 1)) { ctx in
                         let t = song.elapsed + ctx.date.timeIntervalSince(audio.nowPlayingFetchedAt)
                         HWSlot(progress: t / song.duration, fill: led, height: 10)
                     }
-                    .frame(width: 294).offset(x: 24, y: 118)
+                    .padding(.top, 4)
                 }
                 if let next = np?.next {
                     Text("Next: \(next.title)\(next.artist.isEmpty ? "" : " · \(next.artist)")")
                         .font(BRFont.body(13)).foregroundStyle(hwm.onPanelSub).lineLimit(1)
-                        .frame(width: 298, alignment: .leading).offset(x: 24, y: 140)
                 }
-                HWEQWell(color: led, playing: audio.isPlaying, beat: audio.beatClock)
-                    .frame(width: 298, height: 60).offset(x: 22, y: 170)
-            }
-            .frame(width: 342, height: 252, alignment: .topLeading)
-            .offset(x: 24, y: 424)
 
-            if sidePane {
-                ScaledPanel(designH: 112, scale: 0.977) {
-                    ZStack(alignment: .topLeading) {
-                        HWDial(size: 46, value: Binding(get: { vol.level }, set: { vol.level = $0 }), onChange: { vol.set($0) })
-                            .offset(x: 40, y: 34)
-                        Button { if canPlay { audio.toggle() } } label: {
-                            Image(systemName: audio.isPlaying ? "stop.fill" : "play.fill").font(.system(size: 24, weight: .bold)).offset(x: audio.isPlaying ? 0 : 2)
-                        }
-                        .buttonStyle(HWRoundKeyStyle(size: 64, lit: audio.isPlaying)).opacity(canPlay ? 1 : 0.4)
-                        .offset(x: 143, y: 18)
-                        SkipControl(size: 46).frame(width: 46, height: 46).offset(x: 262, y: 34)
-                    }
-                }
-                .offset(x: 24, y: 696)
-            } else {
-                ScaledPanel(designH: 112, scale: 0.977) { TunedInRow().padding(.top, 22) }
-                    .offset(x: 24, y: 696)
+                HWEQWell(color: led, playing: audio.isPlaying, beat: audio.beatClock)
+                    .frame(height: 58)
+                    .padding(.top, 2)
+
+                controls
             }
         }
     }
-}
 
-enum HWModeResolver {
-    static func tint(album: Bool, color: Color) -> Color? { album ? color : nil }
+    /// Volume knob, play key, skip knob.
+    private var controls: some View {
+        HStack(alignment: .top, spacing: 0) {
+            VStack(spacing: 12) {
+                HWDial(size: 52, value: Binding(get: { vol.level }, set: { vol.level = $0 }), onChange: { vol.set($0) })
+                    .frame(width: 52, height: 52)
+                knobLabel("Volume")
+            }
+            .padding(.top, 16)
+            Spacer(minLength: 0)
+            Button { if canPlay { audio.toggle() } } label: {
+                Group {
+                    if audio.isBuffering {
+                        ProgressView().progressViewStyle(.circular).tint(Color.hwCream).scaleEffect(1.3)
+                    } else {
+                        Image(systemName: audio.isPlaying ? "stop.fill" : "play.fill")
+                            .font(.system(size: 30, weight: .bold))
+                            .offset(x: audio.isPlaying ? 0 : 2)
+                    }
+                }
+            }
+            .buttonStyle(HWRoundKeyStyle(size: 84, lit: audio.isPlaying))
+            .opacity(canPlay ? 1 : 0.4)
+            .accessibilityLabel(audio.isPlaying ? "Stop" : "Play")
+            Spacer(minLength: 0)
+            VStack(spacing: 12) {
+                SkipControl().frame(width: 52, height: 52)
+                knobLabel("Skip")
+            }
+            .padding(.top, 16)
+        }
+        .padding(.horizontal, 6)
+    }
+
+    private func knobLabel(_ text: String) -> some View {
+        Text(text)
+            .font(BRFont.body(12, .semibold)).tracking(0.2)
+            .foregroundStyle(hwm.onPanelSub)
+            .frame(width: 64)
+    }
 }
 
 // MARK: Right page
@@ -269,60 +312,44 @@ enum HWModeResolver {
 struct DuoRightPage: View {
     @Environment(\.hwMode) private var hwm
     var canPlay: Bool
-    @ObservedObject private var audio = AudioPlayerManager.shared
+    /// The strip along the right edge that the system keeps for its corner bar and clock.
+    var trailingInset: CGFloat = 0
     @ObservedObject private var auth = AuthManager.shared
-    @ObservedObject private var vol = SystemVolume.shared
-    private var np: NowPlayingInfo? { audio.nowPlaying }
 
-    var body: some View {
-        GeometryReader { geo in
-            let k = min(geo.size.width / 391, geo.size.height / 844)
-            canvas
-                .frame(width: 391, height: 844, alignment: .topLeading)
-                .scaleEffect(k, anchor: .topLeading)
-                .frame(width: 391 * k, height: 844 * k, alignment: .topLeading)
-                .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
-                .background(VolumeHost().frame(width: 1, height: 1).allowsHitTesting(false), alignment: .topLeading)
-        }
+    private var etch: some View {
+        Rectangle().fill(hwm.onPanelText.opacity(0.16)).frame(height: 1)
     }
 
-    private var canvas: some View {
-        ZStack(alignment: .topLeading) {
-            if auth.isSignedIn && auth.canListenLive {
-                ScaledPanel(designH: 238) {
-                    VotePanel(compact: true, title: "What would you like to hear?", large: true)
-                        .padding(.horizontal, 22).padding(.top, 20)
-                }
-                .offset(x: 7, y: 24)
-            }
-            ScaledPanel(designH: 142) {
-                LiveExtrasView(mode: .ratings)
-                    .padding(.top, 16)
-            }
-            .offset(x: 7, y: 252)
+    var body: some View {
+        DuoCanvas(rightReserve: trailingInset) { _, h, k in
+            // A header band the height of the profile button's row, with the station name in it.
+            let band = 76 / k
+            VStack(spacing: 0) {
+                EtchedText(text: "Babson Radio", size: 38)
+                    .frame(maxWidth: .infinity, minHeight: band, maxHeight: band, alignment: .center)
+                    .padding(.horizontal, 24)
 
-            // Controls
-            ScaledPanel(designH: 190, corner: 20) {
-                ZStack(alignment: .topLeading) {
-                    HWDial(size: 50, value: Binding(get: { vol.level }, set: { vol.level = $0 }), onChange: { vol.set($0) })
-                        .offset(x: 36, y: 28)
-                    Button { if canPlay { audio.toggle() } } label: {
-                        Image(systemName: audio.isPlaying ? "stop.fill" : "play.fill").font(.system(size: 28, weight: .bold)).offset(x: audio.isPlaying ? 0 : 2)
+                DuoAmp(height: h - band) {
+                    VStack(spacing: 0) {
+                        // Reaction keys (this one also keeps the live counts and star data loading).
+                        LiveExtrasView(mode: .reactions).padding(.horizontal, -24)
+
+                        if auth.isSignedIn && auth.canListenLive {
+                            Spacer(minLength: 10); etch; Spacer(minLength: 10)
+                            VotePanel(compact: true, title: "What would you like to hear?", large: true)
+                        }
+
+                        Spacer(minLength: 10); etch; Spacer(minLength: 10)
+                        LiveExtrasView(mode: .ratings).padding(.horizontal, -24)
+
+                        Spacer(minLength: 10); etch; Spacer(minLength: 10)
+                        DuoSchedulePanel()
+
+                        TunedInRow().padding(.top, 8)
                     }
-                    .buttonStyle(HWRoundKeyStyle(size: 76, lit: audio.isPlaying)).opacity(canPlay ? 1 : 0.4)
-                    .offset(x: 139, y: 14)
-                    SkipControl(size: 48).frame(width: 48, height: 48).offset(x: 268, y: 30)
-                    HStack { Text("Volume"); Spacer(); Text("Ask to skip") }
-                        .font(BRFont.body(12)).foregroundStyle(hwm.onPanelSub)
-                        .padding(.horizontal, 24).offset(y: 100)
-                    LiveExtrasView(mode: .reactions).frame(width: 350).offset(y: 128)
                 }
+                .padding(.horizontal, 12)
             }
-            .offset(x: 7, y: 394)
-
-            ScaledPanel(designH: 112) { DuoSchedulePanel() }.offset(x: 7, y: 579)
-            ScaledPanel(designH: 112) { DuoSleepPanel() }.offset(x: 7, y: 694)
-
         }
     }
 }

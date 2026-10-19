@@ -72,12 +72,7 @@ struct ProfileAvatar: View {
     let colorId: String?
     var size: CGFloat = 84
     var body: some View {
-        ZStack {
-            Circle().fill(AvatarPalette.color(colorId))
-            Text(initials)
-                .font(BRFont.display(size * (initials.count > 1 ? 0.4 : 0.5))).foregroundColor(AvatarPalette.ink(colorId))
-        }
-        .frame(width: size, height: size)
+        HWAvatar(text: initials, color: AvatarPalette.color(colorId), size: size, display: true)
     }
 }
 

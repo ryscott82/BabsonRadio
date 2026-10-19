@@ -12,10 +12,22 @@ export const runtime = 'nodejs'
 // Listening sessions. The apps ask here before playing and check in every minute while playing, so the station can
 // keep within its monthly listener hours: one stream per account, no endless sessions, no idle streams, quiet hours,
 // guest limits, and a daily cap only when the month is on track to run over.
-//   POST { action: 'start' | 'beat' | 'stop', sessionId, device?, activeAgoSec? }
+//   POST { action: 'start' | 'beat' | 'stop', sessionId, device?, deviceId?, takeOver?, activeAgoSec? }
+//   start while another device of the same account is playing -> { ok: false, reason: 'elsewhere', device } unless takeOver is true.
 //   -> { ok: true, idleMin, sessionMaxMin, level } or { ok: false, reason, message }
 
 type Deny = { ok: false; reason: string; message: string }
+
+// Roles barely change, so they are remembered for 5 minutes instead of read on every check-in.
+const roles = new Map<string, { at: number; role: string }>()
+async function roleOf(db: FirebaseFirestore.Firestore, uid: string, now: number): Promise<string> {
+  const hit = roles.get(uid)
+  if (hit && now - hit.at < 300_000) return hit.role
+  const role = String((await db.collection('users').doc(uid).get()).get('role') ?? '')
+  roles.set(uid, { at: now, role })
+  if (roles.size > 2000) roles.clear()
+  return role
+}
 const deny = (reason: string, message: string): Deny => ({ ok: false, reason, message })
 
 export async function POST(req: Request) {
@@ -34,16 +46,27 @@ export async function POST(req: Request) {
       return { ok: true }
     }
 
-    const [cfg, uc, budget, np, u, s] = await Promise.all([
-      loadConfig(db), loadUsageConfig(db), budgetState(db, now), getNowPlaying(), db.collection('users').doc(t.uid).get(), sref.get(),
+    const [cfg, uc, budget, np, role, s] = await Promise.all([
+      loadConfig(db), loadUsageConfig(db), budgetState(db, now), getNowPlaying(), roleOf(db, t.uid, now), sref.get(),
     ])
     const policy = policyFor(budget)
     const live = !!(np.isShow || np.isLive)
-    const guest = u.get('role') === 'guest'
-    const staff = ['superAdmin', 'director'].includes(String(u.get('role'))) || t.developer === true
+    const guest = role === 'guest'
+    const staff = ['superAdmin', 'director'].includes(role) || t.developer === true
 
-    // The same person on another device? The newest start wins.
-    if (action === 'beat' && s.get('sessionId') !== sessionId) return deny('otherDevice', 'Now playing on another device.')
+    // One device at a time. Someone else's stream (a different device, playing within the last 90 s) stops a new start
+    // unless the person chooses to switch; after a switch the old device is stopped at its next check-in.
+    const deviceId = str(b.deviceId, 64), device = str(b.device, 12)
+    const other = s.exists && s.get('sessionId') !== sessionId
+    if (action === 'beat' && other) return deny('otherDevice', 'Now playing on another device.')
+    if (action === 'start' && other && b.takeOver !== true) {
+      const age = now - ((s.get('lastBeat') as Timestamp | undefined)?.toMillis() ?? 0)
+      const sameDevice = !!deviceId && s.get('deviceId') === deviceId
+      if (age < 90_000 && !sameDevice) {
+        const where = s.get('device') === 'ios' ? 'the app on your phone or tablet' : 'a web browser'
+        return { ...deny('elsewhere', `You are already listening on ${where}. Switch to this device?`), device: s.get('device') ?? '' }
+      }
+    }
 
     if (!live && !staff) {
       if (inQuietHours(uc, cfg.timezone, now)) return deny('quiet', `Quiet hours. The station is back at ${uc.quietEnd > 12 ? uc.quietEnd - 12 : uc.quietEnd}${uc.quietEnd >= 12 ? 'pm' : 'am'}.`)
@@ -73,7 +96,7 @@ export async function POST(req: Request) {
     if (guest && !live && !budget.guestsOpen && autoMin >= uc.guestAutoMin) return deny('guestAuto', 'Listening is busy this month, so guests can hear live shows plus a few minutes of the playlist each day. Add your school email for the rest.')
     if (!guest && !staff && policy.dailyCapMin != null && autoMin + liveMin >= policy.dailyCapMin) return deny('daily', 'You have reached today\'s listening limit, which the station sets when listening runs high. It resets at midnight.')
 
-    if (action === 'start') await sref.set({ sessionId, uid: t.uid, startedAt: Timestamp.fromMillis(now), lastBeat: Timestamp.fromMillis(now), device: str(b.device, 12) })
+    if (action === 'start') await sref.set({ sessionId, uid: t.uid, startedAt: Timestamp.fromMillis(now), lastBeat: Timestamp.fromMillis(now), device, deviceId })
     else await sref.update({ lastBeat: Timestamp.fromMillis(now) })
     return { ok: true, idleMin: policy.idleMin, sessionMaxMin: policy.sessionMaxMin, level: budget.level }
   })

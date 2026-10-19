@@ -51,7 +51,7 @@ struct SlotsView: View {
         .refreshable {
             if auth.isSignedIn { await slots.refresh() }
         }
-        .background(HWDesk())
+        .hwPage()
     }
 
     // MARK: - Signed in
@@ -210,7 +210,7 @@ private struct SlotRequestRow: View {
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(HWDesk())
+                .background(HWFieldFill())
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             }
 
@@ -250,7 +250,7 @@ private struct AutoBlockRow: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(HWDesk())
+        .background(HWFieldFill())
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12)
             .stroke(scheme == .dark ? Color.brDkBorder : Color.brLtBorder, lineWidth: 1))
@@ -349,6 +349,7 @@ struct RequestSlotForm: View {
                     AgreementsForm(info: info, busy: signBusy, error: signError) { name in sign(name, version: info.agreementsVersion) }
                         .padding(20)
                 }
+                .hwPage()
                 .navigationTitle("On-air agreement")
                 .navigationBarTitleDisplayMode(.inline)
             }
@@ -380,16 +381,19 @@ struct RequestSlotForm: View {
                         ForEach(Self.categories, id: \.self) { Text($0.capitalized).tag($0) }
                     }
                 }
+                .listRowBackground(HWFieldFill())
 
                 Section {
                     TextField("Special requests or location (optional)", text: $location)
                 }
+                .listRowBackground(HWFieldFill())
 
                 Section {
                     Toggle("Receive ratings during my show", isOn: $receiveRatings)
                 } footer: {
                     Text("Listeners can always rate. Off just hides the ratings from you.")
                 }
+                .listRowBackground(HWFieldFill())
 
                 Section("Picture (optional)") {
                     HStack(spacing: 14) {
@@ -408,6 +412,7 @@ struct RequestSlotForm: View {
                     Text("Shown to listeners if approved.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
+                .listRowBackground(HWFieldFill())
 
                 Section("How will it air?") {
                     Picker("Format", selection: $type) {
@@ -430,6 +435,7 @@ struct RequestSlotForm: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                .listRowBackground(HWFieldFill())
 
                 if let info = pubInfo, info.publicSharing == "adult" {
                     Section {
@@ -452,6 +458,7 @@ struct RequestSlotForm: View {
                     } footer: {
                         Text(sharePublic ? "" : "Off: Babson students only.")
                     }
+                    .listRowBackground(HWFieldFill())
                 }
 
                 Section("When") {
@@ -474,11 +481,14 @@ struct RequestSlotForm: View {
                             .foregroundStyle(.red)
                     }
                 }
+                .listRowBackground(HWFieldFill())
 
                 if let errorText {
                     Section { Text(errorText).foregroundStyle(.red) }
+                    .listRowBackground(HWFieldFill())
                 }
             }
+            .hwPage()
             .onChange(of: photoItem) { _, item in
                 guard let item else { return }
                 Task { await upload(item) }
@@ -705,7 +715,7 @@ struct ScheduleView: View {
                 .padding(20)
             }
             .refreshable { await slots.loadFeed() }
-            .background(HWDesk())
+            .hwPage()
             .navigationTitle("")
             .profileButton()
             .navigationBarTitleDisplayMode(.inline)
@@ -748,7 +758,7 @@ struct ScheduleView: View {
                     .onChange(of: first) { _, _ in scrollToNow(proxy) }
                 }
             }
-            .background(HWDesk())
+            .hwPage()
             .navigationTitle("Auto DJ schedule")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showAuto = false } } }
@@ -978,7 +988,7 @@ struct ScheduleDetailView: View {
                     .padding(.bottom, 30)
                 }
             }
-            .background(HWDesk())
+            .hwPage()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
         .presentationDetents([.large])

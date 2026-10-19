@@ -90,6 +90,7 @@ struct EqualizerBars: View {
     let color: Color
     var playing = true
     var beat: BeatClock? = nil
+    @ObservedObject private var power = PowerState.shared
 
     private static let rest: [Double] = [0.45, 0.8, 0.6, 0.95]   // heights when still, 0...1
     private static let lift: [Double] = [0.5, 0.2, 0.4, 0.05]    // how far each bar jumps on the beat
@@ -107,7 +108,7 @@ struct EqualizerBars: View {
     /// position whenever the layout changes (rotating, unfolding, split view), which scattered the bars around the screen.
     var body: some View {
         Group {
-            if playing {
+            if playing && !power.lowPower {
                 TimelineView(.animation) { tl in
                     // The same pulse the background uses, so they hit together.
                     let t = tl.date.timeIntervalSinceReferenceDate

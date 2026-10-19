@@ -109,7 +109,7 @@ struct AdminView: View {
             }
             .padding(20)
         }
-        .background(HWDesk())
+        .hwPage()
         .navigationTitle("Admin")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await model.load() }

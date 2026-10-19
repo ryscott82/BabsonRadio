@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 // MARK: - Bebas Neue Font
@@ -49,7 +50,7 @@ extension Color {
     static var brDkBorder2: Color  { Color(hex: dkNight ? "303030" : "5F5648") }
     static var brDkText: Color     { Color(hex: dkNight ? "E8E8E8" : "F4ECDA") }
     static var brDkSub: Color      { Color(hex: dkNight ? "ABABAB" : "CFC4AE") }
-    static var brDkMuted: Color    { Color(hex: dkNight ? "666666" : "9C9281") }
+    static var brDkMuted: Color    { Color(hex: dkNight ? "8C8C8C" : "A89E8C") }
 
     // Light Mode
     static let brLtBg       = Color(hex: "F5F0E8")
@@ -58,7 +59,7 @@ extension Color {
     static let brLtBorder   = Color(hex: "D8D0BE")
     static let brLtText     = Color(hex: "1A1710")
     static let brLtSub      = Color(hex: "575047")
-    static let brLtMuted    = Color(hex: "857C6C")
+    static let brLtMuted    = Color(hex: "6A6253")
 
     // Adaptive (auto dark/light)
     static let brBackground  = Color("BRBackground")
@@ -89,29 +90,42 @@ extension Color {
 
 // MARK: - View Modifiers
 
-/// Card surface: black leather in dark mode, warm white ceramic in light mode. Raised, with a highlight edge and a drop shadow.
+/// Card surface, a small amp: black leather with cream stitching in dark mode; in light mode an ivory ceramic face inside a
+/// green leather rim with stitching. Raised, with a highlight edge and a drop shadow.
 struct HWCardSurface: View {
     var dark: Bool
     var corner: CGFloat = 12
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)
+        let rimW: CGFloat = 4
         ZStack {
             if dark {
                 Color(hex: "0C0C0A")
                 HWTile(name: HWTex.leatherBlack)
-                Color.black.opacity(0.35)
-                LinearGradient(colors: [.white.opacity(0.08), .clear, .black.opacity(0.22)], startPoint: .top, endPoint: .bottom)
+                Color.black.opacity(0.42)
+                LinearGradient(colors: [.white.opacity(0.09), .clear, .black.opacity(0.25)], startPoint: .top, endPoint: .bottom)
+                shape.inset(by: 5).stroke(Color(hex: "F6F2E7").opacity(0.30), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
             } else {
-                Color(hex: "F4EFE2")
-                HWTile(name: HWTex.cface, opacity: 0.45, blend: .multiply)
-                LinearGradient(colors: [.white.opacity(0.55), .clear], startPoint: .top, endPoint: .center)
+                // Green leather rim, then the ivory face.
+                Color(hex: "0C0C0A")
+                HWTile(name: HWTex.leatherGreen, opacity: 0.55)
+                Color(hex: "007A50").opacity(0.78).blendMode(.color)
+                Color.black.opacity(0.24)
+                let face = RoundedRectangle(cornerRadius: max(4, corner - rimW + 1), style: .continuous)
+                ZStack {
+                    Color(hex: "F7F5F0")
+                    HWTile(name: HWTex.cface, opacity: 0.55, blend: .multiply)
+                    LinearGradient(colors: [.white.opacity(0.45), .clear], startPoint: .top, endPoint: .center)
+                }
+                .clipShape(face)
+                .overlay(face.strokeBorder(Color(hex: "232823").opacity(0.25), lineWidth: 1))
+                .padding(rimW)
+                shape.inset(by: 2).stroke(Color(hex: "F6F2E7").opacity(0.5), style: StrokeStyle(lineWidth: 0.8, dash: [3, 2.5]))
             }
         }
         .clipShape(shape)
-        .overlay(shape.strokeBorder(dark ? Color.black.opacity(0.55) : Color.black.opacity(0.14), lineWidth: 1))
-        .overlay(shape.inset(by: 1).strokeBorder(Color.white.opacity(dark ? 0.08 : 0.6), lineWidth: 1).mask(
-            LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: .center)))
-        .shadow(color: .black.opacity(dark ? 0.5 : 0.22), radius: dark ? 8 : 6, x: 0, y: dark ? 5 : 3)
+        .overlay(shape.strokeBorder(Color.black.opacity(dark ? 0.6 : 0.4), lineWidth: 1))
+        .shadow(color: .black.opacity(dark ? 0.5 : 0.28), radius: dark ? 8 : 6, x: 0, y: dark ? 5 : 3)
     }
 }
 
@@ -225,18 +239,32 @@ enum BabsonLinks {
 
 // MARK: - Profile button (top-right corner of every page; same look as the website)
 
+/// True while the search field is active, so the profile circle can get out of its way on every device.
+@MainActor
+final class SearchState: ObservableObject {
+    static let shared = SearchState()
+    @Published var active = false
+}
+
 struct ProfileCircleButton: View {
+    @ObservedObject private var searchState = SearchState.shared
     @StateObject private var auth = AuthManager.shared
     @Environment(\.colorScheme) var scheme
     @ObservedObject private var profile = ProfileStore.shared
     @State private var showProfile = false
 
     var body: some View {
+        // Gone while someone is searching, on the phone's navigation bar and on the open foldable's corner alike.
+        if !searchState.active { button }
+    }
+
+    private var button: some View {
         Button { showProfile = true } label: {
             HWAvatar(text: auth.currentUser?.initials ?? "", color: AvatarPalette.color(profile.avatarColor), size: 38)
                 .overlay {
                     if auth.currentUser == nil {
-                        Image(systemName: "person.fill").font(.system(size: 15)).foregroundColor(Color(hex: "22221F").opacity(0.82))
+                        Image(systemName: "person.fill").font(.system(size: 15))
+                            .foregroundColor(HWAvatar.darkInk(on: AvatarPalette.color(profile.avatarColor)) ? Color(hex: "22221F").opacity(0.82) : Color(hex: "FAF6EC"))
                     }
                 }
         }

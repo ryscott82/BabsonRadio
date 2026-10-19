@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import FitTitle from '@/components/FitTitle'
 import OnAirSign from '@/components/OnAirSign'
 import ArtDesk from '@/components/ArtDesk'
-import { useArtMain } from '@/components/ArtTheme'
+import { useArtMain, eqZoneVars } from '@/components/ArtTheme'
 import { ReactionKeys } from '@/components/LiveExtras'
 import type { NowPlaying } from '@/lib/nowplaying'
 
@@ -43,7 +43,7 @@ export default function FullBoard({ boardRef, eqRef, np, hasSong, onAir, glow, a
 }) {
   const [scale, setScale] = useState(1)
   const { colors } = useArtMain() // album-color mode follows into full screen
-  const artStyle = colors ? ({ '--art-1': colors[0], '--art-2': colors[1], '--art-3': colors[2] } as React.CSSProperties) : undefined
+  const artStyle = colors ? ({ '--art-1': colors[0], '--art-2': colors[1], '--art-3': colors[2], ...eqZoneVars(colors) } as React.CSSProperties) : undefined
   useEffect(() => {
     const fit = () => setScale(Math.min(window.innerWidth / W, window.innerHeight / H))
     fit(); window.addEventListener('resize', fit); return () => window.removeEventListener('resize', fit)

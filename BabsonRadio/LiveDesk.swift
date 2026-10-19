@@ -190,19 +190,36 @@ struct HWEQ: View {
     var beat: BeatClock?
     @State private var energy = EQEnergy()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ObservedObject private var power = PowerState.shared
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: reduceMotion && !playing)) { tl in
-            let e = energy.step(playing: playing, at: tl.date)
+        // Low Power Mode: the meter stops (all segments unlit) instead of animating.
+        TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: (reduceMotion && !playing) || power.lowPower)) { tl in
+            let still = power.lowPower
+            let e = still ? 0 : energy.step(playing: playing, at: tl.date)
             let c = color, bc = beat, d = tl.date
-            let live = playing ? AudioSpectrum.shared.snapshot(at: d) : nil     // real bands from the audio; nil falls back to the beat motion
-            Canvas { ctx, size in HWEQ.draw(&ctx, size, d, c, e, bc, live) }
+            let z = HWEQ.zones(base: color)
+            let live = playing && !still ? AudioSpectrum.shared.snapshot(at: d) : nil     // real bands from the audio; nil falls back to the beat motion
+            Canvas { ctx, size in HWEQ.draw(&ctx, size, d, z, e, bc, live) }
         }
         .accessibilityHidden(true)
     }
 
+    /// Meter colors: saturated station green, yellow near the top, red at the peak, like a real level meter. In album-color mode
+    /// yellow and red appear only when the cover itself has them; otherwise the whole meter stays in the cover's color.
+    struct Zones: Sendable { var green: Color; var yellow: Color; var red: Color }
+    @MainActor static func zones(base: Color) -> Zones {
+        let t = ArtTheme.shared
+        guard t.albumOn else { return Zones(green: Color(hex: "00B86F"), yellow: Color(hex: "F5C400"), red: Color(hex: "FF4A2E")) }
+        func pick(_ ok: (Double) -> Bool) -> Color? {
+            t.palette.first { let h = $0.hsl; return h.s > 0.4 && h.l > 0.2 && ok(h.h) }?.color
+        }
+        let y = pick { $0 >= 40 && $0 <= 70 }, r = pick { $0 <= 15 || $0 >= 345 }
+        return Zones(green: base, yellow: y ?? base, red: r ?? y ?? base)
+    }
+
     nonisolated private static func draw(_ ctx: inout GraphicsContext, _ size: CGSize, _ date: Date,
-                                         _ color: Color, _ energy: Double, _ clock: BeatClock?, _ live: [Float]?) {
+                                         _ zones: Zones, _ energy: Double, _ clock: BeatClock?, _ live: [Float]?) {
         let t = date.timeIntervalSinceReferenceDate
         var pulse = pow(max(0, sin(t * 2 * .pi * 118 / 60)), 4)
         if let clock { let v = pow(max(0, cos(2 * .pi * clock.phase(at: date))), 4); if v.isFinite { pulse = v } }
@@ -226,7 +243,7 @@ struct HWEQ: View {
                 let y = size.height - CGFloat(s + 1) * sh - CGFloat(s) * gap
                 let rect = CGRect(x: CGFloat(c) * (cw + gap), y: y, width: cw, height: sh)
                 let hot = Double(s) / Double(segs - 1)
-                let col: Color = lit ? (hot > 0.82 ? Color(hex: "FF5A48") : color) : Color.white
+                let col: Color = lit ? (hot > 0.9 ? zones.red : hot > 0.55 ? zones.yellow : zones.green) : Color.white
                 ctx.fill(Path(roundedRect: rect, cornerRadius: 1), with: .color(col.opacity(lit ? 0.95 : 0.09)))
             }
         }
@@ -250,21 +267,54 @@ struct HWEQWell: View {
 
 // MARK: - ON AIR lamp (only while a live show is on, or the admin switch is on)
 
+/// Smooths the lamp's brightness a little: quick to light on a hit, quick-ish to fall, so it flickers instead of buzzing.
+final class LampLevel: @unchecked Sendable {
+    private var value = 0.0
+    private var last = Date.distantPast
+    func step(target: Double, at date: Date) -> Double {
+        let dt = last == .distantPast ? 0.03 : min(0.2, max(0, date.timeIntervalSince(last)))
+        last = date
+        let rate = target > value ? 40.0 : 11.0      // up in about 25 ms, down in about 90 ms
+        value += (target - value) * min(1, rate * dt)
+        return value
+    }
+}
+
 struct HWOnAirLamp: View {
     var playing: Bool
     var beat: BeatClock?
+    @State private var level = LampLevel()
+    @ObservedObject private var power = PowerState.shared
+    @ObservedObject private var theme = ArtTheme.shared
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 20.0, paused: !playing)) { tl in
+        // Follows the music live: the same real bass and level readings the equalizer uses. If the audio tap is not up yet,
+        // it falls back to the song's tempo, then to a steady 118 bpm, so it is never dead while music plays.
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: power.lowPower)) { tl in
             let t = tl.date.timeIntervalSinceReferenceDate
-            // Brighter on the beat; a very small shimmer so it feels alive.
-            let pulse = playing ? (beat.map { pow(max(0, cos(2 * .pi * $0.phase(at: tl.date))), 4) } ?? pow(max(0, sin(t * 2 * .pi * 118 / 60)), 4)) : 0
-            let lamp = 0.82 + 0.18 * pulse
+            let target: Double = {
+                guard playing, !power.lowPower else { return 0 }
+                if let bands = AudioSpectrum.shared.snapshotFixed(at: tl.date), bands.count >= 8 {
+                    let bass = Double(bands[0..<8].reduce(0, +)) / 8
+                    let all = Double(bands.reduce(0, +)) / Double(bands.count)
+                    let v = 0.65 * bass + 0.35 * all
+                    return pow(min(1, max(0, (v - 0.12) / 0.6)), 1.2)
+                }
+                if let beat { return pow(max(0, cos(2 * .pi * beat.phase(at: tl.date))), 3) }
+                return pow(max(0, sin(t * 2 * .pi * 118 / 60)), 3)
+            }()
+            let pulse = level.step(target: target, at: tl.date)
+            // Deep enough to read as a flicker: dim between beats, full on the beat.
+            // Only in album-color mode does it flicker properly; otherwise it just breathes a little. Low Power Mode holds it steady.
+            let album = theme.albumOn
+            let lamp = power.lowPower ? 0.9 : (album ? 0.55 + 0.45 * pulse : 0.86 + 0.14 * pulse)       // outside album mode: bright, with only a small beat
+            let glow = power.lowPower ? 0.5 : (album ? 0.7 * pulse : 0.55 + 0.15 * pulse)
+            let radius: CGFloat = power.lowPower ? 5 : (album ? 2 + 4 * pulse : 5 + 1.5 * pulse)
             let shape = RoundedRectangle(cornerRadius: 4, style: .continuous)
             Text("ON AIR")
                 .font(.custom("BarlowCondensed-Bold", size: 28))
                 .tracking(0.8)
                 .foregroundStyle(Color(hex: "EE3A22").opacity(lamp))
-                .shadow(color: Color(hex: "EE3A22").opacity(0.55 * lamp), radius: 4)
+                .shadow(color: Color(hex: "EE3A22").opacity(glow), radius: radius)
                 .frame(width: 94, height: 33)
                 .background(
                     ZStack {
@@ -357,7 +407,7 @@ struct PhoneLiveDesk<Drawer: View>: View {
     /// Canvas y of the closed drawer lip: always about 56 pt clear of the tab bar, whatever the phone's height.
     @State private var lipY: CGFloat = 700
     private var album: Bool { theme.albumOn }
-    private var mode: HWMode { album ? .album(theme.main.color) : (scheme == .light ? .light : .dark) }
+    private var mode: HWMode { HWMode.resolve(album: album ? theme.main.color : nil, scheme: scheme) }
     private var led: Color { album ? theme.palette.first.map { $0.mixed(with: .init(r: 1, g: 1, b: 1), 0.15).color } ?? .hwLED : .hwLED }
     private var subColor: Color { mode.onPanelSub }
 
@@ -368,8 +418,9 @@ struct PhoneLiveDesk<Drawer: View>: View {
     /// A one-line title does not need the two-line slot: everything below moves up and the spare room ends up at the bottom.
     private var panelUp: CGFloat {
         let f = UIFont(name: "BarlowCondensed-Bold", size: 40) ?? UIFont.systemFont(ofSize: 40, weight: .bold)
+        // Same width as the title frame (310): if it fits on one line, close the empty second line.
         let w = (titleText as NSString).size(withAttributes: [.font: f]).width
-        return w <= 306 ? 38 : 0
+        return w <= 310 ? 38 : 0
     }
     private var panelBottom: CGFloat { 340 + 380 - panelUp }
     /// "Show name with Host" for live shows, else the artist.
@@ -381,38 +432,66 @@ struct PhoneLiveDesk<Drawer: View>: View {
         return np.artist.isEmpty ? "Babson Radio" : np.artist
     }
 
+    /// A wide, nearly square screen (the iPhone Duo): no bar along the bottom and no notch to clear at the top.
+    private func isWide(_ size: CGSize) -> Bool { size.height > 0 && (0.62...1.3).contains(size.width / size.height) }
+    private func topInset() -> CGFloat {
+        UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first?.keyWindow?.safeAreaInsets.top ?? 0
+    }
+    /// How much of the desk's 56 pt top margin a wide screen can give back.
+    private func topShift(_ size: CGSize) -> CGFloat { isWide(size) ? max(0, 56 - topInset()) : 0 }
+    /// Strip on the right kept clear for the system tab bar that floats in the corner of a wide screen.
+    private let wideRightReserve: CGFloat = 84
+    private func rightReserve(_ size: CGSize) -> CGFloat { isWide(size) ? wideRightReserve : 0 }
+    /// Canvas height actually needed: a wide screen's drawer sits lower, so less spare room is kept under the amp.
+    private func canvasH(_ size: CGSize) -> CGFloat { isWide(size) ? 790 : 844 }
+
     var body: some View {
         GeometryReader { geo in
-            let k = min(geo.size.width / 390, geo.size.height / 844)
-            let W: CGFloat = 390, H: CGFloat = 844
-            ZStack(alignment: .top) {
+            // Closed foldable: the room above the art and the room between the amp and the drawer are the same (`gap`),
+            // and the amp is a little taller so the reaction keys have air below them.
+            let wide = isWide(geo.size)
+            let ex: CGFloat = wide ? 18 : 0
+            let gap: CGFloat = wide ? 40 + panelUp / 2 : 0
+            let ampBottom: CGFloat = 340 + 380 + ex - panelUp
+            let shift: CGFloat = wide ? max(0, 60 - gap) : 0
+            let W: CGFloat = 390, H: CGFloat = wide ? ampBottom + gap + 34 : 844, full: CGFloat = 844
+            let availW = geo.size.width - rightReserve(geo.size)
+            let k = min(availW / W, geo.size.height / (H - shift))
+            ZStack(alignment: .topLeading) {
                 HWDesk(album: album ? theme.main.color : nil)
-                canvas
-                    .frame(width: W, height: H, alignment: .topLeading)
+                canvas(extra: ex, wideLip: wide ? ampBottom + gap : nil)
+                    .frame(width: W, height: full, alignment: .topLeading)
+                    .offset(y: -shift)
                     .scaleEffect(k, anchor: .topLeading)
-                    .frame(width: W * k, height: H * k, alignment: .topLeading)
+                    .frame(width: W * k, height: (H - shift) * k, alignment: .topLeading)
+                    .offset(x: max(0, (availW - W * k) / 2))
             }
             .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
+            .animation(.easeInOut(duration: 0.2), value: panelUp)
             .background(VolumeHost().frame(width: 1, height: 1).allowsHitTesting(false), alignment: .topLeading)
-            .onAppear { updateLip(k: k, geo: geo) }
-            .onChange(of: geo.size) { _, _ in updateLip(k: k, geo: geo) }
-            .onChange(of: panelUp) { _, _ in updateLip(k: k, geo: geo) }
+            .onAppear { updateLip(k: k, shift: shift, geo: geo) }
+            .onChange(of: geo.size) { _, _ in updateLip(k: k, shift: shift, geo: geo) }
+            .onChange(of: panelUp) { _, _ in updateLip(k: k, shift: shift, geo: geo) }
         }
         .ignoresSafeArea()
         .environment(\.hwMode, mode)
     }
 
-    private func updateLip(k: CGFloat, geo: GeometryProxy) {
-        let screenH = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first?.screen.bounds.height ?? geo.size.height
+    private func updateLip(k: CGFloat, shift: CGFloat, geo: GeometryProxy) {
+        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        let screenH = scene?.screen.bounds.height ?? geo.size.height
         let originY = geo.frame(in: .global).minY
-        let bottomInset = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first?.keyWindow?.safeAreaInsets.bottom ?? 34
-        let tabTop = screenH - (49 + bottomInset)
-        let y = (tabTop - 56 - originY) / k
-        lipY = min(722, max(panelBottom + 10, y))
+        let bottomInset = scene?.keyWindow?.safeAreaInsets.bottom ?? 34
+        // A phone has a bar along the bottom; a wide screen has only the small floating bar in the corner.
+        let wide = isWide(geo.size)
+        let barHeight: CGFloat = wide ? 0 : 49 + bottomInset
+        let margin: CGFloat = wide ? 22 : 56
+        let y = (screenH - barHeight - margin - originY) / k + shift
+        lipY = min(wide ? canvasH(geo.size) - 36 : 722, max(panelBottom + 10, y))
     }
 
     // The 390 x 844 desk.
-    private var canvas: some View {
+    private func canvas(extra: CGFloat, wideLip: CGFloat?) -> some View {
         ZStack(alignment: .topLeading) {
             Color.clear.frame(width: 390, height: 844)
 
@@ -448,25 +527,26 @@ struct PhoneLiveDesk<Drawer: View>: View {
                     .multilineTextAlignment(.center).lineLimit(2)
                     .padding(.horizontal, 14).padding(.vertical, 8)
                     .frame(width: 330)
-                    .background(HWPlate(color: Color(hex: "F4E9CF")))
+                    .background(HWPlate(color: Color(hex: "F7F5F0")))
                     .offset(x: 30, y: 292)
             }
 
-            panel
+            panel(extra: extra)
 
             // Drawer lip and sheet.
-            HWDrawerSheet(open: $drawerOpen, tint: album ? theme.main.color : Color(hex: "2F7A49"), closedY: lipY) { drawer() }
+            HWDrawerSheet(open: $drawerOpen, tint: album ? theme.main.color : Color(hex: "2F7A49"), closedY: wideLip ?? lipY) { drawer() }
         }
         .animation(.easeInOut(duration: 0.25), value: onAir)
     }
 
-    private var panel: some View {
+    private func panel(extra: CGFloat) -> some View {
         let up = panelUp
+        let ph = 380 - up + extra
         return ZStack(alignment: .topLeading) {
             HWLeather(tint: mode.leatherTint, corner: 18, stitch: true)
-                .frame(width: 366, height: 380 - up)
+                .frame(width: 366, height: ph)
             ForEach(0..<4, id: \.self) { i in
-                HWScrew().offset(x: i % 2 == 0 ? 10 : 366 - 19, y: i < 2 ? 10 : 380 - up - 19)
+                HWScrew().offset(x: i % 2 == 0 ? 10 : 366 - 19, y: i < 2 ? 10 : ph - 19)
             }
 
             // Title (two lines at most, shrinks to fit) and the line under it.
@@ -523,7 +603,7 @@ struct PhoneLiveDesk<Drawer: View>: View {
                 .frame(width: 366)
                 .offset(x: 0, y: 312 - up)
         }
-        .frame(width: 366, height: 380 - up, alignment: .topLeading)
+        .frame(width: 366, height: ph, alignment: .topLeading)
         .offset(x: 12, y: 340)
         .animation(.easeInOut(duration: 0.2), value: up)
     }
@@ -585,7 +665,7 @@ struct HWDrawerSheet<Content: View>: View {
                 Color(hex: "0C0C0A")
                 HWTile(name: HWTex.leatherGreen, opacity: 0.55)
                 tint.opacity(0.8).blendMode(.color)
-                HWTile(name: HWTex.wear, opacity: 0.3, blend: .multiply)
+                Color.black.opacity(0.24)
                 LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.25)], startPoint: .top, endPoint: .bottom)
             }
             .clipShape(shape)

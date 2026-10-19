@@ -167,11 +167,9 @@ struct VoteView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                HWDesk()
-                ScrollView { VotePanel().hwPanel(corner: 18, padding: 20).padding(16) }
-            }
-            .navigationTitle("What would you like to hear?")
+            ScrollView { VotePanel().padding(20) }
+                .hwPage()
+                .navigationTitle("What would you like to hear?")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
         }

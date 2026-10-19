@@ -74,8 +74,13 @@ final class ArtTheme: ObservableObject {
     /// Kept so existing call sites still compile; colors now apply immediately.
     func start() { ready = true; applyPending() }
 
-    /// Album-color mode is on: playing with a cover showing.
-    var albumOn: Bool { Self.enabled && listening && hasCover }
+    /// The server says this set may use the cover colors: the host ticked "Color-changing background" for their show, or an admin
+    /// did for the auto DJ. Same flag the website reads (np.colorChanging). Off by default.
+    @Published var colorChanging = false
+
+    /// Album-color mode is on: playing with a cover showing, only at night (7pm to 6am), and only when the set allows it.
+    /// Otherwise the app stays plain Babson green, like the site.
+    var albumOn: Bool { Self.enabled && listening && hasCover && colorChanging && Self.isNight }
 
     #if canImport(UIKit)
     func update(from image: UIImage?) {

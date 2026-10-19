@@ -132,7 +132,7 @@ Legend: [x] built, [ ] planned.
 
 ## iOS hardware overhaul (Oct 2026)
 - [x] Live screen rebuilt as a desk: cover sleeve with a record, leather panel with title, LED equalizer, volume dial (sets system volume), play and skip keys, reaction keys, pull-up drawer (poll, ratings, Apple Music / Spotify, tuned-in avatars, emojis).
-- [x] Open Duo and iPad: two-page layout with schedule and sleep timer, floating vertical tab bar.
+- [x] Open Duo and iPad: two-page layout: a now playing amp on the left, one join-in amp (reactions, poll, ratings, schedule) on the right.
 - [x] Full-screen boards (sideways phone and open Duo / iPad) with a QR code to react from a phone.
 - [x] Every other screen (Schedule, Library, Search, Profile, sign-in, Host, Admin) uses the same desk, ceramic / leather cards, steel keys and recessed fields.
 - [x] Cover color is picked quickly; the previous cover lingers briefly while the new one loads.

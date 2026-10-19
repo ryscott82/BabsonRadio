@@ -33,7 +33,7 @@ struct LivePlayerView: View {
     private var canPlay: Bool { auth.canListenLive || !auth.isSignedIn }
 
     private var album: Bool { theme.albumOn }
-    private var mode: HWMode { album ? .album(theme.main.color) : (scheme == .light ? .light : .dark) }
+    private var mode: HWMode { HWMode.resolve(album: album ? theme.main.color : nil, scheme: scheme) }
     private var glowColor: Color { album ? theme.main.color : .hwLED }
 
     var body: some View {
@@ -43,6 +43,8 @@ struct LivePlayerView: View {
     // MARK: Side pane (left half of an open foldable while another tab fills the right half)
 
     private var sidePlayer: some View {
+        // The same desk as the Live tab, and no safe-area override: it gets exactly the frame the left page has on the Live
+        // tab, so it does not change size or position when you switch.
         ZStack(alignment: .topLeading) {
             HWDesk(album: album ? theme.main.color : nil)
                 .frame(width: paneWidth > 0 ? paneWidth : nil)
@@ -51,8 +53,8 @@ struct LivePlayerView: View {
                 .frame(width: paneWidth > 0 ? paneWidth : nil)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .ignoresSafeArea(.container, edges: [.bottom, .leading])
         .environment(\.hwMode, mode)
-        .ignoresSafeArea()
         .onAppear { audio.startPolling() }
     }
 
@@ -60,17 +62,25 @@ struct LivePlayerView: View {
 
     private var mainBody: some View {
         GeometryReader { geo in
-            ZStack {
+            // Whatever the system keeps at the right edge (corner bar, clock): the window is wider than this view.
+            let windowW = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first?.keyWindow?.bounds.width ?? geo.size.width
+            let strip = hSize == .regular ? max(0, windowW - geo.frame(in: .global).maxX) : 0
+            ZStack(alignment: .topLeading) {
                 if hSize == .regular {
                     HWDesk(album: album ? theme.main.color : nil)
-                    duoContent
+                    // The system keeps a strip on the right for its corner bar. The two pages still split the real screen in half
+                    // (so the fold never cuts through an amp) and the right page keeps that strip clear itself.
+                    duoContent(trailingInset: strip)
+                        .frame(width: geo.size.width + strip, height: geo.size.height)
                 } else {
                     PhoneLiveDesk(canPlay: canPlay, drawerOpen: $drawerOpen, lockedNote: phoneNote) { drawerContent }
                         .frame(width: geo.size.width, height: geo.size.height)
                 }
             }
-            .frame(width: geo.size.width, height: geo.size.height)
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
         }
+        // Open foldable / iPad: the amps run to the bottom and left edges of the screen (their corners line up with the phone's).
+        .ignoresSafeArea(.container, edges: hSize == .regular ? [.bottom, .leading] : [])
         .background(Color.black.ignoresSafeArea())
         .environment(\.hwMode, mode)
         .overlay { EmojiRainOverlay() }
@@ -104,6 +114,7 @@ struct LivePlayerView: View {
         .onAppear {
             audio.startPolling(); ArtTheme.shared.start()
             Task { await VoteStore.shared.refresh() }
+            if BoardState.shared.wantBoard && hSize == .regular { BoardState.shared.wantBoard = false; showBoard = true }
             BoardState.shared.phoneBoard = landscapePhone; BoardState.shared.duoBoard = showBoard
             // Open Duo: the system leaves the tab bar hidden after a tab switch, and only a change in this flag brings it back.
             if hSize == .regular && !showBoard { BoardState.shared.nudgeDuo() }
@@ -118,17 +129,17 @@ struct LivePlayerView: View {
 
     /// Two desks, like an open book. ArrangementView puts them side by side, and stacks them top and bottom when the device is
     /// propped up like a tabletop: the show on top, the touch controls on the stable half.
-    @ViewBuilder private var duoContent: some View {
+    @ViewBuilder private func duoContent(trailingInset: CGFloat) -> some View {
         if #available(iOS 27.1, *) {
             ArrangementView {
                 DuoLeftPage(showBoard: $showBoard, canPlay: canPlay)
             } secondary: {
-                DuoRightPage(canPlay: canPlay)
+                DuoRightPage(canPlay: canPlay, trailingInset: trailingInset)
             }
         } else {
             HStack(spacing: 0) {
                 DuoLeftPage(showBoard: $showBoard, canPlay: canPlay)
-                DuoRightPage(canPlay: canPlay)
+                DuoRightPage(canPlay: canPlay, trailingInset: trailingInset)
             }
         }
     }
@@ -285,6 +296,8 @@ final class BoardState: ObservableObject {
     @Published var phoneBoard = false
     /// The open Duo / iPad: the board the person opened with the full screen button. Tracked on its own, apart from the phone.
     @Published var duoBoard = false
+    /// Set by the full screen button on the left page while another tab is showing: bring up the board on the Live tab.
+    @Published var wantBoard = false
     var open: Bool { phoneBoard || duoBoard }
 
     /// Flips the Duo tracker on and right back off so the tab bar gets a fresh show instruction.

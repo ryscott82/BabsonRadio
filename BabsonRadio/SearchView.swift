@@ -24,9 +24,6 @@ struct SearchView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
-                HWDesk()
-                    .ignoresSafeArea()
-
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
                         if query.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -37,9 +34,12 @@ struct SearchView: View {
                     }
                 }
             }
+            .hwPage()
             .navigationTitle("")
             .profileButton()
             .task(id: canUse) { if canUse { await lib.loadAll() } }
+            .onChange(of: isSearching) { _, now in SearchState.shared.active = now }
+            .onDisappear { SearchState.shared.active = false }
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $query,

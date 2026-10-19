@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Hardware design system
 // Real surfaces only: oak desk, leather panels, brushed steel keys, scratched glass, ceramic.
@@ -51,11 +52,21 @@ struct HWTile: View {
 enum HWMode: Equatable {
     case light
     case dark
+    /// Playing with a cover, system dark: near-black leather with a hint of the cover's hue.
     case album(Color)
+    /// Playing with a cover, system light: the light amp (ivory face) with a rim in the cover's color. Never flips to dark.
+    case albumLight(Color)
 }
 
 private struct HWModeKey: EnvironmentKey { static let defaultValue: HWMode = .dark }
+/// On a wide window (open Duo, iPad) ContentView draws the oak desk once, behind everything, so it never changes between tabs.
+/// Pages in the main window then skip their own desk. Sheets and covers (which do not sit on that desk) still draw one.
+private struct HWGlobalDeskKey: EnvironmentKey { static let defaultValue = false }
 extension EnvironmentValues {
+    var hwGlobalDesk: Bool {
+        get { self[HWGlobalDeskKey.self] }
+        set { self[HWGlobalDeskKey.self] = newValue }
+    }
     var hwMode: HWMode {
         get { self[HWModeKey.self] }
         set { self[HWModeKey.self] = newValue }
@@ -68,13 +79,20 @@ extension HWMode {
         switch self {
         case .light: return Color(hex: "007A50")
         case .dark: return nil
-        case .album(let c): return c
+        case .album(let c), .albumLight(let c): return c
         }
+    }
+    /// The mode for a page: the cover's hue when one is playing, in the same light or dark as the rest of the app.
+    static func resolve(album: Color?, scheme: ColorScheme) -> HWMode {
+        if let a = album { return scheme == .light ? .albumLight(a) : .album(a) }
+        return scheme == .light ? .light : .dark
     }
     /// Text on a panel: cream on leather, dark ink on the light amp's ivory face.
     var onPanelText: Color { isLight ? Color(hex: "1A1710") : .hwCream }
     var onPanelSub: Color { isLight ? Color(hex: "5B5444") : Color(hex: "B1AA94") }
-    var isLight: Bool { if case .light = self { return true } else { return false } }
+    var isLight: Bool {
+        switch self { case .light, .albumLight: return true; default: return false }
+    }
 }
 
 // MARK: Desk (page background)
@@ -84,10 +102,15 @@ struct HWDesk: View {
     var album: Color? = nil
     var body: some View {
         ZStack {
-            if let a = album {
+            if let a = album, scheme == .dark {
                 Color(hex: "14130F")
                 HWTile(name: HWTex.oakBlack, opacity: 0.9)
                 a.opacity(0.22).blendMode(.color)
+            } else if let a = album {
+                // Light mode with a cover playing: the light oak, washed with the cover's hue.
+                Color(hex: "D9D2C2")
+                HWTile(name: HWTex.oakLight)
+                a.opacity(0.26).blendMode(.color)
             } else if scheme == .dark {
                 Color(hex: "14130F")
                 HWTile(name: HWTex.oakDark)
@@ -114,34 +137,33 @@ struct HWLeather: View {
         let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)
         // The light amp: green leather rim, an ivory ceramic face set 15 pt in, and black glass caps on the corners.
         let face = mode.isLight && tint != nil
+        let ringColor: Color = { if case .albumLight(let c) = mode { return c }; return Color(hex: "006644") }()
         ZStack {
             shape.fill(Color(hex: "0C0C0A"))
             if let t = tint {
                 HWTile(name: HWTex.leatherGreen, opacity: 0.55)
                 t.opacity(0.78).blendMode(.color)
                 // Album mode: still black leather, with only a hint of the cover's hue.
-                if case .album = mode { Color.black.opacity(0.62) }
+                if case .album = mode { Color.black.opacity(0.74) } else { Color.black.opacity(0.24) }
             } else {
                 HWTile(name: HWTex.leatherBlack)
-                Color.black.opacity(0.42)
+                Color.black.opacity(0.6)
             }
-            HWTile(name: HWTex.wear, opacity: 0.35, blend: .multiply)
             LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.28)],
                            startPoint: .top, endPoint: .bottom)
             if stitch {
                 shape.inset(by: 7)
-                    .stroke(Color(hex: face ? "F6ECC8" : "F6F2E7").opacity(face ? 0.6 : 0.32), style: StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
+                    .stroke(Color(hex: face ? "F6F2E7" : "F6F2E7").opacity(face ? 0.6 : 0.32), style: StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
             }
             if face {
                 let inner = RoundedRectangle(cornerRadius: 12, style: .continuous)
                 ZStack {
-                    Color(hex: "F4E9CF")
-                    HWTile(name: HWTex.cface, opacity: 0.9, blend: .multiply)
-                    HWTile(name: "hw_wear_face", opacity: 0.5, blend: .multiply)
-                    inner.strokeBorder(Color(hex: "3C280A").opacity(0.28), lineWidth: 5).blur(radius: 3)
+                    Color(hex: "F7F5F0")
+                    HWTile(name: HWTex.cface, opacity: 0.55, blend: .multiply)
+                    inner.strokeBorder(Color(hex: "232823").opacity(0.28), lineWidth: 5).blur(radius: 3)
                 }
                 .clipShape(inner)
-                .overlay(inner.strokeBorder(Color(hex: "006644").opacity(0.75), lineWidth: 1.5))
+                .overlay(inner.strokeBorder(ringColor.opacity(0.75), lineWidth: 1.5))
                 .padding(15)
                 // Corner caps.
                 GeometryReader { g in
@@ -342,23 +364,52 @@ struct HWAvatar: View {
     var text: String
     var color: Color? = nil
     var size: CGFloat = 24
+    /// The condensed display face (profile page) instead of the system bold used on tiny discs.
+    var display = false
+
+    /// True when dark letters read better on this disc. Works on roughly what the disc looks like after the metal and the tint
+    /// are blended (the tint over steel), so a dark pick like navy gets light letters and a pale pick gets dark ones.
+    static func darkInk(on color: Color?) -> Bool {
+        guard let color else { return true }
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(color).getRed(&r, green: &g, blue: &b, alpha: &a)
+        func lin(_ v: CGFloat) -> Double { let x = Double(v); return x <= 0.03928 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4) }
+        let steel: CGFloat = 0.66
+        let L = 0.2126 * lin(0.35 * steel + 0.65 * r) + 0.7152 * lin(0.35 * steel + 0.65 * g) + 0.0722 * lin(0.35 * steel + 0.65 * b)
+        // Contrast with the dark ink (about 0.066 under the 0.05 offset) against contrast with the cream ink.
+        return (L + 0.05) * (L + 0.05) >= 0.064
+    }
+
     var body: some View {
+        let dark = Self.darkInk(on: color)
+        let rim = max(1.5, size * 0.055)
         ZStack {
-            Circle().fill(Color.clear)
+            // Always brushed steel underneath, so a dark pick still looks like metal.
+            Circle().fill(Color(hex: "8F8E88"))
                 .overlay(HWTile(name: HWTex.steel).clipShape(Circle()))
             if let c = color {
-                Circle().fill(c).blendMode(.overlay)
-                Circle().fill(c.opacity(0.55))
+                Circle().fill(c).blendMode(.color)
+                Circle().fill(c).opacity(0.40).blendMode(.multiply)
+                Circle().fill(c).opacity(0.20)
             }
-            Circle().fill(RadialGradient(colors: [.white.opacity(0.4), .clear],
-                                         center: UnitPoint(x: 0.34, y: 0.22), startRadius: 0, endRadius: size * 0.6))
+            // Brushed sheen: a light and a dark band that turn around the disc.
+            Circle().fill(AngularGradient(colors: [.white.opacity(0.0), .white.opacity(0.30), .white.opacity(0.0), .black.opacity(0.16),
+                                                   .white.opacity(0.0), .white.opacity(0.24), .white.opacity(0.0), .black.opacity(0.14), .white.opacity(0.0)],
+                                          center: .center, angle: .degrees(-25)))
+            // Highlight up and left, shade at the bottom.
+            Circle().fill(RadialGradient(colors: [.white.opacity(0.5), .clear],
+                                         center: UnitPoint(x: 0.32, y: 0.2), startRadius: 0, endRadius: size * 0.62))
+            Circle().fill(LinearGradient(colors: [.clear, .black.opacity(0.24)], startPoint: .center, endPoint: .bottom))
             Text(text)
-                .font(.system(size: size * 0.42, weight: .bold))
-                .foregroundStyle(Color(hex: "22221F").opacity(0.82))
-                .shadow(color: .white.opacity(0.5), radius: 0, x: 0, y: 1)
+                .font(display ? BRFont.display(size * (text.count > 1 ? 0.4 : 0.5)) : .system(size: size * 0.42, weight: .bold))
+                .foregroundStyle(dark ? Color(hex: "22221F").opacity(0.88) : Color(hex: "FAF6EC"))
+                .shadow(color: dark ? .white.opacity(0.5) : .black.opacity(0.55), radius: 0, x: 0, y: 1)
         }
         .frame(width: size, height: size)
-        .overlay(Circle().strokeBorder(Color.hwCream.opacity(0.5), lineWidth: 2))
+        // Machined rim: bright on the upper left, dark on the lower right.
+        .overlay(Circle().strokeBorder(LinearGradient(colors: [.white.opacity(0.9), Color(hex: "B9B8B0"), Color(hex: "4E4D47")],
+                                                      startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: rim))
+        .overlay(Circle().inset(by: rim).strokeBorder(Color.black.opacity(0.28), lineWidth: 0.6))
         .shadow(color: .black.opacity(0.42), radius: 3, x: 0, y: 3)
     }
 }
@@ -440,7 +491,7 @@ struct HWPanelTitle: View {
 extension Color {
     /// Flat color for places that need a Color (cards, chips): the recessed field tone.
     static func hwField(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color(hex: "1B1B17") : Color(hex: "F4EFE2")
+        scheme == .dark ? Color(hex: "1B1B17") : Color(hex: "F6F4EF")
     }
 }
 
@@ -455,4 +506,44 @@ struct HWFieldFill: View {
                            startPoint: .top, endPoint: .init(x: 0.5, y: 0.35))
         }
     }
+}
+
+
+// MARK: Pages (Schedule, Library, Search, Profile, sign-in ...)
+// Like the website: the page itself is one big panel on the oak desk. Black leather in dark mode; green leather rim with an ivory
+// ceramic face in light mode. Text always sits on the panel, never straight on the wood.
+
+private struct HWFlushBottomKey: EnvironmentKey { static let defaultValue = false }
+extension EnvironmentValues {
+    /// True for the pages beside the player on an open foldable: the panel runs down to the bottom edge, like the player's amp.
+    var hwFlushBottom: Bool { get { self[HWFlushBottomKey.self] } set { self[HWFlushBottomKey.self] = newValue } }
+}
+
+struct HWPageModifier: ViewModifier {
+    @Environment(\.hwFlushBottom) private var flushBottom
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.hwGlobalDesk) private var globalDesk
+    @Environment(\.isPresented) private var isPresented
+    @ObservedObject private var theme = ArtTheme.shared
+    func body(content: Content) -> some View {
+        let m = HWMode.resolve(album: theme.albumOn ? theme.main.color : nil, scheme: scheme)
+        let light = m.isLight
+        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+        ZStack {
+            if !(globalDesk && !isPresented) { HWDesk(album: theme.albumOn ? theme.main.color : nil) }
+            HWLeather(tint: m.leatherTint, corner: 22, stitch: true)
+                .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, flushBottom ? 0 : 8)
+            content
+                .scrollContentBackground(.hidden)
+                .safeAreaPadding(EdgeInsets(top: light ? 14 : 4, leading: light ? 14 : 4, bottom: light ? 14 : 4, trailing: light ? 14 : 4))
+                .environment(\.hwMode, m)
+                .clipShape(shape)
+                .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, flushBottom ? 0 : 8)
+        }
+    }
+}
+
+extension View {
+    /// Puts the whole page on a leather / ceramic panel over the oak desk.
+    func hwPage() -> some View { modifier(HWPageModifier()) }
 }

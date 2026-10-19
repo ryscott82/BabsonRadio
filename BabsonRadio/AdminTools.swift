@@ -13,7 +13,7 @@ private struct Sheet<Content: View>: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) { content }.padding(20)
         }
-        .background(HWDesk())
+        .hwPage()
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -136,13 +136,18 @@ private struct DecideSheet: View {
                     if req.makePublic { Text("They agreed to share recordings publicly.").font(.footnote) }
                     if req.cleanHours { Text("Falls in clean hours.").font(.footnote).foregroundColor(.red) }
                 }
+                .listRowBackground(HWFieldFill())
                 Section("Note to them (optional)") { TextField("Note", text: $note, axis: .vertical) }
+                .listRowBackground(HWFieldFill())
                 Section("Connection details (optional)") { TextField("Live stream login or instructions", text: $info, axis: .vertical) }
+                .listRowBackground(HWFieldFill())
                 Section {
                     Button { go(true) } label: { Text(busy ? "One moment…" : "Approve").frame(maxWidth: .infinity) }.disabled(busy)
                     Button(role: .destructive) { go(false) } label: { Text("Decline").frame(maxWidth: .infinity) }.disabled(busy)
                 }
+                .listRowBackground(HWFieldFill())
             }
+            .hwPage()
             .navigationTitle("Request")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }

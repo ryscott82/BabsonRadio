@@ -51,6 +51,7 @@ export default function VoteCard() {
   return (
     <section className="hw-panel hw-big space-y-4">
       <div>
+        <span className="hw-tape">Requests</span>
         <h2 className="hw-title !whitespace-normal text-[1.9rem]">What would you like to hear?</h2>
         <div className="flex items-baseline justify-between gap-4 mt-1 text-xs">
           <span className="text-br-gold font-medium">{s.upNext?.label ? `${s.upNext.label} won ${clock(s.upNext.blockStart)}.` : ''}</span>

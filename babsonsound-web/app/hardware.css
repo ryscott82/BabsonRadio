@@ -14,7 +14,8 @@
   --hw-wood-bg: #6a4a2f;
   --hw-leather: url(/hw/leather-green.jpg);
   --hw-leather-bg: #0b5a3d;
-  --hw-face-bg: url(/hw/cface.jpg) center / cover, #F4E9CF;
+  --hw-wear: url(/hw/wear.png) 0 0 / 420px auto;
+  --hw-face-bg: url(/hw/wear-face.png) 0 0 / 420px auto, url(/hw/cface.jpg) center / cover, #F4E9CF;
   --hw-face-blend: multiply;
   --hw-face-ring: 0 0 0 1.5px rgba(0,102,68,.75);
   --hw-stitch: rgba(246,236,200,.6);
@@ -81,8 +82,8 @@ body:has(.hw-stage) {
   position: relative; isolation: isolate; overflow: hidden;
   border-radius: 20px; padding: 28px;
   color: var(--br-text);
-  background: linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.30)), var(--hw-leather-bg) var(--hw-leather) center / 300px auto;
-  box-shadow: 0 14px 24px rgba(24,16,8,.45), 0 2px 4px rgba(24,16,8,.3), inset 0 1px 0 rgba(250,246,236,.5), inset 0 -2px 0 rgba(24,26,18,.14);
+  background: var(--hw-wear), linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.30)), var(--hw-leather-bg) var(--hw-leather) center / 300px auto;
+  box-shadow: inset 0 0 22px rgba(240,230,205,.07), 0 14px 24px rgba(24,16,8,.45), 0 2px 4px rgba(24,16,8,.3), inset 0 1px 0 rgba(250,246,236,.5), inset 0 -2px 0 rgba(24,26,18,.14);
   outline: 1.5px dashed var(--hw-stitch); outline-offset: -8px;
 }
 /* The face: ivory ceramic in light mode, nothing (bare leather) in dark mode. */
@@ -123,6 +124,7 @@ body:has(.hw-stage) {
 .hw-panel .sk-key, .hw-main .sk-key, .hw-board .sk-key, .hw-bar .sk-key, .hw-banner .sk-key, .hw-key, .hw-pill {
   color: var(--hw-key-ink); border: 0;
   background:
+    url(/hw/scratch.png) 0 0 / 200px auto,
     linear-gradient(rgba(250,246,236,.13) 0, rgba(250,246,236,.03) 46%, rgba(250,246,236,0) 54%),
     var(--hw-key-tint),
     url(/hw/steel.jpg) center / 220px auto;
@@ -134,6 +136,7 @@ body:has(.hw-stage) {
 .hw-panel .sk-key[aria-pressed="true"], .hw-main .sk-key[aria-pressed="true"], .hw-board .sk-key[aria-pressed="true"], .hw-key[aria-pressed="true"], .hw-bar a[aria-current="page"] {
   transform: translateY(3px);
   background:
+    url(/hw/scratch.png) 0 0 / 200px auto,
     linear-gradient(rgba(0,0,0,.38), rgba(0,0,0,.08)),
     linear-gradient(rgba(30,30,28,.78), rgba(30,30,28,.78)),
     url(/hw/steel.jpg) center / 220px auto;
@@ -280,13 +283,13 @@ body:has(.hw-stage) {
 .art-ui { --hw-eq: var(--br-accent); }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) .art-ui .hw-panel {
-    background: linear-gradient(rgba(0,0,0,.02), rgba(0,0,0,.14)), linear-gradient(var(--art-1), var(--art-1)), linear-gradient(rgba(255,255,255,.34), rgba(255,255,255,.34)), var(--hw-leather) center / 300px auto, #333;
-    background-blend-mode: normal, color, normal, normal, normal;
+    background: var(--hw-wear), linear-gradient(rgba(0,0,0,.02), rgba(0,0,0,.14)), linear-gradient(var(--art-1), var(--art-1)), linear-gradient(rgba(255,255,255,.34), rgba(255,255,255,.34)), var(--hw-leather) center / 300px auto, #333;
+    background-blend-mode: normal, normal, color, normal, normal, normal;
   }
 }
 :root[data-theme="light"] .art-ui .hw-panel {
-  background: linear-gradient(rgba(0,0,0,.02), rgba(0,0,0,.14)), linear-gradient(var(--art-1), var(--art-1)), linear-gradient(rgba(255,255,255,.34), rgba(255,255,255,.34)), var(--hw-leather) center / 300px auto, #333;
-  background-blend-mode: normal, color, normal, normal, normal;
+  background: var(--hw-wear), linear-gradient(rgba(0,0,0,.02), rgba(0,0,0,.14)), linear-gradient(var(--art-1), var(--art-1)), linear-gradient(rgba(255,255,255,.34), rgba(255,255,255,.34)), var(--hw-leather) center / 300px auto, #333;
+  background-blend-mode: normal, normal, color, normal, normal, normal;
 }
 
 /* ── Every other page (Oct 2026) ──────────────────────────────────────────────
@@ -387,7 +390,7 @@ body:has(.hw-stage) {
 .art-desk .ln2 { -webkit-mask-image: url(/hw/lnl2.png); mask-image: url(/hw/lnl2.png); }
 /* dark: black walnut desk, tinted by the cover; lines glow */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .art-desk .plate { background: #1a1210 url(/hw/oak-black.jpg) center top / cover; }
+  :root:not([data-theme="light"]) .art-desk .plate { background: #070605 url(/hw/oak-ebony.jpg) center top / cover; }
   :root:not([data-theme="light"]) .art-desk .tint { display: block; mix-blend-mode: color; opacity: .55;
     background: radial-gradient(ellipse 70% 38% at 25% 22%, var(--art-1), transparent 70%), radial-gradient(ellipse 60% 34% at 80% 60%, var(--art-3), transparent 70%), radial-gradient(ellipse 70% 30% at 30% 90%, var(--art-2), transparent 70%); }
   :root:not([data-theme="light"]) .art-desk .ln { mix-blend-mode: screen; background: linear-gradient(160deg, color-mix(in srgb, var(--art-1) 45%, #fff), color-mix(in srgb, var(--art-3) 55%, #fff)); }
@@ -395,10 +398,17 @@ body:has(.hw-stage) {
   :root:not([data-theme="light"]) .art-desk .ln1 { -webkit-mask-image: url(/hw/lnd1.png); mask-image: url(/hw/lnd1.png); }
   :root:not([data-theme="light"]) .art-desk .ln2 { -webkit-mask-image: url(/hw/lnd2.png); mask-image: url(/hw/lnd2.png); }
 }
-:root[data-theme="dark"] .art-desk .plate { background: #1a1210 url(/hw/oak-black.jpg) center top / cover; }
+:root[data-theme="dark"] .art-desk .plate { background: #070605 url(/hw/oak-ebony.jpg) center top / cover; }
 :root[data-theme="dark"] .art-desk .tint { display: block; mix-blend-mode: color; opacity: .55;
   background: radial-gradient(ellipse 70% 38% at 25% 22%, var(--art-1), transparent 70%), radial-gradient(ellipse 60% 34% at 80% 60%, var(--art-3), transparent 70%), radial-gradient(ellipse 70% 30% at 30% 90%, var(--art-2), transparent 70%); }
 :root[data-theme="dark"] .art-desk .ln { mix-blend-mode: screen; background: linear-gradient(160deg, color-mix(in srgb, var(--art-1) 45%, #fff), color-mix(in srgb, var(--art-3) 55%, #fff)); }
 :root[data-theme="dark"] .art-desk .ln0 { -webkit-mask-image: url(/hw/lnd0.png); mask-image: url(/hw/lnd0.png); }
 :root[data-theme="dark"] .art-desk .ln1 { -webkit-mask-image: url(/hw/lnd1.png); mask-image: url(/hw/lnd1.png); }
 :root[data-theme="dark"] .art-desk .ln2 { -webkit-mask-image: url(/hw/lnd2.png); mask-image: url(/hw/lnd2.png); }
+
+/* ── Gaffer tape label: a strip of matte black tape with a torn end, a musician's channel label ── */
+.hw-tape { display: inline-block; padding: 3px 14px 4px 11px; transform: rotate(-1.6deg); margin-bottom: 6px;
+  font-family: 'Barlow Condensed', 'Barlow', system-ui, sans-serif; font-weight: 700; font-size: 15px; line-height: 1.2; letter-spacing: .03em; color: #E9E2CE;
+  background: linear-gradient(rgba(255,255,255,.07), rgba(255,255,255,0) 40%, rgba(0,0,0,.18)), #1B1B19;
+  box-shadow: 0 1px 2px rgba(0,0,0,.45);
+  clip-path: polygon(0 0, 100% 0, 98% 22%, 100% 48%, 97.5% 74%, 100% 100%, 0 100%, 1.5% 70%, 0 40%); }

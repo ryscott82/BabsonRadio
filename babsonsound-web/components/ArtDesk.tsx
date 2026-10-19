@@ -16,6 +16,7 @@ export default function ArtDesk({ colors, on }: { colors: [string, string, strin
     if (!on || !host || !el) return
     const lines = Array.from(el.querySelectorAll<HTMLElement>('.ln'))
     const out = new Array<number>(3).fill(0)
+    const calm = [0, 0, 0]
     const shape = makeShaper(3) // bass, mids (transients only), highs: same shaping as the LED bars
     let raf = 0
     const tick = () => {
@@ -26,11 +27,12 @@ export default function ArtDesk({ colors, on }: { colors: [string, string, strin
       const real = playing && readBands(out)
       el.dataset.real = real ? '1' : '0'
       if (!real) { lines.forEach(l => { l.style.opacity = ''; l.style.transform = '' }); return }
+      // Calm and smooth: the shaped levels are eased again, move over a narrow range and never snap.
       const { shown, flash } = shape(out)
       lines.forEach((l, i) => {
-        const v = Math.min(1, shown[i] + flash * 0.35)
-        l.style.opacity = String(0.2 + 0.8 * v)
-        l.style.transform = `scale(${1 + 0.02 * v})`
+        calm[i] += (Math.min(1, shown[i] + flash * 0.15) - calm[i]) * (shown[i] > calm[i] ? 0.12 : 0.05)
+        l.style.opacity = String(0.35 + 0.5 * calm[i])
+        l.style.transform = `scale(${1 + 0.006 * calm[i]})`
       })
     }
     raf = requestAnimationFrame(tick)

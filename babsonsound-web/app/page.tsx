@@ -42,7 +42,7 @@ export default async function HomePage() {
         <div className="grid lg:grid-cols-[1.1fr_1fr] gap-14 items-stretch lg:[&>*:last-child]:self-start">
           <section className="hw-panel hw-big">
             <div className="flex items-baseline justify-between gap-4 pb-3 border-b border-br-dk-border">
-              <h2 className="hw-title !whitespace-normal text-[1.9rem]">On the air today</h2>
+              <div><span className="hw-tape">Today</span><h2 className="hw-title !whitespace-normal text-[1.9rem]">On the air today</h2></div>
               <Link href="/schedule" className="text-sm font-semibold text-br-gold underline underline-offset-4">See the week</Link>
             </div>
             {schedule.length > 0 ? (

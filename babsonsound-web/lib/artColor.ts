@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from 'react'
 
+/** Covers from another server are read through our own copy (/api/art), because the radio server doesn't allow cross-origin reads. */
+export function artSrc(url: string): string {
+  try { if (new URL(url, location.href).origin !== location.origin) return `/api/art?u=${encodeURIComponent(url)}` } catch { /* ignore */ }
+  return url
+}
+
 /**
  * A vivid color pulled from a cover image ("#rrggbb"), or '' when the image can't be read
  * (the picture's server must allow cross-origin reads; if it doesn't we quietly fall back).
@@ -36,7 +42,7 @@ export function useArtColor(url: string | undefined): string {
       } catch { if (alive) setState({ url, color: '' }) }
     }
     img.onerror = () => { if (alive) setState({ url, color: '' }) }
-    img.src = url
+    img.src = artSrc(url)
     return () => { alive = false }
   }, [url])
   return url && state.url === url ? state.color : ''
@@ -128,7 +134,7 @@ export function useArtPalette(url: string | undefined): string[] {
       } catch { if (alive) setState({ url, colors: [] }) }
     }
     img.onerror = () => { if (alive) setState({ url, colors: [] }) }
-    img.src = url
+    img.src = artSrc(url)
     return () => { alive = false }
   }, [url])
   return ART_THEME && url && state.url === url ? state.colors : []

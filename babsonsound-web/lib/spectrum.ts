@@ -85,25 +85,39 @@ export function setBoostDb(db: number) {
 /** Call from a click/tap handler: browsers keep the audio context asleep until then. */
 export function wakeSpectrum() { current?.ctx.resume().catch(() => {}) }
 
-/** Fills `out` with 0..1 levels, log-spaced from about 50 Hz to 15 kHz. Returns false while there is nothing to read. */
+/**
+ * Fills `out` with 0..1 levels, log-spaced from about 50 Hz to 15 kHz, on a real decibel scale: 0 is -70 dB and 1 is -10 dB
+ * (a band of music rarely gets near full scale, so a full bar means a genuinely loud band). Returns false while there is nothing to read.
+ * Also measures the stream's sample peak (see streamPeak).
+ */
+let lastPeak = 0
+let td: Uint8Array<ArrayBuffer> | null = null
+/** Highest sample of the last frame, 0..1 (1 = 0 dBFS). Before any boost. */
+export const streamPeak = () => lastPeak
 export function readBands(out: number[]): boolean {
   if (!current) return false
   const { an, data, ctx } = current
   an.getByteFrequencyData(data)
+  if (!td || td.length !== an.fftSize) td = new Uint8Array(new ArrayBuffer(an.fftSize))
+  an.getByteTimeDomainData(td)
+  let pk = 0
+  for (let i = 0; i < td.length; i++) pk = Math.max(pk, Math.abs(td[i] - 128))
+  lastPeak = pk / 128
   const n = out.length, hz = ctx.sampleRate / an.fftSize
+  const dbPerByte = (an.maxDecibels - an.minDecibels) / 255
   let any = 0
-  // Bands are spread unevenly: the lows and highs get more of them (finer detail), the crowded mids are squeezed into a few,
-  // (the shaper below keeps the mids from sitting high).
-  const warp = (u: number) => u - (0.35 * Math.sin(2 * Math.PI * u)) / (2 * Math.PI)
+  // Bands are spread unevenly: the lows and highs get a little more room, the crowded mids a little less.
+  const warp = (u: number) => u - (0.3 * Math.sin(2 * Math.PI * u)) / (2 * Math.PI)
   for (let i = 0; i < n; i++) {
     const g0 = warp(i / n), g1 = warp((i + 1) / n)
     const lo = Math.max(1, Math.floor((50 * Math.pow(300, g0)) / hz))
     const hi = Math.max(lo + 1, Math.ceil((50 * Math.pow(300, g1)) / hz))
     let sum = 0
     for (let k = lo; k < hi && k < data.length; k++) sum += data[k]
-    const v = sum / (hi - lo) / 255
-    any += v
-    out[i] = Math.min(1, v * (1 + 0.5 * ((i + 0.5) / n))) // lift the quieter highs; the shaper below does the rest
+    const v = sum / (hi - lo)
+    any += v / 255
+    const db = an.minDecibels + v * dbPerByte
+    out[i] = Math.max(0, Math.min(1, (db + 70) / 60 * (1 + 0.25 * ((i + 0.5) / n)))) // a small lift for the naturally quieter highs
   }
   return any > 0.01
 }
@@ -114,46 +128,39 @@ export function registerAudio(el: HTMLAudioElement | null) { player = el }
 export const audioPlaying = () => !!player && !player.paused && !player.ended
 
 /**
- * Turns raw band levels into what the eyes should see, so the display dances instead of sitting still:
- *  - auto gain: every band is scaled between its own recent floor and ceiling, so quiet and loud tracks both fill the display;
- *  - lows and highs show their level; the mids (voice and melody) show how much each band stands out from its neighbours, and hold notes a little longer;
- *  - the attack follows how hard a band hit: loud bursts shoot up at once, soft or steady sound creeps;
- *  - a kick (a sudden jump in the lowest bands) flashes every band a little (`flash`, 0..1);
+ * Turns band levels into what the eyes should see, realistic but lively:
+ *  - a band sitting steadily at some level shows mid-height; only real hits (well above its own recent average) jump up, and only
+ *    genuinely loud bands reach the top;
+ *  - the attack follows how hard a band hit: loud bursts shoot up, soft or steady sound creeps;
+ *  - a gentle auto gain brings quiet songs up a little and loud ones down a little;
+ *  - a kick (a sudden jump in the lowest bands) flashes every band slightly (`flash`, 0..1);
  *  - silence drops everything to the floor within about a tenth of a second.
- * Call the returned function once per frame with the raw 0..1 levels; it returns `shown` (0..1 per band) and `flash`.
+ * Call the returned function once per frame with the levels from readBands; it returns `shown` (0..1 per band) and `flash`.
  */
 export function makeShaper(n: number) {
-  const avg = new Array<number>(n).fill(0), lo = new Array<number>(n).fill(0), hi = new Array<number>(n).fill(0.2), shown = new Array<number>(n).fill(0)
-  let flash = 0, kickAvg = 0, cool = 0
+  const avg = new Array<number>(n).fill(0), shown = new Array<number>(n).fill(0)
+  let flash = 0, kickAvg = 0, cool = 0, gmax = 0.8
   return (raw: number[]) => {
-    let mean = 0
-    for (let i = 0; i < n; i++) mean += raw[i]
+    let mean = 0, top = 0
+    for (let i = 0; i < n; i++) { mean += raw[i]; top = Math.max(top, raw[i]) }
     mean /= n
-    const quiet = mean < 0.03
+    const quiet = mean < 0.04
+    gmax = top > gmax ? top : gmax + (top - gmax) * 0.003 // loudest band lately: up at once, down over several seconds
+    const gain = Math.max(0.85, Math.min(1.3, 0.85 / Math.max(0.3, gmax)))
     const kr = n > 1 ? (raw[0] + raw[1]) / 2 : raw[0]
     kickAvg += (kr - kickAvg) * 0.05
     if (cool > 0) cool--
-    if (!quiet && cool === 0 && kr - kickAvg > 0.1 && kr > 0.22) { flash = 1; cool = 8 }
-    flash *= 0.86
-    const gs = new Array<number>(n)
+    if (!quiet && cool === 0 && kr - kickAvg > 0.12 && kr > 0.3) { flash = 1; cool = 9 }
+    flash *= 0.88
     for (let i = 0; i < n; i++) {
-      const r = raw[i]
-      hi[i] = r > hi[i] ? r : hi[i] + (r - hi[i]) * 0.004 // ceiling: up at once, down over a few seconds
-      lo[i] = r < lo[i] ? r : lo[i] + (r - lo[i]) * 0.002
-      gs[i] = Math.max(0, Math.min(1, (r - lo[i]) / Math.max(0.12, hi[i] - lo[i])))
-    }
-    for (let i = 0; i < n; i++) {
+      const u = Math.min(1, raw[i] * gain)
       const mid = Math.pow(Math.sin((Math.PI * (i + 0.5)) / n), 2) // 0 at the ends, 1 in the middle
-      // Mids (voice and melody): judge each band against its neighbours, so sung notes and instrument lines stand out of the
-      // broadband wash that drums make, and let a held note hold; lows and highs just show level.
-      const nb = ((gs[Math.max(0, i - 1)] + gs[Math.min(n - 1, i + 1)]) / 2)
-      const g = gs[i] * (1 - 0.75 * mid) + Math.max(0, Math.min(1, (gs[i] - nb) * 2.2 + gs[i] * 0.45)) * 0.75 * mid
-      avg[i] += (g - avg[i]) * 0.05
-      const burst = Math.max(0, g - avg[i])
-      const target0 = Math.pow(g, 1.4) * 0.62 + burst * 1.4
-      const target = quiet ? 0.02 : Math.min(1, target0 + flash * 0.22)
-      const atk = Math.min(1, 0.08 + burst * 7 + mid * 0.25)
-      shown[i] = target > shown[i] ? shown[i] + (target - shown[i]) * atk : Math.max(target, shown[i] * (quiet ? 0.45 : 0.7 + 0.14 * mid))
+      avg[i] += (u - avg[i]) * 0.03
+      const burst = Math.max(0, u - avg[i])
+      const base = Math.pow(u, 1.6) * 0.78 + burst * 1.6
+      const target = quiet ? 0.02 : Math.min(1, base * (1 - 0.15 * mid) + flash * 0.1)
+      const atk = Math.min(1, 0.15 + burst * 5)
+      shown[i] = target > shown[i] ? shown[i] + (target - shown[i]) * atk : Math.max(target, shown[i] * (quiet ? 0.45 : 0.8))
     }
     return { shown, flash }
   }
@@ -180,12 +187,14 @@ export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: bool
       if (!ok) { quiet++; if (quiet > 180) box.dataset.real = 'false'; if (quiet <= 4) return; lv.fill(0) } // silence: let the bars fall to the floor
       else { quiet = 0; box.dataset.real = 'true' }
       const { shown } = shape(lv)
+      // The red top cap means real clipping risk: the song itself within about 1 dB of full scale, or the volume knob boosting it there.
+      const hot = streamPeak() * Math.pow(10, boostDb / 20) >= 0.89
       for (let i = 0; i < N; i++) {
         const segs = Math.round(shown[i] * segments)
         if (segs >= pk[i]) { pk[i] = segs; hold[i] = 20 } else if (hold[i]-- <= 0) pk[i] = Math.max(0, pk[i] - 0.2)
         bars[i].style.setProperty('--lv', String(segs / segments))
         bars[i].style.setProperty('--pk', String(Math.min(segments, Math.round(pk[i])) / segments))
-        bars[i].dataset.hot = pk[i] >= segments - 1 ? '1' : '0'
+        bars[i].dataset.hot = hot && pk[i] >= segments - 1 ? '1' : '0'
       }
     }
     raf = requestAnimationFrame(tick)

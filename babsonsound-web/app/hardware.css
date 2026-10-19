@@ -320,25 +320,25 @@ body:has(.hw-stage) {
 /* ── Dark mode top bar: black, scratched glass (matches the mock-up) ───── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .hw-bar {
-    background: #05070A url(/hw/navglass.jpg) center / 100% 100% !important;
+    background: #000 url(/hw/navglass.jpg) center / 100% 100% !important;
     -webkit-backdrop-filter: none; backdrop-filter: none;
     border-bottom: 1px solid rgba(250,246,236,.18) !important;
     box-shadow: 0 8px 18px rgba(24,26,18,.5), inset 0 1px 0 rgba(250,246,236,.2), inset 0 -1px 0 rgba(24,26,18,.6) !important;
   }
   :root:not([data-theme="light"]) .hw-bar::before {
     content: ''; position: absolute; inset: 0; pointer-events: none;  z-index: -1;
-    background: linear-gradient(112deg, rgba(250,246,236,.13) 0, rgba(250,246,236,.13) 22%, rgba(250,246,236,0) 34%), linear-gradient(rgba(250,246,236,.09), rgba(250,246,236,0) 50%);
+    background: linear-gradient(112deg, rgba(250,246,236,.07) 0, rgba(250,246,236,.07) 22%, rgba(250,246,236,0) 34%), linear-gradient(rgba(250,246,236,.04), rgba(250,246,236,0) 50%);
   }
 }
 :root[data-theme="dark"] .hw-bar {
-  background: #05070A url(/hw/navglass.jpg) center / 100% 100% !important;
+  background: #000 url(/hw/navglass.jpg) center / 100% 100% !important;
   -webkit-backdrop-filter: none; backdrop-filter: none;
   border-bottom: 1px solid rgba(250,246,236,.18) !important;
   box-shadow: 0 8px 18px rgba(24,26,18,.5), inset 0 1px 0 rgba(250,246,236,.2), inset 0 -1px 0 rgba(24,26,18,.6) !important;
 }
 :root[data-theme="dark"] .hw-bar::before {
   content: ''; position: absolute; inset: 0; pointer-events: none;  z-index: -1;
-  background: linear-gradient(112deg, rgba(250,246,236,.13) 0, rgba(250,246,236,.13) 22%, rgba(250,246,236,0) 34%), linear-gradient(rgba(250,246,236,.09), rgba(250,246,236,0) 50%);
+  background: linear-gradient(112deg, rgba(250,246,236,.07) 0, rgba(250,246,236,.07) 22%, rgba(250,246,236,0) 34%), linear-gradient(rgba(250,246,236,.04), rgba(250,246,236,0) 50%);
 }
 
 /* ── Full screen board ───────────────────────────────────────── */

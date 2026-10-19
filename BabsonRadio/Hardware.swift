@@ -178,7 +178,6 @@ struct HWLeather: View {
             LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.16)],
                            startPoint: .top, endPoint: .bottom)
             // Light scuffing over the leather, heaviest at the corners.
-            HWTile(name: HWTex.wear, opacity: 0.5)
             HWCornerWear()
             if stitch {
                 shape.inset(by: 7)

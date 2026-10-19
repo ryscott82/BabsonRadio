@@ -26,7 +26,7 @@ function GlassClock() {
   const suffix = parts.find(p => p.type === 'dayPeriod')?.value ?? ''
   const date = now ? new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).format(now).replace(/,/g, '').toUpperCase() : ''
   return (
-    <div className="hw-glass-frame" style={{ left: 330, top: 50, width: 780, height: 208 }}>
+    <div className="hw-glass-frame hw-glass-sm" style={{ left: 900, top: 84, width: 460, height: 124 }}>
       <div className="hw-glass-screen">
         <span className="hw-glass-time">{time}</span>
         {suffix && <span className="hw-glass-ampm">{suffix}</span>}
@@ -60,7 +60,7 @@ export default function FullBoard({ boardRef, eqRef, np, hasSong, onAir, glow, a
         <GlassClock />
 
         {/* Cover and record */}
-        <div className="hw-cover absolute" style={{ left: 92, top: 262, width: 450, ['--hw-label' as string]: glow || undefined }}>
+        <div className="hw-cover absolute" style={{ left: 84, top: 92, width: 590, ['--hw-label' as string]: glow || undefined }}>
           <div className="hw-vinyl" aria-hidden />
           <div className="hw-cover-art flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#003D27,#006644)' }}>
             {np?.art
@@ -72,21 +72,26 @@ export default function FullBoard({ boardRef, eqRef, np, hasSong, onAir, glow, a
         </div>
 
         {/* Title */}
-        <div className="hw-panel absolute" style={{ position: 'absolute', left: 800, top: 300, width: 520, height: 380, padding: '52px 36px' }}>
+        <div className="hw-panel absolute" style={{ position: 'absolute', left: 810, top: 250, width: 550, height: 400, padding: '56px 38px' }}>
           <FitTitle as="div" text={hasSong ? np!.title : 'Babson Radio'} className="hw-board-title" />
           <div className="hw-board-sub">{hasSong ? sub : 'Live from campus'}</div>
           {hasSong && np!.next && <div className="hw-board-next">Next: {np!.next.title}{np!.next.artist ? ` · ${np!.next.artist}` : ''}</div>}
+          <div className="hw-board-qr">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hw/qr.svg" alt="QR code for babsonradio.com" width={116} height={116} />
+            <div><strong>React to the stream:</strong><span>Scan to open babsonradio.com</span></div>
+          </div>
         </div>
 
         {/* Equalizer */}
-        <div className="hw-well hw-board-well absolute" style={{ left: 80, top: 722, width: 840, height: 120 }} aria-hidden>
+        <div className="hw-well hw-board-well absolute" style={{ left: 80, top: 742, width: 620, height: 96 }} aria-hidden>
           <div ref={eqRef} className="hw-eq hw-led hw-big-led" data-on={isPlaying}>
             {BOARD_BARS.map((b, i) => <i key={i} style={{ ['--h' as string]: b.h, animationDelay: `${b.d}s`, animationDuration: `${b.t}s` }} />)}
           </div>
         </div>
 
         {/* Reactions */}
-        <div className="hw-panel hw-board-react absolute" style={{ position: 'absolute', left: 950, top: 722, width: 410, height: 120, padding: 0 }}>
+        <div className="hw-panel hw-board-react absolute" style={{ position: 'absolute', left: 810, top: 722, width: 550, height: 120, padding: 0 }}>
           <ReactionKeys className="h-full !flex-nowrap !gap-4 px-5" />
         </div>
 

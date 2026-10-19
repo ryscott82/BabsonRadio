@@ -358,7 +358,8 @@ body:has(.hw-stage) { transition: background-color .4s; }
 .hw-board.art-board { background: #070605; --hw-lit: color-mix(in srgb, var(--art-1) 88%, #fff); }
 .art-board .hw-glass-time, .art-board .hw-glass-ampm, .art-board .hw-glass-date { color: var(--hw-lit); }
 .art-board .hw-eq.hw-big-led > i::before { background: repeating-linear-gradient(to top, var(--hw-lit) 0 6px, transparent 6px 7px); }
-.hw-board .hw-panel, .hw-board .hw-glass-frame, .hw-board .hw-board-well { z-index: 2; }
+.hw-board .hw-panel, .hw-board .hw-board-well { z-index: 2; }
+.hw-board .hw-glass-frame { z-index: 20; } /* the clock sits on top of the cover where they overlap */
 .hw-glass-frame { position: absolute; border-radius: 16px; padding: 8px; box-sizing: border-box; z-index: 2;
   background: #1A1A18 url(/hw/leather-black.jpg) center / 260px auto; box-shadow: 0 10px 22px rgba(24,26,18,.5), 0 1px 0 rgba(250,246,236,.5); }
 .hw-glass-screen { position: relative; width: 100%; height: 100%; border-radius: 10px; overflow: hidden; background: #05080B;
@@ -368,9 +369,14 @@ body:has(.hw-stage) { transition: background-color .4s; }
   background: linear-gradient(112deg, rgba(250,246,236,.11) 0, rgba(250,246,236,.11) 28%, rgba(250,246,236,0) 40%), linear-gradient(rgba(250,246,236,.07), rgba(250,246,236,0) 45%); }
 .hw-glass-time { position: relative; z-index: 1; font-size: 150px; font-weight: 700; letter-spacing: .04em; color: #7FD39C; font-variant-numeric: tabular-nums; line-height: 1; }
 .hw-glass-ampm { position: relative; z-index: 1; font-size: 39px; font-weight: 700; color: #7FD39C; opacity: .85; align-self: flex-end; margin-bottom: 24px; }
+.hw-glass-sm .hw-glass-time { font-size: 70px; } .hw-glass-sm .hw-glass-ampm { font-size: 20px; margin-bottom: 14px; } .hw-glass-sm .hw-glass-screen { gap: 10px; } .hw-glass-sm .hw-glass-date { font-size: 10px; top: 7px; right: 14px; }
 .hw-glass-date { position: absolute; z-index: 1; right: 18px; top: 10px; font-size: 14px; letter-spacing: .2em; font-weight: 600; color: #7FD39C; opacity: .6; }
 .hw-board-title { font-weight: 700; font-size: 92px; letter-spacing: -.03em; line-height: 1.02; padding-bottom: 3px; }
 .hw-board-sub { font-size: 31px; font-weight: 500; color: var(--hw-sub); margin-top: 10px; line-height: 1.15; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.hw-board-qr { position: absolute; left: 38px; right: 38px; bottom: 34px; display: flex; align-items: center; gap: 22px; }
+.hw-board-qr img { border-radius: 8px; box-shadow: 0 3px 8px rgba(0,0,0,.45); flex: none; }
+.hw-board-qr strong { display: block; font-size: 30px; font-weight: 700; line-height: 1.1; color: var(--hw-ink, var(--br-text)); }
+.hw-board-qr span { display: block; font-size: 17px; margin-top: 6px; color: var(--hw-sub); }
 .hw-board-next { font-size: 18px; color: var(--hw-sub); margin-top: 18px; }
 .hw-board-well { border-radius: 14px; padding: 8px; background: linear-gradient(#2A2A27, #141413); box-shadow: 0 10px 22px rgba(24,26,18,.5), 0 1px 0 rgba(250,246,236,.5); }
 .hw-board-well > .hw-eq { height: 100%; padding: 6px; border-radius: 9px; background: #05080B; box-shadow: inset 0 4px 10px rgba(24,26,18,.85); }

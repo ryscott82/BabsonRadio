@@ -40,6 +40,8 @@ const COVER_RETRY_MS = [2_000, 6_000, 12_000]
 
 /** The stream reaches your ears a few seconds after the server's clock, so wait this long past the song's end before swapping the title. */
 const HEAR_DELAY_MS = 5_000
+/** How long the previous cover stays up when the next one hasn't arrived. */
+const LINGER_MS = 90_000
 
 /**
  * Polls /api/nowplaying while the tab is visible. When the current song's end time passes, it swaps in the next
@@ -119,8 +121,20 @@ export function useNowPlaying(everyMs = 12_000): NowPlaying | null {
     return () => { clearTimeout(t); if (second) clearTimeout(second) }
   }, [np, key])
 
-  return useMemo(() => {
+  const shown = useMemo(() => {
     if (np && advanced === key && np.next) return { ...np, title: np.next.title, artist: np.next.artist, album: '', art: '', elapsed: 0, duration: 0, next: null } // the old cover must not sit on the new title
     return np
   }, [np, advanced, key])
+
+  // The old cover lingers while the new one is on its way: it only goes away when a new cover shows up or about 90 s pass with none.
+  const [held, setHeld] = useState({ art: '', at: 0 })
+  const [gone, setGone] = useState('') // the held cover whose time is up
+  const art = shown?.art ?? ''
+  useEffect(() => { if (art) queueMicrotask(() => setHeld(h => (h.art === art ? h : { art, at: Date.now() }))) }, [art])
+  useEffect(() => {
+    if (art || !held.art) return
+    const t = setTimeout(() => setGone(held.art), Math.max(0, held.at + LINGER_MS - Date.now()))
+    return () => clearTimeout(t)
+  }, [art, held])
+  return useMemo(() => (shown && !art && held.art && gone !== held.art && !shown.showOnly ? { ...shown, art: held.art } : shown), [shown, art, held.art, gone])
 }

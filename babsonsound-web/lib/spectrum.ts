@@ -227,7 +227,7 @@ export function makeShaper(n: number) {
       const burst = Math.max(0, u - avg[i])
       const base = Math.pow(u, 1.6) * 0.78 + burst * 1.6
       // While music plays the upper bands never go fully dark: a quiet treble still shows a segment or two.
-      const lift = i / n > 0.4 ? 0.06 * Math.min(1, (i / n - 0.4) / 0.25) : 0
+      const lift = i / n > 0.4 ? 0.04 * Math.min(1, (i / n - 0.4) / 0.25) : 0
       const target = quiet ? 0.02 : Math.max(lift, Math.min(1, base * (1 - 0.15 * mid) + flash * 0.1))
       const atk = Math.min(1, 0.15 + burst * 5)
       shown[i] = target > shown[i] ? shown[i] + (target - shown[i]) * atk : Math.max(target, shown[i] * (quiet ? 0.45 : 0.8))
@@ -240,6 +240,8 @@ export function makeShaper(n: number) {
  * Drives the LED bars inside `ref` (children <i>) while `playing`: sets --lv (lit height, snapped to whole segments)
  * and --pk (peak cap) on each, and marks the container data-real="true" once real audio is flowing.
  */
+// White peak caps: they stay put for a few seconds after a hit, then sink slowly (segments per millisecond).
+const PEAK_HOLD_MS = 2500, PEAK_FALL_PER_MS = 0.004
 const ledLast = new WeakMap<HTMLElement, { lv: number[]; pk: number[] }>()
 /** True on a low or draining battery (Chrome and Android report it; Safari does not, so iPhones fall back to the reduced-motion setting). */
 let lowBattery = false
@@ -251,7 +253,7 @@ if (typeof navigator !== 'undefined' && 'getBattery' in navigator) {
 }
 export const lowPowerHint = () => lowBattery
 
-export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: boolean, segments = 7) {
+export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: boolean, segments = 9) {
   useEffect(() => {
     const box = ref.current
     if (!box) return
@@ -278,8 +280,10 @@ export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: bool
     const lv = new Array<number>(N).fill(0), pk = new Array<number>(N).fill(0), hold = new Array<number>(N).fill(0)
     const shape = makeShaper(N)
     let raf = 0, quiet = 0
+    let lastT = performance.now()
     const tick = () => {
       raf = requestAnimationFrame(tick)
+      const nowT = performance.now(), dt = Math.min(100, nowT - lastT); lastT = nowT
       if (document.hidden) return
       if (lowBattery) { box.dataset.real = 'false'; return }
       const ok = readBands(lv, true)
@@ -290,7 +294,7 @@ export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: bool
       const hot = streamPeak() * Math.pow(10, boostDb / 20) >= 0.8
       for (let i = 0; i < N; i++) {
         const segs = Math.round(shown[i] * segments)
-        if (segs >= pk[i]) { pk[i] = segs; hold[i] = 20 } else if (hold[i]-- <= 0) pk[i] = Math.max(0, pk[i] - 0.2)
+        if (segs >= pk[i]) { pk[i] = segs; hold[i] = PEAK_HOLD_MS } else if ((hold[i] -= dt) <= 0) pk[i] = Math.max(0, pk[i] - dt * PEAK_FALL_PER_MS)
         bars[i].style.setProperty('--lv', String(segs / segments))
         bars[i].style.setProperty('--pk', String(Math.min(segments, Math.round(pk[i])) / segments))
         bars[i].dataset.hot = hot && pk[i] >= segments - 1 ? '1' : '0'

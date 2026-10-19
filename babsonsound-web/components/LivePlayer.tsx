@@ -127,7 +127,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   const eqRef = useRef<HTMLDivElement | null>(null)
   const boardEqRef = useRef<HTMLDivElement | null>(null)
   useLedSpectrum(eqRef, isPlaying)
-  useLedSpectrum(boardEqRef, isPlaying && board, 14)
+  useLedSpectrum(boardEqRef, isPlaying && board, 12)
   const [clock, setClock] = useState(0)
   useEffect(() => { const t = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(t) }, [])
   // Progress between polls: elapsed at the time of the last poll plus the seconds since.

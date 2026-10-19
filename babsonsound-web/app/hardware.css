@@ -252,17 +252,18 @@ body:has(.hw-stage) { transition: background-color .4s; }
 
 /* Segmented LED equalizer. Each bar is a column: ::before is the lit segments, ::after a red peak cap.
    With real audio (data-real="true", set by lib/spectrum.ts) --lv and --pk come from the analyser; otherwise a synthetic motion plays. */
-.hw-eq.hw-led { height: 56px; gap: 3px; }
+.hw-eq.hw-led { height: 54px; gap: 3px; --segs: 9; --seg-fill: 62.5%; --cap: 3.75px; }
 .hw-eq.hw-led > i { position: relative; align-self: stretch; height: auto; transform: none; border-radius: 0; animation: none; background: none; }
 .hw-eq.hw-led > i::before { content: ''; position: absolute; inset: 0;
   background: linear-gradient(to top, var(--eq-g) 0 57%, var(--eq-y) 57% 86%, var(--eq-r) 86%);
-  -webkit-mask: repeating-linear-gradient(to top, #000 0 5px, transparent 5px 8px); mask: repeating-linear-gradient(to top, #000 0 5px, transparent 5px 8px);
+  -webkit-mask: linear-gradient(to top, #000 0 var(--seg-fill), transparent var(--seg-fill) 100%) bottom / 100% calc(100% / var(--segs)) repeat-y;
+  mask: linear-gradient(to top, #000 0 var(--seg-fill), transparent var(--seg-fill) 100%) bottom / 100% calc(100% / var(--segs)) repeat-y;
   clip-path: inset(88% 0 0 0); }
-.hw-eq.hw-led > i::after { content: ''; position: absolute; left: 0; right: 0; height: 3px; bottom: 0; background: #CAE7DD; opacity: 0; }
+.hw-eq.hw-led > i::after { content: ''; position: absolute; left: 0; right: 0; height: var(--cap, 3px); bottom: 0; background: #CAE7DD; opacity: 0; }
 .hw-eq.hw-led[data-on="true"] > i::before { animation: hw-led 1s ease-in-out infinite; animation-delay: inherit; animation-duration: inherit; }
 @keyframes hw-led { 0%, 100% { clip-path: inset(82% 0 0 0); } 50% { clip-path: inset(calc(100% - var(--h, .8) * 100%) 0 0 0); } }
 .hw-eq.hw-led[data-real="true"] > i::before { animation: none; clip-path: inset(calc(100% - var(--lv, 0) * 100%) 0 0 0); transition: clip-path .06s linear; }
-.hw-eq.hw-led[data-real="true"] > i::after { opacity: min(1, calc(var(--pk, 0) * 20)); bottom: calc(var(--pk, 0) * 100% - 3px); }
+.hw-eq.hw-led[data-real="true"] > i::after { opacity: min(1, calc(var(--pk, 0) * 20)); bottom: calc(var(--pk, 0) * 100% - var(--cap, 3px)); }
 .hw-eq.hw-led[data-real="true"] > i[data-hot="1"]::after { background: #E0412A; }
 @media (prefers-reduced-motion: reduce) { .hw-eq.hw-led[data-on="true"] > i::before { animation: none; clip-path: inset(45% 0 0 0); } }
 
@@ -394,10 +395,7 @@ body:has(.hw-stage) { transition: background-color .4s; }
 .hw-board-next { font-size: 18px; color: var(--hw-sub); margin-top: 18px; }
 .hw-board-well { border-radius: 14px; padding: 8px; background: linear-gradient(#2A2A27, #141413); box-shadow: 0 10px 22px rgba(24,26,18,.5), 0 1px 0 rgba(250,246,236,.5); }
 .hw-board-well > .hw-eq { height: 100%; padding: 6px; border-radius: 9px; background: #05080B; box-shadow: inset 0 4px 10px rgba(24,26,18,.85); }
-.hw-eq.hw-big-led { gap: 3px; }
-.hw-eq.hw-big-led > i::before { -webkit-mask: repeating-linear-gradient(to top, #000 0 6px, transparent 6px 7px); mask: repeating-linear-gradient(to top, #000 0 6px, transparent 6px 7px); }
-.hw-eq.hw-big-led > i::after { height: 6px; }
-.hw-eq.hw-big-led[data-real="true"] > i::after { bottom: calc(var(--pk, 0) * 100% - 6px); }
+.hw-eq.hw-big-led { gap: 3px; --segs: 12; --seg-fill: 82%; --cap: 4.5px; }
 .hw-board-react > div { display: flex; align-items: center; justify-content: center; }
 .hw-board-react .hw-react { width: 82px; height: 66px; border-radius: 12px; }
 .hw-board-key { height: 46px; padding: 0 22px; border-radius: 12px; font-size: 13px; font-weight: 700; letter-spacing: .18em; }

@@ -17,3 +17,19 @@ Guidelines
 - The play button is a round `.sk-btn` with `aria-pressed={isPlaying}`, so it stays pushed in while playing.
 - Respect reduced motion (transitions are disabled in the media query at the end of the file).
 - Don't stack shadows: put `.sk-raised` on the outer card only.
+
+# Hardware look (Oct 2026, `app/hardware.css`)
+Used on the home/live page. Mockups: the Babson Radio design canvas (Web*, Duo*, Ios* boards). Textures: `public/hw/`.
+
+| Class | What it is |
+|---|---|
+| `.hw-stage` | Page wrapper: oak desk behind the page (`body:has(.hw-stage)`), light and dark oak |
+| `.hw-panel` (+ `.hw-tight` / `.hw-snug`) | Leather card. Light: green leather rim, stitching, ivory ceramic face, black glass corner caps. Dark: black leather, stitching, steel screws. `.sk-key`, `.sk-field` inside it become steel keys / recessed slots |
+| `.hw-cover` `.hw-cover-art` `.hw-vinyl` `.hw-sign` | Cover on the desk (tilted), record peeking out, ON AIR sign on the corner (live shows only) |
+| `.hw-title` `.hw-sub` | Barlow Condensed title (one line, ellipsis), Barlow secondary text |
+| `.hw-prog` `.hw-well` `.hw-eq` | Progress slot, recessed equalizer well, animated bars (static when paused) |
+| `.sk-btn.hw-knob` | Steel play knob, pushed in while playing |
+| `.hw-key`, `.hw-keys` | Steel key; `aria-pressed="true"` = pushed in (sleep timer Off/15/30/60) |
+
+Not done yet on web: album-art mode hue-shift of leather/wood, per-corner random cap wear, grainy stars, volume knob, schedule card on the live page.
+Listeners cannot send feedback to hosts: the end-of-show comment box was removed from `LiveExtras.tsx`; stars remain.

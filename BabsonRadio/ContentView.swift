@@ -9,6 +9,8 @@ struct ContentView: View {
     @Environment(\.colorScheme) var scheme
     @ObservedObject private var auth = AuthManager.shared
     @ObservedObject private var profile = ProfileStore.shared
+    @ObservedObject private var listen = ListenGuard.shared
+    @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var theme = ArtTheme.shared
     @State private var tab = 0
     @ObservedObject private var board = BoardState.shared
@@ -29,12 +31,14 @@ struct ContentView: View {
         // One explicit answer, recomputed on every tab switch as well as when the board opens or closes:
         // hidden only while you are on Live with the full screen board up, shown in every other case.
         let hideBar = tab == 0 && board.open
+        return chrome(tabs(hideBar: hideBar, sideW: sideW))
+    }
+
+    private func tabs(hideBar: Bool, sideW: CGFloat) -> some View {
         TabView(selection: $tab) {
             LivePlayerView()
                 .id(liveLoad)
-                .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
-                .toolbarBackground(.ultraThinMaterial, for: .tabBar)
-                .toolbarBackgroundVisibility(.visible, for: .tabBar)
+                .modifier(TabBarStyle(hidden: hideBar))
                 .tag(0)
                 .tabItem {
                     BRTabIcon(systemName: "radio", label: "Live")
@@ -42,9 +46,7 @@ struct ContentView: View {
 
             ScheduleView()
                 .padding(.leading, sideW)
-                .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
-                .toolbarBackground(.ultraThinMaterial, for: .tabBar)
-                .toolbarBackgroundVisibility(.visible, for: .tabBar)
+                .modifier(TabBarStyle(hidden: hideBar))
                 .tag(1)
                 .tabItem {
                     BRTabIcon(systemName: "calendar", label: "Schedule")
@@ -52,9 +54,7 @@ struct ContentView: View {
 
             LibraryView()
                 .padding(.leading, sideW)
-                .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
-                .toolbarBackground(.ultraThinMaterial, for: .tabBar)
-                .toolbarBackgroundVisibility(.visible, for: .tabBar)
+                .modifier(TabBarStyle(hidden: hideBar))
                 .tag(2)
                 .tabItem {
                     BRTabIcon(systemName: "books.vertical", label: "Library")
@@ -63,19 +63,15 @@ struct ContentView: View {
             if profile.hosting {
                 NavigationStack { HostPanelView() }
                     .padding(.leading, sideW)
-                    .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
-                    .toolbarBackground(.ultraThinMaterial, for: .tabBar)
-                    .toolbarBackgroundVisibility(.visible, for: .tabBar)
-                        .tag(3)
+                    .modifier(TabBarStyle(hidden: hideBar))
+                    .tag(3)
                     .tabItem { BRTabIcon(systemName: "mic.fill", label: "Host") }
             }
 
             // Search is the right-most tab; Profile is the circle button in the top corner of every page.
             SearchView()
                 .padding(.leading, sideW)
-                .toolbar(hideBar ? .hidden : .visible, for: .tabBar)
-                .toolbarBackground(.ultraThinMaterial, for: .tabBar)
-                .toolbarBackgroundVisibility(.visible, for: .tabBar)
+                .modifier(TabBarStyle(hidden: hideBar))
                 .tag(4)
                 .tabItem {
                     BRTabIcon(systemName: "magnifyingglass", label: "Search")
@@ -91,77 +87,126 @@ struct ContentView: View {
         .overlay(alignment: .leading) {
             if sideW > 0 { LivePlayerView(sidePane: true, paneWidth: sideW) }
         }
-        .onChange(of: tab) { old, new in if new == 0 && old != 0 { liveLoad += 1 } }
-        .tint(ArtTheme.full(scheme) ? theme.accent(scheme) : (scheme == .dark ? .brGold : .brGreen))
-        .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
-        .overlay(alignment: .top) { if hSize != .regular && tab != 0 { StatusBarBlur() } }
-        .task(id: auth.isSignedIn) { ContactsManager.shared.promptOnFirstOpen() }
-        // The profile circle in the corner needs the chosen color from the start.
-        .task(id: auth.isSignedIn) { if auth.isSignedIn { await ProfileStore.shared.load() } }
-        .task(id: auth.isSignedIn) {
-            // Host tab appears while the host window is open; re-check every minute.
-            while auth.isSignedIn && !Task.isCancelled {
-                await ProfileStore.shared.loadHosting()
-                try? await Task.sleep(nanoseconds: 60_000_000_000)
+    }
+
+    fileprivate func chrome<V: View>(_ content: V) -> some View {
+        overlays(alerts(lifecycle(content)))
+    }
+
+    private var tintColor: Color {
+        if ArtTheme.full(scheme) { return theme.accent(scheme) }
+        return scheme == .dark ? Color.brGold : Color.brGreen
+    }
+    private var pageBackground: Color { scheme == .dark ? Color.brDkBg : Color.brLtBg }
+    private var noticeShown: Binding<Bool> {
+        Binding(get: { listen.notice != nil }, set: { if !$0 { listen.notice = nil } })
+    }
+    private var onboardingShown: Binding<Bool> {
+        Binding(get: { splashDone && auth.isSignedIn && auth.needsOnboarding }, set: { _ in })
+    }
+
+    private func lifecycle<V: View>(_ content: V) -> some View {
+        content
+            .onChange(of: tab) { old, new in if new == 0 && old != 0 { liveLoad += 1 } }
+            .tint(tintColor)
+            .background(pageBackground)
+            .overlay(alignment: .top) { statusBlur }
+            .task(id: auth.isSignedIn) { ContactsManager.shared.promptOnFirstOpen() }
+            .onAppear { ActivityMonitor.install() }
+            .onChange(of: scenePhase) { _, p in if p == .active { listen.markActive() } }
+            // The profile circle in the corner needs the chosen color from the start.
+            .task(id: auth.isSignedIn) { if auth.isSignedIn { await ProfileStore.shared.load() } }
+            .task(id: auth.isSignedIn) { await keepHostingFresh() }
+            .onChange(of: splashDone) { _, done in maybeAskSchoolEmail(done) }
+            .onChange(of: auth.currentUser?.id) { _, _ in maybeAskSchoolEmail(splashDone) }
+            .onChange(of: auth.isSignedIn) { _, now in if !now { welcomeSkipped = false } }
+            .task { await runSplash() }
+    }
+
+    private func alerts<V: View>(_ content: V) -> some View {
+        content
+            .alert("Still listening?", isPresented: $listen.asking) {
+                Button("Keep listening") { listen.markActive() }
+            } message: { Text("The music stops in a couple of minutes unless you tap.") }
+            .alert("Listening stopped", isPresented: noticeShown) {
+                Button("OK", role: .cancel) {}
+            } message: { Text(listen.notice ?? "") }
+            .alert("Are you a Babson student?", isPresented: $askSchoolEmail) {
+                Button("Add my school email") { showSchoolEmailSheet = true }
+                Button("Not now", role: .cancel) {}
+            } message: {
+                Text("Add your school email to unlock the rest.")
+            }
+            .sheet(isPresented: $showSchoolEmailSheet) { AddSchoolEmailView() }
+            .fullScreenCover(isPresented: onboardingShown) { OnboardingView() }
+    }
+
+    private func overlays<V: View>(_ content: V) -> some View {
+        content
+            .overlay { gateOverlay }
+            .overlay { hostWelcome }
+            .overlay { splashOverlay }
+    }
+
+    @ViewBuilder private var statusBlur: some View {
+        if hSize != .regular && tab != 0 { StatusBarBlur() }
+    }
+
+    /// After the launch splash: the sign-in splash, or the step an Apple / unverified account is stuck on.
+    @ViewBuilder private var gateOverlay: some View {
+        if splashDone && auth.hasResolvedAuth {
+            if auth.needsSchoolEmail {
+                AppleSchoolEmailView().transition(.opacity).zIndex(2)
+            } else if auth.needsEmailVerification {
+                VerifyEmailView().transition(.opacity).zIndex(2)
+            } else if !auth.isSignedIn && !welcomeSkipped {
+                WelcomeView(onSkip: { withAnimation { welcomeSkipped = true } }).transition(.opacity).zIndex(2)
             }
         }
-        .alert("Are you a Babson student?", isPresented: $askSchoolEmail) {
-            Button("Add my school email") { showSchoolEmailSheet = true }
-            Button("Not now", role: .cancel) {}
-        } message: {
-            Text("Add your school email to unlock the rest.")
+    }
+
+    @ViewBuilder private var splashOverlay: some View {
+        if !splashDone { SplashView().transition(.opacity).zIndex(3) }
+    }
+
+    /// Host tab appears while the host window is open; re-check every minute.
+    private func keepHostingFresh() async {
+        while auth.isSignedIn && !Task.isCancelled {
+            await ProfileStore.shared.loadHosting()
+            try? await Task.sleep(nanoseconds: 60_000_000_000)
         }
-        .sheet(isPresented: $showSchoolEmailSheet) { AddSchoolEmailView() }
-        .onChange(of: splashDone) { _, done in maybeAskSchoolEmail(done) }
-        .onChange(of: auth.currentUser?.id) { _, _ in maybeAskSchoolEmail(splashDone) }
-        .overlay {
-            // After the launch splash: the sign-in splash, or the step an Apple / unverified account is stuck on.
-            if splashDone && auth.hasResolvedAuth {
-                if auth.needsSchoolEmail {
-                    AppleSchoolEmailView().transition(.opacity).zIndex(2)
-                } else if auth.needsEmailVerification {
-                    VerifyEmailView().transition(.opacity).zIndex(2)
-                } else if !auth.isSignedIn && !welcomeSkipped {
-                    WelcomeView(onSkip: { withAnimation { welcomeSkipped = true } }).transition(.opacity).zIndex(2)
-                }
-            }
+    }
+
+    /// Hold the splash until the sign-in check is done (at most 6 seconds), and at least long enough to see it.
+    private func runSplash() async {
+        let start = Date()
+        while !auth.hasResolvedAuth, Date().timeIntervalSince(start) < 6 {
+            try? await Task.sleep(nanoseconds: 100_000_000)
         }
-        .overlay {
-            // Hosts get a welcome once a day (and again after the app was closed completely), then land on the Host tab.
-            if splashDone, auth.isSignedIn, profile.hosting, !auth.needsOnboarding, !auth.needsSchoolEmail, !auth.needsEmailVerification,
-               hostWelcomeDay != HostWelcome.todayKey {
-                HostWelcomeView {
-                    HostWelcome.shownDay = HostWelcome.todayKey
-                    withAnimation(.easeInOut(duration: 0.4)) { hostWelcomeDay = HostWelcome.todayKey; tab = 3 }
-                }
-                .transition(.opacity).zIndex(2)
-            }
-        }
-        .overlay {
-            if !splashDone {
-                SplashView()
-                    .transition(.opacity)
-                    .zIndex(3)
-            }
-        }
-        .fullScreenCover(isPresented: Binding(get: { splashDone && auth.isSignedIn && auth.needsOnboarding }, set: { _ in })) {
-            OnboardingView()
-        }
-        .onChange(of: auth.isSignedIn) { _, now in if !now { welcomeSkipped = false } }
-        .task {
-            // Hold the splash until the sign-in check is done (at most 6 seconds), and at least long enough to see it.
-            let start = Date()
-            while !auth.hasResolvedAuth, Date().timeIntervalSince(start) < 6 {
-                try? await Task.sleep(nanoseconds: 100_000_000)
-            }
-            let rest = 1.4 - Date().timeIntervalSince(start)
-            if rest > 0 { try? await Task.sleep(nanoseconds: UInt64(rest * 1_000_000_000)) }
-            withAnimation(.easeOut(duration: 0.5)) { splashDone = true }
-        }
+        let rest = 1.4 - Date().timeIntervalSince(start)
+        if rest > 0 { try? await Task.sleep(nanoseconds: UInt64(rest * 1_000_000_000)) }
+        withAnimation(.easeOut(duration: 0.5)) { splashDone = true }
     }
 }
 
 extension ContentView {
+    private var showHostWelcome: Bool {
+        guard splashDone, auth.isSignedIn, profile.hosting else { return false }
+        guard !auth.needsOnboarding, !auth.needsSchoolEmail, !auth.needsEmailVerification else { return false }
+        return hostWelcomeDay != HostWelcome.todayKey
+    }
+
+    /// Hosts get a welcome once a day (and again after the app was closed completely), then land on the Host tab.
+    @ViewBuilder private var hostWelcome: some View {
+        if showHostWelcome {
+            HostWelcomeView {
+                HostWelcome.shownDay = HostWelcome.todayKey
+                withAnimation(.easeInOut(duration: 0.4)) { hostWelcomeDay = HostWelcome.todayKey; tab = 3 }
+            }
+            .transition(.opacity).zIndex(2)
+        }
+    }
+
     /// Guests get a gentle reminder about once a week to add their school email.
     fileprivate func maybeAskSchoolEmail(_ ready: Bool) {
         guard ready, auth.currentUser?.isGuest == true, SchoolEmailPrompt.due() else { return }
@@ -256,5 +301,17 @@ struct HostWelcomeView: View {
             .opacity(shown ? 1 : 0)
         }
         .onAppear { withAnimation(.easeIn(duration: 0.5)) { shown = true } }
+    }
+}
+
+
+/// The tab bar always sits on a soft blur, and is hidden only while the full screen board is up.
+struct TabBarStyle: ViewModifier {
+    let hidden: Bool
+    func body(content: Content) -> some View {
+        content
+            .toolbar(hidden ? .hidden : .visible, for: .tabBar)
+            .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+            .toolbarBackgroundVisibility(.visible, for: .tabBar)
     }
 }

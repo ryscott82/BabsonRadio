@@ -8,6 +8,7 @@ import { signOut } from '@/lib/auth'
 import { useEffect, useState } from 'react'
 import { apiGet } from '@/lib/auth'
 import ThemeToggle from './ThemeToggle'
+import { LINKS } from '@/lib/links'
 
 // Five links in the bar. Everything else (profile, requesting a spot, host panel, admin) lives in the profile menu.
 const NAV_LINKS = [
@@ -48,13 +49,13 @@ export default function Nav() {
   const close = () => { setMenuOpen(false); setMobileOpen(false) }
 
   return (
-    <header className="art-nav fixed top-0 inset-x-0 z-50 bg-br-dk-bg/90 backdrop-blur border-b border-br-dk-border shadow-[0_2px_0_rgba(var(--sk-rgb),0.06)]">
+    <header className="art-nav hw-bar fixed top-0 inset-x-0 z-50">
       <div className="max-w-6xl lg:max-w-[1800px] mx-auto px-4 lg:px-8 xl:px-12 h-16 flex items-center gap-8">
 
         {/* Wordmark */}
-        <Link href="/" className="flex items-baseline gap-1.5 shrink-0">
-          <span className="font-display text-br-gold text-sm tracking-[0.3em]">BABSON</span>
-          <span className="font-display text-br-dk-text text-xl tracking-[0.3em]">RADIO</span>
+        <Link href="/" className="flex items-baseline gap-2.5 shrink-0" style={{ fontFamily: "'Barlow', system-ui, sans-serif" }}>
+          <span className="text-br-gold text-[11px] font-semibold tracking-[0.34em]">BABSON</span>
+          <span className="text-br-dk-text text-[1.6rem] font-bold tracking-[0.32em] leading-none">RADIO</span>
         </Link>
 
         {/* Desktop nav */}
@@ -63,9 +64,8 @@ export default function Nav() {
             <Link
               key={link.href}
               href={link.href}
-              className={`font-display tracking-widest text-sm px-4 py-2 rounded-md transition-colors ${
-                active(link.href) ? 'text-br-gold bg-br-dk-surface' : 'text-br-dk-sub hover:text-br-dk-text hover:bg-br-dk-surface'
-              }`}
+              aria-current={active(link.href) ? 'page' : undefined}
+              className={`${active(link.href) ? 'sk-key hw-pill text-br-gold' : 'text-br-dk-text hover:text-br-gold'} text-[15px] font-semibold px-4 py-1.5 rounded-xl transition-colors`}
             >
               {link.label}
             </Link>
@@ -74,6 +74,8 @@ export default function Nav() {
 
         {/* Right side */}
         <div className="ml-auto flex items-center gap-3">
+          <a href={LINKS.join} target="_blank" rel="noopener noreferrer"
+             className="hidden md:inline-flex sk-key hw-pill items-center h-9 px-4 rounded-full text-sm font-semibold">Join Babson Sound</a>
           <ThemeToggle />
 
           {user ? (
@@ -104,8 +106,8 @@ export default function Nav() {
               )}
             </div>
           ) : (
-            <Link href="/auth" className="sk-btn font-display tracking-widest text-sm px-4 py-2 rounded-lg">
-              Sign In
+            <Link href="/auth" className="sk-key hw-pill text-sm font-semibold px-4 h-9 inline-flex items-center rounded-full">
+              Sign in
             </Link>
           )}
 

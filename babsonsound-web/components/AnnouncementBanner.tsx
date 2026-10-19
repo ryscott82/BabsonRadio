@@ -19,10 +19,10 @@ export default function AnnouncementBanner() {
   }, [])
   if (!a || a.updatedAt === closed) return null
   return (
-    <div role="status" className="relative z-[2] bg-br-gold/15 border-b border-br-gold/40 text-br-dk-text text-sm">
-      <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-start gap-3">
-        <span className="flex-1">{a.text}</span>
-        <button type="button" aria-label="Dismiss message" className="text-br-dk-sub shrink-0 px-1"
+    <div role="status" className="hw-banner relative z-[2] text-br-dk-text text-sm">
+      <div className="max-w-[1500px] mx-auto px-4 lg:px-10 py-2.5 flex items-center justify-center gap-3 relative">
+        <span className="font-bold shrink-0">Station message</span><span className="min-w-0">{a.text}</span>
+        <button type="button" aria-label="Dismiss message" className="sk-key hw-pill absolute right-4 lg:right-10 w-7 h-7 rounded-full text-xs"
                 onClick={() => { setClosed(a.updatedAt); try { sessionStorage.setItem('br_ann_closed', String(a.updatedAt)) } catch { /* ignore */ } }}>✕</button>
       </div>
     </div>

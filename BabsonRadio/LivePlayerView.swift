@@ -522,14 +522,17 @@ struct LivePlayerView: View {
     /// Equalizer on the left while playing, play/stop in the middle, skip on the right (same as the website).
     private var playRow: some View {
         // Three equal slots around the play button: the same width on each side, the same gap, all centered on one line.
-        HStack(spacing: 30) {
-            ZStack {
-                EqualizerBars(color: theme.accent(scheme), playing: audio.isPlaying, beat: audio.beatClock)
-            }
-            .frame(width: 48, height: 48)
-            playControl.opacity(canPlay ? 1 : 0.4)
-            SkipControl()
+        VStack(spacing: 10) {
+            HStack(spacing: 30) {
+                ZStack {
+                    EqualizerBars(color: theme.accent(scheme), playing: audio.isPlaying, beat: audio.beatClock)
+                }
                 .frame(width: 48, height: 48)
+                playControl.opacity(canPlay ? 1 : 0.4)
+                SkipControl()
+                    .frame(width: 48, height: 48)
+            }
+            SleepTimerRow()
         }
         .frame(maxWidth: .infinity)
     }

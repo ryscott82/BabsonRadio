@@ -7,7 +7,8 @@ import { bump, noteStars } from '@/lib/server/earnedEmojis'
 export const runtime = 'nodejs'
 
 // Rate a show 1-5 stars. The occurrence id comes from the live player (the show on air, or one that ended in the last 45 minutes).
-const OCC = /^(weekly|slot|event)-([A-Za-z0-9_-]+)_(\d{10,14})$/
+// Shows have ids like weekly-<id>_<start>; playlist blocks (the auto DJ) are genre-<name>_<start>, and a name can hold spaces or &.
+const OCC = /^(weekly|slot|event|genre)-([^/]{1,100})_(\d{10,14})$/
 
 function check(occId: string, now: number) {
   const m = OCC.exec(occId)

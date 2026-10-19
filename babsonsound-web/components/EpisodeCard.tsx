@@ -18,7 +18,7 @@ interface Episode {
 
 interface EpisodeCardProps {
   episode: Episode
-  layout?: 'row' | 'card'
+  layout?: 'row' | 'card' | 'wide'
 }
 
 function formatDuration(seconds: number) {
@@ -66,6 +66,30 @@ export default function EpisodeCard({ episode, layout = 'card' }: EpisodeCardPro
       <div className="absolute bottom-0 inset-x-0 h-px bg-br-brass/40" />
     </div>
   )
+
+  if (layout === 'wide') {
+    return (
+      <Link href={`/shows/${episode.showSlug}#${episode.id}`} className="group block">
+        <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-[0_8px_14px_rgba(24,16,8,.35)]">
+          {thumbnail}
+          <span aria-hidden className="absolute top-3 right-3 w-9 h-9 rounded-full bg-[#f4efe2]/95 text-[#1a1710] flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+            <svg className="w-3.5 h-3.5 translate-x-px" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+          </span>
+          <svg aria-hidden className="absolute bottom-3 left-4 w-7 h-7 text-white/85" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" viewBox="0 0 24 24">
+            {episode.category === 'Music' || /replay/i.test(episode.category ?? '')
+              ? <path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 10v4" />
+              : <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0014 0M12 18v3" /></>}
+          </svg>
+          <span className="absolute bottom-3 right-3 text-[11px] px-2 py-0.5 rounded-md bg-black/55 text-white tabular-nums">{formatDuration(episode.duration)}</span>
+        </div>
+        <p className="mt-3 text-sm font-semibold text-br-dk-text truncate group-hover:text-br-gold transition-colors">
+          {episode.isNew && <span className="font-display text-[9px] tracking-widest bg-br-red text-white px-1.5 py-0.5 rounded mr-2 align-middle">NEW</span>}
+          {episode.title}
+        </p>
+        <p className="text-xs hw-sub truncate">{episode.category ? `${episode.category} · ` : ''}{episode.showName}</p>
+      </Link>
+    )
+  }
 
   if (layout === 'row') {
     return (

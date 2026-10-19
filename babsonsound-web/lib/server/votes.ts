@@ -13,7 +13,7 @@ const MIN_SAMPLES = 6
 const HOUR = 3600_000
 
 /** Voting for an hour closes this long before it starts, so the schedule (and AzuraCast) can be set in time. */
-export const LOCK_BEFORE_MS = 10 * 60_000
+export const LOCK_BEFORE_MS = 60_000
 /** A genre needs at least this many votes to take an hour over, however quiet the station is. */
 export const MIN_VOTES = 3
 

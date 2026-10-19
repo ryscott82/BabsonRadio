@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
+import { RatingsBlock } from '@/components/LiveExtras'
 
 interface State {
   blockStart: number; blockEnd: number; threshold: number
@@ -46,32 +47,29 @@ export default function VoteCard() {
   }
 
   const top = Math.max(1, ...s.options.map(o => o.count))
+  const total = s.options.reduce((n, o) => n + o.count, 0)
   return (
-    <section className="sk-raised rounded-xl p-4 space-y-3">
+    <section className="hw-panel hw-big space-y-4">
       <div>
-        <h2 className="font-display text-br-dk-text text-lg tracking-wide">WHAT WOULD YOU LIKE TO HEAR?</h2>
-        <p className="text-xs text-br-dk-sub mt-0.5">
-          Select the next hour of music
-        </p>
-        {s.upNext && (
-          <p className="text-xs text-br-gold mt-1">
-            {s.upNext.label ? `${s.upNext.label} won ${clock(s.upNext.blockStart)}.` : `${clock(s.upNext.blockStart)}: no clear winner, so the auto DJ picks.`}
-          </p>
-        )}
+        <h2 className="hw-title !whitespace-normal text-[1.9rem]">What would you like to hear?</h2>
+        <div className="flex items-baseline justify-between gap-4 mt-1 text-xs">
+          <span className="text-br-gold font-medium">{s.upNext?.label ? `${s.upNext.label} won ${clock(s.upNext.blockStart)}.` : ''}</span>
+          <span className="hw-sub">{total} vote{total === 1 ? '' : 's'} · one vote per hour</span>
+        </div>
       </div>
-      <div className="space-y-1.5">
+      <div className="grid grid-cols-2 gap-3">
         {s.options.map(o => (
-          <button key={o.label} disabled={busy || !s.canVote} onClick={() => vote(o.label)}
-                  className={`relative w-full text-left rounded-lg overflow-hidden sk-field px-3 py-1.5 text-xs text-br-dk-text ${s.myVote === o.label ? 'ring-1 ring-br-gold' : ''}`}>
-            <span className="absolute inset-y-0 left-0 bg-br-gold/20" style={{ width: `${Math.min(100, (o.count / top) * 100)}%` }} />
+          <button key={o.label} disabled={busy || !s.canVote} onClick={() => vote(o.label)} aria-pressed={s.myVote === o.label}
+                  className="sk-key hw-vote relative overflow-hidden text-left px-4 h-11 rounded-xl text-sm font-semibold">
+            <span className="hw-vote-fill" style={{ width: `${Math.min(100, (o.count / top) * 100)}%` }} />
             <span className="relative flex justify-between gap-3">
               <span>{o.label}</span>
-              <span className="tabular-nums text-br-dk-sub">{o.count}</span>
+              <span className="tabular-nums font-medium">{o.count}</span>
             </span>
           </button>
         ))}
       </div>
-      {!s.canVote && <p className="text-xs text-br-dk-sub">Voting opens once a Babson student sponsors you.</p>}
+      {!s.canVote && <p className="text-xs hw-sub">Voting opens once a Babson student sponsors you.</p>}
       {s.canVote && s.requestsOpen && (
         <form onSubmit={sendRequest} className="flex gap-2">
           <input value={text} onChange={e => setText(e.target.value)} maxLength={140} placeholder={`Request a song${s.requestsShow ? ` for ${s.requestsShow}` : ''}`}
@@ -79,7 +77,8 @@ export default function VoteCard() {
           <button type="submit" disabled={busy || text.trim().length < 2} className="sk-btn font-display tracking-widest text-xs px-4 rounded-lg">SEND</button>
         </form>
       )}
-      {msg && <p className="text-xs text-br-dk-sub">{msg}</p>}
+      {msg && <p className="text-xs hw-sub">{msg}</p>}
+      <RatingsBlock />
     </section>
   )
 }

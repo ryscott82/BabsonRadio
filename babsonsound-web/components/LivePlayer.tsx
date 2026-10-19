@@ -1,21 +1,25 @@
 'use client'
 
 import SongLinks from '@/components/SongLinks'
-import BigClock from '@/components/BigClock'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { fetchPresence, friendsLine, sendHeartbeat } from '@/lib/presence'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNowPlaying } from '@/lib/nowplaying'
-import Visualizer from '@/components/Visualizer'
-import LiveExtras from '@/components/LiveExtras'
+import FullBoard from '@/components/FullBoard'
 import SkipButton from '@/components/SkipButton'
+import VolumeKnob from '@/components/VolumeKnob'
+import { ExtrasStack, ReactionKeys } from '@/components/LiveExtras'
 import { useArtColor } from '@/lib/artColor'
 import { useArtMain } from '@/components/ArtTheme'
-import { useWide } from '@/lib/useWide'
+import { useListenGuard } from '@/lib/listenGuard'
+import { attachSpectrum, probeCors, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
+
+// Equalizer bars: fixed pseudo-random heights and timings so server and client render the same markup.
+const CHIP = ['#E8A9A0', '#EBCB8B', '#A8D0A2', '#9CC3DB', '#C9A9D8', '#E6B88A', '#A7D4C7', '#D9A0B8']
+const EQ_BARS = Array.from({ length: 24 }, (_, i) => ({ h: 0.4 + ((i * 37) % 10) / 16, d: ((i * 13) % 10) / 10, t: 0.7 + ((i * 53) % 7) / 10 }))
 
 export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   const [isPlaying, setIsPlaying]     = useState(false)
@@ -30,8 +34,24 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   const canListenLive = memberListen || previewing
   const [prompt, setPrompt] = useState(false)
   const np = useNowPlaying()
-  const wide = useWide()
+  const stopPlayback = useCallback(() => {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = '' }
+    setIsPlaying(false); setIsBuffering(false)
+  }, [])
+  const guard = useListenGuard(isPlaying, stopPlayback)
   const hasSong = !!np?.configured && !!np.title
+  // Live shows get the ON AIR sign and "Show name with Host" where the artist goes. The auto DJ keeps the artist, no sign.
+  const onAir = !!(np?.isLive || np?.isShow)
+  const subline = onAir && np?.showTitle && !np.showOnly
+    ? `${np.showTitle}${np.streamer ? ` with ${np.streamer}` : ''}`
+    : (np?.artist || 'Babson Radio')
+  const [sleepMin, setSleepMin] = useState<number | null>(null)
+  const [volume, setVolume] = useState(0.85)
+  useEffect(() => { try { const v = Number(localStorage.getItem('br-vol')); if (v > 0 && v <= 1) queueMicrotask(() => setVolume(v)) } catch { /* ignore */ } }, [])
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume
+    try { localStorage.setItem('br-vol', String(volume)) } catch { /* ignore */ }
+  }, [volume])
   // Color of the glow: the on-air event's color, else the cover's main color, else the station green.
   const artColor = useArtColor(np?.art || undefined)
   const art = useArtMain()
@@ -72,11 +92,18 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
     const t = setTimeout(() => setAwake(false), 3500)
     return () => clearTimeout(t)
   }, [board, awake])
+  const eqRef = useRef<HTMLDivElement | null>(null)
+  const boardEqRef = useRef<HTMLDivElement | null>(null)
+  useLedSpectrum(eqRef, isPlaying)
+  useLedSpectrum(boardEqRef, isPlaying && board, 14)
   const [clock, setClock] = useState(0)
   useEffect(() => { const t = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(t) }, [])
   // Progress between polls: elapsed at the time of the last poll plus the seconds since.
   const pct = np && np.duration > 0
     ? Math.min(100, ((np.elapsed + Math.max(0, clock - np.receivedAt) / 1000) / np.duration) * 100) : 0
+
+  const sleepLeft = guard.sleepAt && clock > 0 ? Math.max(1, Math.ceil((guard.sleepAt - clock) / 60_000)) : 0
+  const sleepActive = guard.sleepAt ? (sleepMin ?? 60) : 0
 
   // Stop immediately if access lapses (sign-out).
   useEffect(() => {
@@ -99,10 +126,14 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   // Every 5 minutes of listening while signed out, invite them to make an account (the audio keeps playing).
   useEffect(() => {
     if (!isPlaying || !previewing) return
-    let seconds = 0
-    const t = setInterval(() => { if (++seconds >= 300) { seconds = 0; setPrompt(true) } }, 1000)
+    let seconds = 0, total = 0
+    const t = setInterval(() => {
+      // Signed-out visitors get 10 minutes, then the stream stops and the sign-in invitation shows.
+      if (++total >= 600) { stopPlayback(); setPrompt(true); return }
+      if (++seconds >= 300) { seconds = 0; setPrompt(true) }
+    }, 1000)
     return () => clearInterval(t)
-  }, [isPlaying, previewing])
+  }, [isPlaying, previewing, stopPlayback])
   useEffect(() => { if (user) queueMicrotask(() => setPrompt(false)) }, [user])
 
   // Heartbeat while playing so the server knows we're tuned in.
@@ -113,10 +144,18 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
     return () => { clearInterval(t); sendHeartbeat(false) }
   }, [isPlaying])
 
-  function togglePlay() {
+  // Warm the cross-origin check now so the first tap on Play isn't delayed by it.
+  useEffect(() => { probeCors(STREAM_URL).catch(() => {}) }, [])
+
+  async function togglePlay() {
     if (!canListenLive) return
+    wakeSpectrum()
     if (!audioRef.current) {
-      audioRef.current = new Audio(STREAM_URL)
+      const el = new Audio()
+      // Real equalizer needs a cross-origin-readable stream. Only opt in when the server allows it, so playback never breaks.
+      if (await probeCors(STREAM_URL)) { el.crossOrigin = 'anonymous'; if (!attachSpectrum(el)) el.removeAttribute('crossorigin') }
+      audioRef.current = el
+      audioRef.current.volume = volume
       audioRef.current.addEventListener('waiting', () => setIsBuffering(true))
       audioRef.current.addEventListener('playing', () => setIsBuffering(false))
     }
@@ -126,6 +165,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
       audioRef.current.src = ''
       setIsPlaying(false)
     } else {
+      if (!(await guard.begin())) return
       setIsBuffering(true)
       audioRef.current.src = STREAM_URL
       audioRef.current.play().then(() => setIsPlaying(true)).catch(console.error)
@@ -134,134 +174,161 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
 
   return (
     <>
-    <div className={`relative overflow-hidden rounded-2xl sk-hero grain ${pane ? 'lg:h-full' : ''}`}>
-      {/* Animated background, tinted with the on-air event's color */}
-      {!board && <Visualizer color={glow} playing={isPlaying} follow={art.full && !showColor} />}
+    <div className={`relative ${pane ? '' : ''}`}>
+      <div className={`flex flex-col gap-8 ${pane ? 'lg:grid lg:grid-cols-[1.1fr_1fr] lg:gap-14 lg:items-center' : 'md:flex-row md:items-center md:gap-12'}`}>
 
-      <div className={`relative p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 ${pane ? 'lg:flex-col lg:p-6 lg:gap-5 lg:justify-center lg:h-full' : ''}`}>
-
-        {/* Art block */}
-        <div className={`relative shrink-0 w-44 h-44 md:w-56 md:h-56 ${pane ? 'lg:w-[min(30rem,36dvh)] lg:h-auto lg:aspect-square' : ''} rounded-xl overflow-hidden grain flex items-center justify-center ${showColor ? '' : 'bg-gradient-to-br from-[#003D27] to-[#006644]'}`}
-             style={showColor ? { background: `linear-gradient(135deg, ${showColor}, ${showColor}66 70%, #000000aa)`, boxShadow: `0 0 40px ${showColor}55` } : undefined}>
-          {np?.art ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={np.art} alt={hasSong ? `Cover for ${np.title}` : ''} className="absolute inset-0 w-full h-full object-cover"
-                 style={art.full ? undefined : { filter: 'var(--cover-filter)' }} />
-          ) : (
-            <div className="text-center">
-              <p className="font-display text-br-brass/80 text-sm tracking-[0.4em]">BABSON</p>
-              <p className="font-display text-white text-4xl tracking-[0.2em]">RADIO</p>
+        {/* Cover on the desk, record peeking out, ON AIR sign on its corner (live shows only) */}
+        <div className={`relative w-full max-w-[24rem] mx-auto pr-[14%] shrink-0 ${pane ? 'lg:max-w-[37rem] lg:mx-0' : ''}`}>
+          <div className="hw-cover" style={glow ? ({ ['--hw-label' as string]: glow }) : undefined}>
+            <div className="hw-vinyl" aria-hidden />
+            <div className="hw-cover-art flex items-center justify-center"
+                 style={showColor ? { background: `linear-gradient(135deg, ${showColor}, ${showColor}66 70%, #000000aa)` } : { background: 'linear-gradient(135deg,#003D27,#006644)' }}>
+              {np?.art ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={np.art} alt={hasSong ? `Cover for ${np.title}` : ''} className="absolute inset-0 w-full h-full object-cover"
+                     style={art.full ? undefined : { filter: 'var(--cover-filter)' }} />
+              ) : (
+                <div className="text-center">
+                  <p className="font-display text-br-brass/80 text-sm tracking-[0.4em]">BABSON</p>
+                  <p className="font-display text-white text-4xl tracking-[0.2em]">RADIO</p>
+                </div>
+              )}
             </div>
-          )}
+            {onAir && <div className="hw-sign" role="img" aria-label="On air"><span>ON AIR</span></div>}
+          </div>
         </div>
 
-        {/* Info + controls */}
-        <div className={`flex-1 text-center md:text-left ${pane ? 'lg:text-center' : ''}`}>
-          {/* ON AIR badge (LIVE chip when not playing), same spot as the app */}
-          {isPlaying ? (
-            <div className="inline-flex items-center gap-1.5 bg-br-red px-3 py-1 rounded mb-4 transition-colors duration-[2000ms]"> 
-              <span className="w-1.5 h-1.5 rounded-full bg-white/70" />
-              <span className="font-display text-white text-xs tracking-[0.25em]">On Air</span>
-            </div>
-          ) : (
-            <div className="inline-flex items-center px-3 py-1 rounded mb-4 bg-br-red">
-              <span className="font-display text-white text-xs tracking-[0.25em]">{np?.isLive ? 'LIVE DJ' : 'LIVE'}</span>
-            </div>
-          )}
-
-          <h2 className={`font-display text-br-dk-text text-3xl md:text-4xl ${pane ? 'lg:text-5xl' : ''} tracking-wide mb-1`}>
+        {/* The amp */}
+        <div className="hw-panel hw-big min-w-0">
+          <h2 className="hw-title text-[2.75rem] lg:text-[3.1rem]" title={hasSong ? np!.title : undefined}>
             {hasSong ? np!.title : 'Live Stream'}
           </h2>
-          <p className={`text-br-dk-sub text-sm ${pane ? 'lg:text-base' : ''} mb-1`}>
-            {hasSong ? (np!.artist || 'Babson Radio') : 'Babson College — Internet Radio'}
+          <p className="hw-sub !text-br-dk-text text-lg font-medium truncate mt-0.5">
+            {hasSong ? subline : 'Babson College — Internet Radio'}
           </p>
-          {hasSong && !np!.showOnly && <SongLinks title={np!.title} artist={np!.artist} className="mb-1" />}
-          {np?.showTitle && <p className="text-xs mb-1" style={{ color: showColor || undefined }}>On air: {np.showTitle}</p>}
-          {hasSong && np!.isLive && np!.streamer && (
-            <p className="text-br-gold text-xs mb-1">Live with {np!.streamer}</p>
-          )}
-          {hasSong && np!.duration > 0 && (
-            <div className={`h-1 w-full max-w-xs mx-auto md:mx-0 ${pane ? 'lg:mx-auto' : ''} rounded-full bg-br-dk-border overflow-hidden mt-2`} aria-hidden>
-              <div className="h-full bg-br-gold" style={{ width: `${pct}%` }} />
-            </div>
-          )}
+          {!onAir && np?.showTitle && <p className="hw-sub text-xs mt-1">On air: {np.showTitle}</p>}
+          {hasSong && np!.duration > 0
+            ? <div className="hw-prog mt-5" aria-hidden><i style={{ width: `${pct}%` }} /></div>
+            : <div className="mt-5" />}
           {hasSong && np!.next && (
-            <p className="text-br-dk-sub text-xs mt-2">Next: {np!.next.title}{np!.next.artist ? ` · ${np!.next.artist}` : ''}</p>
+            <p className="hw-sub text-sm mt-2 truncate">Next: {np!.next.title}{np!.next.artist ? ` · ${np!.next.artist}` : ''}</p>
           )}
-          <div className="mb-6" />
 
           {previewing && (
-            <p className="text-br-dk-sub text-xs mb-4">
-              You are previewing the live stream. <Link href="/auth" className="text-br-gold">Sign in</Link> or{' '}
-              <Link href="/auth" className="text-br-gold">create a free account</Link> for reminders, friends and more.
+            <p className="hw-sub text-xs mt-3">
+              You are previewing the live stream. <Link href="/auth" className="text-br-gold underline">Sign in</Link> or{' '}
+              <Link href="/auth" className="text-br-gold underline">create a free account</Link> for reminders, friends and more.
             </p>
           )}
           {!loading && !canListenLive && (
-            <p className="text-br-dk-sub text-sm mb-4">
+            <p className="hw-sub text-sm mt-3">
               {!user
-                ? <>Sign in to listen. No Babson email? <Link href="/auth/guest" className="text-br-gold">Create a guest account</Link>.</>
+                ? <>Sign in to listen. No Babson email? <Link href="/auth/guest" className="text-br-gold underline">Create a guest account</Link>.</>
                 : isGuest
                   ? <>Listening isn&apos;t available right now. Try again in a moment.</>
-                  : <>Verify your Babson email to listen. <Link href="/auth" className="text-br-gold">Continue</Link>.</>}
+                  : <>Verify your Babson email to listen. <Link href="/auth" className="text-br-gold underline">Continue</Link>.</>}
             </p>
           )}
 
-          {/* Play button centered under the art; equalizer on its left, skip on its right */}
-          <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-4 w-full max-w-[19rem] mx-auto md:mx-0 lg:mx-auto">
-            <div className={`justify-self-end h-16 ${pane ? 'lg:h-20' : ''} flex items-center`}>
-              {isPlaying && (
-              <div className="flex items-end gap-1 h-8">
-                {[1,2,3,4].map(i => (
-                  <div
-                    key={i}
-                    className="eq-bar w-1 bg-br-gold rounded-full"
-                    style={{ height: '100%', animationDelay: `${i * 0.12}s` }}
-                  />
-                ))}
-              </div>
-            )}
-            </div>
-            <button
-              onClick={togglePlay}
-              disabled={!canListenLive}
-              aria-pressed={isPlaying} className={`sk-btn disabled:opacity-40 w-16 h-16 ${pane ? 'lg:w-20 lg:h-20' : ''} rounded-full flex items-center justify-center`}
-            >
-              {isBuffering ? (
-                <svg className="w-6 h-6 animate-spin text-current" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                </svg>
-              ) : isPlaying ? (
-                <svg className="w-6 h-6 text-current" fill="currentColor" viewBox="0 0 24 24">
-                  <rect x="6" y="4" width="4" height="16" rx="1"/>
-                  <rect x="14" y="4" width="4" height="16" rx="1"/>
-                </svg>
-              ) : (
-                <svg className="w-6 h-6 text-current translate-x-0.5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
-              )}
-            </button>
-            <div className={`justify-self-start mt-2 ${pane ? 'lg:mt-4' : ''}`}>
-              <SkipButton np={np} />
+          <div className="hw-well mt-3" aria-hidden>
+            <div ref={eqRef} className="hw-eq hw-led" data-on={isPlaying}>
+              {EQ_BARS.map((b, i) => (
+                <i key={i} style={{ ['--h' as string]: b.h, animationDelay: `${b.d}s`, animationDuration: `${b.t}s` }} />
+              ))}
             </div>
           </div>
-          {listenerCount > 0 && (
-            <p className="text-br-dk-sub text-sm mt-3 text-center md:text-left lg:text-center">
-              {listenerCount} listening
-              {friends.length > 0 && <> · {friendsLine(friends)}</>}
-            </p>
+
+          {/* Volume knob, play knob, skip knob */}
+          <div className="grid grid-cols-3 items-start gap-4 mt-5">
+            <div className="justify-self-center"><VolumeKnob value={volume} onChange={setVolume} /></div>
+            <div className="justify-self-center pt-1">
+              <button
+                onClick={togglePlay}
+                disabled={!canListenLive}
+                aria-label={isPlaying ? 'Pause' : 'Play'}
+                aria-pressed={isPlaying}
+                className="sk-btn hw-knob disabled:opacity-40 w-[84px] h-[84px] rounded-full flex items-center justify-center"
+              >
+                {isBuffering ? (
+                  <svg className="w-7 h-7 animate-spin text-current" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                  </svg>
+                ) : isPlaying ? (
+                  <svg className="w-7 h-7 text-current" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="6" y="4" width="4" height="16" rx="1"/>
+                    <rect x="14" y="4" width="4" height="16" rx="1"/>
+                  </svg>
+                ) : (
+                  <svg className="w-7 h-7 text-current translate-x-0.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                )}
+              </button>
+            </div>
+            <div className="justify-self-center pt-3"><SkipButton np={np} /></div>
+          </div>
+          {guard.notice && (
+            <p role="status" className="text-br-gold text-sm mt-3 text-center">{guard.notice}</p>
           )}
-          <button onClick={openBoard} className="hidden lg:inline-block mt-4 text-xs text-br-dk-sub hover:text-br-gold font-display tracking-[0.2em]">
-            FULL SCREEN
-          </button>
+
+          <ReactionKeys className="mt-6" />
+
+          {/* Song links and full screen on one row of keys */}
+          <div className="flex items-center gap-3 mt-6">
+            {hasSong && !np!.showOnly && <SongLinks keys title={np!.title} artist={np!.artist} />}
+            <button onClick={openBoard} className="hidden lg:inline-flex sk-key hw-pill items-center gap-2 h-8 px-4 rounded-lg text-[11px] font-bold tracking-[0.12em] ml-auto shrink-0">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+              FULL SCREEN
+            </button>
+          </div>
+
+          {/* Tuned in: count and a stack of initials, on its own line */}
+          {listenerCount > 0 && (
+            <div className="flex items-center gap-3 mt-4">
+              <span className="text-sm font-medium text-br-dk-text shrink-0">{listenerCount} tuned in</span>
+              <span className="flex -space-x-2 min-w-0" aria-label={friends.length > 0 ? friendsLine(friends) : undefined}>
+                {friends.slice(0, 12).map((f, i) => (
+                  <span key={`${f.firstName}-${i}`} className="hw-chip" style={{ background: CHIP[i % CHIP.length], zIndex: 20 - i }} title={f.firstName}>{f.firstName[0]?.toUpperCase()}</span>
+                ))}
+                {listenerCount > Math.min(friends.length, 12) && (
+                  <span className="hw-chip hw-chip-more">+{listenerCount - Math.min(friends.length, 12)}</span>
+                )}
+              </span>
+            </div>
+          )}
           {groups.length > 0 && (
-            <ul className="mt-3 space-y-0.5 text-xs text-br-gold">
+            <ul className="mt-2 space-y-0.5 text-xs text-br-gold">
               {groups.slice(0, 3).map(g => <li key={g.text}>{g.text}</li>)}
             </ul>
           )}
+
+          {/* Sleep timer: a slim row of raised keys, the active one pushed in */}
+          <div className="flex items-center gap-3 mt-4">
+            <span className="text-xs font-semibold text-br-dk-text shrink-0">Sleep timer</span>
+            <div className="hw-keys flex-1 max-w-[16rem]" role="group" aria-label="Sleep timer">
+              {[0, 15, 30, 60].map(m => (
+                <button key={m} type="button" disabled={!isPlaying || !user}
+                        aria-pressed={sleepActive === m}
+                        onClick={() => { setSleepMin(m || null); guard.setSleep(m || null) }}
+                        className="sk-key !h-8 !text-xs">
+                  {m === 0 ? 'Off' : m}
+                </button>
+              ))}
+            </div>
+            <span className="hw-sub text-xs" role="status">{sleepLeft ? `Stops in ${sleepLeft} min` : ''}</span>
+          </div>
         </div>
       </div>
+      {guard.asking && (
+        <div className="fixed inset-0 z-[70] bg-black/60 flex items-end sm:items-center justify-center p-4">
+          <div role="alertdialog" aria-modal="true" aria-label="Still listening?" className="sk-raised rounded-2xl p-6 w-full max-w-sm space-y-4 text-center">
+            <h3 className="font-display text-br-dk-text text-2xl tracking-wide">Still listening?</h3>
+            <p className="text-sm text-br-dk-sub">The music stops in a couple of minutes unless you tap below.</p>
+            <button onClick={guard.stillHere} className="sk-btn block w-full rounded-xl py-3 text-sm font-display tracking-[0.2em]">KEEP LISTENING</button>
+          </div>
+        </div>
+      )}
       {prompt && (
         <div className="fixed inset-0 z-[60] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={() => setPrompt(false)}>
           <div role="dialog" aria-modal="true" aria-label="Create an account" onClick={e => e.stopPropagation()}
@@ -274,39 +341,9 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
         </div>
       )}
     </div>
-    {!(pane && wide) && <LiveExtras np={np} />}
-    {board && createPortal(
-      <div ref={boardRef} onMouseMove={() => setAwake(true)} onClick={() => setAwake(true)}
-           className={`fixed inset-0 z-[100] bg-black overflow-hidden flex items-center justify-center ${awake ? '' : 'cursor-none'}`}>
-        <Visualizer inline color={glow} playing={isPlaying} className="absolute inset-0 w-full h-full pointer-events-none scale-110 blur-[8px]" />
-        <div className="relative flex flex-col items-center gap-[4vh] px-10 max-w-[1600px] w-full">
-        <BigClock color="#fff" accent={glow || '#2fb67c'} sizeClass="text-[clamp(4rem,min(13vw,22vh),14rem)]" />
-        <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16 w-full justify-center">
-          <div className="shrink-0 w-[min(70vw,34vh)] aspect-square rounded-2xl overflow-hidden shadow-[0_0_60px_var(--glow)]"
-               style={{ ['--glow' as string]: (glow || '#2fb67c') + '88', background: glow ? `linear-gradient(135deg, ${glow}, #000000aa)` : '#003D27' }}>
-            {np?.art
-              // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={np.art} alt="" className="w-full h-full object-cover" />
-              : <div className="w-full h-full flex flex-col items-center justify-center"><p className="font-display text-br-brass/80 tracking-[0.4em]">BABSON</p><p className="font-display text-white text-6xl tracking-[0.2em]">RADIO</p></div>}
-          </div>
-          <div className="text-center md:text-left min-w-0">
-            <h2 className="font-display text-white text-[clamp(2.5rem,6vw,6rem)] leading-[1.05] tracking-wide">{hasSong ? np!.title : 'Babson Radio'}</h2>
-            <p className="text-white/80 text-[clamp(1.25rem,2.6vw,2.75rem)] mt-3">{hasSong ? (np!.artist || '') : 'Live from campus'}</p>
-            {np?.showTitle && <p className="mt-6 text-[clamp(1rem,1.8vw,1.75rem)] font-display tracking-[0.2em]" style={{ color: glow || '#fff' }}>{np.showTitle}</p>}
-            {hasSong && np!.next && <p className="mt-8 text-white/50 text-[clamp(0.9rem,1.4vw,1.4rem)]">Next: {np!.next.title}{np!.next.artist ? ` · ${np!.next.artist}` : ''}</p>}
-          </div>
-        </div>
-        </div>
-        <p className="absolute bottom-6 left-8 font-display tracking-[0.4em] text-white/40 text-sm">BABSON RADIO</p>
-        <div className={`absolute top-5 right-5 flex gap-3 transition-opacity duration-500 ${awake ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-          <button onClick={togglePlay} disabled={!canListenLive} className="text-white/80 hover:text-white text-xs font-display tracking-[0.2em] border border-white/30 rounded px-3 py-1.5">
-            {isPlaying ? 'PAUSE' : 'PLAY'}
-          </button>
-          <button onClick={closeBoard} className="text-white/80 hover:text-white text-xs font-display tracking-[0.2em] border border-white/30 rounded px-3 py-1.5">EXIT</button>
-        </div>
-      </div>,
-      document.body,
-    )}
+    <div className="mt-8 empty:hidden"><ExtrasStack compact={pane} /></div>
+    {board && <FullBoard boardRef={boardRef} eqRef={boardEqRef} np={np} hasSong={hasSong} onAir={onAir} glow={glow} awake={awake} setAwake={setAwake}
+                         isPlaying={isPlaying} canPlay={canListenLive} togglePlay={togglePlay} close={closeBoard} />}
     </>
   )
 }

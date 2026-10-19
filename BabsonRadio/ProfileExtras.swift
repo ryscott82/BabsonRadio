@@ -215,8 +215,8 @@ struct HostOptionsView: View {
 
 // MARK: - Change phone number
 
-private struct PhoneChangeInfo: Decodable {
-    struct Pending: Decodable { let last4: String }
+private nonisolated struct PhoneChangeInfo: Decodable {
+    nonisolated struct Pending: Decodable { let last4: String }
     let current: String
     let pending: Pending?
 }

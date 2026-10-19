@@ -2,7 +2,7 @@
 
 import EmojiGlyph from '@/components/EmojiGlyph'
 import { reactionTheme, type EggRule } from '@/lib/reactionThemes'
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
 import type { NowPlaying } from '@/lib/nowplaying'
@@ -24,8 +24,8 @@ const tooSoon = () => { const n = Date.now(); const r = n - lastTap < 500; if (!
 
 interface Song { id: string; text: string; votes: number; mine: boolean }
 
-export default function LiveExtras({ np, compact = false }: { np: NowPlaying | null; compact?: boolean }) {
-  const card = compact ? 'sk-raised rounded-xl p-3' : 'sk-raised rounded-2xl p-4'
+
+function useLiveExtrasState(np: NowPlaying | null) {
   const { hasMemberAccess, user } = useAuth()
   const can = !!user && hasMemberAccess
   // The reaction row: the usual ones plus any this person has earned (the server decides which).
@@ -107,19 +107,9 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
       apiGet<{ avg: number; count: number; mine: number }>(`/api/live/rating?occId=${encodeURIComponent(rid)}`).then(setRating).catch(() => {})
     }, 60_000)
   }, [rid, user?.uid])
-  // End-of-show feedback: from 5 minutes before the show ends until 45 minutes after, ask for stars and a short comment.
+  // End-of-show feedback: from 5 minutes before the show ends until 45 minutes after, ask for stars.
   const endsAt = rateable ? (np?.occId === rateable.occId ? np.showEnd : last?.end ?? 0) : 0
   const closing = !!rateable && rateable.isShow && endsAt > 0 && now >= endsAt - 5 * 60_000
-  const [comment, setComment] = useState('')
-  const [commentSent, setCommentSent] = useState('')
-  async function sendFeedback() {
-    if (!can) { setMsg('Sign in with your school email to send feedback.'); return }
-    if (!rateable || !rating.mine) { setMsg('Pick a star rating first.'); return }
-    try {
-      await api('/api/live/rating', { occId: rateable.occId, stars: rating.mine, title: rateable.title, comment })
-      setCommentSent(rateable.occId); setMsg('Thanks! Your feedback goes to the host.')
-    } catch (err) { setMsg(err instanceof Error ? err.message : 'Could not send your feedback.') }
-  }
   async function rate(stars: number) {
     if (!can) { setMsg('Sign in with your school email to rate.'); return }
     if (!rateable) return
@@ -153,52 +143,93 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
   const sorted = [...songs].sort((a, b) => b.votes - a.votes)
   const accent = art.full ? (np?.color || undefined) : undefined
 
+  return {
+    np, can, user, emojis: reactionTheme(eggs, np) ?? emojis, invisible, occId, react, msg,
+    songKey, ratingsOn, mineSong, rateSong,
+    rateable, rating, rate, closing, endsAt, now,
+    sorted, listTitle, vote, accent,
+  }
+}
+type Extras = ReturnType<typeof useLiveExtrasState>
+const Ctx = createContext<Extras | null>(null)
+
+/** Holds the live page's shared state (reactions, ratings, set list) so the pieces can sit in different cards. */
+export function LiveExtrasProvider({ np, children }: { np: NowPlaying | null; children: React.ReactNode }) {
+  const v = useLiveExtrasState(np)
+  return <Ctx.Provider value={v}>{children}</Ctx.Provider>
+}
+function useX(): Extras { const v = useContext(Ctx); if (!v) throw new Error('LiveExtrasProvider missing'); return v }
+
+/** The row of reaction keys (steel keys; tap one and a handful rain down on every screen). */
+export function ReactionKeys({ className = '' }: { className?: string }) {
+  const x = useX()
+  if (!x.occId) return null
+  if (x.invisible) return <p className={`text-xs hw-sub text-center ${className}`}>Reactions are off in Invisible mode.</p>
   return (
-    <div className="mt-4 space-y-4">
+    <div className={`flex flex-wrap items-center justify-center gap-3 ${className}`} role="group" aria-label="Reactions">
+      {x.emojis.map(e => (
+        <button key={e} type="button" onClick={() => x.react(e)} aria-label={`React ${e}`}
+                className="sk-key hw-react rounded-xl h-[42px] w-[70px] flex items-center justify-center active:scale-95 transition-transform">
+          <EmojiGlyph e={e} size="1.45rem" />
+        </button>
+      ))}
+    </div>
+  )
+}
+
+const Stars = ({ n, onPick, label, size = 'text-2xl' }: { n: number; onPick: (v: number) => void; label: string; size?: string }) => (
+  <span className="flex gap-0.5" role="group" aria-label={label}>
+    {[1, 2, 3, 4, 5].map(v => (
+      <button key={v} type="button" onClick={() => onPick(v)} aria-label={`${v} star${v > 1 ? 's' : ''}`}
+              className={`hw-star ${size} leading-none px-0.5 ${v <= n ? 'on' : ''}`}>★</button>
+    ))}
+  </span>
+)
+
+/** "Rate this song" and "Rate this show", side by side. Lives in the poll card. */
+export function RatingsBlock() {
+  const x = useX()
+  const song = x.songKey && x.ratingsOn
+  const show = x.rateable && x.ratingsOn
+  if (!song && !show) return null
+  return (
+    <div className="grid grid-cols-2 gap-6 pt-4 border-t border-br-dk-border">
+      {song ? (
+        <div><p className="text-xs hw-sub mb-1 truncate">Rate this song{x.np?.title ? `, ${x.np.title}` : ''}</p>
+          <Stars n={x.mineSong} onPick={x.rateSong} label="Song rating" /></div>
+      ) : <span />}
+      {show && x.rateable ? (
+        <div><p className="text-xs hw-sub mb-1 truncate">Rate this show</p>
+          <Stars n={x.rating.mine} onPick={x.rate} label="Show rating" /></div>
+      ) : <span />}
+      <p className="col-span-2 text-xs hw-sub">Ratings are saved on your profile.</p>
+    </div>
+  )
+}
+
+/** Pinned host note, set list, and any sign-in messages. Reactions and ratings live elsewhere. */
+export function ExtrasStack({ compact = false }: { compact?: boolean }) {
+  const x = useX()
+  const card = compact ? 'hw-panel hw-snug' : 'hw-panel hw-tight'
+  const np = x.np
+  return (
+    <div className="space-y-4 empty:hidden">
       <EmojiRain />
       {np?.note && (
-        <div className={`${card} border-l-4`} style={{ borderLeftColor: accent ?? 'var(--br-accent)' }}>
+        <div className={card}>
           {np.note.headline && <p className="text-br-dk-text font-medium">{np.note.headline}</p>}
           {np.note.message && <p className="text-sm text-br-dk-sub whitespace-pre-wrap">{np.note.message}</p>}
           {np.note.by && <p className="text-xs text-br-dk-muted mt-1">from {np.note.by}</p>}
         </div>
       )}
-
-      {occId && invisible && (
-        <p className="text-xs text-br-dk-sub text-center">Reactions are off in Invisible mode.</p>
-      )}
-      {occId && !invisible && (
-        <div className={`${card} flex flex-wrap items-center gap-3`}>
-          <span className="text-xs text-br-dk-sub">React</span>
-          {(reactionTheme(eggs, np) ?? emojis).map(e => (
-            <button key={e} type="button" onClick={() => react(e)} aria-label={`React ${e}`}
-                    className="sk-key rounded-full h-9 w-10 flex items-center justify-center text-base active:scale-90 transition-transform">
-              <EmojiGlyph e={e} size="1.3rem" />
-            </button>
-          ))}
-        </div>
-      )}
-
-      {songKey && ratingsOn && (
-        <div className={`${card} flex flex-wrap items-center gap-3`}>
-          <span className="text-sm text-br-dk-text truncate max-w-full">Rate this song</span>
-          <span className="flex" role="group" aria-label="Song rating">
-            {[1, 2, 3, 4, 5].map(n => (
-              <button key={n} type="button" onClick={() => rateSong(n)} aria-label={`${n} star${n > 1 ? 's' : ''} for this song`}
-                      className={`text-xl leading-none px-0.5 ${n <= mineSong ? 'text-br-gold' : 'text-br-dk-muted'}`}>★</button>
-            ))}
-          </span>
-        </div>
-      )}
-
-      {sorted.length > 0 && (
+      {x.sorted.length > 0 && (
         <div className={`${card} space-y-2`}>
-          <p className="font-display text-br-gold tracking-widest text-sm">SET LIST{listTitle ? ` · ${listTitle.toUpperCase()}` : ''}</p>
+          <p className="font-display text-br-gold tracking-widest text-sm">SET LIST{x.listTitle ? ` · ${x.listTitle.toUpperCase()}` : ''}</p>
           <ul className="space-y-1">
-            {sorted.map(s => (
+            {x.sorted.map(s => (
               <li key={s.id} className="flex items-center gap-3 text-sm">
-                <button type="button" onClick={() => vote(s.id)} aria-pressed={s.mine} aria-label={`Upvote ${s.text}`}
-                        className={`sk-key rounded-lg h-8 min-w-[3rem] px-2 text-xs flex items-center justify-center gap-1 ${s.mine ? 'text-br-gold' : 'text-br-dk-sub'}`}>
+                <button type="button" onClick={() => x.vote(s.id)} aria-pressed={s.mine} aria-label={`Upvote ${s.text}`}
+                        className="sk-key rounded-lg h-8 min-w-[3rem] px-2 text-xs flex items-center justify-center gap-1">
                   ▲ <span className="tabular-nums">{s.votes}</span>
                 </button>
                 <span className="text-br-dk-text truncate">{s.text}</span>
@@ -207,28 +238,19 @@ export default function LiveExtras({ np, compact = false }: { np: NowPlaying | n
           </ul>
         </div>
       )}
-
-      {rateable && closing && ratingsOn && (
-        <div className={`${card} space-y-3`}>
-          <p className="text-br-dk-text font-medium">{endsAt > now ? 'Almost over' : 'That was'}: {rateable.title}. How was it?</p>
-          <span className="flex" role="group" aria-label="Star rating">
-            {[1, 2, 3, 4, 5].map(n => (
-              <button key={n} type="button" onClick={() => rate(n)} aria-label={`${n} star${n > 1 ? 's' : ''}`}
-                      className={`text-2xl leading-none px-0.5 ${n <= rating.mine ? 'text-br-gold' : 'text-br-dk-muted'}`}>★</button>
-            ))}
-          </span>
-          {commentSent === rateable.occId ? (
-            <p className="text-sm text-br-gold">Thanks! Your feedback goes to the host.</p>
-          ) : (
-            <>
-              <textarea value={comment} onChange={e => setComment(e.target.value)} rows={2} maxLength={280}
-                        placeholder="Anything the host should know? (optional)" className="sk-field w-full rounded-lg px-3 py-2 text-sm text-br-dk-text" />
-              <button type="button" onClick={sendFeedback} className="sk-btn font-display tracking-[0.2em] text-xs px-5 py-2.5 rounded-lg">SEND FEEDBACK</button>
-            </>
-          )}
-        </div>
-      )}
-      {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}
+      {x.msg && <p role="status" className="text-sm text-br-gold">{x.msg}</p>}
     </div>
+  )
+}
+
+/** Everything in one stack: used under the player on narrow screens. */
+export default function LiveExtras({ np, compact = false }: { np: NowPlaying | null; compact?: boolean }) {
+  return (
+    <LiveExtrasProvider np={np}>
+      <div className="mt-4 space-y-4">
+        <div className={compact ? 'hw-panel hw-snug' : 'hw-panel hw-tight'}><ReactionKeys /><RatingsBlock /></div>
+        <ExtrasStack compact={compact} />
+      </div>
+    </LiveExtrasProvider>
   )
 }

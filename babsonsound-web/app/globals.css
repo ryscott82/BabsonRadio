@@ -1,5 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@500;600;700&family=Barlow+Condensed:wght@600;700&display=swap');
 @import "tailwindcss";
+@import "./hardware.css";
 
 /* ── Brand tokens ───────────────────────────────────────────── */
 /* The existing br-dk-* class names now resolve to whichever theme is active, so every page
@@ -46,9 +47,9 @@
   :root:not([data-theme="light"]) { /* dark values, repeated below for the explicit toggle */
     color-scheme: dark;
     --cover-filter: saturate(.94) sepia(.05);
-    --br-bg:#07120D; --br-surface:#0E2019; --br-surface2:#153027;
-    --br-border:#1F4034; --br-border2:#2A5645;
-    --br-text:#EAF3EE; --br-sub:#93AFA2; --br-muted:#52705F;
+    --br-bg:#14110D; --br-surface:#1D1D1A; --br-surface2:#292923;
+    --br-border:#3A382E; --br-border2:#4C4A3C;
+    --br-text:#EFE9D6; --br-sub:#B1AA94; --br-muted:#857F6A;
     --br-accent:#2FB67C;
     --br-hero-a:#11553B; --br-hero-b:#07120D;
     --sk-rgb: 0,0,0; --sk-hi: rgba(255,255,255,.08);
@@ -60,9 +61,9 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --cover-filter: saturate(.94) sepia(.05);
-  --br-bg:#07120D; --br-surface:#0E2019; --br-surface2:#153027;
-  --br-border:#1F4034; --br-border2:#2A5645;
-  --br-text:#EAF3EE; --br-sub:#93AFA2; --br-muted:#52705F;
+  --br-bg:#14110D; --br-surface:#1D1D1A; --br-surface2:#292923;
+  --br-border:#3A382E; --br-border2:#4C4A3C;
+  --br-text:#EFE9D6; --br-sub:#B1AA94; --br-muted:#857F6A;
   --br-accent:#2FB67C;
   --br-hero-a:#11553B; --br-hero-b:#07120D;
   --sk-rgb: 0,0,0; --sk-hi: rgba(255,255,255,.08);

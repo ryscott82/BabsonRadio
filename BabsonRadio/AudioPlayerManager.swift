@@ -101,6 +101,7 @@ class AudioPlayerManager: ObservableObject {
     @Published var showSignInPrompt = false
     private var previewTimer: Timer?
     private var previewSeconds = 0
+    private var previewTotal = 0
 
     private var pollTask: Task<Void, Never>?
     private var pollUsers = 0
@@ -183,6 +184,14 @@ class AudioPlayerManager: ObservableObject {
         // Also covers lock-screen / Control Center play: live radio needs an account with access.
         // Signed-out visitors can preview the live stream; everyone who is signed in can listen.
         guard AuthManager.shared.canListenLive || !AuthManager.shared.isSignedIn else { return }
+        isBuffering = true
+        Task { @MainActor in
+            // The server decides whether listening is open right now (quiet hours, limits, one device at a time).
+            if await ListenGuard.shared.begin() { startPlayback() } else { isBuffering = false }
+        }
+    }
+
+    private func startPlayback() {
         guard let url = URL(string: streamURLString) else {
             print("Invalid stream URL — update streamURLString in AudioPlayerManager.swift")
             return
@@ -217,6 +226,7 @@ class AudioPlayerManager: ObservableObject {
     }
 
     func stop() {
+        Task { @MainActor in ListenGuard.shared.end() }
         player?.pause()
         isPlaying = false
         isBuffering = false
@@ -233,13 +243,15 @@ class AudioPlayerManager: ObservableObject {
 
     private func startPreviewPrompts() {
         previewTimer?.invalidate(); previewTimer = nil
-        previewSeconds = 0
+        previewSeconds = 0; previewTotal = 0
         guard !AuthManager.shared.isSignedIn else { return }
         previewTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
                 if AuthManager.shared.isSignedIn { self.previewTimer?.invalidate(); self.previewTimer = nil; return }
-                self.previewSeconds += 1
+                self.previewSeconds += 1; self.previewTotal += 1
+                // Signed-out visitors get 10 minutes, then the stream stops and the sign-in invitation shows.
+                if self.previewTotal >= 600 { self.stop(); self.showSignInPrompt = true; return }
                 if self.previewSeconds >= 300 { self.previewSeconds = 0; self.showSignInPrompt = true }
             }
         }

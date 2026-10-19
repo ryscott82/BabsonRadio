@@ -77,8 +77,8 @@ struct VotePanel: View {
                     if let s = state {
                         Text("Select the next hour of music")
                             .font(.system(size: 13, weight: .semibold)).foregroundColor(sub)
-                        if let u = s.upNext {
-                            Text(u.label.isEmpty ? "\(time(u.blockStart)): no clear winner, so the auto DJ picks." : "\(u.label) won \(time(u.blockStart)).")
+                        if let u = s.upNext, !u.label.isEmpty {
+                            Text("\(u.label) won \(time(u.blockStart)).")
                                 .font(.system(size: 13)).foregroundColor(accent)
                         }
                         let top = max(1, s.options.map(\.count).max() ?? 1)

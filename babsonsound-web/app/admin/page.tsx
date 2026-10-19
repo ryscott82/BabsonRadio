@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '@/lib/auth'
 import StationPanel from '@/components/admin/StationPanel'
 import Telemetry from '@/components/admin/Telemetry'
+import ArtTest from '@/components/admin/ArtTest'
 import { plexMono } from '@/components/admin/opsFont'
 
 interface Alerts {
@@ -104,6 +105,8 @@ export default function AdminPage() {
             ))}
           </section>
 
+          <ArtTest />
+
           <section className="sk-raised p-4">
             <h2 className="text-br-gold text-xs mb-3">queue (24h)</h2>
             <ul className="text-sm divide-y divide-br-dk-border">
@@ -125,6 +128,7 @@ export default function AdminPage() {
             ]} />
             <ToolGroup title="people" links={[
               ['/admin/feedback', 'Bugs and ideas'], ['/admin/requests', 'Listener requests'],
+              ...(isAdmin ? [['/admin/usage', 'Listening hours']] : []),
               ...(isAdmin ? [['/admin/phone-changes', 'Phone changes']] : []),
               ...(isAdmin ? [['/admin/users', 'Users and roles'], ['/admin/testers', 'Beta testers'], ['/admin/birthdays', 'Birthdays'], ['/admin/notify', 'Send a notification']] : []),
             ]} />

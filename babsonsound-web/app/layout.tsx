@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <Nav />
           <VerifyBanner />
-          <main className="relative z-[1] pt-16">
+          <main className="hw-stage hw-main relative z-[1] pt-16">
             <AnnouncementBanner />
             {children}
           </main>

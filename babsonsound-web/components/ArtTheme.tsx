@@ -3,7 +3,16 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useNowPlaying } from '@/lib/nowplaying'
 import { ART_THEME, BABSON_GREEN, useArtPalette } from '@/lib/artColor'
-import { setColorChanging, useParty } from '@/lib/party'
+import { getArtTest, onPartyChange, setColorChanging, useParty } from '@/lib/party'
+
+/** Fixed palettes for the admin test switch: [main, green, second]. */
+export const ART_PRESETS: Record<string, { label: string; colors: string[] }> = {
+  ocean: { label: 'Ocean', colors: ['#2E78C7', '#0B7A5A', '#4FB3D9'] },
+  sunset: { label: 'Sunset', colors: ['#E0572F', '#0F7A4B', '#F2A33A'] },
+  violet: { label: 'Violet', colors: ['#8A4FD0', '#1E7F5C', '#D05FA8'] },
+  gold: { label: 'Gold', colors: ['#D9A21B', '#2E7D32', '#C8602A'] },
+  rose: { label: 'Rose', colors: ['#D6456E', '#13785A', '#E8884F'] },
+}
 
 // Wraps the home page body (not the top bar). Everyone starts on the station green; a few seconds in, the page
 // fades to the three main colors of the current cover, one per kind of element (see .art-ui in globals.css).
@@ -21,8 +30,12 @@ export const useArtMain = () => useContext(Ctx)
 
 export default function ArtTheme({ className, children }: { className?: string; children: React.ReactNode }) {
   const np = useNowPlaying()
-  const palette = useArtPalette(np?.art || undefined)
-  const [ready, setReady] = useState(false)
+  const coverPalette = useArtPalette(np?.art || undefined)
+  const [test, setTest] = useState({ on: false, preset: '' })
+  useEffect(() => { const sync = () => setTest(getArtTest()); sync(); return onPartyChange(sync) }, [])
+  const palette = test.on && ART_PRESETS[test.preset] ? ART_PRESETS[test.preset].colors : coverPalette
+  const [timerReady, setReady] = useState(false)
+  const ready = timerReady || test.on
   const night = useParty().party
   const allow = np?.colorChanging === true
   useEffect(() => { setColorChanging(allow) }, [allow])

@@ -1,0 +1,357 @@
+/* ── Hardware look (Oct 2026) ─────────────────────────────────────────────────
+   Guitar-amp realism for the home/live page: oak desk, leather-wrapped panels with an ivory ceramic face (light) or
+   plain black leather (dark), steel keys, a recessed equalizer well, a steel play knob and a lit ON AIR sign.
+   Opt-in classes, nothing here changes other pages:
+     .hw-stage   page wrapper: puts the oak desk behind the page (body gets the wood)
+     .hw-panel   leather card. Inside it .sk-key / .sk-field / .sk-btn are re-skinned to steel / slot / key
+     .hw-cover   album cover on the desk with a record peeking out, + .hw-sign (ON AIR) on its corner
+     .hw-well    recessed black glass well (equalizer)   .hw-prog  progress slot
+     .sk-btn.hw-knob  the round steel play knob          .hw-key[aria-pressed=true]  key pushed in
+   Textures live in /public/hw (captured from the design canvas). Colors follow the theme tokens below. */
+
+:root {
+  --hw-wood: url(/hw/oak-light.jpg);
+  --hw-wood-bg: #6a4a2f;
+  --hw-leather: url(/hw/leather-green.jpg);
+  --hw-leather-bg: #0b5a3d;
+  --hw-face-bg: url(/hw/cface.jpg) center / cover, #F4E9CF;
+  --hw-face-blend: multiply;
+  --hw-face-ring: 0 0 0 1.5px rgba(0,102,68,.75);
+  --hw-stitch: rgba(246,236,200,.6);
+  --hw-key-tint: linear-gradient(rgba(236,236,230,.30), rgba(236,236,230,.30));
+  --hw-key-ink: #1A1710;
+  --hw-key-edge: #6f6d65;
+  --hw-field: rgba(110,88,40,.16);
+  --hw-eq: #1fbf7f;
+  --hw-sub: #5b5444;
+  --hw-bar-bg: linear-gradient(#FBF5E4, #E6DBBF);
+  --hw-bar-edge: rgba(60,40,10,.28);
+  --hw-banner-tint: linear-gradient(rgba(150,186,160,.84), rgba(150,186,160,.84));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --hw-wood: url(/hw/oak-dark.jpg);
+    --hw-wood-bg: #3a2210;
+    --hw-leather: url(/hw/leather-black.jpg);
+    --hw-leather-bg: #1A1A18;
+    --hw-face-bg: transparent;
+    --hw-face-blend: normal;
+    --hw-face-ring: none;
+    --hw-stitch: rgba(232,212,160,.38);
+    --hw-key-tint: linear-gradient(rgba(30,30,28,.55), rgba(30,30,28,.55));
+    --hw-key-ink: #EFE9D6;
+    --hw-key-edge: #0F0F0D;
+    --hw-field: rgba(0,0,0,.38);
+    --hw-eq: #6FCF93;
+    --hw-sub: #B1AA94;
+    --hw-bar-bg: linear-gradient(rgba(0,0,0,.28), rgba(0,0,0,.42)), #1A1A18 url(/hw/leather-black.jpg) center / 300px auto;
+    --hw-bar-edge: rgba(0,0,0,.7);
+    --hw-banner-tint: linear-gradient(rgba(40,70,52,.86), rgba(40,70,52,.86));
+  }
+}
+:root[data-theme="dark"] {
+  --hw-wood: url(/hw/oak-dark.jpg);
+  --hw-wood-bg: #3a2210;
+  --hw-leather: url(/hw/leather-black.jpg);
+  --hw-leather-bg: #1A1A18;
+  --hw-face-bg: transparent;
+  --hw-face-blend: normal;
+  --hw-face-ring: none;
+  --hw-stitch: rgba(232,212,160,.38);
+  --hw-key-tint: linear-gradient(rgba(30,30,28,.55), rgba(30,30,28,.55));
+  --hw-key-ink: #EFE9D6;
+  --hw-key-edge: #0F0F0D;
+  --hw-field: rgba(0,0,0,.38);
+  --hw-eq: #6FCF93;
+  --hw-sub: #B1AA94;
+  --hw-bar-bg: linear-gradient(rgba(0,0,0,.28), rgba(0,0,0,.42)), #1A1A18 url(/hw/leather-black.jpg) center / 300px auto;
+  --hw-bar-edge: rgba(0,0,0,.7);
+  --hw-banner-tint: linear-gradient(rgba(40,70,52,.86), rgba(40,70,52,.86));
+}
+
+/* Oak desk: behind everything while a .hw-stage is on the page, grain running vertically in the photo. */
+body:has(.hw-stage) {
+  background: linear-gradient(rgba(24,16,8,.14), rgba(24,16,8,.14)) fixed, radial-gradient(ellipse at 40% 25%, rgba(255,200,150,.05), rgba(24,26,18,.62) 100%) fixed,
+              var(--hw-wood-bg) var(--hw-wood) center top / cover fixed;
+}
+.hw-stage { position: relative; }
+
+/* ── Leather panel ───────────────────────────────────────────── */
+.hw-panel, .hw-main > div[class*="max-w-"]:not(.hw-stage) {
+  position: relative; isolation: isolate; overflow: hidden;
+  border-radius: 20px; padding: 28px;
+  color: var(--br-text);
+  background: linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.30)), var(--hw-leather-bg) var(--hw-leather) center / 300px auto;
+  box-shadow: 0 14px 24px rgba(24,16,8,.45), 0 2px 4px rgba(24,16,8,.3), inset 0 1px 0 rgba(250,246,236,.5), inset 0 -2px 0 rgba(24,26,18,.14);
+  outline: 1.5px dashed var(--hw-stitch); outline-offset: -8px;
+}
+/* The face: ivory ceramic in light mode, nothing (bare leather) in dark mode. */
+.hw-panel::before, .hw-main > div[class*="max-w-"]:not(.hw-stage)::before {
+  content: ''; position: absolute; inset: 15px; z-index: -1; border-radius: 12px; pointer-events: none;
+  background: var(--hw-face-bg); background-blend-mode: var(--hw-face-blend, multiply);
+  box-shadow: var(--hw-face-ring), inset 0 2px 5px rgba(60,40,10,.28);
+}
+/* Corners: black glass caps on the light amps, small steel screws on the dark ones. */
+.hw-panel::after, .hw-main > div[class*="max-w-"]:not(.hw-stage)::after {
+  content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit;
+  background:
+    radial-gradient(circle at 0 0, rgba(255,255,255,.22) 0 3px, #161614 4px 24px, transparent 25px),
+    radial-gradient(circle at 100% 0, rgba(255,255,255,.22) 0 3px, #161614 4px 24px, transparent 25px),
+    radial-gradient(circle at 0 100%, rgba(255,255,255,.22) 0 3px, #161614 4px 24px, transparent 25px),
+    radial-gradient(circle at 100% 100%, rgba(255,255,255,.22) 0 3px, #161614 4px 24px, transparent 25px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .hw-panel::after, :root:not([data-theme="light"]) .hw-main > div[class*="max-w-"]:not(.hw-stage)::after {
+    background:
+      radial-gradient(circle at 12px 12px, #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),
+      radial-gradient(circle at calc(100% - 12px) 12px, #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),
+      radial-gradient(circle at 12px calc(100% - 12px), #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),
+      radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px);
+  }
+}
+:root[data-theme="dark"] .hw-panel::after, :root[data-theme="dark"] .hw-main > div[class*="max-w-"]:not(.hw-stage)::after {
+  background:
+    radial-gradient(circle at 12px 12px, #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),
+    radial-gradient(circle at calc(100% - 12px) 12px, #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),
+    radial-gradient(circle at 12px calc(100% - 12px), #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),
+    radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px);
+}
+.hw-panel.hw-tight { padding: 24px; }
+.hw-panel.hw-snug { padding: 22px; }
+
+/* ── Steel keys (every .sk-key inside a panel) ───────────────── */
+.hw-panel .sk-key, .hw-main .sk-key, .hw-board .sk-key, .hw-bar .sk-key, .hw-banner .sk-key, .hw-key, .hw-pill {
+  color: var(--hw-key-ink); border: 0;
+  background:
+    linear-gradient(rgba(250,246,236,.13) 0, rgba(250,246,236,.03) 46%, rgba(250,246,236,0) 54%),
+    var(--hw-key-tint),
+    url(/hw/steel.jpg) center / 220px auto;
+  box-shadow: 0 4px 0 var(--hw-key-edge), 0 8px 10px rgba(24,26,18,.38), inset 0 1px 0 rgba(250,246,236,.3), inset 0 -2px 3px rgba(24,26,18,.18), inset 0 0 0 1px rgba(24,26,18,.12);
+  transform: translateY(0);
+  transition: transform .06s ease-out, box-shadow .06s ease-out;
+}
+.hw-panel .sk-key:active:not(:disabled), .hw-main .sk-key:active:not(:disabled), .hw-board .sk-key:active:not(:disabled), .hw-bar .sk-key:active:not(:disabled), .hw-key:active:not(:disabled), .hw-pill:active:not(:disabled),
+.hw-panel .sk-key[aria-pressed="true"], .hw-main .sk-key[aria-pressed="true"], .hw-board .sk-key[aria-pressed="true"], .hw-key[aria-pressed="true"], .hw-bar a[aria-current="page"] {
+  transform: translateY(3px);
+  background:
+    linear-gradient(rgba(0,0,0,.38), rgba(0,0,0,.08)),
+    linear-gradient(rgba(30,30,28,.78), rgba(30,30,28,.78)),
+    url(/hw/steel.jpg) center / 220px auto;
+  color: var(--hw-eq);
+  box-shadow: 0 1px 0 var(--hw-key-edge), inset 0 3px 6px rgba(0,0,0,.65), inset 0 0 0 1px rgba(24,26,18,.4);
+}
+.hw-panel .sk-key:disabled, .hw-main .sk-key:disabled, .hw-board .sk-key:disabled, .hw-key:disabled, .hw-bar .sk-key:disabled { opacity: .55; cursor: not-allowed; }
+.hw-panel .sk-field, .hw-main .sk-field, .hw-field {
+  background: var(--hw-field); border: 0; border-radius: 12px;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.18);
+}
+.hw-panel .sk-btn:not(.hw-knob), .hw-main .sk-btn:not(.hw-knob) { border-radius: 12px; }
+
+/* Steel play knob: concentric machined rings, pushed in while playing. */
+.sk-btn.hw-knob {
+  position: relative; border: 0; color: #1a1710; text-shadow: none;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(0,0,0,.0) 0 36%, rgba(0,0,0,.22) 37% 38%, rgba(255,255,255,.0) 39% 100%),
+    repeating-radial-gradient(circle at 50% 50%, rgba(0,0,0,.07) 0 1px, rgba(255,255,255,.07) 1px 2px),
+    conic-gradient(from 30deg, #838281, #d9d8d3, #6b6a66, #ecebe6, #7c7b77, #d3d2cd, #838281);
+  box-shadow: 0 0 0 6px rgba(0,0,0,.28), 0 0 0 7px rgba(255,255,255,.08), 0 10px 16px rgba(0,0,0,.5), inset 0 2px 2px rgba(255,255,255,.65), inset 0 -3px 4px rgba(0,0,0,.35);
+  filter: none;
+}
+.sk-btn.hw-knob:hover:not(:disabled) { filter: brightness(1.05); }
+.sk-btn.hw-knob:active:not(:disabled), .sk-btn.hw-knob[aria-pressed="true"] {
+  transform: translateY(2px); filter: brightness(.93);
+  box-shadow: 0 0 0 6px rgba(0,0,0,.34), 0 0 0 7px rgba(255,255,255,.06), 0 3px 6px rgba(0,0,0,.5), inset 0 3px 6px rgba(0,0,0,.4);
+}
+
+/* ── Cover on the desk, record peeking out, ON AIR sign ───────── */
+.hw-cover { position: relative; aspect-ratio: 1; }
+.hw-cover-art {
+  position: absolute; inset: 0; border-radius: 7px; overflow: hidden; transform: rotate(-2deg); z-index: 2;
+  box-shadow: 10px 22px 32px rgba(24,16,8,.55), 3px 4px 6px rgba(24,16,8,.4), inset 0 1px 0 rgba(250,246,236,.2);
+}
+.hw-cover-art::after { content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(118deg, rgba(255,255,255,.16), rgba(255,255,255,0) 38%), linear-gradient(rgba(255,255,255,.1), transparent 12%); }
+.hw-vinyl {
+  position: absolute; z-index: 1; top: 2%; left: 22%; width: 92%; aspect-ratio: 1; border-radius: 50%;
+  background: repeating-radial-gradient(circle at center, #0E0E0E 0 1.5px, #1E1E1E 1.5px 3px);
+  box-shadow: 0 16px 26px rgba(24,16,8,.5);
+}
+.hw-vinyl::before { content: ''; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from 25deg, rgba(250,246,236,0) 0 18%, rgba(250,246,236,.2) 25%, rgba(250,246,236,0) 32% 68%, rgba(250,246,236,.16) 75%, rgba(250,246,236,0) 82%); }
+.hw-vinyl::after { content: ''; position: absolute; left: 36%; top: 36%; width: 28%; height: 28%; border-radius: 50%;
+  background: var(--hw-label, #1d6b4a); box-shadow: inset 0 0 0 3px rgba(24,26,18,.12); }
+.hw-sign {
+  position: absolute; z-index: 5; left: -14px; top: -16px; padding: 3px;
+  border-radius: 6px; background: #1B1B19; box-shadow: 0 0 0 1px #4A4A44, 0 4px 7px rgba(24,16,8,.55);
+}
+.hw-sign > span {
+  display: block; padding: 3px 14px 1px; border-radius: 4px; background: linear-gradient(#0B0B0A, #030303);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.95);
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif; font-weight: 700; font-size: 1.9rem; line-height: 1.1; letter-spacing: .03em;
+  color: #EE3A22; text-shadow: 0 0 5px rgba(238,58,34,.7), 0 0 14px rgba(238,58,34,.38);
+}
+@media (min-width: 1280px) { .hw-sign > span { font-size: 2.4rem; padding: 4px 18px 2px; } }
+
+/* ── Amp internals ───────────────────────────────────────────── */
+.hw-title {
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif; font-weight: 700; letter-spacing: .01em; line-height: 1.05;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hw-sub { font-family: 'Barlow', system-ui, sans-serif; color: var(--hw-sub); }
+.hw-prog { height: 10px; border-radius: 6px; background: #0d0f0c; box-shadow: inset 0 2px 4px rgba(0,0,0,.8), 0 1px 0 rgba(255,255,255,.2); padding: 2px; }
+.hw-prog > i { display: block; height: 100%; min-width: 10px; border-radius: 4px;
+  background: linear-gradient(rgba(250,246,236,.45), rgba(250,246,236,0) 55%), var(--hw-eq); box-shadow: 0 0 0 1px rgba(24,26,18,.35); }
+.hw-well {
+  border-radius: 14px; padding: 10px 12px; background: linear-gradient(#0b0f0c, #151b17);
+  box-shadow: inset 0 3px 8px rgba(0,0,0,.85), 0 0 0 3px #1B1B19, 0 0 0 4px #4A4A44, 0 6px 10px rgba(24,16,8,.35);
+}
+.hw-eq { display: flex; align-items: flex-end; gap: 3px; height: 44px; }
+.hw-eq > i { flex: 1; height: 100%; border-radius: 1.5px; transform-origin: bottom; transform: scaleY(.12);
+  background: linear-gradient(rgba(255,255,255,.35), rgba(255,255,255,0) 40%), var(--hw-eq); }
+.hw-eq[data-on="true"] > i { animation: hw-eq 1s ease-in-out infinite; }
+@keyframes hw-eq { 0%, 100% { transform: scaleY(.22); } 50% { transform: scaleY(var(--h, .8)); } }
+@media (prefers-reduced-motion: reduce) { .hw-eq[data-on="true"] > i { animation: none; transform: scaleY(.55); } }
+
+/* Sleep timer keys */
+.hw-keys { display: flex; gap: 10px; }
+.hw-keys > button { flex: 1; height: 40px; border-radius: 12px; font-family: 'Barlow', system-ui, sans-serif; font-weight: 700; font-size: 15px; }
+
+/* ── Web page extras ─────────────────────────────────────────── */
+.hw-panel.hw-big { padding: 40px 46px; }
+@media (max-width: 640px) { .hw-panel.hw-big { padding: 30px 26px; } }
+
+/* Top bar, footer and station-message strip */
+.hw-bar { background: var(--hw-bar-bg); border-bottom: 1px solid rgba(255,255,255,.45);
+  box-shadow: 0 2px 0 var(--hw-bar-edge), 0 8px 16px rgba(24,16,8,.32); font-family: 'Barlow', system-ui, sans-serif; }
+.hw-bar .sk-key { height: 36px; }
+.hw-bar a[aria-current="page"] { color: var(--hw-eq);
+  background: linear-gradient(rgba(0,0,0,.14), rgba(255,255,255,.16)), var(--hw-key-tint), url(/hw/steel.jpg) center / 220px auto;
+  box-shadow: 0 1px 0 var(--hw-key-edge), inset 0 3px 5px rgba(0,0,0,.28), inset 0 0 0 1px rgba(24,26,18,.25); }
+.hw-foot { background: var(--hw-bar-bg); border-top: 4px solid var(--br-accent); font-family: 'Barlow', system-ui, sans-serif; box-shadow: 0 -6px 14px rgba(24,16,8,.25); }
+.hw-banner { background: var(--hw-banner-tint), url(/hw/steel.jpg) center / 320px auto; border-bottom: 1px solid rgba(255,255,255,.3);
+  box-shadow: inset 0 -2px 4px rgba(0,0,0,.18); font-family: 'Barlow', system-ui, sans-serif; }
+
+/* Segmented LED equalizer. Each bar is a column: ::before is the lit segments, ::after a red peak cap.
+   With real audio (data-real="true", set by lib/spectrum.ts) --lv and --pk come from the analyser; otherwise a synthetic motion plays. */
+.hw-eq.hw-led { height: 56px; gap: 4px; }
+.hw-eq.hw-led > i { position: relative; align-self: stretch; height: auto; transform: none; border-radius: 0; animation: none; background: none; }
+.hw-eq.hw-led > i::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 12%;
+  background: repeating-linear-gradient(to top, var(--hw-eq) 0 5px, transparent 5px 8px); }
+.hw-eq.hw-led > i::after { content: ''; position: absolute; left: 0; right: 0; height: 3px; bottom: 0; background: #CAE7DD; opacity: 0; }
+.hw-eq.hw-led[data-on="true"] > i::before { animation: hw-led 1s ease-in-out infinite; animation-delay: inherit; animation-duration: inherit; }
+@keyframes hw-led { 0%, 100% { height: 18%; } 50% { height: calc(var(--h, .8) * 100%); } }
+.hw-eq.hw-led[data-real="true"] > i::before { animation: none; height: calc(var(--lv, 0) * 100%); transition: height .06s linear; }
+.hw-eq.hw-led[data-real="true"] > i::after { opacity: min(1, calc(var(--pk, 0) * 20)); bottom: calc(var(--pk, 0) * 100% - 3px); }
+.hw-eq.hw-led[data-real="true"] > i[data-hot="1"]::after { background: #E0412A; }
+@media (prefers-reduced-motion: reduce) { .hw-eq.hw-led[data-on="true"] > i::before { animation: none; height: 55%; } }
+
+/* Small steel knobs (volume, skip) with a ring of level dots */
+.hw-knob-sm {
+  position: relative; border: 0;
+  background: repeating-radial-gradient(circle at 50% 50%, rgba(0,0,0,.07) 0 1px, rgba(255,255,255,.07) 1px 2px),
+              conic-gradient(from 30deg, #838281, #d9d8d3, #6b6a66, #ecebe6, #7c7b77, #d3d2cd, #838281);
+  box-shadow: 0 0 0 4px rgba(0,0,0,.28), 0 0 0 5px rgba(255,255,255,.07), 0 7px 10px rgba(0,0,0,.45), inset 0 2px 2px rgba(255,255,255,.65), inset 0 -2px 3px rgba(0,0,0,.35);
+  cursor: pointer;
+}
+.hw-knob-sm[role="slider"]::after { content: ''; position: absolute; left: 50%; top: 6px; width: 3px; height: 14px; margin-left: -1.5px; border-radius: 2px;
+  background: #1f1d18; transform-origin: 50% 23px; transform: rotate(var(--turn, 0deg)); }
+.hw-knob-sm:focus-visible { outline: 2px solid var(--br-accent); outline-offset: 6px; }
+.hw-skip:active:not(:disabled) { transform: translateY(2px); filter: brightness(.94); }
+.hw-dot { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #0d0f0c; box-shadow: inset 0 1px 1px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.28); }
+.hw-dot.on { background: var(--hw-eq); }
+
+/* Tuned-in initials */
+.hw-chip { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: #2b2418; box-shadow: 0 0 0 2px #1f1f1c, 0 2px 3px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.6); }
+.hw-chip-more { background: #F4EFE2; font-size: 9px; }
+
+/* Poll keys: steel key with a fill that shows the votes */
+.hw-vote { height: 44px; }
+.hw-vote-fill { position: absolute; left: 0; top: 0; bottom: 0; opacity: .5; pointer-events: none;
+  background: linear-gradient(rgba(255,255,255,.28), rgba(255,255,255,0)), var(--hw-eq); }
+.hw-vote[aria-pressed="true"] { transform: none; outline: 2px solid var(--hw-eq); outline-offset: -2px; box-shadow: 0 4px 0 var(--hw-key-edge), 0 8px 10px rgba(24,26,18,.38); color: var(--hw-key-ink); }
+
+/* Stars: worn steel, lit ones darker (light) or brighter (dark) */
+.hw-star { color: color-mix(in srgb, var(--hw-key-ink) 24%, transparent); text-shadow: 0 1px 0 rgba(255,255,255,.55), 0 2px 2px rgba(0,0,0,.35); cursor: pointer; }
+.hw-star.on { color: color-mix(in srgb, var(--hw-key-ink) 78%, transparent); }
+.hw-star:hover { transform: translateY(-1px); }
+
+/* Album-colour mode: leather takes the cover's hue (light mode), accents follow the cover */
+.art-ui { --hw-eq: var(--br-accent); }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .art-ui .hw-panel {
+    background: linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.30)), linear-gradient(var(--art-1), var(--art-1)), var(--hw-leather) center / 300px auto, #333;
+    background-blend-mode: normal, color, normal, normal;
+  }
+}
+:root[data-theme="light"] .art-ui .hw-panel {
+  background: linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.30)), linear-gradient(var(--art-1), var(--art-1)), var(--hw-leather) center / 300px auto, #333;
+  background-blend-mode: normal, color, normal, normal;
+}
+
+/* ── Every other page (Oct 2026) ──────────────────────────────────────────────
+   <main class="hw-stage hw-main"> puts the oak desk behind every page. A page's outer max-w container becomes one big
+   leather sheet (ceramic face in light), cards inside it (.sk-raised) become plates, keys go steel and inputs go to slots.
+   The home page keeps its own panels: its root carries .hw-stage and is skipped. */
+.hw-main > div[class*="max-w-"]:not(.hw-stage) {
+  overflow: visible; isolation: isolate;
+  width: calc(100% - 24px); margin-top: 22px; margin-bottom: 40px; padding: 38px 40px;
+}
+@media (max-width: 640px) { .hw-main > div[class*="max-w-"]:not(.hw-stage) { padding: 30px 24px; margin-top: 14px; } }
+@media (min-width: 1024px) { .hw-main > .fit { height: auto; max-height: calc(100dvh - 9.5rem); } .hw-main > .fit > .fit-body { flex: 0 1 auto; } }
+
+/* Cards on a sheet: a raised plate (cream in light, lifted black leather in dark). */
+:root { --hw-plate: linear-gradient(#FFFDF6, #F2E9D3); --hw-plate-edge: rgba(70,50,16,.3); --hw-plate-hi: #fff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --hw-plate: linear-gradient(rgba(255,255,255,.07), rgba(255,255,255,.07)), #1B1B18 url(/hw/leather-black.jpg) center / 300px auto;
+  --hw-plate-edge: rgba(232,212,160,.2); --hw-plate-hi: rgba(255,255,255,.1); } }
+:root[data-theme="dark"] {
+  --hw-plate: linear-gradient(rgba(255,255,255,.07), rgba(255,255,255,.07)), #1B1B18 url(/hw/leather-black.jpg) center / 300px auto;
+  --hw-plate-edge: rgba(232,212,160,.2); --hw-plate-hi: rgba(255,255,255,.1); }
+.sk-raised, .sk-hero {
+  background: var(--hw-plate); border: 1px solid var(--hw-plate-edge);
+  box-shadow: inset 0 1px 0 var(--hw-plate-hi), 0 2px 0 rgba(0,0,0,.22), 0 8px 14px -6px rgba(24,16,8,.45);
+}
+/* (album-colour mode on the home page keeps its own .art-ui overrides) */
+
+/* ── Dark mode top bar: smoked glass instead of leather ───────── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .hw-bar {
+    background: linear-gradient(rgba(255,255,255,.12), rgba(255,255,255,.03) 55%, rgba(0,0,0,.10)), rgba(18,20,18,.46) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
+    border-bottom: 1px solid rgba(255,255,255,.16) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 1px 0 rgba(0,0,0,.45), 0 10px 26px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"] .hw-bar {
+  background: linear-gradient(rgba(255,255,255,.12), rgba(255,255,255,.03) 55%, rgba(0,0,0,.10)), rgba(18,20,18,.46) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
+  border-bottom: 1px solid rgba(255,255,255,.16) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 1px 0 rgba(0,0,0,.45), 0 10px 26px rgba(0,0,0,.4);
+}
+
+/* ── Full screen board ───────────────────────────────────────── */
+.hw-board { background: radial-gradient(ellipse at 50% 45%, rgba(24,26,18,0) 50%, rgba(24,12,3,.6) 100%), var(--hw-wood-bg) var(--hw-wood) center / cover; font-family: 'Barlow', system-ui, sans-serif; color: var(--br-text); }
+.hw-board .hw-panel, .hw-board .hw-glass-frame, .hw-board .hw-board-well { z-index: 2; }
+.hw-glass-frame { position: absolute; border-radius: 16px; padding: 8px; box-sizing: border-box; z-index: 2;
+  background: #1A1A18 url(/hw/leather-black.jpg) center / 260px auto; box-shadow: 0 10px 22px rgba(24,26,18,.5), 0 1px 0 rgba(250,246,236,.5); }
+.hw-glass-screen { position: relative; width: 100%; height: 100%; border-radius: 10px; overflow: hidden; background: #05080B;
+  box-shadow: inset 0 4px 10px rgba(24,26,18,.85); display: flex; align-items: center; justify-content: center; gap: 18px; }
+.hw-glass-screen::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: url(/hw/glass.jpg) center / cover; mix-blend-mode: screen; opacity: .95; }
+.hw-glass-screen::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(112deg, rgba(250,246,236,.11) 0, rgba(250,246,236,.11) 28%, rgba(250,246,236,0) 40%), linear-gradient(rgba(250,246,236,.07), rgba(250,246,236,0) 45%); }
+.hw-glass-time { position: relative; z-index: 1; font-size: 150px; font-weight: 700; letter-spacing: .04em; color: #7FD39C; font-variant-numeric: tabular-nums; line-height: 1; }
+.hw-glass-ampm { position: relative; z-index: 1; font-size: 39px; font-weight: 700; color: #7FD39C; opacity: .85; align-self: flex-end; margin-bottom: 24px; }
+.hw-glass-date { position: absolute; z-index: 1; right: 18px; top: 10px; font-size: 14px; letter-spacing: .2em; font-weight: 600; color: #7FD39C; opacity: .6; }
+.hw-board-title { font-weight: 700; font-size: 92px; letter-spacing: -.03em; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-bottom: 3px; }
+.hw-board-sub { font-size: 31px; font-weight: 500; color: var(--hw-sub); margin-top: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hw-board-next { font-size: 18px; color: var(--hw-sub); margin-top: 18px; }
+.hw-board-well { border-radius: 14px; padding: 8px; background: linear-gradient(#2A2A27, #141413); box-shadow: 0 10px 22px rgba(24,26,18,.5), 0 1px 0 rgba(250,246,236,.5); }
+.hw-board-well > .hw-eq { height: 100%; padding: 6px; border-radius: 9px; background: #05080B; box-shadow: inset 0 4px 10px rgba(24,26,18,.85); }
+.hw-eq.hw-big-led { gap: 3px; }
+.hw-eq.hw-big-led > i::before { background: repeating-linear-gradient(to top, #15ECA4 0 6px, transparent 6px 7px); }
+.hw-eq.hw-big-led > i::after { height: 6px; }
+.hw-eq.hw-big-led[data-real="true"] > i::after { bottom: calc(var(--pk, 0) * 100% - 6px); }
+.hw-board-react > div { display: flex; align-items: center; justify-content: center; }
+.hw-board-react .hw-react { width: 82px; height: 66px; border-radius: 12px; }
+.hw-board-key { height: 46px; padding: 0 22px; border-radius: 12px; font-size: 13px; font-weight: 700; letter-spacing: .18em; }

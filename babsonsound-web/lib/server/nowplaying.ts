@@ -5,6 +5,7 @@ import { listenerSample } from './taste'
 import { getAnnouncement, type Announcement } from './announcement'
 import { lookupBeat } from './beats'
 import { trackActual } from './actualPlaylist'
+import { recordListeners } from './usage'
 
 // Public "what is on air" feed for the website and the iOS app.
 // Reads AzuraCast's public now-playing endpoint (no API key). Env: AZURACAST_URL, AZURACAST_STATION_ID.
@@ -149,10 +150,12 @@ async function build(): Promise<Built> {
     // use the AzuraCast playlist name so the label never disagrees with the music.
     if (!value.isLive && !value.isShow && playlist && USE_PLAYLIST_LABEL) value.blockTitle = playlist
     cache = { at: Date.now(), value }
-    // Voting for the next hour closes 10 minutes before it; this makes sure it is decided on time even if no one has the vote card open.
+    // Voting for the next hour closes 1 minute before it; this makes sure it is decided on time even if no one has the vote card open.
     void import('./votes').then(m => m.finalizeDue(adminDb())).catch(() => {})
     // If AzuraCast is playing a different playlist than the plan, the schedule follows what is really on air.
     await trackActual(adminDb(), { playlist, playedAt: value.playedAt, isLive, isShow: value.isShow }).catch(() => {})
+    // Count listener-hours against the monthly plan limit (see usage.ts).
+    await recordListeners(adminDb(), value.listeners, (value.isShow ? value.showTitle || value.blockTitle : value.blockTitle) || '').catch(() => {})
     // Remember how many people listen to what (once every 5 minutes) so the auto-scheduler can learn.
     if (Date.now() - lastSample > 300_000) {
       lastSample = Date.now()

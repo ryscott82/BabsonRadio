@@ -8,7 +8,7 @@ import { requestsStatus } from '@/lib/server/live'
 export const runtime = 'nodejs'
 
 // "What would you like to hear": votes for the NEXT hour. Everyone signed in can see the tally;
-// students, developers and guests connected to Babson can vote. Voting for an hour closes 10 minutes before it starts; the genre with the most votes (at least 3, no tie) takes it.
+// students, developers and guests connected to Babson can vote. Voting for an hour closes 1 minute before it starts; the genre with the most votes (at least 3, no tie) takes it.
 export async function GET(req: Request) {
   return handle(async () => {
     const t = await requireUser(req)

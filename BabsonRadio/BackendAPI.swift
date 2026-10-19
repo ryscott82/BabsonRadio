@@ -57,7 +57,7 @@ enum BackendAPI {
         request.timeoutInterval = 40
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         if !BackendConfig.previewKey.isEmpty { request.setValue(BackendConfig.previewKey, forHTTPHeaderField: "X-Preview-Key") }
-        if !anonymous, let token = await AuthManager.shared.idToken() { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        if let token = await AuthManager.shared.idToken() { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         request.httpBody = body
 
         let data: Data, response: URLResponse

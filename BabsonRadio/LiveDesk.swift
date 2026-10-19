@@ -229,6 +229,8 @@ struct HWEQ: View {
         let cw = (size.width - gap * CGFloat(cols - 1)) / CGFloat(cols)
         let sh = (size.height - gap * CGFloat(segs - 1)) / CGFloat(segs)
         guard cw > 0, sh > 0 else { return }
+        var glow = [Path(), Path(), Path()]
+        var cells: [(CGRect, Int, Bool)] = []
         for c in 0..<cols {
             let fc = Double(c)
             let tilt = 1 - 0.45 * fc / Double(cols)                       // lows hit harder than highs
@@ -244,8 +246,36 @@ struct HWEQ: View {
                 let y = size.height - CGFloat(s + 1) * sh - CGFloat(s) * gap
                 let rect = CGRect(x: CGFloat(c) * (cw + gap), y: y, width: cw, height: sh)
                 let hot = Double(s) / Double(segs - 1)
-                let col: Color = lit ? (hot > 0.85 ? zones.red : hot > 0.55 ? zones.yellow : zones.green) : Color.white
-                ctx.fill(Path(roundedRect: rect, cornerRadius: 1), with: .color(col.opacity(lit ? 0.95 : 0.09)))
+                let zone = hot > 0.85 ? 2 : hot > 0.55 ? 1 : 0
+                if lit { glow[zone].addPath(Path(roundedRect: rect, cornerRadius: 1.5)) }
+                cells.append((rect, zone, lit))
+            }
+        }
+        // Glow: one blurred layer per zone color under the lights, so lit segments bloom a little into the glass around them.
+        let zoneColors = [zones.green, zones.yellow, zones.red]
+        for z in 0..<3 where !glow[z].isEmpty {
+            ctx.drawLayer { l in
+                l.addFilter(.blur(radius: 4))
+                l.fill(glow[z], with: .color(zoneColors[z].opacity(0.55)))
+            }
+        }
+        // The lights themselves: a lens that is brightest at the top and in a hot spot at its center, darker along the bottom,
+        // never one flat color. Unlit ones are dark glass with just a trace of the lens.
+        for (rect, zone, lit) in cells {
+            let shape = Path(roundedRect: rect, cornerRadius: 1.5)
+            if lit {
+                ctx.fill(shape, with: .color(zoneColors[zone].opacity(0.92)))
+                ctx.fill(shape, with: .linearGradient(Gradient(colors: [.white.opacity(0.45), .white.opacity(0)]),
+                                                      startPoint: CGPoint(x: rect.midX, y: rect.minY), endPoint: CGPoint(x: rect.midX, y: rect.midY)))
+                ctx.fill(shape, with: .linearGradient(Gradient(colors: [.black.opacity(0), .black.opacity(0.30)]),
+                                                      startPoint: CGPoint(x: rect.midX, y: rect.midY), endPoint: CGPoint(x: rect.midX, y: rect.maxY)))
+                let core = Path(ellipseIn: rect.insetBy(dx: rect.width * 0.18, dy: rect.height * 0.2))
+                ctx.fill(core, with: .radialGradient(Gradient(colors: [.white.opacity(0.55), .white.opacity(0)]),
+                                                     center: CGPoint(x: rect.midX, y: rect.midY), startRadius: 0, endRadius: max(rect.width, rect.height) * 0.55))
+            } else {
+                ctx.fill(shape, with: .color(zoneColors[zone].opacity(0.07)))
+                ctx.fill(shape, with: .linearGradient(Gradient(colors: [.white.opacity(0.10), .white.opacity(0.02)]),
+                                                      startPoint: CGPoint(x: rect.midX, y: rect.minY), endPoint: CGPoint(x: rect.midX, y: rect.maxY)))
             }
         }
     }

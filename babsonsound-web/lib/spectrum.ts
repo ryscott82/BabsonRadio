@@ -406,6 +406,9 @@ export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: bool
         bars[i].style.setProperty('--lv', String(segs / segments))
         bars[i].style.setProperty('--pk', String(Math.min(segments, Math.round(pk[i])) / segments))
         bars[i].dataset.hot = hot && pk[i] >= segments - 1 ? '1' : '0'
+        // The glow takes the color of the bar's highest lit light (green, then yellow, then red), like the lamps themselves.
+        const top = segs / segments
+        bars[i].style.setProperty('--glow', top > 0.86 ? 'var(--eq-r)' : top > 0.57 ? 'var(--eq-y)' : 'var(--eq-g)')
       }
       ledLast.set(box, { lv: bars.map(b => parseFloat(b.style.getPropertyValue('--lv')) || 0), pk: bars.map(b => parseFloat(b.style.getPropertyValue('--pk')) || 0) })
     }

@@ -112,12 +112,13 @@ export function readBands(out: number[]): boolean {
     const g0 = warp(i / n), g1 = warp((i + 1) / n)
     const lo = Math.max(1, Math.floor((50 * Math.pow(300, g0)) / hz))
     const hi = Math.max(lo + 1, Math.ceil((50 * Math.pow(300, g1)) / hz))
-    let sum = 0
-    for (let k = lo; k < hi && k < data.length; k++) sum += data[k]
-    const v = sum / (hi - lo)
+    // A band shows mostly its loudest bin (a single note or voice is a narrow spike, an average would bury it), plus some of the average.
+    let sum = 0, mx = 0
+    for (let k = lo; k < hi && k < data.length; k++) { sum += data[k]; if (data[k] > mx) mx = data[k] }
+    const v = 0.65 * mx + 0.35 * (sum / (hi - lo))
     any += v / 255
     const db = an.minDecibels + v * dbPerByte
-    out[i] = Math.max(0, Math.min(1, (db + 70) / 60 * (1 + 0.25 * ((i + 0.5) / n)))) // a small lift for the naturally quieter highs
+    out[i] = Math.max(0, Math.min(1, (db + 70) / 60 * (1 + 0.1 * ((i + 0.5) / n)))) // barely any tilt: loudness decides, not frequency
   }
   return any > 0.01
 }
@@ -132,7 +133,7 @@ export const audioPlaying = () => !!player && !player.paused && !player.ended
  *  - a band sitting steadily at some level shows mid-height; only real hits (well above its own recent average) jump up, and only
  *    genuinely loud bands reach the top;
  *  - the attack follows how hard a band hit: loud bursts shoot up, soft or steady sound creeps;
- *  - a gentle auto gain brings quiet songs up a little and loud ones down a little;
+ *  - loudness-first auto gain: the loudest band lately is scaled to about 85% whatever its frequency, so sparse music (one instrument) still shows;
  *  - a kick (a sudden jump in the lowest bands) flashes every band slightly (`flash`, 0..1);
  *  - silence drops everything to the floor within about a tenth of a second.
  * Call the returned function once per frame with the levels from readBands; it returns `shown` (0..1 per band) and `flash`.
@@ -146,7 +147,9 @@ export function makeShaper(n: number) {
     mean /= n
     const quiet = mean < 0.04
     gmax = top > gmax ? top : gmax + (top - gmax) * 0.003 // loudest band lately: up at once, down over several seconds
-    const gain = Math.max(0.85, Math.min(1.3, 0.85 / Math.max(0.3, gmax)))
+    // Loudest thing first: whichever band is loudest lately is brought to about 85%, wherever it sits in the spectrum, so a lone
+    // melody line fills the display the same as a full band does (quiet bands next to it stay low).
+    const gain = Math.max(0.85, Math.min(2.2, 0.85 / Math.max(0.3, gmax)))
     const kr = n > 1 ? (raw[0] + raw[1]) / 2 : raw[0]
     kickAvg += (kr - kickAvg) * 0.05
     if (cool > 0) cool--

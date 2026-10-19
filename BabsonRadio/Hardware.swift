@@ -141,15 +141,22 @@ struct HWLeather: View {
         ZStack {
             shape.fill(Color(hex: "0C0C0A"))
             if let t = tint {
-                HWTile(name: HWTex.leatherGreen, opacity: 0.55)
-                t.opacity(0.78).blendMode(.color)
-                // Album mode: still black leather, with only a hint of the cover's hue.
-                if case .album = mode { Color.black.opacity(0.74) } else { Color.black.opacity(0.24) }
+                if case .album = mode {
+                    // Album mode: still black leather, with only a hint of the cover's hue.
+                    HWTile(name: HWTex.leatherGreen, opacity: 0.55)
+                    t.opacity(0.78).blendMode(.color)
+                    Color.black.opacity(0.74)
+                } else {
+                    // Same green as the website: the leather texture at full strength under a light shade (the cover's hue only in album light).
+                    HWTile(name: HWTex.leatherGreen)
+                    if case .albumLight = mode { t.opacity(0.6).blendMode(.color) }
+                    LinearGradient(colors: [.black.opacity(0.16), .black.opacity(0.30)], startPoint: .top, endPoint: .bottom)
+                }
             } else {
                 HWTile(name: HWTex.leatherBlack)
                 Color.black.opacity(0.6)
             }
-            LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.28)],
+            LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.16)],
                            startPoint: .top, endPoint: .bottom)
             if stitch {
                 shape.inset(by: 7)
@@ -159,7 +166,7 @@ struct HWLeather: View {
                 let inner = RoundedRectangle(cornerRadius: 12, style: .continuous)
                 ZStack {
                     Color(hex: "F7F5F0")
-                    HWTile(name: HWTex.cface, opacity: 0.55, blend: .multiply)
+                    HWTile(name: HWTex.cface, opacity: 0.39, blend: .multiply)
                     inner.strokeBorder(Color(hex: "232823").opacity(0.28), lineWidth: 5).blur(radius: 3)
                 }
                 .clipShape(inner)
@@ -500,7 +507,7 @@ struct HWFieldFill: View {
     var body: some View {
         ZStack {
             Color.hwField(scheme)
-            HWTile(name: scheme == .dark ? HWTex.glass : HWTex.cface, opacity: scheme == .dark ? 0.3 : 0.45,
+            HWTile(name: scheme == .dark ? HWTex.glass : HWTex.cface, opacity: scheme == .dark ? 0.3 : 0.32,
                    blend: scheme == .dark ? .normal : .multiply)
             LinearGradient(colors: [Color.black.opacity(scheme == .dark ? 0.35 : 0.10), .clear],
                            startPoint: .top, endPoint: .init(x: 0.5, y: 0.35))

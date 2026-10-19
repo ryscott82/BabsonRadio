@@ -15,7 +15,7 @@
   --hw-leather: url(/hw/leather-green.jpg);
   --hw-leather-bg: #0b5a3d;
   --hw-wear: linear-gradient(transparent, transparent); /* generated wear removed; a real texture goes here later */
-  --hw-face-bg: url(/hw/cface.jpg) center / cover, #F7F5F0;
+  --hw-face-bg: linear-gradient(rgba(247,245,240,.3), rgba(247,245,240,.3)), url(/hw/cface.jpg) center / cover, #F7F5F0; /* texture 30% fainter */
   --hw-face-blend: multiply;
   --hw-face-ring: 0 0 0 1.5px rgba(0,102,68,.75);
   --hw-stitch: rgba(246,236,200,.6);

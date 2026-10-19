@@ -196,7 +196,7 @@ export const audioPlaying = () => !!player && !player.paused && !player.ended
  * Call the returned function once per frame with the levels from readBands; it returns `shown` (0..1 per band) and `flash`.
  */
 export function makeShaper(n: number) {
-  const avg = new Array<number>(n).fill(0), shown = new Array<number>(n).fill(0), floor = new Array<number>(n).fill(0)
+  const hi = new Array<number>(n).fill(0), avg = new Array<number>(n).fill(0), shown = new Array<number>(n).fill(0), floor = new Array<number>(n).fill(0)
   let flash = 0, kickAvg = 0, cool = 0, gmax = 0.8
   return (raw: number[]) => {
     let mean = 0, top = 0
@@ -217,13 +217,17 @@ export function makeShaper(n: number) {
       // what is left is movement. A thumping bass swings the whole height; steady wash sinks away instead of holding the bar up.
       floor[i] = raw[i] < floor[i] ? raw[i] : floor[i] + (raw[i] - floor[i]) * 0.02
       const fl = floor[i] * 0.9
-      const u = Math.min(1, Math.max(0, (raw[i] - fl) * gain) / Math.max(0.35, 1 - fl * gain))
+      const u0 = Math.min(1, Math.max(0, (raw[i] - fl) * gain) / Math.max(0.35, 1 - fl * gain))
+      // Each band also keeps its own recent ceiling (slow to come down) and spreads its movement up to it, so every bar uses its height.
+      hi[i] = raw[i] > hi[i] ? raw[i] : hi[i] - (hi[i] - raw[i]) * 0.004
+      const own = Math.min(1, Math.max(0, raw[i] - fl) / Math.max(0.12, hi[i] - fl))
+      const u = quiet ? u0 : 0.4 * u0 + 0.6 * own * Math.max(0.5, Math.min(1, u0 * 1.6 + 0.3))
       const mid = Math.pow(Math.sin((Math.PI * (i + 0.5)) / n), 2) // 0 at the ends, 1 in the middle
       avg[i] += (u - avg[i]) * 0.03
       const burst = Math.max(0, u - avg[i])
       const base = Math.pow(u, 1.6) * 0.78 + burst * 1.6
       // While music plays the upper bands never go fully dark: a quiet treble still shows a segment or two.
-      const lift = i / n > 0.4 ? 0.16 * Math.min(1, (i / n - 0.4) / 0.25) : 0
+      const lift = i / n > 0.4 ? 0.06 * Math.min(1, (i / n - 0.4) / 0.25) : 0
       const target = quiet ? 0.02 : Math.max(lift, Math.min(1, base * (1 - 0.15 * mid) + flash * 0.1))
       const atk = Math.min(1, 0.15 + burst * 5)
       shown[i] = target > shown[i] ? shown[i] + (target - shown[i]) * atk : Math.max(target, shown[i] * (quiet ? 0.45 : 0.8))

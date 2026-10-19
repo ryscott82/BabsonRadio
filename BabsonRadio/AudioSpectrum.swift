@@ -28,13 +28,19 @@ nonisolated final class AudioSpectrum: @unchecked Sendable {
         static let followUp: Float = 0.03
         static let followDown: Float = 0.008
         /// While music plays the top bands never go fully dark: a quiet treble still shows a segment or two (fraction of full height, reached at the last band).
-        static let trebleFloor: Float = 0.16
+        static let trebleFloor: Float = 0.04
         /// Moving bands: how much narrower the busiest part of the spectrum's bands get (0 = off, 1 = up to twice as many bars there),
         /// and how quickly the bar edges glide to a new layout (per update; small = slow).
         static let adaptStrength: Double = 1.0
         static let adaptGlide: Double = 0.012
         /// Below this much average movement (dB per update) the layout stays even, so steady or quiet music does not reshuffle the bars.
         static let adaptMinFlux: Float = 0.6
+        /// Per band floor and ceiling: every display band tracks its own recent quietest and loudest level and spreads its movement
+        /// between them, so each bar uses its whole height whatever the song does. `minRangeDB` stops a nearly steady band from being blown up into noise.
+        static let bandMinRangeDB: Float = 7
+        static let bandHiFall: Float = 0.006      // how slowly the ceiling comes down (per update)
+        static let bandLoRise: Float = 0.003      // how slowly the floor comes up
+        static let bandCurve: Float = 1.2
     }
 
     private struct State { var levels = [Float](repeating: 0, count: AudioSpectrum.bands); var fixed = [Float](repeating: 0, count: AudioSpectrum.bands); var stamp = 0.0 }
@@ -83,6 +89,9 @@ nonisolated final class SpectrumTapContext {
     private var smoothD = [Float](repeating: 0, count: AudioSpectrum.bands)
     private var edgeU: [Double] = (0...AudioSpectrum.bands).map { Double($0) / Double(AudioSpectrum.bands) }
     private var prevDb = [Float](repeating: -120, count: AudioSpectrum.bands)
+    private var bandLo = [Float](repeating: 0, count: AudioSpectrum.bands)
+    private var bandHi = [Float](repeating: 0, count: AudioSpectrum.bands)
+    private var bandSeeded = false
     private var flux = [Float](repeating: 0, count: AudioSpectrum.bands)
     private var ref: Float = -60
 
@@ -249,12 +258,21 @@ nonisolated final class SpectrumTapContext {
                 let lift = AudioSpectrum.Tuning.trebleFloor * min(1, max(0, (pos - 0.4) / 0.25))
                 out[b] = max(smooth[b], lift)
                 let lind = min(1, max(0, (ddb[b] - floor) / AudioSpectrum.Tuning.rangeDB))
-                let td = pow(lind, AudioSpectrum.Tuning.gamma)
+                // Each band's own floor and ceiling follow what it has been doing lately (quick to widen, slow to relax).
+                if !bandSeeded { bandLo[b] = ddb[b]; bandHi[b] = ddb[b] }
+                if ddb[b] > bandHi[b] { bandHi[b] = ddb[b] } else { bandHi[b] -= (bandHi[b] - ddb[b]) * AudioSpectrum.Tuning.bandHiFall }
+                if ddb[b] < bandLo[b] { bandLo[b] += (ddb[b] - bandLo[b]) * 0.25 } else { bandLo[b] += (ddb[b] - bandLo[b]) * AudioSpectrum.Tuning.bandLoRise }
+                let span = max(AudioSpectrum.Tuning.bandMinRangeDB, bandHi[b] - bandLo[b])
+                let nrm = min(1, max(0, (ddb[b] - bandLo[b]) / span))
+                // Faithful to the song: a band that is far below the loudest stuff stays lower than one that is carrying the track.
+                let presence = min(1, 0.4 + 0.9 * lind)
+                let td = pow(nrm, AudioSpectrum.Tuning.bandCurve) * presence
                 let od = smoothD[b]
                 smoothD[b] = td > od ? od + (td - od) * AudioSpectrum.Tuning.attack : od * AudioSpectrum.Tuning.release + td * (1 - AudioSpectrum.Tuning.release)
                 disp[b] = max(smoothD[b], lift)
             }
         }
+        if peak > -88 { bandSeeded = true }
         AudioSpectrum.shared.publish(disp, fixed: out)
     }
 }

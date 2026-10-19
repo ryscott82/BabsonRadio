@@ -24,7 +24,7 @@ struct QRPlate: View {
     var body: some View {
         ZStack {
             Color(hex: "F4EFE2")
-            HWTile(name: HWTex.cface, opacity: 0.4, blend: .multiply)
+            HWTile(name: HWTex.cface, opacity: 0.28, blend: .multiply)
             if let img = QRCode.image("https://babsonradio.com") {
                 Image(uiImage: img).interpolation(.none).resizable().scaledToFit()
                     .padding(size * 0.08).blendMode(.multiply)

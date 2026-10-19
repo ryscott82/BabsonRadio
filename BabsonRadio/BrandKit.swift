@@ -108,13 +108,12 @@ struct HWCardSurface: View {
             } else {
                 // Green leather rim, then the ivory face.
                 Color(hex: "0C0C0A")
-                HWTile(name: HWTex.leatherGreen, opacity: 0.55)
-                Color(hex: "007A50").opacity(0.78).blendMode(.color)
-                Color.black.opacity(0.24)
+                HWTile(name: HWTex.leatherGreen)
+                LinearGradient(colors: [.black.opacity(0.16), .black.opacity(0.30)], startPoint: .top, endPoint: .bottom)
                 let face = RoundedRectangle(cornerRadius: max(4, corner - rimW + 1), style: .continuous)
                 ZStack {
                     Color(hex: "F7F5F0")
-                    HWTile(name: HWTex.cface, opacity: 0.55, blend: .multiply)
+                    HWTile(name: HWTex.cface, opacity: 0.39, blend: .multiply)
                     LinearGradient(colors: [.white.opacity(0.45), .clear], startPoint: .top, endPoint: .center)
                 }
                 .clipShape(face)

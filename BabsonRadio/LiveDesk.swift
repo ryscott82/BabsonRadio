@@ -624,7 +624,7 @@ struct HWPlate: View {
         let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
         ZStack {
             color
-            HWTile(name: HWTex.cface, opacity: 0.35, blend: .multiply)
+            HWTile(name: HWTex.cface, opacity: 0.24, blend: .multiply)
             LinearGradient(colors: [.white.opacity(0.35), .clear], startPoint: .top, endPoint: .center)
         }
         .clipShape(shape)
@@ -655,6 +655,7 @@ struct HWDrawerSheet<Content: View>: View {
     var closedY: CGFloat = 722
     @ViewBuilder var content: () -> Content
     @GestureState private var drag: CGFloat = 0
+    @Environment(\.hwMode) private var mode
     private let openY: CGFloat = 232
 
     var body: some View {
@@ -663,9 +664,19 @@ struct HWDrawerSheet<Content: View>: View {
         ZStack(alignment: .top) {
             ZStack {
                 Color(hex: "0C0C0A")
-                HWTile(name: HWTex.leatherGreen, opacity: 0.55)
-                tint.opacity(0.8).blendMode(.color)
-                Color.black.opacity(0.24)
+                if case .dark = mode {
+                    // Standard dark mode: black leather, like every other amp.
+                    HWTile(name: HWTex.leatherBlack)
+                    Color.black.opacity(0.6)
+                } else if case .album = mode {
+                    HWTile(name: HWTex.leatherGreen, opacity: 0.55)
+                    tint.opacity(0.78).blendMode(.color)
+                    Color.black.opacity(0.74)
+                } else {
+                    HWTile(name: HWTex.leatherGreen)
+                    tint.opacity(0.5).blendMode(.color)
+                    LinearGradient(colors: [.black.opacity(0.16), .black.opacity(0.30)], startPoint: .top, endPoint: .bottom)
+                }
                 LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.25)], startPoint: .top, endPoint: .bottom)
             }
             .clipShape(shape)

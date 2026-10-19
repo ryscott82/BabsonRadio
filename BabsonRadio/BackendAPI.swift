@@ -26,6 +26,11 @@ enum BackendAPI {
         try await send(path, method: "GET", body: nil)
     }
 
+    /// GET without the sign-in header, for public data. Requests with that header can't be cached by Vercel's edge.
+    static func getPublic<T: Decodable>(_ path: String) async throws -> T {
+        try await send(path, method: "GET", body: nil, anonymous: true)
+    }
+
     static func post<T: Decodable>(_ path: String, _ body: [String: Any]) async throws -> T {
         try await send(path, method: "POST", body: body)
     }
@@ -52,7 +57,7 @@ enum BackendAPI {
         request.timeoutInterval = 40
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         if !BackendConfig.previewKey.isEmpty { request.setValue(BackendConfig.previewKey, forHTTPHeaderField: "X-Preview-Key") }
-        if let token = await AuthManager.shared.idToken() { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        if !anonymous, let token = await AuthManager.shared.idToken() { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         request.httpBody = body
 
         let data: Data, response: URLResponse
@@ -69,7 +74,7 @@ enum BackendAPI {
         return ok
     }
 
-    private static func send<T: Decodable>(_ path: String, method: String, body: [String: Any]?) async throws -> T {
+    private static func send<T: Decodable>(_ path: String, method: String, body: [String: Any]?, anonymous: Bool = false) async throws -> T {
         guard BackendConfig.isConfigured, let url = URL(string: BackendConfig.baseURLString + path) else {
             throw BackendError("The app isn't connected to the server yet.", code: "BR-CLI-002")
         }
@@ -84,7 +89,7 @@ enum BackendAPI {
         if !BackendConfig.previewKey.isEmpty {
             request.setValue(BackendConfig.previewKey, forHTTPHeaderField: "X-Preview-Key")
         }
-        if let token = await AuthManager.shared.idToken() {
+        if !anonymous, let token = await AuthManager.shared.idToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 

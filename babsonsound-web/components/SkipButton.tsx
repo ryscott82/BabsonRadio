@@ -19,7 +19,7 @@ export default function SkipButton({ np }: { np: NowPlaying | null }) {
     if (!user || !autoPlay) { queueMicrotask(() => setSkip(null)); return }
     const load = () => { if (!document.hidden) apiGet<Skip>('/api/skip').then(v => { if (!pending.current) setSkip(v) }).catch(() => {}) }
     load()
-    const t = setInterval(load, 10_000)
+    const t = setInterval(load, 20_000)
     return () => clearInterval(t)
   }, [user, autoPlay, np?.playedAt, np?.title])
 

@@ -31,13 +31,23 @@ async function recentEvents(db: Firestore, occId: string, now: number): Promise<
   return f.list
 }
 
+const prefsMemo = new Map<string, { at: number; v: Awaited<ReturnType<typeof hostPrefsFor>> | null }>()
+async function prefsCached(db: Firestore, cur: NonNullable<Awaited<ReturnType<typeof currentOnAir>>>) {
+  const h = prefsMemo.get(cur.occId)
+  if (h && Date.now() - h.at < 30_000) return h.v
+  const v = await hostPrefsFor(db, cur).catch(() => null)
+  if (prefsMemo.size > 20) prefsMemo.clear()
+  prefsMemo.set(cur.occId, { at: Date.now(), v })
+  return v
+}
+
 export async function GET() {
   return handle(async () => {
     const db = adminDb()
     const now = Date.now()
     const cur = await currentOnAir(db, now)
     if (!cur) return { occId: '', emojis: EMOJIS, events: [], now }
-    const mine = (await hostPrefsFor(db, cur).catch(() => null))?.emojis ?? []
+    const mine = (await prefsCached(db, cur))?.emojis ?? []
     return { occId: cur.occId, emojis: mine.length ? mine : EMOJIS, events: await recentEvents(db, cur.occId, now), now }
   }, { 'Cache-Control': 'public, s-maxage=2, stale-while-revalidate=4' })
 }

@@ -32,7 +32,7 @@ export function attachSpectrum(el: HTMLAudioElement): boolean {
     const AC: typeof AudioContext = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
     const ctx = new AC()
     const an = ctx.createAnalyser()
-    an.fftSize = 2048; an.smoothingTimeConstant = 0.5; an.minDecibels = -90; an.maxDecibels = -6
+    an.fftSize = 2048; an.smoothingTimeConstant = 0.15; an.minDecibels = -90; an.maxDecibels = -6
     const src = ctx.createMediaElementSource(el)
     src.connect(an) // analyser is a side branch; the sound itself goes src -> gain -> speakers
     // Sound path: src -> direct -> speakers while the knob is at or below 100% (untouched). Past 100% the sound goes through
@@ -178,6 +178,113 @@ export function readBands(out: number[], moving = false): boolean {
   return any > 0.01
 }
 
+/**
+ * The website's equalizer, modeled on the iOS app's (AudioSpectrum.swift), which is the reference for how it should behave:
+ *  - 28 fixed log-spaced regions from 50 Hz to 13 kHz, in dB with a gentle lift for the highs; the busiest regions are tracked
+ *    (a slow average of how much each one changes) and the display bar edges glide toward them, never more than twice as dense;
+ *  - the loudness reference follows the song's recent level, so hits stand out and quiet parts stay low;
+ *  - every bar keeps its own recent floor and ceiling and spreads its movement between them, so each uses its whole height;
+ *  - a bar far below the loudest material stays lower than one carrying the track (`presence`);
+ *  - fast attack, slower release; the top bars never go fully dark while music plays.
+ * All the per-update rates are the iOS numbers, rescaled to the real frame time (the iOS meter updates about every 23 ms).
+ * Call `step(dt)` once per frame; it returns the n bar levels (0..1) or null when there is no sound.
+ */
+const IOS_UPDATE_MS = 23
+const IOS_TUNE = {
+  headroomDB: 9, rangeDB: 30, followUp: 0.03, followDown: 0.008, attack: 0.7, release: 0.8, trebleFloor: 0.04,
+  adaptStrength: 1, adaptGlide: 0.012, adaptMinFlux: 0.6, bandMinRangeDB: 7, bandHiFall: 0.006, bandLoRise: 0.003, bandCurve: 1.2,
+}
+export function createIosEq(n: number) {
+  const R = 28 // fixed analysis regions
+  const edgeU = Array.from({ length: n + 1 }, (_, i) => i / n)
+  const prevDb = new Array<number>(R).fill(-120), flux = new Array<number>(R).fill(0)
+  const smoothD = new Array<number>(n).fill(0), bandLo = new Array<number>(n).fill(0), bandHi = new Array<number>(n).fill(0)
+  let seeded = false, ref = -60
+  let buf: Float32Array<ArrayBuffer> | null = null
+  const rate = (coef: number, dt: number) => 1 - Math.pow(1 - coef, dt / IOS_UPDATE_MS)
+
+  /** Mean-power dB of a frequency range (with the high-frequency tilt). */
+  const bandDb = (lo: number, hi: number, tilt: number) => {
+    let sum = 0
+    for (let k = lo; k <= hi; k++) sum += Math.pow(10, buf![k] / 10)
+    return 10 * Math.log10(sum / (hi - lo + 1) + 1e-12) + tilt
+  }
+
+  return function step(dt: number): number[] | null {
+    if (!current) return null
+    const { an, ctx } = current
+    if (!buf || buf.length !== an.frequencyBinCount) buf = new Float32Array(new ArrayBuffer(an.frequencyBinCount * 4))
+    an.getFloatFrequencyData(buf)
+    for (let k = 0; k < buf.length; k++) if (!(buf[k] > -140)) buf[k] = -140   // -Infinity / NaN when silent
+    const hz = ctx.sampleRate / an.fftSize
+    const lowF = 50, highF = Math.min(13000, ctx.sampleRate / 2 - 500), ratio = highF / lowF
+    const range = (u0: number, u1: number) => {
+      const f0 = lowF * Math.pow(ratio, u0), f1 = lowF * Math.pow(ratio, u1)
+      const lo = Math.min(buf!.length - 3, Math.max(1, Math.floor(f0 / hz)))
+      const hi = Math.min(buf!.length - 2, Math.max(lo + 1, Math.floor(f1 / hz)))
+      return { lo, hi, tilt: 3.2 * Math.log2(Math.sqrt(f0 * f1) / 100) }
+    }
+    // Fixed regions: the loudness reference and where things are changing.
+    const db = new Array<number>(R)
+    let peak = -120
+    for (let b = 0; b < R; b++) {
+      const r = range(b / R, (b + 1) / R)
+      db[b] = bandDb(r.lo, r.hi, r.tilt)
+      if (db[b] > peak) peak = db[b]
+    }
+    if (peak <= -85) { smoothD.fill(0); return null }
+    const fr = rate(0.012, dt)
+    for (let b = 0; b < R; b++) {
+      const loud = db[b] > peak - 35
+      const st = loud ? Math.min(12, Math.abs(db[b] - prevDb[b])) : 0
+      flux[b] += (st - flux[b]) * fr
+      prevDb[b] = db[b]
+    }
+    // Move the display bar edges toward the busiest regions, slowly.
+    const mx = Math.max(...flux)
+    const w = new Array<number>(R).fill(1)
+    if (mx > IOS_TUNE.adaptMinFlux) for (let i = 0; i < R; i++) w[i] = 1 + IOS_TUNE.adaptStrength * (flux[i] / mx)
+    const sm = w.map((v, i) => 0.25 * w[Math.max(0, i - 1)] + 0.5 * v + 0.25 * w[Math.min(R - 1, i + 1)])
+    const cum = [0]; for (let i = 0; i < R; i++) cum.push(cum[i] + sm[i])
+    const total = cum[R], glide = rate(IOS_TUNE.adaptGlide, dt)
+    let seg = 0
+    for (let k = 1; k < n; k++) {
+      const want = (total * k) / n
+      while (seg < R - 1 && cum[seg + 1] < want) seg++
+      const u = (seg + (want - cum[seg]) / Math.max(1e-9, sm[seg])) / R
+      edgeU[k] += (u - edgeU[k]) * glide
+    }
+    // Reference level: follows the song's recent loudness, not its instant peak.
+    if (peak > ref + 25) ref = peak
+    ref += (peak - ref) * (peak > ref ? rate(IOS_TUNE.followUp, dt) : rate(IOS_TUNE.followDown, dt))
+    const ceiling = ref + IOS_TUNE.headroomDB, floor = ceiling - IOS_TUNE.rangeDB
+    const out = new Array<number>(n).fill(0)
+    const atk = rate(IOS_TUNE.attack, dt), rel = rate(1 - IOS_TUNE.release, dt)
+    const hiFall = rate(IOS_TUNE.bandHiFall, dt), loRise = rate(IOS_TUNE.bandLoRise, dt), loFall = rate(0.25, dt)
+    for (let b = 0; b < n; b++) {
+      const r = range(edgeU[b], edgeU[b + 1])
+      const d = bandDb(r.lo, r.hi, r.tilt)
+      const lind = Math.min(1, Math.max(0, (d - floor) / IOS_TUNE.rangeDB))
+      if (!seeded) { bandLo[b] = d; bandHi[b] = d }
+      if (d > bandHi[b]) bandHi[b] = d; else bandHi[b] -= (bandHi[b] - d) * hiFall
+      if (d < bandLo[b]) bandLo[b] += (d - bandLo[b]) * loFall; else bandLo[b] += (d - bandLo[b]) * loRise
+      const span = Math.max(IOS_TUNE.bandMinRangeDB, bandHi[b] - bandLo[b])
+      const nrm = Math.min(1, Math.max(0, (d - bandLo[b]) / span))
+      const presence = Math.min(1, 0.4 + 0.9 * lind)
+      const td = Math.pow(nrm, IOS_TUNE.bandCurve) * presence
+      smoothD[b] = td > smoothD[b] ? smoothD[b] + (td - smoothD[b]) * atk : smoothD[b] + (td - smoothD[b]) * rel
+      const pos = b / Math.max(1, n - 1)
+      const lift = IOS_TUNE.trebleFloor * Math.min(1, Math.max(0, (pos - 0.4) / 0.25))
+      out[b] = Math.max(smoothD[b], lift)
+    }
+    seeded = true
+    return out
+  }
+}
+
+/** A soft knee at the top so the loudest hits actually reach the top segments (and the red) while the middle stays as it was. */
+export const meterKnee = (v: number) => Math.min(1, v + 0.12 * v * v * v)
+
 // The player registers its audio element so the visuals can tell whether anything is playing (the element is never in the page).
 let player: HTMLAudioElement | null = null
 export function registerAudio(el: HTMLAudioElement | null) { player = el }
@@ -278,7 +385,7 @@ export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: bool
     }
     const N = bars.length
     const lv = new Array<number>(N).fill(0), pk = new Array<number>(N).fill(0), hold = new Array<number>(N).fill(0)
-    const shape = makeShaper(N)
+    const eq = createIosEq(N)
     let raf = 0, quiet = 0
     let lastT = performance.now()
     const tick = () => {
@@ -286,10 +393,11 @@ export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: bool
       const nowT = performance.now(), dt = Math.min(100, nowT - lastT); lastT = nowT
       if (document.hidden) return
       if (lowBattery) { box.dataset.real = 'false'; return }
-      const ok = readBands(lv, true)
-      if (!ok) { quiet++; if (quiet > 180) box.dataset.real = 'false'; if (quiet <= 4) return; lv.fill(0) } // silence: let the bars fall to the floor
+      readBands(lv)   // keeps the stream's peak (for the red cap) up to date
+      const lvls = eq(dt)
+      if (!lvls) { quiet++; if (quiet > 180) box.dataset.real = 'false'; if (quiet <= 4) return; lv.fill(0) } // silence: let the bars fall to the floor
       else { quiet = 0; box.dataset.real = 'true' }
-      const { shown } = shape(lv)
+      const shown = lvls ? lvls.map(meterKnee) : lv
       // The red top cap means real clipping risk: the song itself within about 2 dB of full scale (its loudest hits), or the volume knob boosting it there.
       const hot = streamPeak() * Math.pow(10, boostDb / 20) >= 0.8
       for (let i = 0; i < N; i++) {

@@ -4,7 +4,7 @@ import EmojiGlyph from '@/components/EmojiGlyph'
 import { reactionTheme, type EggRule } from '@/lib/reactionThemes'
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { api, apiGet } from '@/lib/auth'
+import { api, apiGet, apiGetPublic } from '@/lib/auth'
 import type { NowPlaying } from '@/lib/nowplaying'
 import EmojiRain, { rain, rainBurst } from './EmojiRain'
 import { useArtMain } from '@/components/ArtTheme'
@@ -19,8 +19,9 @@ const poll = (fn: () => void, ms: number) => {
   return () => clearInterval(t)
 }
 
+// One reaction per 10s is sent to the server. Extra taps inside that window still rain on your own screen.
 let lastTap = 0
-const tooSoon = () => { const n = Date.now(); const r = n - lastTap < 500; if (!r) lastTap = n; return r }
+const tooSoon = () => { const n = Date.now(); const r = n - lastTap < 10_000; if (!r) lastTap = n; return r }
 
 interface Song { id: string; text: string; votes: number; mine: boolean }
 
@@ -58,16 +59,24 @@ function useLiveExtrasState(np: NowPlaying | null) {
   useEffect(() => {
     if (!occId || invisible) return
     since.current = 0
-    return poll(() => {
-      apiGet<{ occId: string; events: { at: number; e: string; c: string }[]; now: number }>('/api/live/reactions')
+    // Adaptive: 2s while reactions are flowing, 6s when quiet, off in background tabs. Cuts server work by about two thirds.
+    let stop = false, timer: ReturnType<typeof setTimeout>, lastEvent = Date.now()
+    const tick = () => {
+      if (stop) return
+      const next = () => { if (!stop) timer = setTimeout(tick, Date.now() - lastEvent < 30_000 ? 2_000 : 6_000) }
+      if (document.hidden) return next()
+      apiGetPublic<{ occId: string; events: { at: number; e: string; c: string }[]; now: number }>('/api/live/reactions')
         .then(r => {
           if (r.occId !== occId) return
           const first = since.current === 0 // do not replay what happened before we arrived
           const fresh = r.events.filter(x => x.c !== cid && x.at > since.current)
+          if (fresh.length) lastEvent = Date.now()
           if (!first) fresh.forEach(x => rain(x.e, 1, 2_500))
           since.current = Math.max(since.current, r.events.length ? r.events[r.events.length - 1].at : 0, r.now - 4_000)
-        }).catch(() => {})
-    }, 2_000)
+        }).catch(() => {}).finally(next)
+    }
+    tick()
+    return () => { stop = true; clearTimeout(timer) }
   }, [occId, cid, invisible])
   async function react(e: string) {
     if (!can) { setMsg('Sign in with your school email to react.'); return }

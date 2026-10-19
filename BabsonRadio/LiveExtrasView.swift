@@ -84,7 +84,8 @@ final class LiveExtrasModel: ObservableObject {
     func react(_ emoji: String) async {
         guard !AuthManager.shared.isInvisible else { return }
         rain(emoji, count: Int.random(in: 4...5))
-        guard Date().timeIntervalSince(lastSend) > 0.5 else { return }
+        // One reaction per 10 seconds goes to the server. Extra taps still rain on this screen only.
+        guard Date().timeIntervalSince(lastSend) > 10 else { return }
         lastSend = Date()
         do { let _: EmptyResponse = try await BackendAPI.post("/api/live/reactions", ["emoji": emoji, "cid": String(cid)]) }
         catch { flash(error.localizedDescription) }
@@ -98,9 +99,11 @@ final class LiveExtrasModel: ObservableObject {
             if pollRound % 20 == 0 || occNow != emojiOcc { emojiOcc = occNow; await loadEmojis(); await loadEggs() }
             pollRound += 1
             if !AuthManager.shared.isInvisible { await pollOnce() }
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            // 3s while reactions are flowing, 6s when quiet.
+            try? await Task.sleep(nanoseconds: Date().timeIntervalSince(lastEventAt) < 30 ? 3_000_000_000 : 6_000_000_000)
         }
     }
+    private var lastEventAt = Date()
 
     @Published var eggs: [EggRule] = []
     func loadEggs() async {
@@ -116,9 +119,9 @@ final class LiveExtrasModel: ObservableObject {
     private func pollOnce() async {
         guard let occ = AudioPlayerManager.shared.nowPlaying?.occId, !occ.isEmpty else { return }
         if occ != pollOcc { pollOcc = occ; since = 0 }
-        guard let feed: ReactionFeed = try? await BackendAPI.get("/api/live/reactions"), feed.occId == occ else { return }
+        guard let feed: ReactionFeed = try? await BackendAPI.getPublic("/api/live/reactions"), feed.occId == occ else { return }
         let first = since == 0 // do not replay what happened before we opened the screen
-        if !first { for ev in feed.events where ev.c != String(cid) && ev.at > since { rain(ev.e, count: 1, spread: 2.5) } }
+        if !first { for ev in feed.events where ev.c != String(cid) && ev.at > since { rain(ev.e, count: 1, spread: 2.5); lastEventAt = Date() } }
         since = max(since, feed.events.last?.at ?? 0, feed.now - 4_000)
     }
 

@@ -27,7 +27,29 @@ export interface ScheduleItem {
   hostUids?: string[]
 }
 
-export async function buildScheduleFeed(db: Firestore, opts: { days: number; showStudentHosts: boolean; now?: number; includeAuto?: boolean; back?: number }): Promise<ScheduleItem[]> {
+type FeedOpts = { days: number; showStudentHosts: boolean; now?: number; includeAuto?: boolean; back?: number }
+
+// Building the feed reads about six collections, and it runs on almost every request (now playing, listening
+// check-ins, the schedule page). The schedule changes slowly, so each variant is reused for 45 seconds.
+// That cuts the server's work (and Vercel's billed CPU time) a lot; an edit shows up within a minute.
+const FEED_TTL = 45_000
+const feedCache = new Map<string, { bucket: number; items: Promise<ScheduleItem[]> }>()
+
+export function buildScheduleFeed(db: Firestore, opts: FeedOpts): Promise<ScheduleItem[]> {
+  const now = opts.now ?? Date.now()
+  const key = `${opts.days}|${opts.showStudentHosts}|${opts.includeAuto}|${opts.back ?? 0}`
+  const bucket = Math.floor(now / FEED_TTL)
+  const hit = feedCache.get(key)
+  if (hit && hit.bucket === bucket) return hit.items.then(a => a.map(i => ({ ...i })))
+  const items = buildFeedUncached(db, opts)
+  feedCache.set(key, { bucket, items })
+  if (feedCache.size > 16) feedCache.clear()
+  // A failed build must not stay cached.
+  items.catch(() => { if (feedCache.get(key)?.items === items) feedCache.delete(key) })
+  return items.then(a => a.map(i => ({ ...i })))
+}
+
+async function buildFeedUncached(db: Firestore, opts: FeedOpts): Promise<ScheduleItem[]> {
   const now = opts.now ?? Date.now()
   const until = now + opts.days * 86_400_000
   const back = Math.max(0, Math.min(14, Math.floor(opts.back ?? 0)))   // days of past schedule to include

@@ -235,7 +235,8 @@ struct HWEQ: View {
             let wob = 0.5 + 0.5 * sin(t * (1.1 + fc * 0.19) + fc * 1.7)
             let raw = (0.16 + 0.42 * wob) * tilt + 0.5 * pulse * tilt * (0.5 + 0.5 * sin(fc * 0.9 + 1))
             let level: Double
-            if let live, c < live.count { level = energy * Double(live[c]) }
+            // A soft knee at the top lets the loudest hits actually reach the top segments (the red); the middle is unchanged.
+            if let live, c < live.count { let v = Double(live[c]); level = energy * min(1, v + 0.12 * v * v * v) }
             else { level = energy * min(1, max(0, raw)) }
             let on = Int((level * Double(segs)).rounded())
             for s in 0..<segs {
@@ -243,7 +244,7 @@ struct HWEQ: View {
                 let y = size.height - CGFloat(s + 1) * sh - CGFloat(s) * gap
                 let rect = CGRect(x: CGFloat(c) * (cw + gap), y: y, width: cw, height: sh)
                 let hot = Double(s) / Double(segs - 1)
-                let col: Color = lit ? (hot > 0.9 ? zones.red : hot > 0.55 ? zones.yellow : zones.green) : Color.white
+                let col: Color = lit ? (hot > 0.85 ? zones.red : hot > 0.55 ? zones.yellow : zones.green) : Color.white
                 ctx.fill(Path(roundedRect: rect, cornerRadius: 1), with: .color(col.opacity(lit ? 0.95 : 0.09)))
             }
         }

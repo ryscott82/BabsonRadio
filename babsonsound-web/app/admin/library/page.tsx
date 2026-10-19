@@ -31,7 +31,7 @@ export default function AdminLibrary() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
-      <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">LIBRARY CONTENT</h1>
+      <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Library content</h1>
       <p className="text-sm text-br-dk-sub">Paste a YouTube link to add an episode. Students find it under Search and can save it to their Library. The video must allow embedding.</p>
       <form onSubmit={add} className="sk-raised rounded-2xl p-4 space-y-3">
         <input value={url} onChange={e => setUrl(e.target.value)} placeholder="YouTube link" required className="sk-field rounded-lg px-3 py-2 text-sm text-br-dk-text w-full" />
@@ -45,7 +45,7 @@ export default function AdminLibrary() {
           <input type="checkbox" className="mt-0.5" checked={pub} onChange={e => setPub(e.target.checked)} />
           <span>Public (anyone, not only students). Only works if every host is 18+ and has signed the public-sharing agreement for this show. Otherwise it stays students-only.</span>
         </label>
-        <button disabled={busy} className="sk-key rounded-lg px-4 h-9 text-xs font-display tracking-widest text-br-gold disabled:opacity-50">{busy ? 'ADDING…' : 'ADD EPISODE'}</button>
+        <button disabled={busy} className="sk-key rounded-lg px-4 h-9 text-xs font-display tracking-widest text-br-gold disabled:opacity-50">{busy ? 'ADDING…' : 'Add episode'}</button>
         {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}
         {err && <p className="text-sm text-red-400">{err}</p>}
       </form>

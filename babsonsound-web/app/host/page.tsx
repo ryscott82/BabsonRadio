@@ -54,7 +54,7 @@ export default function HostPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">HOST</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Host</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
       <ErrorText>{error}</ErrorText>
@@ -106,7 +106,7 @@ function Controls({ st }: { st: Status }) {
 
   return (
     <section className="sk-raised rounded-2xl p-5 space-y-4">
-      <h2 className="font-display text-br-gold tracking-widest text-sm">ON AIR</h2>
+      <h2 className="font-display text-br-gold tracking-widest text-sm">On air</h2>
       {st.controlsOpen ? (
         <>
           {upcoming && (onNow || soon) && (
@@ -172,7 +172,7 @@ function LiveNote({ st, reload }: { st: Status; reload: () => void }) {
 
   return (
     <section className="sk-raised rounded-2xl p-5 space-y-3">
-      <h2 className="font-display text-br-gold tracking-widest text-sm">MESSAGE TO LISTENERS</h2>
+      <h2 className="font-display text-br-gold tracking-widest text-sm">Message to listeners</h2>
       {choices.length > 1 && (
         <select value={sel.id} onChange={e => setPick(e.target.value)} className="sk-field rounded-lg px-3 py-2 text-sm text-br-dk-text w-full">
           {choices.map(s => <option key={s.id} value={s.id}>{s.title} · {when(s.startAt)}</option>)}
@@ -180,14 +180,14 @@ function LiveNote({ st, reload }: { st: Status; reload: () => void }) {
       )}
       <Field label="Headline" value={headline} onChange={e => setHeadline(e.target.value)} maxLength={80} placeholder="Guest in studio: Prof. Lee" />
       <label className="block">
-        <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">DETAILS</span>
+        <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">Details</span>
         <textarea value={message} onChange={e => setMessage(e.target.value)} rows={3} maxLength={400}
                   className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none" />
       </label>
       <ErrorText>{err}</ErrorText>
       {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}
       <div className="flex gap-3 items-center">
-        <PrimaryButton type="button" busy={busy} onClick={() => save(false)}>SHOW TO LISTENERS</PrimaryButton>
+        <PrimaryButton type="button" busy={busy} onClick={() => save(false)}>Show to listeners</PrimaryButton>
         <button type="button" onClick={() => save(true)} className="text-sm text-br-dk-sub">Clear</button>
       </div>
       <label className="flex items-center gap-3 text-sm text-br-dk-text pt-2 border-t border-br-dk-border">
@@ -251,7 +251,7 @@ function Insights({ st }: { st: Status }) {
       )}
       {!!i.comments?.length && (
         <div className="space-y-1">
-          <p className="text-xs text-br-dk-sub font-display tracking-widest">FEEDBACK</p>
+          <p className="text-xs text-br-dk-sub font-display tracking-widest">Feedback</p>
           <ul className="text-sm space-y-1">
             {i.comments.map((c, n) => <li key={n} className="text-br-dk-text">{c.stars} ★ · {c.text}</li>)}
           </ul>
@@ -294,7 +294,7 @@ function SetList({ st }: { st: Status }) {
 
   return (
     <section className="sk-raised rounded-2xl p-5 space-y-3">
-      <h2 className="font-display text-br-gold tracking-widest text-sm">SET LIST</h2>
+      <h2 className="font-display text-br-gold tracking-widest text-sm">Set list</h2>
       {!sel ? (
         <p className="text-sm text-br-dk-sub">The set list opens {st.windowHours} hours before your show.</p>
       ) : (
@@ -310,7 +310,7 @@ function SetList({ st }: { st: Status }) {
                     className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none" />
           <ErrorText>{err}</ErrorText>
           <div className="flex items-center gap-4">
-            <PrimaryButton type="button" busy={busy} onClick={save}>SAVE SET LIST</PrimaryButton>
+            <PrimaryButton type="button" busy={busy} onClick={save}>Save set list</PrimaryButton>
             {saved && <span role="status" className="text-xs text-br-dk-sub">Saved {clock(saved)}</span>}
           </div>
           <p className="text-xs text-br-dk-sub">Type as you go or paste the list at the end.</p>
@@ -324,14 +324,14 @@ function Shows({ st }: { st: Status }) {
   if (!st.shows.length) return null
   return (
     <section className="space-y-3">
-      <h2 className="font-display text-br-gold tracking-widest text-sm">YOUR SHOWS</h2>
+      <h2 className="font-display text-br-gold tracking-widest text-sm">Your shows</h2>
       {st.shows.map(s => (
         <div key={s.id} className="sk-field rounded-xl px-4 py-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm text-br-dk-text truncate">{s.title}</p>
             <p className="text-xs text-br-dk-sub">{when(s.startAt)} – {clock(s.endAt)}</p>
           </div>
-          <span className={`text-[10px] font-display tracking-widest shrink-0 ${s.open ? 'text-br-gold' : 'text-br-dk-sub'}`}>{s.open ? 'PANEL OPEN' : 'UPCOMING'}</span>
+          <span className={`text-[10px] font-display tracking-widest shrink-0 ${s.open ? 'text-br-gold' : 'text-br-dk-sub'}`}>{s.open ? 'Panel open' : 'Upcoming'}</span>
         </div>
       ))}
     </section>
@@ -361,7 +361,7 @@ function ChangeRequest({ st, reload }: { st: Status; reload: () => void }) {
 
   return (
     <form onSubmit={submit} className="sk-raised rounded-2xl p-5 space-y-4">
-      <h2 className="font-display text-br-gold tracking-widest text-sm">REQUEST A CHANGE TO YOUR SHOW</h2>
+      <h2 className="font-display text-br-gold tracking-widest text-sm">Request a change to your show</h2>
       {weekly.length > 1 && (
         <select value={sid} onChange={e => setScheduleId(e.target.value)} className="sk-field rounded-lg px-3 py-2 text-sm text-br-dk-text w-full">
           {weekly.map(s => <option key={s.refId} value={s.refId}>{s.title}</option>)}
@@ -369,7 +369,7 @@ function ChangeRequest({ st, reload }: { st: Status; reload: () => void }) {
       )}
       <Field label="New name (optional)" value={name} onChange={e => setName(e.target.value)} maxLength={80} />
       <label className="block">
-        <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">NEW DESCRIPTION (OPTIONAL)</span>
+        <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">New description (optional)</span>
         <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} maxLength={600}
                   className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none" />
       </label>
@@ -377,7 +377,7 @@ function ChangeRequest({ st, reload }: { st: Status; reload: () => void }) {
       <ErrorText>{err}</ErrorText>
       {ok && <p role="status" className="text-sm text-br-gold">{ok}</p>}
       {st.pending.length > 0 && <p className="text-xs text-br-dk-sub">{st.pending.length} request{st.pending.length > 1 ? 's' : ''} waiting for review.</p>}
-      <PrimaryButton type="submit" busy={busy}>SEND REQUEST</PrimaryButton>
+      <PrimaryButton type="submit" busy={busy}>Send request</PrimaryButton>
     </form>
   )
 }
@@ -446,9 +446,9 @@ function Stats() {
       )}
       {s.bestSongs.length > 0 && (
         <div className="grid sm:grid-cols-2 gap-5">
-          <div className="sk-raised rounded-2xl p-4"><p className="font-display text-br-gold tracking-widest text-xs mb-2">TOP RATED SONGS</p>
+          <div className="sk-raised rounded-2xl p-4"><p className="font-display text-br-gold tracking-widest text-xs mb-2">Top rated songs</p>
             <ul className="text-sm space-y-1">{s.bestSongs.map((x, i) => <li key={i} className="flex justify-between gap-3"><span className="truncate">{x.artist ? `${x.artist} – ` : ''}{x.title}</span><span className="text-br-gold shrink-0">{x.avg} ★ ({x.count})</span></li>)}</ul></div>
-          {s.lowSongs.length > 0 && <div className="sk-raised rounded-2xl p-4"><p className="font-display text-br-dk-sub tracking-widest text-xs mb-2">LOWEST RATED</p>
+          {s.lowSongs.length > 0 && <div className="sk-raised rounded-2xl p-4"><p className="font-display text-br-dk-sub tracking-widest text-xs mb-2">Lowest rated</p>
             <ul className="text-sm space-y-1">{s.lowSongs.map((x, i) => <li key={i} className="flex justify-between gap-3"><span className="truncate">{x.artist ? `${x.artist} – ` : ''}{x.title}</span><span className="text-br-dk-sub shrink-0">{x.avg} ★ ({x.count})</span></li>)}</ul></div>}
         </div>
       )}

@@ -34,12 +34,12 @@ export default function HostAgreements({ onSign, busy, error }: {
         </fieldset>
       ))}
       <label className="block">
-        <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">SIGN BY TYPING YOUR FULL NAME</span>
+        <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">Sign by typing your full name</span>
         <input value={name} onChange={e => setName(e.target.value)} maxLength={100} autoComplete="off" placeholder="First Last"
                className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none" />
       </label>
       <ErrorText>{error}</ErrorText>
-      <PrimaryButton type="submit" busy={busy} disabled={!ok}>SIGN</PrimaryButton>
+      <PrimaryButton type="submit" busy={busy} disabled={!ok}>Sign</PrimaryButton>
     </form>
   )
 }

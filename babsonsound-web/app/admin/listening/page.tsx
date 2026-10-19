@@ -36,11 +36,11 @@ export default function ListeningLog() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">LISTENING LOG</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Listening log</h1>
         <select value={days} onChange={e => setDays(Number(e.target.value))} className="sk-field rounded-lg px-3 py-2 text-sm text-br-dk-text">
           {[1, 7, 14, 30].map(n => <option key={n} value={n}>Last {n} day{n > 1 ? 's' : ''}</option>)}
         </select>
-        <button type="button" onClick={csv} className="sk-key rounded-lg px-4 py-2 text-xs font-display tracking-widest text-br-dk-text ml-auto">DOWNLOAD CSV</button>
+        <button type="button" onClick={csv} className="sk-key rounded-lg px-4 py-2 text-xs font-display tracking-widest text-br-dk-text ml-auto">Download csv</button>
       </div>
       {err && <p className="text-sm text-br-red">{err}</p>}
       {d && (

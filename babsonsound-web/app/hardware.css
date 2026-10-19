@@ -314,20 +314,28 @@ body:has(.hw-stage) {
 }
 /* (album-colour mode on the home page keeps its own .art-ui overrides) */
 
-/* ── Dark mode top bar: smoked glass instead of leather ───────── */
+/* ── Dark mode top bar: black, scratched glass (matches the mock-up) ───── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .hw-bar {
-    background: linear-gradient(rgba(255,255,255,.12), rgba(255,255,255,.03) 55%, rgba(0,0,0,.10)), rgba(18,20,18,.46) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
-    border-bottom: 1px solid rgba(255,255,255,.16) !important;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 1px 0 rgba(0,0,0,.45), 0 10px 26px rgba(0,0,0,.4);
+    background: #05070A url(/hw/navglass.jpg) center / 100% 100% !important;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    border-bottom: 1px solid rgba(250,246,236,.18) !important;
+    box-shadow: 0 8px 18px rgba(24,26,18,.5), inset 0 1px 0 rgba(250,246,236,.2), inset 0 -1px 0 rgba(24,26,18,.6) !important;
+  }
+  :root:not([data-theme="light"]) .hw-bar::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none;  z-index: -1;
+    background: linear-gradient(112deg, rgba(250,246,236,.13) 0, rgba(250,246,236,.13) 22%, rgba(250,246,236,0) 34%), linear-gradient(rgba(250,246,236,.09), rgba(250,246,236,0) 50%);
   }
 }
 :root[data-theme="dark"] .hw-bar {
-  background: linear-gradient(rgba(255,255,255,.12), rgba(255,255,255,.03) 55%, rgba(0,0,0,.10)), rgba(18,20,18,.46) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
-  border-bottom: 1px solid rgba(255,255,255,.16) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 1px 0 rgba(0,0,0,.45), 0 10px 26px rgba(0,0,0,.4);
+  background: #05070A url(/hw/navglass.jpg) center / 100% 100% !important;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  border-bottom: 1px solid rgba(250,246,236,.18) !important;
+  box-shadow: 0 8px 18px rgba(24,26,18,.5), inset 0 1px 0 rgba(250,246,236,.2), inset 0 -1px 0 rgba(24,26,18,.6) !important;
+}
+:root[data-theme="dark"] .hw-bar::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;  z-index: -1;
+  background: linear-gradient(112deg, rgba(250,246,236,.13) 0, rgba(250,246,236,.13) 22%, rgba(250,246,236,0) 34%), linear-gradient(rgba(250,246,236,.09), rgba(250,246,236,0) 50%);
 }
 
 /* ── Full screen board ───────────────────────────────────────── */

@@ -17,7 +17,7 @@ export default function MyRatings() {
     ? r.shows.map(x => ({ k: x.occId, a: x.title || 'Show', b: day(x.at), s: x.stars }))
     : r.songs.map(x => ({ k: x.songId, a: x.title, b: x.artist, s: x.stars }))
   return (
-    <div className="bg-br-dk-surface border border-br-dk-border rounded-2xl p-5 space-y-3">
+    <div className="sk-raised rounded-2xl p-5 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-br-dk-text text-sm font-medium">Your ratings</p>
         <div className="flex gap-2 text-xs">

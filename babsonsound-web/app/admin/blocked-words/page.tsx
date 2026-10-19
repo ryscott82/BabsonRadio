@@ -35,7 +35,7 @@ export default function BlockedWordsPage() {
   if (loading || !isAdmin) return null
   return (
     <div className="max-w-xl mx-auto px-4 py-8 space-y-5">
-      <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">BLOCKED WORDS</h1>
+      <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Blocked words</h1>
       <p className="text-sm text-br-dk-sub">
         Hosts cannot send these words to listeners or staff from the Host tab. One per line. Capital letters, spacing tricks and look-alike
         characters (like $ for s) are caught too. A short starter list is always on.
@@ -44,7 +44,7 @@ export default function BlockedWordsPage() {
         className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none font-mono" />}
       <ErrorText>{error}</ErrorText>
       {notice && <p className="text-sm text-br-gold">{notice}</p>}
-      <PrimaryButton onClick={save} busy={busy}>SAVE</PrimaryButton>
+      <PrimaryButton onClick={save} busy={busy}>Save</PrimaryButton>
     </div>
   )
 }

@@ -28,7 +28,7 @@ export default function MyRecordings() {
 
   return (
     <section className="sk-raised rounded-2xl p-5 space-y-3">
-      <h2 className="font-display text-br-gold tracking-widest text-sm">MY RECORDINGS</h2>
+      <h2 className="font-display text-br-gold tracking-widest text-sm">My recordings</h2>
       <p className="text-xs text-br-dk-sub">For Babson students unless shared publicly.</p>
       <ErrorText>{err}</ErrorText>
       <ul className="space-y-3">
@@ -48,7 +48,7 @@ export default function MyRecordings() {
                 <PublicAgreement status={data.status} onChange={setSig} />
                 {data.status === 'adult' && (
                   <button disabled={busy || !sig} onClick={() => set(ep, true)}
-                          className="sk-key rounded-lg px-4 h-9 text-xs font-display tracking-widest text-br-gold disabled:opacity-40">SIGN AND MAKE PUBLIC</button>
+                          className="sk-key rounded-lg px-4 h-9 text-xs font-display tracking-widest text-br-gold disabled:opacity-40">Sign and make public</button>
                 )}
               </div>
             )}

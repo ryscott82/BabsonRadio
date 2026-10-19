@@ -44,7 +44,7 @@ export default function EasterEggsPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">EASTER EGGS</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Easter eggs</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
       <p className="text-sm text-br-dk-sub">While a matching song, artist or show is on, the reaction row switches to your emojis. Matches are plain words, not case sensitive. First matching rule wins.</p>
@@ -58,14 +58,14 @@ export default function EasterEggsPage() {
             </label>
           </div>
           <div className="grid sm:grid-cols-3 gap-3">
-            <label><span className={lab}>ARTIST CONTAINS</span>
+            <label><span className={lab}>Artist contains</span>
               <input className={box} defaultValue={e.artist.join(', ')} onBlur={ev => set(i, { artist: csv(ev.target.value.toLowerCase()) })} placeholder="mac miller" /></label>
-            <label><span className={lab}>SONG CONTAINS</span>
+            <label><span className={lab}>Song contains</span>
               <input className={box} defaultValue={e.title.join(', ')} onBlur={ev => set(i, { title: csv(ev.target.value.toLowerCase()) })} /></label>
-            <label><span className={lab}>SHOW CONTAINS</span>
+            <label><span className={lab}>Show contains</span>
               <input className={box} defaultValue={e.show.join(', ')} onBlur={ev => set(i, { show: csv(ev.target.value.toLowerCase()) })} /></label>
           </div>
-          <label className="block"><span className={lab}>EMOJIS (UP TO 8, SEPARATED BY SPACES)</span>
+          <label className="block"><span className={lab}>Emojis (up to 8, separated by spaces)</span>
             <input className={box} defaultValue={e.emojis.join(' ')}
                    onBlur={ev => set(i, { emojis: ev.target.value.split(/\s+/).filter(Boolean).slice(0, 8) })} /></label>
           <div className="flex items-center gap-2 text-xl min-h-8">
@@ -81,11 +81,11 @@ export default function EasterEggsPage() {
 
       <button type="button" className="sk-key rounded-lg px-4 py-2 text-xs font-display tracking-widest text-br-dk-text"
               onClick={() => setEggs([...eggs, { id: `egg-${Date.now().toString(36)}`, name: 'New easter egg', enabled: true, artist: [], title: [], show: [], emojis: ['🎉', '🔥', '❤️', '🤘'] }])}>
-        ADD EASTER EGG
+        Add easter egg
       </button>
       <ErrorText>{error}</ErrorText>
       {notice && <p className="text-sm text-br-gold">{notice}</p>}
-      <PrimaryButton busy={busy} onClick={save}>SAVE</PrimaryButton>
+      <PrimaryButton busy={busy} onClick={save}>Save</PrimaryButton>
     </div>
   )
 }

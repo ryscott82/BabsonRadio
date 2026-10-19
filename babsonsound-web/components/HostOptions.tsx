@@ -28,7 +28,7 @@ export default function HostOptions() {
 
   return (
     <section className="space-y-4">
-      <h2 className="font-display text-br-gold tracking-widest text-sm">YOUR SHOW OPTIONS</h2>
+      <h2 className="font-display text-br-gold tracking-widest text-sm">Your show options</h2>
       <div className="sk-raised rounded-2xl p-5 space-y-5">
         <div>
           <p className="text-sm text-br-dk-text mb-2">Look during your show</p>

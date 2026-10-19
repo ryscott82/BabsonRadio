@@ -24,7 +24,7 @@ export default function ImagePicker({ scope, value, onChange }: {
 
   return (
     <div>
-      <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">PICTURE (OPTIONAL)</span>
+      <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">Picture (optional)</span>
       <div className="flex items-center gap-4">
         {value
           // eslint-disable-next-line @next/next/no-img-element

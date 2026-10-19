@@ -31,7 +31,7 @@ export default function SubmitPage() {
   return (
     <div className="max-w-xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">SUGGEST</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Suggest</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
       {!user || !hasMemberAccess ? (
@@ -41,7 +41,7 @@ export default function SubmitPage() {
           <div className="grid grid-cols-2 gap-2" role="group" aria-label="What are you sending?">
             {(['song', 'playlist'] as const).map(k => (
               <button key={k} type="button" aria-pressed={kind === k} onClick={() => { setKind(k); setError(''); setDone('') }}
-                      className="sk-key rounded-lg py-2 text-xs font-display tracking-widest text-br-dk-text">{k === 'song' ? 'A SONG' : 'A PLAYLIST'}</button>
+                      className="sk-key rounded-lg py-2 text-xs font-display tracking-widest text-br-dk-text">{k === 'song' ? 'A song' : 'A playlist'}</button>
             ))}
           </div>
           {kind === 'song' ? (

@@ -33,7 +33,7 @@ export default function PublicAgreement({ status, onChange }: { status: AdultSta
         ))}
       </ul>
       <label className="block">
-        <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">SIGN BY TYPING YOUR FULL NAME</span>
+        <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">Sign by typing your full name</span>
         <input value={name} onChange={e => update(ticks, e.target.value)} maxLength={100} autoComplete="off" placeholder="First Last"
                className="sk-field w-full rounded-lg px-3 py-2 text-sm text-br-dk-text border border-br-dk-border" />
       </label>

@@ -14,7 +14,7 @@ export default function Footer() {
     <footer className="hw-foot relative z-[1] mt-12">
       <div className="max-w-[1800px] mx-auto px-4 lg:px-8 xl:px-12 py-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 text-xs">
         <p className="tracking-[0.3em] text-xs font-bold text-br-dk-text shrink-0">
-          <span className="text-br-gold">BABSON</span> RADIO
+          <span className="text-br-gold">Babson</span> RADIO
         </p>
         <nav className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <a href={LINKS.interest} {...ext} className={link}>Interest form</a>

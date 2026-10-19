@@ -9,14 +9,14 @@ export default async function ShowsPage() {
   return (
     <div className="max-w-[1800px] w-full mx-auto px-4 lg:px-8 py-6 fit">
       <div className="flex items-center gap-4 mb-4 shrink-0">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">ALL SHOWS</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">All shows</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
         <span className="font-display text-br-dk-muted text-xs tracking-widest">{shows.length} SHOWS</span>
       </div>
 
       {shows.length === 0 ? (
         <div className="text-center py-32 text-br-dk-muted">
-          <p className="font-display text-2xl tracking-widest mb-2">NO SHOWS YET</p>
+          <p className="font-display text-2xl tracking-widest mb-2">No shows yet</p>
           <p className="text-sm">Shows will appear here once published by an admin.</p>
         </div>
       ) : (
@@ -38,7 +38,7 @@ export default async function ShowsPage() {
                 )}
                 {show.isFeatured && (
                   <div className="absolute top-3 left-3 font-display text-[9px] tracking-widest bg-br-red text-white px-2 py-0.5 rounded">
-                    FEATURED
+                    Featured
                   </div>
                 )}
               </div>
@@ -46,7 +46,7 @@ export default async function ShowsPage() {
               {/* Info */}
               <div className="p-4">
                 <p className="font-display text-br-dk-sub text-[10px] tracking-widest mb-1">
-                  {show.category?.toUpperCase()}
+                  {show.category}
                 </p>
                 <h3 className="text-br-dk-text font-semibold text-base group-hover:text-br-gold transition-colors mb-1">
                   {show.name}

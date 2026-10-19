@@ -25,7 +25,7 @@ export default function AdminBirthdaysPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">BIRTHDAYS</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Birthdays</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
       <p className="text-sm text-br-dk-sub">

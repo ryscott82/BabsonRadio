@@ -203,8 +203,8 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
                      style={art.full ? undefined : { filter: 'var(--cover-filter)' }} />
               ) : (
                 <div className="text-center">
-                  <p className="font-display text-br-brass/80 text-sm tracking-[0.4em]">BABSON</p>
-                  <p className="font-display text-white text-4xl tracking-[0.2em]">RADIO</p>
+                  <p className="font-display text-br-brass/80 text-sm tracking-[0.4em]">Babson</p>
+                  <p className="font-display text-white text-4xl tracking-[0.2em]">Radio</p>
                 </div>
               )}
             </div>
@@ -214,7 +214,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
 
         {/* The amp */}
         <div className="hw-panel hw-big min-w-0">
-          <FitTitle text={hasSong ? np!.title : 'Live Stream'} reserve className="hw-title hw-title-fit text-[2.75rem] lg:text-[3.1rem]" />
+          <FitTitle text={hasSong ? np!.title : 'Live Stream'} className="hw-title hw-title-fit text-[2.75rem] lg:text-[3.1rem]" />
           <p className="hw-sub !text-br-dk-text text-lg font-medium line-clamp-2 mt-0.5">
             {hasSong ? subline : 'Babson College — Internet Radio'}
           </p>
@@ -337,7 +337,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
           <div role="alertdialog" aria-modal="true" aria-label="Still listening?" className="sk-raised rounded-2xl p-6 w-full max-w-sm space-y-4 text-center">
             <h3 className="font-display text-br-dk-text text-2xl tracking-wide">Still listening?</h3>
             <p className="text-sm text-br-dk-sub">The music stops in a couple of minutes unless you tap below.</p>
-            <button onClick={guard.stillHere} className="sk-btn block w-full rounded-xl py-3 text-sm font-display tracking-[0.2em]">KEEP LISTENING</button>
+            <button onClick={guard.stillHere} className="sk-btn block w-full rounded-xl py-3 text-sm font-display tracking-[0.2em]">Keep listening</button>
           </div>
         </div>
       )}
@@ -347,7 +347,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
                className="sk-raised rounded-2xl p-6 w-full max-w-sm space-y-4 text-center">
             <h3 className="font-display text-br-dk-text text-2xl tracking-wide">Enjoying Babson Radio?</h3>
             <p className="text-sm text-br-dk-sub">Create a free account for show reminders.</p>
-            <Link href="/auth" className="sk-btn block rounded-xl py-3 text-sm font-display tracking-[0.2em]">CREATE ACCOUNT OR SIGN IN</Link>
+            <Link href="/auth" className="sk-btn block rounded-xl py-3 text-sm font-display tracking-[0.2em]">Create account or sign in</Link>
             <button onClick={() => setPrompt(false)} className="text-sm text-br-dk-sub">Keep listening</button>
           </div>
         </div>

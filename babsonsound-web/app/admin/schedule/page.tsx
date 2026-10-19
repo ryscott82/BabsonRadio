@@ -89,10 +89,10 @@ export default function AdminSchedulePage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">WEEKLY SCHEDULE</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Weekly schedule</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
         <button onClick={() => { setEdit(blank()); setNotice('') }}
-                className="sk-btn font-display tracking-widest text-xs px-4 py-2 rounded-lg shrink-0">ADD SHOW</button>
+                className="sk-btn font-display tracking-widest text-xs px-4 py-2 rounded-lg shrink-0">Add show</button>
       </div>
       <p className="text-sm text-br-dk-sub">
         Shows that air every week. Student requests and the auto-scheduler fill in around these, and the app,
@@ -104,7 +104,7 @@ export default function AdminSchedulePage() {
       {edit && (
         <form onSubmit={save} className="sk-raised rounded-2xl p-5 space-y-4">
           <Field label="Show name" value={edit.showName} onChange={e => setEdit({ ...edit, showName: e.target.value })} maxLength={80} required />
-          <label className="block"><span className={lab}>HOW OFTEN</span>
+          <label className="block"><span className={lab}>How often</span>
             <select className={box} value={edit.repeat} onChange={e => setEdit({ ...edit, repeat: e.target.value as Show['repeat'] })}>
               <option value="weekly">Every week</option>
               <option value="biweekly">Every other week</option>
@@ -112,7 +112,7 @@ export default function AdminSchedulePage() {
               <option value="dates">Specific dates only</option>
             </select></label>
           {edit.repeat === 'biweekly' && (
-            <label className="block"><span className={lab}>A DATE IT AIRS (WE COUNT EVERY OTHER WEEK FROM HERE)</span>
+            <label className="block"><span className={lab}>A date it airs (we count every other week from here)</span>
               <input type="date" className={box} value={edit.anchor} onChange={e => setEdit({ ...edit, anchor: e.target.value })} required /></label>
           )}
           {edit.repeat === 'monthly' && (
@@ -127,18 +127,18 @@ export default function AdminSchedulePage() {
             </div>
           )}
           {edit.repeat === 'dates' && (
-            <label className="block"><span className={lab}>DATES (ONE PER LINE, YYYY-MM-DD)</span>
+            <label className="block"><span className={lab}>Dates (one per line, yyyy-mm-dd)</span>
               <textarea className={box} rows={3} value={edit.dates.join('\n')}
                         onChange={e => setEdit({ ...edit, dates: e.target.value.split(/[\s,]+/).map(x => x.trim()).filter(Boolean) })} /></label>
           )}
           <div className="grid sm:grid-cols-3 gap-4">
-            {edit.repeat !== 'dates' ? <label><span className={lab}>DAY</span>
+            {edit.repeat !== 'dates' ? <label><span className={lab}>Day</span>
               <select className={box} value={edit.dayOfWeek} onChange={e => setEdit({ ...edit, dayOfWeek: Number(e.target.value) })}>
                 {DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}
               </select></label> : <div />}
-            <label><span className={lab}>STARTS</span>
+            <label><span className={lab}>Starts</span>
               <input type="time" className={box} value={edit.startTime} onChange={e => setEdit({ ...edit, startTime: e.target.value })} required /></label>
-            <label><span className={lab}>ENDS</span>
+            <label><span className={lab}>Ends</span>
               <input type="time" className={box} value={edit.endTime} onChange={e => setEdit({ ...edit, endTime: e.target.value })} required /></label>
           </div>
           {edit.endTime && edit.endTime <= edit.startTime && <p className="text-xs text-br-dk-sub -mt-2">Ends the next day, after midnight.</p>}
@@ -148,14 +148,14 @@ export default function AdminSchedulePage() {
                  onChange={e => setEdit({ ...edit, hostUsernames: e.target.value.split(',').map(x => x.trimStart()) })} />
           <p className="text-xs text-br-dk-sub -mt-2">These people get the host panel (radio controls and set list) from 4 hours before this show until 4 hours after, and can request changes to it any time.</p>
           <div className="grid sm:grid-cols-2 gap-4">
-            <label><span className={lab}>CATEGORY</span>
+            <label><span className={lab}>Category</span>
               <select className={box} value={edit.category} onChange={e => setEdit({ ...edit, category: e.target.value })}>
                 {CATEGORIES.map(c => <option key={c} value={c}>{c ? c[0].toUpperCase() + c.slice(1) : 'None'}</option>)}
               </select></label>
             <Field label="Show page (optional)" value={edit.showSlug} placeholder="slug from /shows/…"
                    onChange={e => setEdit({ ...edit, showSlug: e.target.value })} />
           </div>
-          <label className="block"><span className={lab}>DESCRIPTION</span>
+          <label className="block"><span className={lab}>Description</span>
             <textarea className={box} rows={3} maxLength={600} value={edit.description}
                       onChange={e => setEdit({ ...edit, description: e.target.value })} /></label>
           <ColorPicker value={edit.color} onChange={color => setEdit({ ...edit, color })} />
@@ -166,9 +166,9 @@ export default function AdminSchedulePage() {
             On the schedule
           </label>
           <div className="grid grid-cols-2 gap-3">
-            <PrimaryButton type="submit" busy={busy}>SAVE SHOW</PrimaryButton>
+            <PrimaryButton type="submit" busy={busy}>Save show</PrimaryButton>
             <button type="button" onClick={() => setEdit(null)}
-                    className="sk-key rounded-xl py-3.5 text-sm font-display tracking-[0.2em] text-br-dk-text">CANCEL</button>
+                    className="sk-key rounded-xl py-3.5 text-sm font-display tracking-[0.2em] text-br-dk-text">Cancel</button>
           </div>
         </form>
       )}
@@ -178,7 +178,7 @@ export default function AdminSchedulePage() {
         if (!list.length) return null
         return (
           <section key={d} className="space-y-2">
-            <h2 className="font-display text-br-gold tracking-widest text-sm">{d.toUpperCase()}</h2>
+            <h2 className="font-display text-br-gold tracking-widest text-sm">{d}</h2>
             {list.map(s => (
               <div key={s.id} className={`sk-raised rounded-xl px-4 py-3 flex items-center gap-4 ${s.isActive ? '' : 'opacity-60'}`}>
                 {s.imageUrl
@@ -197,10 +197,10 @@ export default function AdminSchedulePage() {
         )
       })}
       <div className="flex items-center gap-4 pt-4">
-        <h2 className="font-display text-br-dk-text text-2xl tracking-[0.1em] shrink-0">ONE-TIME EVENTS</h2>
+        <h2 className="font-display text-br-dk-text text-2xl tracking-[0.1em] shrink-0">One-time events</h2>
         <div className="flex-1 h-px bg-br-dk-border" />
         <button onClick={() => { setEditEv(blankEv()); setNotice('') }}
-                className="sk-btn font-display tracking-widest text-xs px-4 py-2 rounded-lg shrink-0">ADD EVENT</button>
+                className="sk-btn font-display tracking-widest text-xs px-4 py-2 rounded-lg shrink-0">Add event</button>
       </div>
       <p className="text-sm text-br-dk-sub">
         A special show or event on one date only. It appears on the schedule in the app and on the website, and past events drop off on their own.
@@ -210,21 +210,21 @@ export default function AdminSchedulePage() {
         <form onSubmit={saveEv} className="sk-raised rounded-2xl p-5 space-y-4">
           <Field label="Event name" value={editEv.title} onChange={e => setEditEv({ ...editEv, title: e.target.value })} maxLength={80} required />
           <div className="grid sm:grid-cols-3 gap-4">
-            <label><span className={lab}>DATE</span>
+            <label><span className={lab}>Date</span>
               <input type="date" className={box} value={editEv.date} onChange={e => setEditEv({ ...editEv, date: e.target.value })} required /></label>
-            <label><span className={lab}>STARTS</span>
+            <label><span className={lab}>Starts</span>
               <input type="time" className={box} value={editEv.startTime} onChange={e => setEditEv({ ...editEv, startTime: e.target.value })} required /></label>
-            <label><span className={lab}>ENDS</span>
+            <label><span className={lab}>Ends</span>
               <input type="time" className={box} value={editEv.endTime} onChange={e => setEditEv({ ...editEv, endTime: e.target.value })} required /></label>
           </div>
           {editEv.endTime && editEv.endTime <= editEv.startTime && <p className="text-xs text-br-dk-sub -mt-2">Ends the next day, after midnight.</p>}
           <Field label="Hosts (comma separated)" value={editEv.hostNames.join(', ')}
                  onChange={e => setEditEv({ ...editEv, hostNames: e.target.value.split(',').map(x => x.trimStart()) })} />
-          <label><span className={lab}>CATEGORY</span>
+          <label><span className={lab}>Category</span>
             <select className={box} value={editEv.category} onChange={e => setEditEv({ ...editEv, category: e.target.value })}>
               {CATEGORIES.map(c => <option key={c} value={c}>{c ? c[0].toUpperCase() + c.slice(1) : 'None'}</option>)}
             </select></label>
-          <label className="block"><span className={lab}>DESCRIPTION</span>
+          <label className="block"><span className={lab}>Description</span>
             <textarea className={box} rows={3} maxLength={600} value={editEv.description}
                       onChange={e => setEditEv({ ...editEv, description: e.target.value })} /></label>
           <ColorPicker value={editEv.color} onChange={color => setEditEv({ ...editEv, color })} />
@@ -232,9 +232,9 @@ export default function AdminSchedulePage() {
                        onChange={v => setEditEv({ ...editEv, imageUrl: v?.url ?? '', imagePath: v?.path ?? '' })} />
           <p className="text-xs text-br-dk-sub">Times are station time.</p>
           <div className="grid grid-cols-2 gap-3">
-            <PrimaryButton type="submit" busy={busy}>SAVE EVENT</PrimaryButton>
+            <PrimaryButton type="submit" busy={busy}>Save event</PrimaryButton>
             <button type="button" onClick={() => setEditEv(null)}
-                    className="sk-key rounded-xl py-3.5 text-sm font-display tracking-[0.2em] text-br-dk-text">CANCEL</button>
+                    className="sk-key rounded-xl py-3.5 text-sm font-display tracking-[0.2em] text-br-dk-text">Cancel</button>
           </div>
         </form>
       )}

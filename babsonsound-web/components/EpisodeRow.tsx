@@ -59,7 +59,7 @@ export function PlayerDialog({ ep, onClose }: { ep: Ep | null; onClose: () => vo
             <p className="text-xs text-br-dk-sub mt-1">{ep.showName}{ep.category ? ` · ${ep.category}` : ''}</p>
             {ep.description && <p className="text-sm text-br-dk-sub mt-2">{ep.description}</p>}
           </div>
-          <button onClick={onClose} className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text shrink-0">CLOSE</button>
+          <button onClick={onClose} className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text shrink-0">Close</button>
         </div>
       </div>
     </div>

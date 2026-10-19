@@ -74,7 +74,7 @@ export default function VoteCard() {
         <form onSubmit={sendRequest} className="flex gap-2">
           <input value={text} onChange={e => setText(e.target.value)} maxLength={140} placeholder={`Request a song${s.requestsShow ? ` for ${s.requestsShow}` : ''}`}
                  className="sk-field flex-1 rounded-lg px-3 py-2 text-sm text-br-dk-text" />
-          <button type="submit" disabled={busy || text.trim().length < 2} className="sk-btn font-display tracking-widest text-xs px-4 rounded-lg">SEND</button>
+          <button type="submit" disabled={busy || text.trim().length < 2} className="sk-btn font-display tracking-widest text-xs px-4 rounded-lg">Send</button>
         </form>
       )}
       {msg && <p className="text-xs hw-sub">{msg}</p>}

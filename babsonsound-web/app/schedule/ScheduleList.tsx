@@ -144,7 +144,7 @@ export default function ScheduleList() {
         {lineupDays.map(([d, list]) => (
           <div key={d} className="space-y-2">
             <p className="font-display text-xs tracking-widest text-br-gold">
-              {d === today ? 'TODAY' : new Date(d).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase()}
+              {d === today ? 'Today' : new Date(d).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
             </p>
             <div className="sk-raised rounded-xl divide-y divide-br-dk-border">
               {list.map(it => (
@@ -155,7 +155,7 @@ export default function ScheduleList() {
                     <p className="text-sm text-br-dk-text truncate">{it.title}</p>
                     <p className="text-xs text-br-dk-sub truncate">{time(it.startAt)} – {time(it.endAt)}{it.hosts.length ? ` · ${it.hosts[0]}` : ''}</p>
                   </div>
-                  {it.startAt <= now && it.endAt > now && <span className="text-[10px] font-display tracking-widest text-br-red">LIVE</span>}
+                  {it.startAt <= now && it.endAt > now && <span className="text-[10px] font-display tracking-widest text-br-red">Live</span>}
                   {it.endAt > now && (
                     <Bell on={bells.has(it.reminderKey)} label={`Remind me before ${it.title}`}
                           onClick={e => { e.stopPropagation(); toggleBell(it) }} />
@@ -180,13 +180,13 @@ export default function ScheduleList() {
           <button onClick={() => setFirst(f => f + DAY)} disabled={!canFwd} aria-label="Next day"
                   className="sk-key rounded-lg w-9 h-9 text-br-dk-text disabled:opacity-40">›</button>
           <button onClick={() => setFirst(f => Math.max(minDay, f - 7 * DAY))} disabled={!canBack} aria-label="Previous week"
-                  className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-40">‹ WEEK</button>
+                  className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-40">‹ Week</button>
           <button onClick={() => setFirst(f => Math.min(today + (DAYS_LOADED - DAYS_SHOWN) * DAY, f + 7 * DAY))} disabled={!canFwd} aria-label="Next week"
-                  className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-40">WEEK ›</button>
+                  className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-40">Week ›</button>
           <button onClick={() => setFirst(today)} disabled={first === today}
-                  className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-40">TODAY</button>
+                  className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-40">Today</button>
         </div>
-        <p className="font-display text-br-gold text-sm tracking-widest">{range.toUpperCase()}</p>
+        <p className="font-display text-br-gold text-sm tracking-widest">{range}</p>
       </div>
 
       <div className="sk-raised rounded-xl overflow-hidden">
@@ -195,7 +195,7 @@ export default function ScheduleList() {
           {shown.map(d => (
             <div key={d} className="py-2 text-center border-l border-br-dk-border">
               <p className={`font-display text-xs tracking-widest ${d === today ? 'text-br-gold' : 'text-br-dk-sub'}`}>
-                {d === today ? 'TODAY' : new Date(d).toLocaleDateString([], { weekday: 'short' }).toUpperCase()}
+                {d === today ? 'Today' : new Date(d).toLocaleDateString([], { weekday: 'short' })}
               </p>
               <p className="text-sm text-br-dk-text">{new Date(d).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
             </div>
@@ -277,7 +277,7 @@ export default function ScheduleList() {
                 {bells.has(open.reminderKey) ? 'REMINDER ON' : 'REMIND ME 5 MINUTES BEFORE'}
               </button>
               <p className="text-[11px] text-br-dk-muted text-center -mt-2">Sent to the Babson Radio iPhone app, not this browser.</p>
-              <button onClick={() => setOpen(null)} className="sk-key rounded-xl w-full py-3 text-sm font-display tracking-[0.2em] text-br-dk-text">CLOSE</button>
+              <button onClick={() => setOpen(null)} className="sk-key rounded-xl w-full py-3 text-sm font-display tracking-[0.2em] text-br-dk-text">Close</button>
             </div>
           </div>
         </div>

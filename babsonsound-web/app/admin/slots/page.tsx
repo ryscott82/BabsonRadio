@@ -63,7 +63,7 @@ export default function AdminSlotsPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-10">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">SLOT REQUESTS</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Slot requests</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
       <ErrorText>{error}</ErrorText>
@@ -152,8 +152,8 @@ function PendingCard({ r, onError }: { r: Req; onError: (m: string) => void }) {
         </>
       )}
       <div className="flex items-center gap-3">
-        <button disabled={busy} onClick={() => decide('approve')} className="font-display tracking-widest text-xs sk-btn px-5 py-2.5 rounded-lg disabled:opacity-50">APPROVE</button>
-        <button disabled={busy} onClick={() => decide('decline')} className="font-display tracking-widest text-xs text-br-red border border-br-red/50 px-4 py-2.5 rounded-lg disabled:opacity-50">DECLINE</button>
+        <button disabled={busy} onClick={() => decide('approve')} className="font-display tracking-widest text-xs sk-btn px-5 py-2.5 rounded-lg disabled:opacity-50">Approve</button>
+        <button disabled={busy} onClick={() => decide('decline')} className="font-display tracking-widest text-xs text-br-red border border-br-red/50 px-4 py-2.5 rounded-lg disabled:opacity-50">Decline</button>
         <button type="button" onClick={() => setMore(!more)} className="ml-auto text-xs text-br-dk-sub underline">{more ? 'Hide note' : 'Add a note or go-live details'}</button>
       </div>
     </div>

@@ -56,7 +56,7 @@ export default async function HomePage() {
                       {slot.hostNames?.length > 0 && <p className="text-xs hw-sub truncate">{slot.hostNames.join(' and ')}</p>}
                     </div>
                     {slot.isLive
-                      ? <span className="font-display text-br-red text-[11px] tracking-[0.2em]">LIVE</span>
+                      ? <span className="font-display text-br-red text-[11px] tracking-[0.2em]">Live</span>
                       : <Link href="/schedule" className="sk-key hw-pill inline-flex items-center gap-1.5 h-8 px-4 rounded-full text-xs font-semibold shrink-0">
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M6 9a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6zM10 19a2 2 0 004 0" /></svg>
                           Remind me

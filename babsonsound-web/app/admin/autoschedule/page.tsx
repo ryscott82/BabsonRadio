@@ -37,15 +37,15 @@ function CorrectSchedule({ box, lab }: { box: string; lab: string }) {
   }
   return (
     <section className="sk-raised rounded-2xl p-5 space-y-3">
-      <h2 className="font-display text-br-gold tracking-widest text-sm">CORRECT THE SCHEDULE</h2>
+      <h2 className="font-display text-br-gold tracking-widest text-sm">Correct the schedule</h2>
       <p className="text-sm text-br-dk-sub">Tell it what really played. It replaces the planned blocks for that time on the schedule, the app and the calendar. If it is still playing, the site keeps it going automatically.</p>
       <div className="grid sm:grid-cols-3 gap-3">
-        <div><label className={lab}>PLAYLIST</label><input className={box + ' w-full'} value={label} onChange={e => setLabel(e.target.value)} /></div>
-        <div><label className={lab}>STARTED</label><input type="datetime-local" className={box + ' w-full'} value={start} onChange={e => setStart(e.target.value)} /></div>
-        <div><label className={lab}>ENDED</label><input type="datetime-local" className={box + ' w-full'} value={end} disabled={ongoing} onChange={e => setEnd(e.target.value)} /></div>
+        <div><label className={lab}>Playlist</label><input className={box + ' w-full'} value={label} onChange={e => setLabel(e.target.value)} /></div>
+        <div><label className={lab}>Started</label><input type="datetime-local" className={box + ' w-full'} value={start} onChange={e => setStart(e.target.value)} /></div>
+        <div><label className={lab}>Ended</label><input type="datetime-local" className={box + ' w-full'} value={end} disabled={ongoing} onChange={e => setEnd(e.target.value)} /></div>
       </div>
       <label className="flex items-center gap-2 text-xs text-br-dk-sub"><input type="checkbox" checked={ongoing} onChange={e => setOngoing(e.target.checked)} /> It is still playing</label>
-      <PrimaryButton type="button" busy={busy} onClick={save}>SAVE CORRECTION</PrimaryButton>
+      <PrimaryButton type="button" busy={busy} onClick={save}>Save correction</PrimaryButton>
       {msg && <p className="text-xs text-br-dk-sub">{msg}</p>}
     </section>
   )
@@ -122,7 +122,7 @@ export default function AutoSchedulePage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">AUTO DJ</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Auto DJ</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
 
@@ -144,7 +144,7 @@ export default function AutoSchedulePage() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-br-gold tracking-widest text-sm">WHEN AND WHAT</h2>
+          <h2 className="font-display text-br-gold tracking-widest text-sm">When and what</h2>
           <button className={btn}
                   onClick={() => update({ rules: [...cfg.rules, {
                     id: `rule-${Date.now().toString(36)}`, name: 'New block', days: [1, 2, 3, 4, 5],
@@ -155,9 +155,9 @@ export default function AutoSchedulePage() {
         {cfg.rules.map((r, i) => (
           <div key={r.id} className="sk-raised rounded-xl p-4 space-y-3">
             <div className="flex flex-wrap gap-3 items-end">
-              <label className="flex-1 min-w-40"><span className={lab}>NAME</span>
+              <label className="flex-1 min-w-40"><span className={lab}>Name</span>
                 <input className={`${box} w-full`} value={r.name} onChange={e => setRule(i, { name: e.target.value })} /></label>
-              <label><span className={lab}>FROM</span>
+              <label><span className={lab}>From</span>
                 <input type="time" className={box} value={r.start} onChange={e => setRule(i, { start: e.target.value })} /></label>
               <label><span className={lab}>TO</span>
                 <input className={`${box} w-20`} value={r.end} onChange={e => setRule(i, { end: e.target.value })} placeholder="24:00" /></label>
@@ -198,10 +198,10 @@ export default function AutoSchedulePage() {
                   </label>
                 )}
                 <div className="flex flex-wrap gap-3 items-end">
-                  <label><span className={lab}>PRIORITY</span>
+                  <label><span className={lab}>Priority</span>
                     <input type="number" min={0} max={100} className={`${box} w-20`} value={r.priority}
                            onChange={e => setRule(i, { priority: Number(e.target.value) })} /></label>
-                  <label><span className={lab}>LONGEST BLOCK (MIN)</span>
+                  <label><span className={lab}>Longest block (min)</span>
                     <input type="number" min={30} max={720} step={30} className={`${box} w-28`} value={r.blockMinutes ?? ''}
                            placeholder={String(cfg.maxBlockMinutes)}
                            onChange={e => setRule(i, { blockMinutes: e.target.value ? Number(e.target.value) : undefined })} /></label>
@@ -241,33 +241,33 @@ export default function AutoSchedulePage() {
 
       {/* Everything else, out of the way */}
       <details className="sk-raised rounded-2xl p-5">
-        <summary className="cursor-pointer select-none font-display text-br-gold tracking-widest text-sm">ADVANCED</summary>
+        <summary className="cursor-pointer select-none font-display text-br-gold tracking-widest text-sm">Advanced</summary>
         <div className="pt-5 space-y-8">
           <div className="space-y-4">
             <div className="grid sm:grid-cols-4 gap-4">
-              <label><span className={lab}>TIME ZONE</span>
+              <label><span className={lab}>Time zone</span>
                 <input className={`${box} w-full`} value={cfg.timezone} onChange={e => update({ timezone: e.target.value })} /></label>
-              <label><span className={lab}>FILL AHEAD (HOURS)</span>
+              <label><span className={lab}>Fill ahead (hours)</span>
                 <input type="number" min={6} max={168} className={`${box} w-full`} value={cfg.horizonHours}
                        onChange={e => update({ horizonHours: Number(e.target.value) })} /></label>
-              <label><span className={lab}>LONGEST BLOCK (MIN)</span>
+              <label><span className={lab}>Longest block (min)</span>
                 <input type="number" min={30} max={360} step={30} className={`${box} w-full`} value={cfg.maxBlockMinutes}
                        onChange={e => update({ maxBlockMinutes: Number(e.target.value) })} /></label>
-              <label><span className={lab}>LOCK NEXT (MIN)</span>
+              <label><span className={lab}>Lock next (min)</span>
                 <input type="number" min={0} max={360} step={15} className={`${box} w-full`} value={cfg.lockMinutes}
                        onChange={e => update({ lockMinutes: Number(e.target.value) })} /></label>
             </div>
-            <label className="block"><span className={lab}>FALLBACK GENRES (COMMA SEPARATED)</span>
+            <label className="block"><span className={lab}>Fallback genres (comma separated)</span>
               <input className={`${box} w-full`} defaultValue={cfg.defaultFillers.join(', ')}
                      onBlur={e => update({ defaultFillers: lines(e.target.value) })} /></label>
             <button className={btn}
                     onClick={() => { if (window.confirm('Replace all blocks with the suggested schedule? Nothing is saved until you press Save.')) update({ rules: DEFAULT_CONFIG.rules.map(r => ({ ...r })) }) }}>
-              LOAD SUGGESTED SCHEDULE
+              Load suggested schedule
             </button>
           </div>
 
           <div className="space-y-4">
-            <h2 className="font-display text-br-gold tracking-widest text-sm">AZURACAST</h2>
+            <h2 className="font-display text-br-gold tracking-widest text-sm">Azuracast</h2>
             <label className="flex items-center gap-3 text-sm text-br-dk-text">
               <input type="checkbox" checked={cfg.syncToAzuraCast} onChange={e => update({ syncToAzuraCast: e.target.checked })} />
               Send to AzuraCast after every rebuild
@@ -302,14 +302,14 @@ export default function AutoSchedulePage() {
           <CorrectSchedule box={box} lab={lab} />
 
           <div className="space-y-3">
-            <h2 className="font-display text-br-gold tracking-widest text-sm">CALENDAR FEED</h2>
+            <h2 className="font-display text-br-gold tracking-widest text-sm">Calendar feed</h2>
             <input readOnly value={calendarUrl} onFocus={e => e.currentTarget.select()}
                    className="sk-field w-full rounded-lg px-3 py-2 text-xs text-br-dk-text" />
             <div className="flex flex-wrap gap-3">
               <button className={btn}
-                      onClick={() => navigator.clipboard?.writeText(calendarUrl).then(() => setNotice('Calendar link copied.'))}>COPY LINK</button>
-              <a className={btn} href={calendarUrl.replace(/^https?:/, 'webcal:')}>OPEN IN CALENDAR APP</a>
-              <a className={btn} href={calendarUrl.replace('/api/calendar.ics', '/api/calendar-autodj.ics').replace(/^https?:/, 'webcal:')}>AUTO DJ CALENDAR</a>
+                      onClick={() => navigator.clipboard?.writeText(calendarUrl).then(() => setNotice('Calendar link copied.'))}>Copy link</button>
+              <a className={btn} href={calendarUrl.replace(/^https?:/, 'webcal:')}>Open in calendar app</a>
+              <a className={btn} href={calendarUrl.replace('/api/calendar.ics', '/api/calendar-autodj.ics').replace(/^https?:/, 'webcal:')}>Auto DJ calendar</a>
             </div>
           </div>
           <div>

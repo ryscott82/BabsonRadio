@@ -33,7 +33,7 @@ export default function AdminFeedbackPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">BUGS & IDEAS</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Bugs & ideas</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
         <div className="flex gap-1 shrink-0">
           {([['open', `Open (${openCount})`], ['archive', 'Archive']] as const).map(([k, l]) => (

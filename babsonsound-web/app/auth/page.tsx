@@ -32,14 +32,14 @@ export default function AuthPage() {
 
 function PendingPanel({ email, onCheck }: { email: string; onCheck: () => Promise<void> | void }) {
   return (
-    <Card title="YOU'RE ON THE LIST" subtitle="Waiting for approval">
+    <Card title="You're on the list" subtitle="Waiting for approval">
       <p className="text-sm text-br-dk-sub">
         Your account ({email}) is created. The station reviews beta tester requests by hand, and you can&apos;t use the site until you are approved.
         Check back soon.
       </p>
       <div className="mt-5 space-y-3">
-        <PrimaryButton type="button" onClick={() => onCheck()}>CHECK AGAIN</PrimaryButton>
-        <GhostButton type="button" onClick={() => signOut()}>SIGN OUT</GhostButton>
+        <PrimaryButton type="button" onClick={() => onCheck()}>Check again</PrimaryButton>
+        <GhostButton type="button" onClick={() => signOut()}>Sign out</GhostButton>
       </div>
     </Card>
   )
@@ -93,8 +93,8 @@ function Forms() {
   }
 
   return (
-    <Card title="BABSON RADIO" subtitle="Student radio — Babson College">
-      <div className="grid grid-cols-2 bg-br-dk-surface border border-br-dk-border rounded-xl p-1 mb-6">
+    <Card title="Babson Radio" subtitle="Student radio — Babson College">
+      <div className="grid grid-cols-2 sk-field rounded-xl p-1 mb-6">
         {(['signin', 'create'] as const).map(m => (
           <button
             key={m}
@@ -118,7 +118,7 @@ function Forms() {
             <Field label="Phone number" value={phone} onChange={e => setPhone(formatPhone(e.target.value))}
                    type="tel" autoComplete="tel-national" inputMode="tel" placeholder="(555) 555-5555" />
             <label className="block">
-              <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">GRADUATION YEAR</span>
+              <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">Graduation year</span>
               <select value={gradYear} onChange={e => setGradYear(e.target.value)}
                       className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none">
                 <option value="">Select</option>
@@ -172,14 +172,14 @@ function VerifyPanel({ email, onCheck }: { email: string; onCheck: () => Promise
   }
 
   return (
-    <Card title="VERIFY YOUR EMAIL" subtitle={`We sent a link to ${email}. Open it, then come back here.`}>
+    <Card title="Verify your email" subtitle={`We sent a link to ${email}. Open it, then come back here.`}>
       <div className="space-y-3">
         <PrimaryButton busy={busy} onClick={() => run(onCheck, 'Still waiting — click the link in the email first.')}>
           I&apos;VE VERIFIED
         </PrimaryButton>
         <div className="flex justify-between">
-          <GhostButton onClick={() => run(resendVerification, 'Sent again. Check your inbox and spam.')}>RESEND EMAIL</GhostButton>
-          <GhostButton onClick={() => signOut()}>SIGN OUT</GhostButton>
+          <GhostButton onClick={() => run(resendVerification, 'Sent again. Check your inbox and spam.')}>Resend email</GhostButton>
+          <GhostButton onClick={() => signOut()}>Sign out</GhostButton>
         </div>
         {msg && <p className="text-center text-sm text-br-dk-sub">{msg}</p>}
       </div>

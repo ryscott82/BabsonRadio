@@ -6,7 +6,7 @@ import type { InputHTMLAttributes, ReactNode } from 'react'
 export function Field({ label, ...props }: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className="block">
-      <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">{label.toUpperCase()}</span>
+      <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">{label}</span>
       <input
         {...props}
         className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text placeholder:text-br-dk-muted focus:outline-none"
@@ -21,7 +21,7 @@ export function BabsonEmailField({ label, value, onChange, placeholder = 'userna
 }) {
   return (
     <label className="block">
-      <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">{label.toUpperCase()}</span>
+      <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">{label}</span>
       <div className="sk-field flex items-center rounded-xl pr-4 focus-within:ring-2 focus-within:ring-br-gold/40">
         <input
           type="text" inputMode="email" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false}

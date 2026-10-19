@@ -42,7 +42,7 @@ function ReportForm() {
                 placeholder={type === 'bug' ? 'What happened? What did you expect?' : 'What would make Babson Radio better?'} />
       <ErrorText>{err}</ErrorText>
       {notice && <p className="text-sm text-br-gold">{notice}</p>}
-      <PrimaryButton type="submit" busy={busy}>SEND</PrimaryButton>
+      <PrimaryButton type="submit" busy={busy}>Send</PrimaryButton>
     </form>
   )
 }
@@ -75,12 +75,12 @@ function AboutYou({ onSaved }: { onSaved?: () => void }) {
   const lab = 'block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest'
 
   return (
-    <form onSubmit={save} className="bg-br-dk-surface border border-br-dk-border rounded-2xl p-5 space-y-4">
+    <form onSubmit={save} className="sk-raised rounded-2xl p-5 space-y-4">
       <div>
         <p className="text-br-dk-text text-sm font-medium">About you</p>
         <p className="text-br-dk-sub text-xs mt-1">All optional.</p>
       </div>
-      <label className="block"><span className={lab}>GRADUATION YEAR</span>
+      <label className="block"><span className={lab}>Graduation year</span>
         <select className={box} value={gradYear} onChange={e => setGradYear(e.target.value)}>
           <option value="">Not set</option>
           {gradYearOptions().map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -97,7 +97,7 @@ function AboutYou({ onSaved }: { onSaved?: () => void }) {
         <Field label="Concentration" value={conc[0] ?? ''} maxLength={60} onChange={e => setConc([e.target.value])} placeholder="Entrepreneurship" />
       )}
       <div>
-        <span className={lab}>BIRTHDAY (OPTIONAL)</span>
+        <span className={lab}>Birthday (optional)</span>
         <div className="flex gap-3">
           <select className={box} aria-label="Birthday month" value={bMonth} onChange={e => setBMonth(e.target.value)}>
             <option value="">Month</option>
@@ -111,7 +111,7 @@ function AboutYou({ onSaved }: { onSaved?: () => void }) {
         <p className="text-xs text-br-dk-sub mt-1.5">Only used for a birthday notification and so the DJ knows. We never ask for the year.</p>
       </div>
       {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}
-      <PrimaryButton type="submit" busy={busy}>SAVE DETAILS</PrimaryButton>
+      <PrimaryButton type="submit" busy={busy}>Save details</PrimaryButton>
     </form>
   )
 }
@@ -149,7 +149,7 @@ function PhoneChange() {
         <form onSubmit={send} className="space-y-3">
           <Field label="New phone number" value={phone} onChange={e => setPhone(formatPhone(e.target.value))} placeholder="(617) 555-1234" inputMode="tel" autoComplete="tel-national" />
           {msg && <p role="status" className="text-sm text-br-red">{msg}</p>}
-          <PrimaryButton type="submit" busy={busy}>REQUEST CHANGE</PrimaryButton>
+          <PrimaryButton type="submit" busy={busy}>Request change</PrimaryButton>
         </form>
       )}
     </div>
@@ -235,7 +235,7 @@ export default function ProfilePage() {
   const aboutLater = member && me != null && me.answered
 
   return (
-    <Card title="YOUR PROFILE">
+    <Card title="Your profile">
       <div className="space-y-4">
         <div>
           <div className="flex items-center gap-4">
@@ -316,7 +316,7 @@ export default function ProfilePage() {
         )}
 
         <div className="text-center space-y-4 pt-2">
-          <GhostButton onClick={() => signOut()}>SIGN OUT</GhostButton>
+          <GhostButton onClick={() => signOut()}>Sign out</GhostButton>
           {!showDelete ? (
             <button className="block mx-auto text-xs text-br-dk-sub hover:text-br-red" onClick={() => setShowDelete(true)}>Delete my account</button>
           ) : (
@@ -327,7 +327,7 @@ export default function ProfilePage() {
             }}>
               <Field label="Enter your password to permanently delete your account" type="password" value={pw}
                      onChange={e => setPw(e.target.value)} autoComplete="current-password" />
-              <PrimaryButton type="submit" busy={busy}>DELETE FOREVER</PrimaryButton>
+              <PrimaryButton type="submit" busy={busy}>Delete forever</PrimaryButton>
             </form>
           )}
         </div>

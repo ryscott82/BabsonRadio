@@ -49,7 +49,7 @@ export default function HostGate({ children }: { children: ReactNode }) {
     return (
       <form className="space-y-5" onSubmit={e => { e.preventDefault(); void run(async () => { setResult(await api<Result>('/api/training', { answers })) }) }}>
         <div className={card}>
-          <h2 className="font-display text-br-gold tracking-widest text-sm">HOST QUIZ</h2>
+          <h2 className="font-display text-br-gold tracking-widest text-sm">Host quiz</h2>
           <p className="text-sm text-br-dk-text">{info.questions.length} questions. You need {info.passPercent}% to pass, and you can retake it.</p>
           {result && !result.passed && <p className="text-sm text-br-red">You got {result.percent}%. Check the notes below and try again.</p>}
         </div>
@@ -66,14 +66,14 @@ export default function HostGate({ children }: { children: ReactNode }) {
           </fieldset>
         ))}
         <ErrorText>{error}</ErrorText>
-        <PrimaryButton type="submit" busy={busy} disabled={!done}>SUBMIT ANSWERS</PrimaryButton>
+        <PrimaryButton type="submit" busy={busy} disabled={!done}>Submit answers</PrimaryButton>
       </form>
     )
   }
 
   return (
     <div className={card}>
-      <h2 className="font-display text-br-gold tracking-widest text-sm">HOST TRAINING</h2>
+      <h2 className="font-display text-br-gold tracking-widest text-sm">Host training</h2>
       {info.checkIn === 'pending' ? (
         <>
           <p className="text-sm text-br-dk-text">Waiting for a director to confirm you are at training. This page updates on its own.</p>

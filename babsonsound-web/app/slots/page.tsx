@@ -90,7 +90,7 @@ export default function SlotsPage() {
   if (!member) {
     return (
       <div className="max-w-md mx-auto px-4 py-16 text-center space-y-3">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">GO ON AIR</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Go on air</h1>
         <p className="text-sm text-br-dk-sub">
           Requesting a spot on the radio is for verified Babson students.{' '}
           <Link href="/auth" className="text-br-gold">Sign in</Link> with your Babson email.
@@ -105,7 +105,7 @@ export default function SlotsPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-10">
       <div>
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">GO ON AIR</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Go on air</h1>
         <p className="text-sm text-br-dk-sub mt-2">
           Have a podcast, a mix or a show idea? Request a time on the radio. Ask at least {SLOT_RULES.minLeadHours} hours ahead.
         </p>
@@ -113,7 +113,7 @@ export default function SlotsPage() {
 
       {signing && (
         <section className="sk-raised rounded-2xl p-5 space-y-4">
-          <h2 className="font-display text-br-gold tracking-widest text-sm">ONE LAST STEP</h2>
+          <h2 className="font-display text-br-gold tracking-widest text-sm">One last step</h2>
           <p className="text-sm text-br-dk-text">Your request is in. Read and sign the on-air agreements so staff can approve it.</p>
           <HostAgreements busy={busy} error={error} onSign={async sig => {
             setBusy(true); setError('')
@@ -133,17 +133,17 @@ export default function SlotsPage() {
         </label>
         <Field label="Special requests or location (optional)" value={location} onChange={e => setLocation(e.target.value)} maxLength={120} placeholder="Recording from the Mod Quad, need a second mic…" />
         <div className="grid sm:grid-cols-2 gap-4">
-          <label className="block"><span className={label}>FORMAT</span>
+          <label className="block"><span className={label}>Format</span>
             <select className={box} value={type} onChange={e => setType(e.target.value as SlotType)}>
               {(Object.keys(SLOT_TYPES) as SlotType[]).map(k => <option key={k} value={k}>{SLOT_TYPES[k]}</option>)}
             </select></label>
-          <label className="block"><span className={label}>CATEGORY</span>
+          <label className="block"><span className={label}>Category</span>
             <select className={box} value={category} onChange={e => setCategory(e.target.value)}>
               {SLOT_CATEGORIES.map(c => <option key={c} value={c}>{c[0].toUpperCase() + c.slice(1)}</option>)}
             </select></label>
-          <label className="block"><span className={label}>START</span>
+          <label className="block"><span className={label}>Start</span>
             <input type="datetime-local" step={900} className={box} value={start} onChange={e => setStart(e.target.value)} required /></label>
-          <label className="block"><span className={label}>LENGTH</span>
+          <label className="block"><span className={label}>Length</span>
             <select className={box} value={durationMin} onChange={e => setDurationMin(Number(e.target.value))}>
               {LENGTHS.map(m => <option key={m} value={m}>{m} minutes</option>)}
             </select></label>
@@ -169,11 +169,11 @@ export default function SlotsPage() {
         <p className="text-xs text-br-dk-muted">Shown to listeners if approved.</p>
         <ErrorText>{error}</ErrorText>
         {notice && <p className="text-sm text-br-gold">{notice}</p>}
-        <PrimaryButton type="submit" busy={busy}>REQUEST A SLOT</PrimaryButton>
+        <PrimaryButton type="submit" busy={busy}>Request a slot</PrimaryButton>
       </form>
 
       <section className="space-y-3">
-        <h2 className="font-display text-br-gold tracking-widest text-sm">MY REQUESTS</h2>
+        <h2 className="font-display text-br-gold tracking-widest text-sm">My requests</h2>
         {mine.length === 0 && <p className="text-sm text-br-dk-sub">You haven&apos;t requested a slot yet.</p>}
         {mine.map(r => (
           <div key={r.id} className="sk-raised rounded-xl p-4 space-y-2">

@@ -47,7 +47,7 @@ export default function AdminRequestsPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">LISTENER REQUESTS</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Listener requests</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
       <p className="text-sm text-br-dk-sub">
@@ -59,7 +59,7 @@ export default function AdminRequestsPage() {
       <ErrorText>{error}</ErrorText>
 
       <div className="space-y-3">
-        <h2 className="font-display text-br-dk-text text-xl tracking-[0.1em]">SUGGESTIONS</h2>
+        <h2 className="font-display text-br-dk-text text-xl tracking-[0.1em]">Suggestions</h2>
         <p className="text-sm text-br-dk-sub">Songs and playlists listeners sent from the Suggest page.</p>
         {subsShown.map(i => (
           <div key={i.id} className="sk-raised rounded-xl px-4 py-3 flex items-center justify-between gap-3">
@@ -80,7 +80,7 @@ export default function AdminRequestsPage() {
         {!subsShown.length && <p className="text-sm text-br-dk-sub">Nothing yet.</p>}
       </div>
 
-      <h2 className="font-display text-br-dk-text text-xl tracking-[0.1em]">SONG REQUESTS</h2>
+      <h2 className="font-display text-br-dk-text text-xl tracking-[0.1em]">Song requests</h2>
       <div className="space-y-2">
         {shown.map(i => (
           <div key={i.id} className="sk-raised rounded-xl px-4 py-3 flex items-center justify-between gap-3">

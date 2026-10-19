@@ -20,7 +20,7 @@ export function probeCors(url: string): Promise<boolean> {
   return corsProbe
 }
 
-interface Tap { ctx: AudioContext; an: AnalyserNode; data: Uint8Array<ArrayBuffer>; gain: GainNode; shaper: WaveShaperNode; shaped: boolean }
+interface Tap { ctx: AudioContext; an: AnalyserNode; data: Uint8Array<ArrayBuffer>; direct: GainNode; dry: GainNode; drive: GainNode; wet: GainNode }
 const taps = new WeakMap<HTMLAudioElement, Tap>()
 let current: Tap | null = null
 
@@ -32,21 +32,36 @@ export function attachSpectrum(el: HTMLAudioElement): boolean {
     const AC: typeof AudioContext = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
     const ctx = new AC()
     const an = ctx.createAnalyser()
-    an.fftSize = 2048; an.smoothingTimeConstant = 0.7; an.minDecibels = -88; an.maxDecibels = -22
+    an.fftSize = 2048; an.smoothingTimeConstant = 0.5; an.minDecibels = -90; an.maxDecibels = -6
     const src = ctx.createMediaElementSource(el)
     src.connect(an) // analyser is a side branch; the sound itself goes src -> gain -> speakers
-    const gain = ctx.createGain(), shaper = ctx.createWaveShaper()
-    shaper.curve = softClipCurve(); shaper.oversample = '2x'
-    src.connect(gain); gain.connect(ctx.destination)
-    const tap: Tap = { ctx, an, data: new Uint8Array(new ArrayBuffer(an.frequencyBinCount)), gain, shaper, shaped: false }
+    // Sound path: src -> direct -> speakers while the knob is at or below 100% (untouched). Past 100% the sound goes through
+    // dry + a saturated copy (drive -> tube-style shaper -> wet), summed and rounded off by a soft clipper.
+    const direct = ctx.createGain(), dry = ctx.createGain(), drive = ctx.createGain(), wet = ctx.createGain()
+    const sat = ctx.createWaveShaper(), clip = ctx.createWaveShaper(), bus = ctx.createGain()
+    sat.curve = tubeCurve(); sat.oversample = '4x'
+    clip.curve = softClipCurve(); clip.oversample = '2x'
+    dry.gain.value = 0; wet.gain.value = 0; drive.gain.value = 1; bus.gain.value = 0.9
+    src.connect(direct); direct.connect(ctx.destination)
+    src.connect(dry); dry.connect(bus)
+    src.connect(drive); drive.connect(sat); sat.connect(wet); wet.connect(bus)
+    bus.connect(clip); clip.connect(ctx.destination)
+    const tap: Tap = { ctx, an, data: new Uint8Array(new ArrayBuffer(an.frequencyBinCount)), direct, dry, drive, wet }
     taps.set(el, tap); current = tap
     setBoostDb(boostDb)
     return true
   } catch { return false }
 }
-// Volume boost past the element's 100%: a gain stage, plus a soft clipper that only engages while boosting, so peaks
-// round off instead of cracking. (Transparent below 80% of full scale; a bypass keeps normal listening untouched.)
+// Past 100% the knob adds drive: louder, and increasingly saturated (warm, tube-like crunch, some even harmonics), with a
+// soft clipper at the end so peaks round off instead of cracking. Below 100% nothing is in the signal path but the element.
 let boostDb = 0
+const MAX_BOOST_DB = 6
+function tubeCurve(): Float32Array<ArrayBuffer> {
+  const n = 4096, c = new Float32Array(new ArrayBuffer(n * 4)), bias = 0.18, k = 1.3
+  const norm = Math.tanh(k + bias) - Math.tanh(bias)
+  for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; c[i] = (Math.tanh(k * x + bias) - Math.tanh(bias)) / norm } // slightly lopsided, so it adds even harmonics like a tube stage
+  return c
+}
 function softClipCurve(): Float32Array<ArrayBuffer> {
   const n = 2048, c = new Float32Array(new ArrayBuffer(n * 4)), k = 0.8
   for (let i = 0; i < n; i++) {
@@ -55,18 +70,16 @@ function softClipCurve(): Float32Array<ArrayBuffer> {
   }
   return c
 }
-/** 0 = normal. Positive values boost by that many dB. Safe to call before the audio is attached; it applies on attach. */
+/** 0 = normal. Positive values add drive (the knob's boost zone, in dB). Safe to call before the audio is attached; it applies on attach. */
 export function setBoostDb(db: number) {
   boostDb = Math.max(0, db)
   const t = current
   if (!t) return
-  t.gain.gain.value = Math.pow(10, boostDb / 20)
-  const on = boostDb > 0.05
-  if (on !== t.shaped) {
-    t.gain.disconnect()
-    if (on) { t.gain.connect(t.shaper); t.shaper.connect(t.ctx.destination) } else { t.shaper.disconnect(); t.gain.connect(t.ctx.destination) }
-    t.shaped = on
-  }
+  const on = boostDb > 0.05, k = Math.min(1, boostDb / MAX_BOOST_DB), now = t.ctx.currentTime, glide = 0.03
+  t.direct.gain.setTargetAtTime(on ? 0 : 1, now, glide)
+  t.dry.gain.setTargetAtTime(on ? Math.pow(10, boostDb / 20) * (1 - 0.85 * k) : 0, now, glide)
+  t.drive.gain.setTargetAtTime(1 + 7 * k, now, glide)
+  t.wet.gain.setTargetAtTime(on ? 0.75 * k : 0, now, glide)
 }
 
 /** Call from a click/tap handler: browsers keep the audio context asleep until then. */
@@ -86,7 +99,7 @@ function readBands(out: number[]): boolean {
     for (let k = lo; k < hi && k < data.length; k++) sum += data[k]
     const v = sum / (hi - lo) / 255
     any += v
-    out[i] = Math.min(1, v * (1 + 0.9 * (i / n))) // highs are quieter in music, so lift them a little
+    out[i] = Math.min(1, v * (1 + 0.35 * (i / n))) // a mild lift for the quieter highs; shaping happens in the caller
   }
   return any > 0.01
 }
@@ -101,7 +114,9 @@ export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: bool
     if (!box) return
     const bars = Array.from(box.children) as HTMLElement[]
     if (!playing || !bars.length) { box.dataset.real = 'false'; return }
-    const lv = new Array(bars.length).fill(0), pk = new Array(bars.length).fill(0), hold = new Array(bars.length).fill(0)
+    const N = bars.length
+    const lv = new Array(N).fill(0), pk = new Array(N).fill(0), hold = new Array(N).fill(0)
+    const avg = new Array(N).fill(0), shown = new Array(N).fill(0)
     let raf = 0, quiet = 0
     const tick = () => {
       raf = requestAnimationFrame(tick)
@@ -109,9 +124,15 @@ export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: bool
       const ok = readBands(lv)
       if (!ok) { quiet++; if (quiet > 180) box.dataset.real = 'false'; return }
       quiet = 0; box.dataset.real = 'true'
-      for (let i = 0; i < bars.length; i++) {
-        const segs = Math.round(lv[i] * segments)
-        if (segs >= pk[i]) { pk[i] = segs; hold[i] = 24 } else if (hold[i]-- <= 0) pk[i] = Math.max(0, pk[i] - 0.15)
+      for (let i = 0; i < N; i++) {
+        // Each band is judged against its own recent average: sustained energy settles to mid-height and only hits jump above it,
+        // lulls drop below it. Rise is instant; the fall is fast (about a tenth of a second), so nothing stays stuck on top.
+        const raw = lv[i]
+        avg[i] += (raw - avg[i]) * 0.04
+        const target = Math.max(0, Math.min(1, Math.pow(raw, 1.5) * 0.6 + (raw - avg[i]) * 2.6 + 0.04))
+        shown[i] = Math.max(target, shown[i] * 0.7)
+        const segs = Math.round(shown[i] * segments)
+        if (segs >= pk[i]) { pk[i] = segs; hold[i] = 20 } else if (hold[i]-- <= 0) pk[i] = Math.max(0, pk[i] - 0.2)
         bars[i].style.setProperty('--lv', String(segs / segments))
         bars[i].style.setProperty('--pk', String(Math.min(segments, Math.round(pk[i])) / segments))
         bars[i].dataset.hot = pk[i] >= segments - 1 ? '1' : '0'

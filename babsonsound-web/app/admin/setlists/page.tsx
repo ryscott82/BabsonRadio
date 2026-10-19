@@ -37,10 +37,10 @@ export default function AdminSetlistsPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">SET LISTS</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Set lists</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
         <button onClick={download} disabled={!items.length}
-                className="sk-btn font-display tracking-widest text-xs px-4 py-2 rounded-lg shrink-0 disabled:opacity-50">DOWNLOAD CSV</button>
+                className="sk-btn font-display tracking-widest text-xs px-4 py-2 rounded-lg shrink-0 disabled:opacity-50">Download csv</button>
       </div>
       <p className="text-sm text-br-dk-sub">Songs hosts reported playing on air, newest first. The CSV has one row per song.</p>
       <ErrorText>{error}</ErrorText>

@@ -20,8 +20,8 @@ export default function HomeTabs({ tabs }: { tabs: { id: string; label: string; 
           </button>
         ))}
         <div className="ml-auto flex items-center gap-4">
-          {cur.href && <Link href={cur.href} className="font-display text-br-dk-sub hover:text-br-gold text-xs tracking-widest">SEE ALL</Link>}
-          <Link href="/slots" className="sk-btn font-display text-[11px] tracking-[0.2em] px-3 py-1.5 rounded-lg mb-1">REQUEST A SPOT</Link>
+          {cur.href && <Link href={cur.href} className="font-display text-br-dk-sub hover:text-br-gold text-xs tracking-widest">See all</Link>}
+          <Link href="/slots" className="sk-btn font-display text-[11px] tracking-[0.2em] px-3 py-1.5 rounded-lg mb-1">Request a spot</Link>
         </div>
       </div>
       <div className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto pr-1" role="tabpanel">{cur.node}</div>

@@ -42,7 +42,7 @@ export default async function ShowPage({ params }: Props) {
 
         {/* Meta */}
         <div className="flex-1">
-          <p className="font-display text-br-gold text-xs tracking-widest mb-2">{show.category?.toUpperCase()}</p>
+          <p className="font-display text-br-gold text-xs tracking-widest mb-2">{show.category}</p>
           <h1 className="font-display text-br-dk-text text-4xl md:text-5xl tracking-wide mb-3">{show.name}</h1>
           {show.hostNames?.length > 0 && (
             <p className="text-br-dk-sub text-sm mb-3">{show.hostNames.join(' · ')}</p>
@@ -69,7 +69,7 @@ export default async function ShowPage({ params }: Props) {
 
       {/* Episodes */}
       <div className="flex items-center gap-4 mb-6">
-        <h2 className="font-display text-br-dk-text text-xl tracking-[0.1em] shrink-0">EPISODES</h2>
+        <h2 className="font-display text-br-dk-text text-xl tracking-[0.1em] shrink-0">Episodes</h2>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
 

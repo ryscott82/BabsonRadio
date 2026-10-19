@@ -43,7 +43,7 @@ export default function AdminUsersPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">USERS</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Users</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
         <span className="text-xs text-br-dk-sub shrink-0">{rows.length} accounts</span>
       </div>

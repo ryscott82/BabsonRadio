@@ -19,12 +19,12 @@ export default function GuestPage() {
   const { user, loading, isBabson, isDeveloper, isGuest } = useAuth()
   if (loading) return <Spinner />
   if (user && (isBabson || isDeveloper)) {
-    return <Card title="YOU'RE ALL SET"><p className="text-center text-sm text-br-dk-sub">
+    return <Card title="You're all set"><p className="text-center text-sm text-br-dk-sub">
       Student and developer accounts have full access. <Link href="/" className="text-br-gold">Go listen</Link>.</p></Card>
   }
   if (user && isGuest) return <GuestHome />
   if (user) {
-    return <Card title="VERIFY YOUR EMAIL"><p className="text-center text-sm text-br-dk-sub">
+    return <Card title="Verify your email"><p className="text-center text-sm text-br-dk-sub">
       Finish verifying on the <Link href="/auth" className="text-br-gold">student sign-in page</Link>.</p></Card>
   }
   return <GuestForms />
@@ -55,7 +55,7 @@ function GuestForms() {
   }
 
   return (
-    <Card title="GUEST ACCESS" subtitle="Live radio is free for everyone. A Babson student can unlock the Library for you.">
+    <Card title="Guest access" subtitle="Live radio is free for everyone. A Babson student can unlock the Library for you.">
       <form onSubmit={submit} className="space-y-4">
         {mode === 'create' && (
           <Field label="Your name" value={name} onChange={e => setName(e.target.value)} autoComplete="given-name" placeholder="First name" />
@@ -122,7 +122,7 @@ function SchoolEmailForm() {
       </select>
       <Field label="Your current password" type="password" value={pw} onChange={e => setPw(e.target.value)} autoComplete="current-password" />
       {msg && <p className="text-sm text-br-red">{msg}</p>}
-      <PrimaryButton type="submit" busy={busy}>SEND CONFIRMATION LINK</PrimaryButton>
+      <PrimaryButton type="submit" busy={busy}>Send confirmation link</PrimaryButton>
     </form>
   )
 }
@@ -171,8 +171,8 @@ function GuestHome() {
   const fmt = (ms: number) => new Date(ms).toLocaleString()
 
   return (
-    <Card title="GUEST ACCESS">
-      <div className="bg-br-dk-surface border border-br-dk-border rounded-2xl p-6 text-center space-y-2">
+    <Card title="Guest access">
+      <div className="sk-raised rounded-2xl p-6 text-center space-y-2">
         {passActive && guestPass ? (
           <>
             <p className="text-br-dk-text">Library unlocked by {guestPass.sponsorName}.</p>
@@ -185,8 +185,8 @@ function GuestHome() {
         )}
         <p className="text-br-dk-sub text-xs">Live radio is open to everyone who is signed in.</p>
         <div className="flex justify-center gap-5">
-          <Link href="/" className="inline-block font-display tracking-widest text-sm text-br-gold">LISTEN LIVE →</Link>
-          {hasLibraryAccess && <Link href="/library" className="inline-block font-display tracking-widest text-sm text-br-gold">LIBRARY →</Link>}
+          <Link href="/" className="inline-block font-display tracking-widest text-sm text-br-gold">Listen live →</Link>
+          {hasLibraryAccess && <Link href="/library" className="inline-block font-display tracking-widest text-sm text-br-gold">Library →</Link>}
         </div>
       </div>
 
@@ -197,7 +197,7 @@ function GuestHome() {
           <>
             <p className="text-sm text-br-dk-sub">Verify your email. We sent a link to {user?.email}.</p>
             <div className="flex gap-3">
-              <PrimaryButton busy={busy} onClick={() => run(resendVerification, 'Sent. Check your inbox.')}>RESEND LINK</PrimaryButton>
+              <PrimaryButton busy={busy} onClick={() => run(resendVerification, 'Sent. Check your inbox.')}>Resend link</PrimaryButton>
               <GhostButton onClick={() => run(refresh, 'Checked.')}>I&apos;VE VERIFIED</GhostButton>
             </div>
           </>
@@ -210,21 +210,21 @@ function GuestHome() {
             {latest?.status === 'denied' && <p className="text-br-red text-sm">That request wasn&apos;t approved.</p>}
             <BabsonEmailField label="Ask a Babson student to sponsor you" value={sponsorEmail}
                    onChange={setSponsorEmail} placeholder="their username" />
-            <PrimaryButton type="submit" busy={busy}>SEND REQUEST</PrimaryButton>
+            <PrimaryButton type="submit" busy={busy}>Send request</PrimaryButton>
           </form>
         )}
         {msg && <p className="text-sm text-br-dk-sub">{msg}</p>}
       </div>
 
       <div className="text-center mt-8 space-y-4">
-        <GhostButton onClick={() => signOut()}>SIGN OUT</GhostButton>
+        <GhostButton onClick={() => signOut()}>Sign out</GhostButton>
         {!showDelete ? (
           <button className="block mx-auto text-xs text-br-dk-sub hover:text-br-red" onClick={() => setShowDelete(true)}>Delete my account</button>
         ) : (
           <form onSubmit={e => { e.preventDefault(); run(() => deleteMyAccount(delPw), '') }} className="space-y-3 text-left">
             <Field label="Enter your password to permanently delete your account" type="password" value={delPw}
                    onChange={e => setDelPw(e.target.value)} autoComplete="current-password" />
-            <PrimaryButton type="submit" busy={busy}>DELETE FOREVER</PrimaryButton>
+            <PrimaryButton type="submit" busy={busy}>Delete forever</PrimaryButton>
           </form>
         )}
       </div>

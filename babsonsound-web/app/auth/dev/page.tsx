@@ -32,12 +32,12 @@ export default function DevSignIn() {
   }
 
   return (
-    <Card title="DEVELOPER">
+    <Card title="Developer">
       <form onSubmit={submit} className="space-y-4">
         <Field label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="username" />
         <Field label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
         <ErrorText>{error}</ErrorText>
-        <PrimaryButton type="submit" busy={busy}>SIGN IN</PrimaryButton>
+        <PrimaryButton type="submit" busy={busy}>Sign in</PrimaryButton>
       </form>
     </Card>
   )

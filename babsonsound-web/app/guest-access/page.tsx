@@ -52,7 +52,7 @@ export default function GuestAccessPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-10">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">INVITE FRIENDS</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Invite friends</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
       <ErrorText>{error}</ErrorText>
@@ -76,7 +76,7 @@ export default function GuestAccessPage() {
               <p className="text-xs text-br-dk-sub">Until {new Date(p.expiresAt).toLocaleString()}</p>
             </div>
             <button onClick={() => run(() => api('/api/guest/revoke', { guestUid: p.guestUid }), 'Access revoked.')}
-                    className="font-display tracking-widest text-xs text-br-red hover:underline">REVOKE</button>
+                    className="font-display tracking-widest text-xs text-br-red hover:underline">Revoke</button>
           </div>
         ))}
       </Section>
@@ -94,9 +94,9 @@ function RequestRow({ r, run }: { r: Req; run: (f: () => Promise<unknown>, ok?: 
       </div>
       <DurationSelect value={duration} onChange={setDuration} />
       <button onClick={() => run(() => api('/api/guest/decision', { requestId: r.id, action: 'approve', duration }), 'Approved.')}
-              className="font-display tracking-widest text-xs sk-btn px-4 py-2 rounded-lg">APPROVE</button>
+              className="font-display tracking-widest text-xs sk-btn px-4 py-2 rounded-lg">Approve</button>
       <button onClick={() => run(() => api('/api/guest/decision', { requestId: r.id, action: 'deny' }))}
-              className="font-display tracking-widest text-xs text-br-dk-sub hover:text-br-dk-text">DENY</button>
+              className="font-display tracking-widest text-xs text-br-dk-sub hover:text-br-dk-text">Deny</button>
     </div>
   )
 }
@@ -117,7 +117,7 @@ function InviteForm({ run }: { run: (f: () => Promise<unknown>, ok?: string) => 
         <Field label="Guest's email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="friend@example.com" required />
       </div>
       <DurationSelect value={duration} onChange={setDuration} />
-      <button className="font-display tracking-widest text-xs sk-btn px-4 py-3 rounded-lg">INVITE</button>
+      <button className="font-display tracking-widest text-xs sk-btn px-4 py-3 rounded-lg">Invite</button>
     </form>
   )
 }

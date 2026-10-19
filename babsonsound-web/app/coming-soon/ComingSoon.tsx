@@ -75,9 +75,9 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-16 text-center">
-      <p className="font-display tracking-[0.4em] text-br-gold text-sm sm:text-base mb-3">BABSON RADIO</p>
+      <p className="font-display tracking-[0.4em] text-br-gold text-sm sm:text-base mb-3">Babson Radio</p>
       <h1 className="font-display text-br-dk-text text-6xl sm:text-8xl md:text-9xl leading-[0.9] tracking-wide mb-4">
-        RADIO IS BACK
+        Radio is back
       </h1>
       <p className="text-br-dk-sub text-base sm:text-lg mb-10 max-w-md">
         {arrived ? "We're getting on the air. Check back in a moment." : 'Student radio returns October 22.'}
@@ -85,7 +85,7 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
 
       <a href={LINKS.interest} target="_blank" rel="noopener noreferrer"
          className="sk-btn block w-full max-w-3xl font-display tracking-[0.12em] text-3xl sm:text-5xl md:text-6xl leading-none px-6 py-7 sm:py-9 rounded-2xl mb-3">
-        FILL OUT THE INTEREST FORM
+        Fill out the interest form
       </a>
       <p className="text-br-dk-sub text-base sm:text-lg mb-5">Takes under a minute. Tell us what you want to hear.</p>
       <ShareFormButton className="mb-14" />
@@ -112,7 +112,7 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
           <Field label="Developer password" type="password" value={pw} onChange={e => setPw(e.target.value)}
                  autoComplete="current-password" autoFocus />
           <ErrorText>{error}</ErrorText>
-          <PrimaryButton type="submit" busy={busy}>UNLOCK</PrimaryButton>
+          <PrimaryButton type="submit" busy={busy}>Unlock</PrimaryButton>
         </form>
       )}
     </div>

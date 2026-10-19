@@ -39,7 +39,7 @@ export default function AdminNotifyPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">SEND A NOTIFICATION</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Send a notification</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
       <p className="text-sm text-br-dk-sub">
@@ -50,7 +50,7 @@ export default function AdminNotifyPage() {
         <Field label="Message" value={body} maxLength={160} onChange={e => setBody(e.target.value)} placeholder="Tune in at 6 for a live set from…" />
         <ErrorText>{error}</ErrorText>
         {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}
-        <PrimaryButton type="submit" busy={busy}>SEND TO EVERYONE</PrimaryButton>
+        <PrimaryButton type="submit" busy={busy}>Send to everyone</PrimaryButton>
       </form>
       <div className="space-y-2">
         {history.map(h => (

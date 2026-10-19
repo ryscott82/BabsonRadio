@@ -35,14 +35,14 @@ function LibraryBody() {
     <div className="space-y-10">
       {err && <p className="text-sm text-red-400">{err}</p>}
       <section className="space-y-3">
-        <h2 className="font-display text-br-dk-text text-xl tracking-widest">SAVED</h2>
+        <h2 className="font-display text-br-dk-text text-xl tracking-widest">Saved</h2>
         {d.saved.length === 0
           ? <p className="text-sm text-br-dk-sub">Nothing saved yet. <Link href="/browse" className="text-br-gold">Find episodes</Link></p>
           : d.saved.map(e => <EpisodeRow key={e.id} ep={e} saved onSave={toggle} onPlay={setPlaying} />)}
       </section>
       {fresh.length > 0 && (
         <section className="space-y-3">
-          <h2 className="font-display text-br-dk-text text-xl tracking-widest">{d.forYou.basedOnInterests ? 'BASED ON YOUR INTERESTS' : 'NEW EPISODES'}</h2>
+          <h2 className="font-display text-br-dk-text text-xl tracking-widest">{d.forYou.basedOnInterests ? 'Based on your interests' : 'New episodes'}</h2>
           {fresh.map(e => <EpisodeRow key={e.id} ep={e} saved={ids.has(e.id)} onSave={toggle} onPlay={setPlaying} />)}
         </section>
       )}
@@ -54,7 +54,7 @@ function LibraryBody() {
 export default function LibraryPage() {
   return (
     <div className="max-w-3xl w-full mx-auto px-4 py-6 space-y-4 fit">
-      <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">LIBRARY</h1>
+      <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Library</h1>
       <div className="fit-body"><LockedGate><LibraryBody /></LockedGate></div>
     </div>
   )

@@ -32,7 +32,7 @@ export default function AdminShowUpdatesPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center gap-4">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">SHOW UPDATES</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Show updates</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
       <p className="text-sm text-br-dk-sub">Changes hosts asked for on their weekly shows. Approving puts them live on the schedule right away.</p>
@@ -43,9 +43,9 @@ export default function AdminShowUpdatesPage() {
           <p className="text-xs text-br-dk-sub">{i.requesterName || 'A host'} · {new Date(i.createdAt).toLocaleString()}</p>
           {(['showName', 'description'] as const).filter(k => i.requested[k]).map(k => (
             <div key={k} className="grid sm:grid-cols-2 gap-3 text-sm">
-              <div><p className="font-display text-[10px] tracking-widest text-br-dk-sub mb-1">{k === 'showName' ? 'NAME NOW' : 'DESCRIPTION NOW'}</p>
+              <div><p className="font-display text-[10px] tracking-widest text-br-dk-sub mb-1">{k === 'showName' ? 'Name now' : 'Description now'}</p>
                 <p className="text-br-dk-sub whitespace-pre-wrap">{i.current[k] || '(empty)'}</p></div>
-              <div><p className="font-display text-[10px] tracking-widest text-br-gold mb-1">REQUESTED</p>
+              <div><p className="font-display text-[10px] tracking-widest text-br-gold mb-1">Requested</p>
                 <p className="text-br-dk-text whitespace-pre-wrap">{i.requested[k]}</p></div>
             </div>
           ))}
@@ -57,8 +57,8 @@ export default function AdminShowUpdatesPage() {
             </div>
           )}
           <div className="flex gap-3">
-            <button onClick={() => decide(i.id, 'approve')} className="sk-btn font-display tracking-widest text-xs px-4 py-2 rounded-lg">APPROVE</button>
-            <button onClick={() => decide(i.id, 'decline')} className="sk-key font-display tracking-widest text-xs px-4 py-2 rounded-lg text-br-dk-text">DECLINE</button>
+            <button onClick={() => decide(i.id, 'approve')} className="sk-btn font-display tracking-widest text-xs px-4 py-2 rounded-lg">Approve</button>
+            <button onClick={() => decide(i.id, 'decline')} className="sk-key font-display tracking-widest text-xs px-4 py-2 rounded-lg text-br-dk-text">Decline</button>
           </div>
         </div>
       ))}

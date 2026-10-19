@@ -71,18 +71,18 @@ export default function StationPanel() {
       {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}
 
       <div className="flex flex-wrap gap-2 items-center">
-        <button type="button" disabled={!!busy} onClick={() => run('skip', { action: 'skip' }, 'Skipped.')} className={`sk-key text-br-dk-text ${btn}`}>SKIP SONG</button>
+        <button type="button" disabled={!!busy} onClick={() => run('skip', { action: 'skip' }, 'Skipped.')} className={`sk-key text-br-dk-text ${btn}`}>Skip song</button>
         {confirm ? (
           <>
             <span className="text-sm text-br-dk-text">{confirm === 'emergency-stop' ? 'Take the station off air?' : 'Bring the station back?'}</span>
             <button type="button" disabled={!!busy} onClick={() => run(confirm, { action: confirm }, confirm === 'resume' ? 'Back on air.' : 'Station stopped.')}
-                    className={`bg-br-red text-white ${btn}`}>YES</button>
-            <button type="button" onClick={() => setConfirm(null)} className={`text-br-dk-sub ${btn}`}>CANCEL</button>
+                    className={`bg-br-red text-white ${btn}`}>Yes</button>
+            <button type="button" onClick={() => setConfirm(null)} className={`text-br-dk-sub ${btn}`}>Cancel</button>
           </>
         ) : (
           <>
-            <button type="button" disabled={!!busy} onClick={() => setConfirm('emergency-stop')} className={`bg-br-red text-white ${btn}`}>EMERGENCY STOP</button>
-            <button type="button" disabled={!!busy} onClick={() => setConfirm('resume')} className={`border border-br-dk-border text-br-dk-text ${btn}`}>RESUME</button>
+            <button type="button" disabled={!!busy} onClick={() => setConfirm('emergency-stop')} className={`bg-br-red text-white ${btn}`}>Emergency stop</button>
+            <button type="button" disabled={!!busy} onClick={() => setConfirm('resume')} className={`border border-br-dk-border text-br-dk-text ${btn}`}>Resume</button>
           </>
         )}
       </div>
@@ -91,14 +91,14 @@ export default function StationPanel() {
         <p className="text-xs text-br-dk-sub font-display tracking-widest">play a song next</p>
         <form onSubmit={e => { e.preventDefault(); if (q.trim().length > 1) search() }} className="flex gap-2">
           <input value={q} onChange={e => setQ(e.target.value)} maxLength={80} placeholder="Song or artist" aria-label="Song or artist" className={field} />
-          <button type="submit" disabled={!!busy || q.trim().length < 2} className={`sk-btn ${btn}`}>SEARCH</button>
+          <button type="submit" disabled={!!busy || q.trim().length < 2} className={`sk-btn ${btn}`}>Search</button>
         </form>
         {found.length > 0 && (
           <ul className="space-y-1">
             {found.map(s => (
               <li key={s.requestId} className="flex items-center justify-between gap-2 text-sm text-br-dk-text">
                 <span className="truncate">{s.title}<span className="text-br-dk-sub"> · {s.artist}</span></span>
-                <button type="button" disabled={!!busy} onClick={() => playNext(s)} className={`sk-btn shrink-0 ${btn}`}>PLAY NEXT</button>
+                <button type="button" disabled={!!busy} onClick={() => playNext(s)} className={`sk-btn shrink-0 ${btn}`}>Play next</button>
               </li>
             ))}
           </ul>
@@ -115,8 +115,8 @@ export default function StationPanel() {
           <select value={minutes} onChange={e => setMinutes(Number(e.target.value))} className="sk-field rounded-lg px-3 py-2 text-sm text-br-dk-text" aria-label="How long to show it">
             {[[15, '15 minutes'], [60, '1 hour'], [180, '3 hours'], [720, '12 hours']].map(([m, l]) => <option key={m} value={m}>{l}</option>)}
           </select>
-          <button type="button" disabled={!!busy || !text.trim()} onClick={() => run('announce', { action: 'announce', text, minutes }, 'Sent to everyone.')} className={`sk-btn ${btn}`}>SEND</button>
-          {d.announcement && <button type="button" disabled={!!busy} onClick={() => run('clear', { action: 'clear-announcement' }, 'Message removed.')} className={`text-br-dk-sub ${btn}`}>REMOVE</button>}
+          <button type="button" disabled={!!busy || !text.trim()} onClick={() => run('announce', { action: 'announce', text, minutes }, 'Sent to everyone.')} className={`sk-btn ${btn}`}>Send</button>
+          {d.announcement && <button type="button" disabled={!!busy} onClick={() => run('clear', { action: 'clear-announcement' }, 'Message removed.')} className={`text-br-dk-sub ${btn}`}>Remove</button>}
         </div>
       </div>
 
@@ -129,8 +129,8 @@ export default function StationPanel() {
         <input value={headline} onChange={e => setHeadline(e.target.value)} maxLength={80} placeholder="Headline" aria-label="Headline" className={field} />
         <textarea value={message} onChange={e => setMessage(e.target.value)} rows={2} maxLength={400} placeholder="Details" aria-label="Details" className={field} />
         <div className="flex gap-2 items-center">
-          <button type="button" disabled={!!busy} onClick={() => pin(false)} className={`sk-btn ${btn}`}>PIN</button>
-          <button type="button" disabled={!!busy} onClick={() => pin(true)} className={`text-br-dk-sub ${btn}`}>CLEAR</button>
+          <button type="button" disabled={!!busy} onClick={() => pin(false)} className={`sk-btn ${btn}`}>Pin</button>
+          <button type="button" disabled={!!busy} onClick={() => pin(true)} className={`text-br-dk-sub ${btn}`}>Clear</button>
         </div>
       </div>
     </div>

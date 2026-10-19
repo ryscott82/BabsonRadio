@@ -38,7 +38,7 @@ export default function TesterFeedback() {
         <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={close}>
           <form onSubmit={send} onClick={e => e.stopPropagation()} role="dialog" aria-label="Report a bug or suggest a feature"
                 className="sk-raised rounded-2xl p-5 w-full max-w-md space-y-3">
-            <h2 className="font-display text-br-dk-text tracking-widest text-sm">REPORT A BUG OR SUGGEST A FEATURE</h2>
+            <h2 className="font-display text-br-dk-text tracking-widest text-sm">Report a bug or suggest a feature</h2>
             {sent ? (
               <>
                 <p className="text-sm text-br-dk-text">Sent. Thank you, we read every one.</p>

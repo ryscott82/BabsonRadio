@@ -54,8 +54,8 @@ export default function Nav() {
 
         {/* Wordmark */}
         <Link href="/" className="flex items-baseline gap-2.5 shrink-0" style={{ fontFamily: "'Barlow', system-ui, sans-serif" }}>
-          <span className="text-br-gold text-[11px] font-semibold tracking-[0.34em]">BABSON</span>
-          <span className="text-br-dk-text text-[1.6rem] font-bold tracking-[0.32em] leading-none">RADIO</span>
+          <span className="uppercase text-br-gold text-[11px] font-semibold tracking-[0.34em]">Babson</span>
+          <span className="uppercase text-br-dk-text text-[1.6rem] font-bold tracking-[0.32em] leading-none">Radio</span>
         </Link>
 
         {/* Desktop nav */}

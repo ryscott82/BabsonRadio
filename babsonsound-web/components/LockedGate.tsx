@@ -19,12 +19,12 @@ export default function LockedGate({ children }: { children: ReactNode }) {
         : 'This is for Babson students.'
 
   return (
-    <div className="rounded-2xl border border-br-dk-border bg-br-dk-surface p-8 text-center">
-      <p className="font-display text-br-dk-text text-xl tracking-widest mb-2">LOCKED</p>
+    <div className="sk-raised rounded-2xl p-8 text-center">
+      <p className="font-display text-br-dk-text text-xl tracking-widest mb-2">Locked</p>
       <p className="text-br-dk-sub text-sm mb-5">{message}</p>
       <div className="flex justify-center gap-4 font-display tracking-widest text-sm">
-        <Link href="/auth" className="text-br-gold">SIGN IN</Link>
-        {!user && <Link href="/auth/guest" className="text-br-dk-sub hover:text-br-dk-text">GUEST ACCESS</Link>}
+        <Link href="/auth" className="text-br-gold">Sign in</Link>
+        {!user && <Link href="/auth/guest" className="text-br-dk-sub hover:text-br-dk-text">Guest access</Link>}
       </div>
     </div>
   )

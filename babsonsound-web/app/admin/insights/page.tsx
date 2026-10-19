@@ -31,7 +31,7 @@ export default function InsightsPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-4">
-      <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">LISTENER INSIGHTS</h1>
+      <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Listener insights</h1>
       <p className="text-sm text-br-dk-sub">The last 60 days. It needs a few days of data before the numbers mean much.</p>
       <div className="flex gap-1 border-b border-br-dk-border" role="tablist">
         {([['dash', 'Dashboard'], ['raw', 'Raw data']] as const).map(([k, l]) => (
@@ -60,7 +60,7 @@ export default function InsightsPage() {
           </div>
 
           <section className="sk-raised rounded-2xl p-5 space-y-3">
-            <h2 className="font-display text-br-gold tracking-widest text-sm">WHAT TO DO</h2>
+            <h2 className="font-display text-br-gold tracking-widest text-sm">What to do</h2>
             <ul className="text-sm text-br-dk-text space-y-2 list-disc pl-5">
               {playMore.length > 0 && <li><strong>Play more of:</strong> {playMore.map(r => r.label).join(', ')}. Listeners rate and stay for these.</li>}
               {playLess.length > 0 && <li><strong>Consider less of:</strong> {playLess.map(r => r.label).join(', ')}. Below-average listening or ratings. The scheduler already plays them less but still gives them airtime.</li>}
@@ -71,7 +71,7 @@ export default function InsightsPage() {
           </section>
 
           <section className="sk-raised rounded-2xl p-5 space-y-2">
-            <h2 className="font-display text-br-gold tracking-widest text-sm">AVERAGE LISTENERS</h2>
+            <h2 className="font-display text-br-gold tracking-widest text-sm">Average listeners</h2>
             {byListeners.slice(0, 12).map(r => (
               <div key={r.label} className="flex items-center gap-3 text-xs">
                 <span className="w-40 shrink-0 truncate text-br-dk-text">{r.label}</span>

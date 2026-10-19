@@ -59,7 +59,7 @@ export default function EpisodeCard({ episode, layout = 'card' }: EpisodeCardPro
     <div className={`absolute inset-0 bg-gradient-to-br ${gradient} flex items-center justify-center`}>
       {episode.episodeNumber && (
         <div className="text-center">
-          <p className="font-display text-br-brass/60 text-[10px] tracking-[0.3em]">EP</p>
+          <p className="font-display text-br-brass/60 text-[10px] tracking-[0.3em]">Ep</p>
           <p className="font-display text-br-brass text-3xl">{episode.episodeNumber}</p>
         </div>
       )}
@@ -83,7 +83,7 @@ export default function EpisodeCard({ episode, layout = 'card' }: EpisodeCardPro
           <span className="absolute bottom-3 right-3 text-[11px] px-2 py-0.5 rounded-md bg-black/55 text-white tabular-nums">{formatDuration(episode.duration)}</span>
         </div>
         <p className="mt-3 text-sm font-semibold text-br-dk-text truncate group-hover:text-br-gold transition-colors">
-          {episode.isNew && <span className="font-display text-[9px] tracking-widest bg-br-red text-white px-1.5 py-0.5 rounded mr-2 align-middle">NEW</span>}
+          {episode.isNew && <span className="font-display text-[9px] tracking-widest bg-br-red text-white px-1.5 py-0.5 rounded mr-2 align-middle">New</span>}
           {episode.title}
         </p>
         <p className="text-xs hw-sub truncate">{episode.category ? `${episode.category} · ` : ''}{episode.showName}</p>
@@ -103,7 +103,7 @@ export default function EpisodeCard({ episode, layout = 'card' }: EpisodeCardPro
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             {episode.isNew && (
-              <span className="font-display text-[9px] tracking-widest bg-br-red text-white px-2 py-0.5 rounded">NEW</span>
+              <span className="font-display text-[9px] tracking-widest bg-br-red text-white px-2 py-0.5 rounded">New</span>
             )}
             {episode.category && (
               <span className="font-display text-[9px] tracking-widest text-br-dk-muted">{episode.category.toUpperCase()}</span>
@@ -132,7 +132,7 @@ export default function EpisodeCard({ episode, layout = 'card' }: EpisodeCardPro
       </div>
       <div>
         {episode.isNew && (
-          <span className="font-display text-[9px] tracking-widest bg-br-red text-white px-2 py-0.5 rounded mr-2">NEW</span>
+          <span className="font-display text-[9px] tracking-widest bg-br-red text-white px-2 py-0.5 rounded mr-2">New</span>
         )}
         <p className="text-br-dk-text text-sm font-medium mt-2 line-clamp-2 group-hover:text-br-gold transition-colors">
           {episode.title}

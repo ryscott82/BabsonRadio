@@ -4,6 +4,8 @@ import { useEffect, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import FitTitle from '@/components/FitTitle'
 import OnAirSign from '@/components/OnAirSign'
+import ArtDesk from '@/components/ArtDesk'
+import { useArtMain } from '@/components/ArtTheme'
 import { ReactionKeys } from '@/components/LiveExtras'
 import type { NowPlaying } from '@/lib/nowplaying'
 
@@ -40,6 +42,8 @@ export default function FullBoard({ boardRef, eqRef, np, hasSong, onAir, glow, a
   awake: boolean; setAwake: (v: boolean) => void; isPlaying: boolean; canPlay: boolean; togglePlay: () => void; close: () => void
 }) {
   const [scale, setScale] = useState(1)
+  const { colors } = useArtMain() // album-color mode follows into full screen
+  const artStyle = colors ? ({ '--art-1': colors[0], '--art-2': colors[1], '--art-3': colors[2] } as React.CSSProperties) : undefined
   useEffect(() => {
     const fit = () => setScale(Math.min(window.innerWidth / W, window.innerHeight / H))
     fit(); window.addEventListener('resize', fit); return () => window.removeEventListener('resize', fit)
@@ -48,7 +52,8 @@ export default function FullBoard({ boardRef, eqRef, np, hasSong, onAir, glow, a
   const sub = onAirNow && np?.showTitle && !np.showOnly ? `${np.showTitle}${np.streamer ? ` with ${np.streamer}` : ''}` : (np?.artist || 'Live from campus')
   return createPortal(
     <div ref={boardRef} onMouseMove={() => setAwake(true)} onClick={() => setAwake(true)}
-         className={`hw-board fixed inset-0 z-[100] overflow-hidden flex items-center justify-center ${awake ? '' : 'cursor-none'}`}>
+         style={artStyle} className={`hw-board ${colors ? 'art-ui art-board ' : ''}fixed inset-0 z-[100] overflow-hidden flex items-center justify-center ${awake ? '' : 'cursor-none'}`}>
+      {colors && <ArtDesk inline on colors={colors as [string, string, string, string, string, string]} />}
       <div className="relative shrink-0" style={{ width: W, height: H, transform: `scale(${scale})`, transformOrigin: 'center center' }}>
         <p className="absolute font-semibold" style={{ left: 80, top: 42, fontSize: 13, letterSpacing: '0.34em', color: 'var(--br-text)', opacity: 0.7 }}>BABSON RADIO</p>
 

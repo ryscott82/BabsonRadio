@@ -7,13 +7,13 @@ import { audioPlaying, readBands } from '@/lib/spectrum'
 // Album-color mode for the desk itself (matches the album-art mock-ups): the oak (dark) or silver (light) desk takes the
 // cover's colors, and three layers of topographic wood-grain lines pulse with the music. With the real analyser they follow
 // the bass / mids / highs; without one (stream without CORS, or nothing playing yet) they keep the mock-up's steady beat.
-export default function ArtDesk({ colors, on }: { colors: [string, string, string, string, string, string]; on: boolean }) {
+export default function ArtDesk({ colors, on, inline = false }: { colors: [string, string, string, string, string, string]; on: boolean; inline?: boolean }) {
   const host = useSyncExternalStore(() => () => {}, () => document.body, () => null)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const el = ref.current
-    if (!on || !host || !el) return
+    if (!on || (!inline && !host) || !el) return
     const lines = Array.from(el.querySelectorAll<HTMLElement>('.ln'))
     const out = new Array<number>(3).fill(0)
     // The lines breathe with the beat, not with the loudness: each layer rises on a hit in its band (bass, mids, highs) and settles
@@ -39,16 +39,16 @@ export default function ArtDesk({ colors, on }: { colors: [string, string, strin
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [on, host])
+  }, [on, host, inline])
 
-  if (!host) return null
+  if (!host && !inline) return null
   const style = { ['--art-1' as string]: colors[0], ['--art-2' as string]: colors[1], ['--art-3' as string]: colors[2], ['--art-4' as string]: colors[3], ['--art-5' as string]: colors[4], ['--art-6' as string]: colors[5] } as React.CSSProperties
-  return createPortal(
+  const desk = (
     <div ref={ref} aria-hidden className="art-desk" data-on={on ? '1' : '0'} data-play="0" data-real="0" style={style}>
       <div className="plate" />
       <div className="tint" />
       <div className="ln ln0" /><div className="ln ln1" /><div className="ln ln2" />
-    </div>,
-    host,
+    </div>
   )
+  return inline ? desk : createPortal(desk, host!)
 }

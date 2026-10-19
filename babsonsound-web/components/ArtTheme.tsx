@@ -21,8 +21,8 @@ export const ART_PRESETS: Record<string, { label: string; colors: string[] }> = 
 // fades to the three main colors of the current cover, one per kind of element (see .art-ui in globals.css).
 // Switch it off with ART_THEME = false in lib/artColor.ts.
 
-interface Theme { on: boolean; main: string; full: boolean; badge: string }
-const Ctx = createContext<Theme>({ on: false, main: '', full: false, badge: '' })
+interface Theme { on: boolean; main: string; full: boolean; badge: string; colors: string[] | null }
+const Ctx = createContext<Theme>({ on: false, main: '', full: false, badge: '', colors: null })
 /** The main color to tint the visualizer with ('' when the theme is off or hasn't faded in yet). */
 export const useArtMain = () => useContext(Ctx)
 
@@ -75,7 +75,7 @@ export default function ArtTheme({ className, children }: { className?: string; 
   const d = use && palette[3] ? palette[3] : c, e = use && palette[4] ? palette[4] : a, f = use && palette[5] ? palette[5] : c
   const style = { '--art-1': a, '--art-2': b, '--art-3': c } as React.CSSProperties
   return (
-    <Ctx.Provider value={{ on: night, main: use ? a : '', full: night, badge: ok ? palette[2] : '' }}>
+    <Ctx.Provider value={{ on: night, main: use ? a : '', full: night, badge: ok ? palette[2] : '', colors: use ? [a, b, c, d, e, f] : null }}>
       <div className={`${night ? 'art-ui ' : ''}${className ?? ''}`} style={night ? style : undefined}>{children}</div>
       {night && <ArtDesk colors={[a, b, c, d, e, f]} on={use} />}
     </Ctx.Provider>

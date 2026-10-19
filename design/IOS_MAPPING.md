@@ -27,7 +27,7 @@ The iOS app now uses the same hardware look as the website. Mock geometry is in 
 | `.hw-cover` + `.hw-vinyl` | `DeskSleeve`, `DeskRecord` |
 | `.sk-field` | `HWFieldFill`, `Color.hwField(_:)` |
 | stars | `HWStar` |
-| tab bar | `HWNav.swift` `HWTabBar` (phone, 83 pt) and `HWSideBar` (Duo / iPad, floating vertical) |
+| tab bar | the system tab bar (hidden only while the full screen board is up) |
 
 Layouts
 - Phone live: `LiveDesk.swift` `PhoneLiveDesk` (record, sleeve, leather panel with title / EQ / dial / keys, bottom drawer `HWDrawerSheet`).

@@ -35,15 +35,11 @@ struct ContentView: View {
         return chrome(tabs(hideBar: hideBar, sideW: sideW))
     }
 
-    /// Screens that are wide for their height (an open or half-open foldable, the iPhone Duo) use the system tab bar, which the
-    /// system places in the bottom corner itself. A custom bar does not work there. Regular phones get our own bar along the bottom.
-    private var wideBar: Bool { hSize == .regular || (paneSize.height > 0 && (0.62...1.3).contains(paneSize.width / paneSize.height)) }
-
     private func tabs(hideBar: Bool, sideW: CGFloat) -> some View {
         TabView(selection: $tab) {
             LivePlayerView()
                 .id(liveLoad)
-                .modifier(TabBarStyle(hidden: !wideBar || hideBar))
+                .modifier(TabBarStyle(hidden: hideBar))
                 .tag(0)
                 .tabItem {
                     BRTabIcon(systemName: "radio", label: "Live")
@@ -51,8 +47,7 @@ struct ContentView: View {
 
             ScheduleView()
                 .padding(.leading, sideW)
-                .modifier(BarClearance(on: !hideBar && !wideBar))
-                .modifier(TabBarStyle(hidden: !wideBar || hideBar))
+                .modifier(TabBarStyle(hidden: hideBar))
                 .tag(1)
                 .tabItem {
                     BRTabIcon(systemName: "calendar", label: "Schedule")
@@ -60,8 +55,7 @@ struct ContentView: View {
 
             LibraryView()
                 .padding(.leading, sideW)
-                .modifier(BarClearance(on: !hideBar && !wideBar))
-                .modifier(TabBarStyle(hidden: !wideBar || hideBar))
+                .modifier(TabBarStyle(hidden: hideBar))
                 .tag(2)
                 .tabItem {
                     BRTabIcon(systemName: "books.vertical", label: "Library")
@@ -70,8 +64,7 @@ struct ContentView: View {
             if profile.hosting {
                 NavigationStack { HostPanelView() }
                     .padding(.leading, sideW)
-                    .modifier(BarClearance(on: !hideBar && !wideBar))
-                    .modifier(TabBarStyle(hidden: !wideBar || hideBar))
+                    .modifier(TabBarStyle(hidden: hideBar))
                     .tag(3)
                     .tabItem { BRTabIcon(systemName: "mic.fill", label: "Host") }
             }
@@ -79,8 +72,7 @@ struct ContentView: View {
             // Search is the right-most tab; Profile is the circle button in the top corner of every page.
             SearchView()
                 .padding(.leading, sideW)
-                .modifier(BarClearance(on: !hideBar && !wideBar))
-                .modifier(TabBarStyle(hidden: !wideBar || hideBar))
+                .modifier(TabBarStyle(hidden: hideBar))
                 .tag(4)
                 .tabItem {
                     BRTabIcon(systemName: "magnifyingglass", label: "Search")
@@ -95,11 +87,6 @@ struct ContentView: View {
         }
         .overlay(alignment: .leading) {
             if sideW > 0 { LivePlayerView(sidePane: true, paneWidth: sideW) }
-        }
-        // Our own bars: glass or ceramic at the bottom of a phone, a floating vertical bar on a wide screen.
-        .environment(\.hwBarInset, 0)
-        .overlay(alignment: .bottom) {
-            if !wideBar && !hideBar { HWTabBar(tab: $tab, hosting: profile.hosting).transition(.move(edge: .bottom)) }
         }
         .animation(.easeInOut(duration: 0.25), value: hideBar)
     }
@@ -327,15 +314,6 @@ struct TabBarStyle: ViewModifier {
             .toolbar(hidden ? .hidden : .visible, for: .tabBar)
             .toolbarBackground(.ultraThinMaterial, for: .tabBar)
             .toolbarBackgroundVisibility(.visible, for: .tabBar)
-    }
-}
-
-
-/// Keeps a page's last row clear of the bottom bar.
-struct BarClearance: ViewModifier {
-    let on: Bool
-    func body(content: Content) -> some View {
-        content.safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: on ? 49 : 0) }
     }
 }
 

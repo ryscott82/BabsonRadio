@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { fetchPresence, friendsLine, sendHeartbeat } from '@/lib/presence'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNowPlaying } from '@/lib/nowplaying'
+import FitTitle from '@/components/FitTitle'
 import FullBoard from '@/components/FullBoard'
 import SkipButton from '@/components/SkipButton'
 import VolumeKnob from '@/components/VolumeKnob'
@@ -13,7 +14,7 @@ import { ExtrasStack, ReactionKeys } from '@/components/LiveExtras'
 import { useArtColor } from '@/lib/artColor'
 import { useArtMain } from '@/components/ArtTheme'
 import { useListenGuard } from '@/lib/listenGuard'
-import { attachSpectrum, probeCors, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
+import { attachSpectrum, probeCors, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 
@@ -46,12 +47,25 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
     ? `${np.showTitle}${np.streamer ? ` with ${np.streamer}` : ''}`
     : (np?.artist || 'Babson Radio')
   const [sleepMin, setSleepMin] = useState<number | null>(null)
-  const [volume, setVolume] = useState(0.85)
-  useEffect(() => { try { const v = Number(localStorage.getItem('br-vol')); if (v > 0 && v <= 1) queueMicrotask(() => setVolume(v)) } catch { /* ignore */ } }, [])
+  // Knob travel: 0..75% is the element volume (0 to 100%); past 75% adds up to +6 dB of boost with a soft clipper (needs a stream that allows Web Audio).
+  const UNITY = 0.75, MAX_DB = 6
+  const [volume, setVolume] = useState(0.64)
+  const [canBoost, setCanBoost] = useState(false)
   useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume
-    try { localStorage.setItem('br-vol', String(volume)) } catch { /* ignore */ }
-  }, [volume])
+    probeCors(STREAM_URL).then(setCanBoost).catch(() => {})
+    try {
+      const v = Number(localStorage.getItem('br-vol2')), old = Number(localStorage.getItem('br-vol'))
+      const start = v > 0 && v <= 1 ? v : old > 0 && old <= 1 ? old * UNITY : 0
+      if (start > 0) queueMicrotask(() => setVolume(start))
+    } catch { /* ignore */ }
+  }, [])
+  const level = canBoost ? volume : Math.min(volume, UNITY)
+  const boostDb = level > UNITY ? ((level - UNITY) / (1 - UNITY)) * MAX_DB : 0
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = Math.min(1, level / UNITY)
+    setBoostDb(boostDb)
+    try { localStorage.setItem('br-vol2', String(volume)) } catch { /* ignore */ }
+  }, [volume, level, boostDb])
   // Color of the glow: the on-air event's color, else the cover's main color, else the station green.
   const artColor = useArtColor(np?.art || undefined)
   const art = useArtMain()
@@ -155,7 +169,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
       // Real equalizer needs a cross-origin-readable stream. Only opt in when the server allows it, so playback never breaks.
       if (await probeCors(STREAM_URL)) { el.crossOrigin = 'anonymous'; if (!attachSpectrum(el)) el.removeAttribute('crossorigin') }
       audioRef.current = el
-      audioRef.current.volume = volume
+      audioRef.current.volume = Math.min(1, level / UNITY); setBoostDb(boostDb)
       audioRef.current.addEventListener('waiting', () => setIsBuffering(true))
       audioRef.current.addEventListener('playing', () => setIsBuffering(false))
     }
@@ -200,10 +214,8 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
 
         {/* The amp */}
         <div className="hw-panel hw-big min-w-0">
-          <h2 className="hw-title text-[2.75rem] lg:text-[3.1rem]" title={hasSong ? np!.title : undefined}>
-            {hasSong ? np!.title : 'Live Stream'}
-          </h2>
-          <p className="hw-sub !text-br-dk-text text-lg font-medium truncate mt-0.5">
+          <FitTitle text={hasSong ? np!.title : 'Live Stream'} reserve className="hw-title hw-title-fit text-[2.75rem] lg:text-[3.1rem]" />
+          <p className="hw-sub !text-br-dk-text text-lg font-medium line-clamp-2 mt-0.5">
             {hasSong ? subline : 'Babson College — Internet Radio'}
           </p>
           {!onAir && np?.showTitle && <p className="hw-sub text-xs mt-1">On air: {np.showTitle}</p>}
@@ -211,7 +223,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
             ? <div className="hw-prog mt-5" aria-hidden><i style={{ width: `${pct}%` }} /></div>
             : <div className="mt-5" />}
           {hasSong && np!.next && (
-            <p className="hw-sub text-sm mt-2 truncate">Next: {np!.next.title}{np!.next.artist ? ` · ${np!.next.artist}` : ''}</p>
+            <p className="hw-sub text-sm mt-2 line-clamp-2">Next: {np!.next.title}{np!.next.artist ? ` · ${np!.next.artist}` : ''}</p>
           )}
 
           {previewing && (
@@ -240,7 +252,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
 
           {/* Volume knob, play knob, skip knob */}
           <div className="grid grid-cols-3 items-start gap-4 mt-5">
-            <div className="justify-self-center"><VolumeKnob value={volume} onChange={setVolume} /></div>
+            <div className="justify-self-center"><VolumeKnob value={level} onChange={setVolume} max={canBoost ? 1 : UNITY} unity={UNITY} boostDb={boostDb} /></div>
             <div className="justify-self-center pt-1">
               <button
                 onClick={togglePlay}

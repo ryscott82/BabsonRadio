@@ -195,7 +195,6 @@ body:has(.hw-stage) {
 /* ── Amp internals ───────────────────────────────────────────── */
 .hw-title {
   font-family: 'Barlow Condensed', 'Barlow', sans-serif; font-weight: 700; letter-spacing: .01em; line-height: 1.05;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .hw-sub { font-family: 'Barlow', system-ui, sans-serif; color: var(--hw-sub); }
 .hw-prog { height: 10px; border-radius: 6px; background: #0d0f0c; box-shadow: inset 0 2px 4px rgba(0,0,0,.8), 0 1px 0 rgba(255,255,255,.2); padding: 2px; }
@@ -259,6 +258,7 @@ body:has(.hw-stage) {
 .hw-skip:active:not(:disabled) { transform: translateY(2px); filter: brightness(.94); }
 .hw-dot { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #0d0f0c; box-shadow: inset 0 1px 1px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.28); }
 .hw-dot.on { background: var(--hw-eq); }
+.hw-dot.on.hot { background: #E0412A; }
 
 /* Tuned-in initials */
 .hw-chip { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
@@ -343,8 +343,8 @@ body:has(.hw-stage) {
 .hw-glass-time { position: relative; z-index: 1; font-size: 150px; font-weight: 700; letter-spacing: .04em; color: #7FD39C; font-variant-numeric: tabular-nums; line-height: 1; }
 .hw-glass-ampm { position: relative; z-index: 1; font-size: 39px; font-weight: 700; color: #7FD39C; opacity: .85; align-self: flex-end; margin-bottom: 24px; }
 .hw-glass-date { position: absolute; z-index: 1; right: 18px; top: 10px; font-size: 14px; letter-spacing: .2em; font-weight: 600; color: #7FD39C; opacity: .6; }
-.hw-board-title { font-weight: 700; font-size: 92px; letter-spacing: -.03em; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-bottom: 3px; }
-.hw-board-sub { font-size: 31px; font-weight: 500; color: var(--hw-sub); margin-top: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hw-board-title { font-weight: 700; font-size: 92px; letter-spacing: -.03em; line-height: 1.02; padding-bottom: 3px; }
+.hw-board-sub { font-size: 31px; font-weight: 500; color: var(--hw-sub); margin-top: 10px; line-height: 1.15; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .hw-board-next { font-size: 18px; color: var(--hw-sub); margin-top: 18px; }
 .hw-board-well { border-radius: 14px; padding: 8px; background: linear-gradient(#2A2A27, #141413); box-shadow: 0 10px 22px rgba(24,26,18,.5), 0 1px 0 rgba(250,246,236,.5); }
 .hw-board-well > .hw-eq { height: 100%; padding: 6px; border-radius: 9px; background: #05080B; box-shadow: inset 0 4px 10px rgba(24,26,18,.85); }
@@ -355,3 +355,6 @@ body:has(.hw-stage) {
 .hw-board-react > div { display: flex; align-items: center; justify-content: center; }
 .hw-board-react .hw-react { width: 82px; height: 66px; border-radius: 12px; }
 .hw-board-key { height: 46px; padding: 0 22px; border-radius: 12px; font-size: 13px; font-weight: 700; letter-spacing: .18em; }
+
+/* Titles that wrap to a set number of rows and shrink to fit (components/FitTitle.tsx) */
+.hw-fit { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--fit-lines, 2); overflow: hidden; overflow-wrap: break-word; word-break: normal; white-space: normal; }

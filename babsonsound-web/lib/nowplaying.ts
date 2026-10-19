@@ -30,6 +30,10 @@ export interface NowPlaying {
   receivedAt: number
 }
 
+/** Cover checks: a track that just finished gets a fresh look this long after its end, and a metadata change gets follow-ups for late covers. */
+const COVER_CHECK_MS = 2_000
+const COVER_RETRY_MS = [2_000, 6_000, 12_000]
+
 /** The stream reaches your ears a few seconds after the server's clock, so wait this long past the song's end before swapping the title. */
 const HEAR_DELAY_MS = 5_000
 
@@ -56,13 +60,42 @@ export function useNowPlaying(everyMs = 12_000): NowPlaying | null {
   }, [everyMs])
 
   const key = np ? `${np.playedAt}|${np.title}` : ''
+
+  // Any metadata change (a new title or artist, or a new cover URL): look again shortly after, because covers often land a moment
+  // after the text. The 2 s check always runs; the later ones only while there is still no cover.
+  const artRef = useRef('')
+  useEffect(() => { artRef.current = np?.art ?? '' }, [np?.art])
+  const track = np ? `${np.title}|${np.artist}|${np.album}` : ''
+  const seenTrack = useRef('')
+  useEffect(() => {
+    if (!track) return
+    const first = seenTrack.current === ''
+    seenTrack.current = track
+    if (first) return
+    const timers = COVER_RETRY_MS.map((ms, i) => setTimeout(() => { if (i === 0 || !artRef.current) load.current(true) }, ms))
+    return () => timers.forEach(clearTimeout)
+  }, [track])
+
+  const checkedKey = useRef('')
+  const swappedKey = useRef('')
+  // 2 s after a track has finished, check for the next one's cover (the title swap itself waits for the stream delay, below).
+  useEffect(() => {
+    if (!np || np.isLive || np.duration <= 0) return
+    const end = np.playedAt > 0 ? (np.playedAt + np.duration) * 1000 : np.receivedAt + (np.duration - np.elapsed) * 1000
+    const wait = Math.max(0, end + COVER_CHECK_MS - Date.now())
+    if (wait > 20 * 60_000 || checkedKey.current === key) return // once per track, so a slow server can't start a fetch loop
+    const t = setTimeout(() => { checkedKey.current = key; load.current(true) }, wait)
+    return () => clearTimeout(t)
+  }, [np, key])
+
   useEffect(() => {
     if (!np || np.isLive || np.duration <= 0 || !np.next) return
     const end = np.playedAt > 0 ? (np.playedAt + np.duration) * 1000 : np.receivedAt + (np.duration - np.elapsed) * 1000
     const wait = Math.max(0, end + HEAR_DELAY_MS - Date.now())
-    if (wait > 20 * 60_000) return
+    if (wait > 20 * 60_000 || swappedKey.current === key) return // once per track: a slow server must not start a fetch loop
     let second: ReturnType<typeof setTimeout> | undefined
     const t = setTimeout(() => {
+      swappedKey.current = key
       setAdvanced(key)
       load.current(true)
       second = setTimeout(() => load.current(true), 2_500)
@@ -71,7 +104,7 @@ export function useNowPlaying(everyMs = 12_000): NowPlaying | null {
   }, [np, key])
 
   return useMemo(() => {
-    if (np && advanced === key && np.next) return { ...np, title: np.next.title, artist: np.next.artist, elapsed: 0, duration: 0, next: null }
+    if (np && advanced === key && np.next) return { ...np, title: np.next.title, artist: np.next.artist, album: '', art: '', elapsed: 0, duration: 0, next: null } // the old cover must not sit on the new title
     return np
   }, [np, advanced, key])
 }

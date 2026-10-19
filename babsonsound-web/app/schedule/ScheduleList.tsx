@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
 import { genreArt } from '@/lib/genreArt'
 import { ErrorText } from '@/components/AuthUI'
+import AutoUpcoming from '@/components/AutoUpcoming'
 
 interface Item {
   id: string; source: 'weekly' | 'slot' | 'auto' | 'event'; title: string; description: string; hosts: string[]
@@ -134,7 +135,12 @@ export default function ScheduleList() {
       <ErrorText>{error}</ErrorText>
       {note && <p role="status" className="text-sm text-br-gold">{note}</p>}
       <section className="space-y-5">
-        {lineupDays.length === 0 && <p className="text-sm text-br-dk-sub">No live shows coming up.</p>}
+        {lineupDays.length === 0 && (
+          <div className="space-y-2">
+            <p className="text-sm text-br-dk-sub">No live shows coming up. The auto DJ has you covered:</p>
+            <AutoUpcoming items={items} limit={8} />
+          </div>
+        )}
         {lineupDays.map(([d, list]) => (
           <div key={d} className="space-y-2">
             <p className="font-display text-xs tracking-widest text-br-gold">

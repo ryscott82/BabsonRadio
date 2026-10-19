@@ -7,6 +7,7 @@ import { LINKS } from '@/lib/links'
 import InterestFormCta from '@/components/InterestFormCta'
 import VoteCard from '@/components/VoteCard'
 import LiveShell from '@/components/LiveShell'
+import AutoUpcoming from '@/components/AutoUpcoming'
 import ArtTheme from '@/components/ArtTheme'
 import { getRecentEpisodes, getTodaySchedule } from '@/lib/firestore'
 
@@ -64,7 +65,10 @@ export default async function HomePage() {
                 ))}
               </ul>
             ) : (
-              <p className="text-sm hw-sub py-6">Nothing scheduled today. The station has you covered. <Link href="/schedule" className="text-br-gold underline">See the week</Link></p>
+              <>
+                <p className="text-sm hw-sub pt-5 pb-1">No live shows today. The auto DJ has you covered:</p>
+                <AutoUpcoming />
+              </>
             )}
           </section>
           <VoteCard />

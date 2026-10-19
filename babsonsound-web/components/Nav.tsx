@@ -75,7 +75,7 @@ export default function Nav() {
         {/* Right side */}
         <div className="ml-auto flex items-center gap-3">
           <a href={LINKS.join} target="_blank" rel="noopener noreferrer"
-             className="hidden md:inline-flex sk-key hw-pill items-center h-9 px-4 rounded-full text-sm font-semibold">Join Babson Sound</a>
+             className="hidden md:inline-flex sk-btn items-center h-9 px-4 rounded-full text-sm font-semibold">Join Babson Sound</a>
           <ThemeToggle />
 
           {user ? (

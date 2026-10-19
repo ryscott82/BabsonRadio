@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
+import FitTitle from '@/components/FitTitle'
 import { ReactionKeys } from '@/components/LiveExtras'
 import type { NowPlaying } from '@/lib/nowplaying'
 
@@ -66,7 +67,7 @@ export default function FullBoard({ boardRef, eqRef, np, hasSong, onAir, glow, a
 
         {/* Title */}
         <div className="hw-panel absolute" style={{ position: 'absolute', left: 800, top: 300, width: 520, height: 380, padding: '52px 36px' }}>
-          <div className="hw-board-title">{hasSong ? np!.title : 'Babson Radio'}</div>
+          <FitTitle as="div" text={hasSong ? np!.title : 'Babson Radio'} className="hw-board-title" />
           <div className="hw-board-sub">{hasSong ? sub : 'Live from campus'}</div>
           {hasSong && np!.next && <div className="hw-board-next">Next: {np!.next.title}{np!.next.artist ? ` · ${np!.next.artist}` : ''}</div>}
         </div>

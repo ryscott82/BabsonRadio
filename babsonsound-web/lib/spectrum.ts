@@ -20,7 +20,7 @@ export function probeCors(url: string): Promise<boolean> {
   return corsProbe
 }
 
-interface Tap { ctx: AudioContext; an: AnalyserNode; data: Uint8Array<ArrayBuffer> }
+interface Tap { ctx: AudioContext; an: AnalyserNode; data: Uint8Array<ArrayBuffer>; gain: GainNode; shaper: WaveShaperNode; shaped: boolean }
 const taps = new WeakMap<HTMLAudioElement, Tap>()
 let current: Tap | null = null
 
@@ -33,12 +33,42 @@ export function attachSpectrum(el: HTMLAudioElement): boolean {
     const ctx = new AC()
     const an = ctx.createAnalyser()
     an.fftSize = 2048; an.smoothingTimeConstant = 0.7; an.minDecibels = -88; an.maxDecibels = -22
-    ctx.createMediaElementSource(el).connect(an); an.connect(ctx.destination)
-    const tap = { ctx, an, data: new Uint8Array(new ArrayBuffer(an.frequencyBinCount)) }
+    const src = ctx.createMediaElementSource(el)
+    src.connect(an) // analyser is a side branch; the sound itself goes src -> gain -> speakers
+    const gain = ctx.createGain(), shaper = ctx.createWaveShaper()
+    shaper.curve = softClipCurve(); shaper.oversample = '2x'
+    src.connect(gain); gain.connect(ctx.destination)
+    const tap: Tap = { ctx, an, data: new Uint8Array(new ArrayBuffer(an.frequencyBinCount)), gain, shaper, shaped: false }
     taps.set(el, tap); current = tap
+    setBoostDb(boostDb)
     return true
   } catch { return false }
 }
+// Volume boost past the element's 100%: a gain stage, plus a soft clipper that only engages while boosting, so peaks
+// round off instead of cracking. (Transparent below 80% of full scale; a bypass keeps normal listening untouched.)
+let boostDb = 0
+function softClipCurve(): Float32Array<ArrayBuffer> {
+  const n = 2048, c = new Float32Array(new ArrayBuffer(n * 4)), k = 0.8
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 2 - 1, a = Math.abs(x)
+    c[i] = a <= k ? x : Math.sign(x) * (k + (1 - k) * Math.tanh((a - k) / (1 - k)))
+  }
+  return c
+}
+/** 0 = normal. Positive values boost by that many dB. Safe to call before the audio is attached; it applies on attach. */
+export function setBoostDb(db: number) {
+  boostDb = Math.max(0, db)
+  const t = current
+  if (!t) return
+  t.gain.gain.value = Math.pow(10, boostDb / 20)
+  const on = boostDb > 0.05
+  if (on !== t.shaped) {
+    t.gain.disconnect()
+    if (on) { t.gain.connect(t.shaper); t.shaper.connect(t.ctx.destination) } else { t.shaper.disconnect(); t.gain.connect(t.ctx.destination) }
+    t.shaped = on
+  }
+}
+
 /** Call from a click/tap handler: browsers keep the audio context asleep until then. */
 export function wakeSpectrum() { current?.ctx.resume().catch(() => {}) }
 

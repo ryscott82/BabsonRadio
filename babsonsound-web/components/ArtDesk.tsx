@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
-import { audioPlaying, makeShaper, readBands } from '@/lib/spectrum'
+import { audioPlaying, readBands } from '@/lib/spectrum'
 
 // Album-color mode for the desk itself (matches the album-art mock-ups): the oak (dark) or silver (light) desk takes the
 // cover's colors, and three layers of topographic wood-grain lines pulse with the music. With the real analyser they follow
@@ -16,8 +16,9 @@ export default function ArtDesk({ colors, on }: { colors: [string, string, strin
     if (!on || !host || !el) return
     const lines = Array.from(el.querySelectorAll<HTMLElement>('.ln'))
     const out = new Array<number>(3).fill(0)
-    const calm = [0, 0, 0]
-    const shape = makeShaper(3) // bass, mids (transients only), highs: same shaping as the LED bars
+    // The lines breathe with the beat, not with the loudness: each layer rises on a hit in its band (bass, mids, highs) and settles
+    // back within about a third of a second, with a little of the band's level on top. Steady sound leaves them calm.
+    const avg = [0, 0, 0], env = [0, 0, 0], lvl = [0, 0, 0]
     let raf = 0
     const tick = () => {
       raf = requestAnimationFrame(tick)
@@ -27,12 +28,13 @@ export default function ArtDesk({ colors, on }: { colors: [string, string, strin
       const real = playing && readBands(out)
       el.dataset.real = real ? '1' : '0'
       if (!real) { lines.forEach(l => { l.style.opacity = ''; l.style.transform = '' }); return }
-      // Calm and smooth: the shaped levels are eased again, move over a narrow range and never snap.
-      const { shown, flash } = shape(out)
       lines.forEach((l, i) => {
-        calm[i] += (Math.min(1, shown[i] + flash * 0.15) - calm[i]) * (shown[i] > calm[i] ? 0.12 : 0.05)
-        l.style.opacity = String(0.35 + 0.5 * calm[i])
-        l.style.transform = `scale(${1 + 0.006 * calm[i]})`
+        avg[i] += (out[i] - avg[i]) * 0.03
+        const hit = Math.min(1, Math.max(0, out[i] - avg[i]) * 4.5)
+        env[i] = hit > env[i] ? env[i] + (hit - env[i]) * 0.5 : env[i] * 0.93
+        lvl[i] += (out[i] - lvl[i]) * 0.08
+        l.style.opacity = String(0.3 + 0.55 * env[i] + 0.15 * lvl[i])
+        l.style.transform = `scale(${1 + 0.012 * env[i]})`
       })
     }
     raf = requestAnimationFrame(tick)

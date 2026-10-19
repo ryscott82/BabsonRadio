@@ -187,8 +187,8 @@ export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: bool
       if (!ok) { quiet++; if (quiet > 180) box.dataset.real = 'false'; if (quiet <= 4) return; lv.fill(0) } // silence: let the bars fall to the floor
       else { quiet = 0; box.dataset.real = 'true' }
       const { shown } = shape(lv)
-      // The red top cap means real clipping risk: the song itself within about 1 dB of full scale, or the volume knob boosting it there.
-      const hot = streamPeak() * Math.pow(10, boostDb / 20) >= 0.89
+      // The red top cap means real clipping risk: the song itself within about 2 dB of full scale (its loudest hits), or the volume knob boosting it there.
+      const hot = streamPeak() * Math.pow(10, boostDb / 20) >= 0.8
       for (let i = 0; i < N; i++) {
         const segs = Math.round(shown[i] * segments)
         if (segs >= pk[i]) { pk[i] = segs; hold[i] = 20 } else if (hold[i]-- <= 0) pk[i] = Math.max(0, pk[i] - 0.2)

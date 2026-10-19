@@ -116,19 +116,23 @@ export function useArtPalette(url: string | undefined): string[] {
         const picked: { h: number; s: number; l: number }[] = []
         for (const r of ranked) {
           if (picked.length === 3) break
+          // A second or third color only counts when the cover really has a fair amount of it (at least 40% as much as the main one).
+          if (picked.length && r.w < ranked[0].w * 0.4) continue
           if (picked.every(p => hueGap(p.h, r.h) >= 40)) picked.push(r)
         }
-        // Covers with fewer than three real colors: fill with shifted versions of the first.
+        // Covers with fewer than three real colors: fill with near neighbours of the first hue.
         while (picked.length && picked.length < 3) {
           const base = picked[0]
-          picked.push({ h: (base.h + (picked.length === 1 ? 35 : -35) + 360) % 360, s: base.s, l: base.l })
+          picked.push({ h: (base.h + (picked.length === 1 ? 14 : -14) + 360) % 360, s: base.s, l: base.l }) // a close neighbour of the main hue, so a two-color cover stays two-color
         }
-        const covers = picked.map(p => hexOf(p.h, Math.max(0.5, Math.min(1, p.s)), Math.max(0.3, Math.min(0.7, p.l))))
+        // Side colors stay quieter than the main one, so a red-and-white cover reads red and white, not a rainbow.
+        const covers = picked.map((p, i) => hexOf(p.h, Math.max(0.45, Math.min(i ? 0.7 : 1, p.s * (i ? 0.85 : 1))), Math.max(0.3, Math.min(0.7, p.l))))
         // [dominant cover color, a green that pairs with it, second cover color]
         // Green: the cover's own green when it has a real amount of one (at least 10% of the colorful pixels), else a complementary shade.
         const total = ranked.reduce((a, r) => a + r.w, 0)
         const own = ranked.find(r => r.h >= 75 && r.h <= 170 && r.w / total >= 0.1)
-        const green = own ? hexOf(own.h, Math.max(0.4, Math.min(0.75, own.s)), 0.31) : pairedGreen(picked[0].h)
+        // The accent color is the cover's own green when it has one; otherwise a lighter shade of the cover's main color (never an unrelated green).
+        const green = own ? hexOf(own.h, Math.max(0.4, Math.min(0.75, own.s)), 0.31) : hexOf(picked[0].h, Math.max(0.45, Math.min(0.8, picked[0].s * 0.9)), 0.4)
         const colors = [covers[0], green, covers[1]]
         if (alive) setState({ url, colors })
       } catch { if (alive) setState({ url, colors: [] }) }

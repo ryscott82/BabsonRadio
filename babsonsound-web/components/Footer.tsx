@@ -11,7 +11,7 @@ export default function Footer() {
   if (usePathname() === '/coming-soon') return null
   const link = 'text-br-dk-sub hover:text-br-dk-text transition-colors'
   return (
-    <footer className="hw-foot relative z-[1] mt-12">
+    <footer className="hw-foot relative z-[1]">
       <div className="max-w-[1800px] mx-auto px-4 lg:px-8 xl:px-12 py-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 text-xs">
         <p className="tracking-[0.3em] text-xs font-bold text-br-dk-text shrink-0">
           <span className="text-br-gold">Babson</span> RADIO

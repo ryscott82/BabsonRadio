@@ -84,6 +84,51 @@ export function pairedGreen(h: number): string {
   return hexOf(g, 0.72, 0.31)
 }
 
+/**
+ * Palette from the pixels of a cover (N x N RGBA): [main, paired accent, second, ...up to three more real colors].
+ * It goes color hunting: face-colored pixels count much less (and not at all in the middle), so a portrait doesn't turn into
+ * just skin tone, and a smaller color (a blue hat, a red eye) still makes the list when it's a real part of the picture.
+ */
+export function paletteFromPixels(px: ArrayLike<number>, N: number): string[] {
+  const BINS = 24
+  const bins = Array.from({ length: BINS }, () => ({ w: 0, x: 0, y: 0, s: 0, l: 0, n: 0 }))
+  let count = 0
+  for (let i = 0; i < px.length; i += 4) {
+    const p = i / 4, col = p % N, row = Math.floor(p / N)
+    const [h, s, l] = hslOf(px[i], px[i + 1], px[i + 2])
+    if (s < 0.16 || l < 0.1 || l > 0.92) continue
+    let w = s * (1 - Math.abs(2 * l - 1)) + 0.01
+    if (skinLike(h, s, l)) {
+      const center = col >= N * 0.25 && col < N * 0.75 && row >= N * 0.2 && row < N * 0.8
+      if (center) continue
+      w *= 0.3
+    }
+    const b = bins[Math.floor(h / (360 / BINS)) % BINS]
+    b.n++; count++
+    b.w += w; b.x += Math.cos((h * Math.PI) / 180) * w; b.y += Math.sin((h * Math.PI) / 180) * w; b.s += s * w; b.l += l * w
+  }
+  const ranked = bins.filter(b => b.w > 0).sort((a, b) => b.w - a.w)
+    .map(b => ({ h: ((Math.atan2(b.y, b.x) * 180) / Math.PI + 360) % 360, s: b.s / b.w, l: b.l / b.w, w: b.w, n: b.n }))
+  if (!ranked.length) return []
+  const total = ranked.reduce((a, r) => a + r.w, 0)
+  const picked: { h: number; s: number; l: number; w: number; n: number }[] = []
+  for (const r of ranked) {
+    if (picked.length === 5) break
+    // Another color counts when it's a real share of the picture: at least 2.5% of the colored pixels (even if they are pale or small, like a blue hat),
+    // enough of a tint to read as that color, and at least 4% as much weight as the main one.
+    if (picked.length && (r.n / count < 0.025 || r.s < 0.2 || r.w < ranked[0].w * 0.04)) continue
+    if (picked.every(p => hueGap(p.h, r.h) >= 38)) picked.push(r)
+  }
+  // Covers with a single real color get one close neighbour, so there is always a second shade.
+  if (picked.length === 1) picked.push({ ...picked[0], h: (picked[0].h + 14) % 360 })
+  // Side colors stay a bit quieter than the main one.
+  const covers = picked.map((p, i) => hexOf(p.h, Math.max(0.45, Math.min(i ? 0.75 : 1, p.s * (i ? 0.9 : 1))), Math.max(0.3, Math.min(0.7, p.l))))
+  // Accent: the cover's own green when it has a real amount of one, else a lighter shade of the main color (never an unrelated green).
+  const own = ranked.find(r => r.h >= 75 && r.h <= 170 && r.w / total >= 0.1)
+  const green = own ? hexOf(own.h, Math.max(0.4, Math.min(0.75, own.s)), 0.31) : hexOf(picked[0].h, Math.max(0.45, Math.min(0.8, picked[0].s * 0.9)), 0.4)
+  return [covers[0], green, covers[1], ...covers.slice(2)]
+}
+
 export function useArtPalette(url: string | undefined): string[] {
   const [state, setState] = useState<{ url: string; colors: string[] }>({ url: '', colors: [] })
   useEffect(() => {
@@ -93,47 +138,12 @@ export function useArtPalette(url: string | undefined): string[] {
     img.crossOrigin = 'anonymous'
     img.onload = () => {
       try {
-        const N = 40
+        const N = 48
         const c = document.createElement('canvas')
         c.width = c.height = N
         const g = c.getContext('2d', { willReadFrequently: true })!
         g.drawImage(img, 0, 0, N, N)
-        const px = g.getImageData(0, 0, N, N).data
-        const BINS = 12
-        const bins = Array.from({ length: BINS }, () => ({ w: 0, x: 0, y: 0, s: 0, l: 0 }))
-        for (let i = 0; i < px.length; i += 4) {
-          const p = i / 4, col = p % N, row = Math.floor(p / N)
-          const [h, s, l] = hslOf(px[i], px[i + 1], px[i + 2])
-          if (s < 0.2 || l < 0.12 || l > 0.9) continue
-          const center = col >= N * 0.25 && col < N * 0.75 && row >= N * 0.2 && row < N * 0.8
-          if (center && skinLike(h, s, l)) continue
-          const w = s * (1 - Math.abs(2 * l - 1)) + 0.01
-          const b = bins[Math.floor(h / (360 / BINS)) % BINS]
-          b.w += w; b.x += Math.cos((h * Math.PI) / 180) * w; b.y += Math.sin((h * Math.PI) / 180) * w; b.s += s * w; b.l += l * w
-        }
-        const ranked = bins.filter(b => b.w > 0).sort((a, b) => b.w - a.w)
-          .map(b => ({ h: ((Math.atan2(b.y, b.x) * 180) / Math.PI + 360) % 360, s: b.s / b.w, l: b.l / b.w, w: b.w }))
-        const picked: { h: number; s: number; l: number }[] = []
-        for (const r of ranked) {
-          if (picked.length === 3) break
-          // A second or third color only counts when the cover really has a fair amount of it (at least 40% as much as the main one).
-          if (picked.length && r.w < ranked[0].w * 0.4) continue
-          if (picked.every(p => hueGap(p.h, r.h) >= 40)) picked.push(r)
-        }
-        // Covers with fewer than three real colors: fill with near neighbours of the first hue.
-        while (picked.length && picked.length < 3) {
-          const base = picked[0]
-          picked.push({ h: (base.h + (picked.length === 1 ? 14 : -14) + 360) % 360, s: base.s, l: base.l }) // a close neighbour of the main hue, so a two-color cover stays two-color
-        }
-        // Side colors stay quieter than the main one, so a red-and-white cover reads red and white, not a rainbow.
-        const covers = picked.map((p, i) => hexOf(p.h, Math.max(0.45, Math.min(i ? 0.7 : 1, p.s * (i ? 0.85 : 1))), Math.max(0.3, Math.min(0.7, p.l))))
-        // [dominant cover color, a green that pairs with it, second cover color]
-        // Green: the cover's own green when it has a real amount of one (at least 10% of the colorful pixels), else a complementary shade.
-        const total = ranked.reduce((a, r) => a + r.w, 0)
-        const own = ranked.find(r => r.h >= 75 && r.h <= 170 && r.w / total >= 0.1)
-        // The accent color is the cover's own green when it has one; otherwise a lighter shade of the cover's main color (never an unrelated green).
-        const green = own ? hexOf(own.h, Math.max(0.4, Math.min(0.75, own.s)), 0.31) : hexOf(picked[0].h, Math.max(0.45, Math.min(0.8, picked[0].s * 0.9)), 0.4)
-        const colors = [covers[0], green, covers[1]]
+        const colors = paletteFromPixels(g.getImageData(0, 0, N, N).data, N)
         if (alive) setState({ url, colors })
       } catch { if (alive) setState({ url, colors: [] }) }
     }
@@ -143,4 +153,3 @@ export function useArtPalette(url: string | undefined): string[] {
   }, [url])
   return ART_THEME && url && state.url === url ? state.colors : []
 }
-

@@ -3,6 +3,7 @@
 import { useEffect, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import FitTitle from '@/components/FitTitle'
+import OnAirSign from '@/components/OnAirSign'
 import { ReactionKeys } from '@/components/LiveExtras'
 import type { NowPlaying } from '@/lib/nowplaying'
 
@@ -62,7 +63,7 @@ export default function FullBoard({ boardRef, eqRef, np, hasSong, onAir, glow, a
               ? <img src={np.art} alt="" className="absolute inset-0 w-full h-full object-cover" />
               : <div className="text-center"><p className="font-display text-br-brass/80 tracking-[0.4em]">BABSON</p><p className="font-display text-white text-6xl tracking-[0.2em]">RADIO</p></div>}
           </div>
-          {onAirNow && <div className="hw-sign" role="img" aria-label="On air"><span>ON AIR</span></div>}
+          {onAirNow && <OnAirSign />}
         </div>
 
         {/* Title */}

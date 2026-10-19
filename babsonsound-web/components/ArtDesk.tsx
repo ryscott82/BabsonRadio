@@ -7,7 +7,7 @@ import { audioPlaying, readBands } from '@/lib/spectrum'
 // Album-color mode for the desk itself (matches the album-art mock-ups): the oak (dark) or silver (light) desk takes the
 // cover's colors, and three layers of topographic wood-grain lines pulse with the music. With the real analyser they follow
 // the bass / mids / highs; without one (stream without CORS, or nothing playing yet) they keep the mock-up's steady beat.
-export default function ArtDesk({ colors, on }: { colors: [string, string, string]; on: boolean }) {
+export default function ArtDesk({ colors, on }: { colors: [string, string, string, string, string, string]; on: boolean }) {
   const host = useSyncExternalStore(() => () => {}, () => document.body, () => null)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -42,7 +42,7 @@ export default function ArtDesk({ colors, on }: { colors: [string, string, strin
   }, [on, host])
 
   if (!host) return null
-  const style = { ['--art-1' as string]: colors[0], ['--art-2' as string]: colors[1], ['--art-3' as string]: colors[2] } as React.CSSProperties
+  const style = { ['--art-1' as string]: colors[0], ['--art-2' as string]: colors[1], ['--art-3' as string]: colors[2], ['--art-4' as string]: colors[3], ['--art-5' as string]: colors[4], ['--art-6' as string]: colors[5] } as React.CSSProperties
   return createPortal(
     <div ref={ref} aria-hidden className="art-desk" data-on={on ? '1' : '0'} data-play="0" data-real="0" style={style}>
       <div className="plate" />

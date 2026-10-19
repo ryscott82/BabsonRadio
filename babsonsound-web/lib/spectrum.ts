@@ -20,7 +20,7 @@ export function probeCors(url: string): Promise<boolean> {
   return corsProbe
 }
 
-interface Tap { ctx: AudioContext; an: AnalyserNode; data: Uint8Array<ArrayBuffer>; direct: GainNode; dry: GainNode; drive: GainNode; wet: GainNode }
+interface Tap { ctx: AudioContext; an: AnalyserNode; data: Uint8Array<ArrayBuffer>; direct: GainNode; dry: GainNode; drive: GainNode; wet: GainNode; ex: GainNode; low: BiquadFilterNode; air: BiquadFilterNode; comp: DynamicsCompressorNode }
 const taps = new WeakMap<HTMLAudioElement, Tap>()
 let current: Tap | null = null
 
@@ -45,8 +45,18 @@ export function attachSpectrum(el: HTMLAudioElement): boolean {
     src.connect(direct); direct.connect(ctx.destination)
     src.connect(dry); dry.connect(bus)
     src.connect(drive); drive.connect(sat); sat.connect(wet); wet.connect(bus)
-    bus.connect(clip); clip.connect(ctx.destination)
-    const tap: Tap = { ctx, an, data: new Uint8Array(new ArrayBuffer(an.frequencyBinCount)), direct, dry, drive, wet }
+    // Sparkle: only the highs are driven into a shaper and blended back in (harmonic excitement instead of a crushed mix).
+    const hp = ctx.createBiquadFilter(), exSat = ctx.createWaveShaper(), exDrive = ctx.createGain(), ex = ctx.createGain()
+    hp.type = 'highpass'; hp.frequency.value = 3200; exDrive.gain.value = 5; exSat.curve = tubeCurve(); exSat.oversample = '4x'; ex.gain.value = 0
+    src.connect(hp); hp.connect(exDrive); exDrive.connect(exSat); exSat.connect(ex); ex.connect(bus)
+    // Weight: a low shelf for chest, an air shelf for shine, then a glue compressor so loudness comes from density, and a limiter as the ceiling.
+    const low = ctx.createBiquadFilter(), air = ctx.createBiquadFilter(), comp = ctx.createDynamicsCompressor(), lim = ctx.createDynamicsCompressor()
+    low.type = 'lowshelf'; low.frequency.value = 95; low.gain.value = 0
+    air.type = 'highshelf'; air.frequency.value = 9000; air.gain.value = 0
+    comp.threshold.value = 0; comp.ratio.value = 1; comp.knee.value = 18; comp.attack.value = 0.012; comp.release.value = 0.16
+    lim.threshold.value = -1.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.08
+    bus.connect(low); low.connect(air); air.connect(comp); comp.connect(clip); clip.connect(lim); lim.connect(ctx.destination)
+    const tap: Tap = { ctx, an, data: new Uint8Array(new ArrayBuffer(an.frequencyBinCount)), direct, dry, drive, wet, ex, low, air, comp }
     taps.set(el, tap); current = tap
     setBoostDb(boostDb)
     return true
@@ -77,9 +87,15 @@ export function setBoostDb(db: number) {
   if (!t) return
   const on = boostDb > 0.05, k = Math.min(1, boostDb / MAX_BOOST_DB), now = t.ctx.currentTime, glide = 0.03
   t.direct.gain.setTargetAtTime(on ? 0 : 1, now, glide)
-  t.dry.gain.setTargetAtTime(on ? Math.pow(10, boostDb / 20) * (1 - 0.85 * k) : 0, now, glide)
-  t.drive.gain.setTargetAtTime(1 + 7 * k, now, glide)
-  t.wet.gain.setTargetAtTime(on ? 0.75 * k : 0, now, glide)
+  t.dry.gain.setTargetAtTime(on ? Math.pow(10, boostDb / 20) * (1 - 0.7 * k) : 0, now, glide)
+  t.drive.gain.setTargetAtTime(1 + 4 * k, now, glide)
+  t.wet.gain.setTargetAtTime(on ? 0.5 * k : 0, now, glide)
+  // The cool part: more chest, more shine, a touch of high-frequency sparkle, and glue compression that grows with the boost.
+  t.ex.gain.setTargetAtTime(on ? 0.22 * k : 0, now, glide)
+  t.low.gain.setTargetAtTime(on ? 4.5 * k : 0, now, glide)
+  t.air.gain.setTargetAtTime(on ? 3 * k : 0, now, glide)
+  t.comp.threshold.setTargetAtTime(on ? -10 - 8 * k : 0, now, glide)
+  t.comp.ratio.setTargetAtTime(on ? 1.5 + 3.5 * k : 1, now, glide)
 }
 
 /** Call from a click/tap handler: browsers keep the audio context asleep until then. */
@@ -179,12 +195,30 @@ export function makeShaper(n: number) {
  * Drives the LED bars inside `ref` (children <i>) while `playing`: sets --lv (lit height, snapped to whole segments)
  * and --pk (peak cap) on each, and marks the container data-real="true" once real audio is flowing.
  */
+const ledLast = new WeakMap<HTMLElement, { lv: number[]; pk: number[] }>()
 export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: boolean, segments = 7) {
   useEffect(() => {
     const box = ref.current
     if (!box) return
     const bars = Array.from(box.children) as HTMLElement[]
-    if (!playing || !bars.length) { box.dataset.real = 'false'; return }
+    if (!playing || !bars.length) {
+      // Paused: the bars ease down over about a second, like a real meter, instead of snapping off.
+      const last = ledLast.get(box)
+      if (!last || box.dataset.real !== 'true' || !last.lv.some(v => v > 0)) { box.dataset.real = 'false'; return }
+      let raf = 0
+      const fall = () => {
+        let any = false
+        for (let i = 0; i < bars.length; i++) {
+          last.lv[i] = Math.max(0, last.lv[i] - 1 / 40); last.pk[i] = Math.max(0, last.pk[i] - 1 / 30)
+          if (last.lv[i] > 0 || last.pk[i] > 0) any = true
+          bars[i].style.setProperty('--lv', String(last.lv[i])); bars[i].style.setProperty('--pk', String(last.pk[i]))
+          bars[i].dataset.hot = '0'
+        }
+        if (any) raf = requestAnimationFrame(fall); else box.dataset.real = 'false'
+      }
+      raf = requestAnimationFrame(fall)
+      return () => cancelAnimationFrame(raf)
+    }
     const N = bars.length
     const lv = new Array<number>(N).fill(0), pk = new Array<number>(N).fill(0), hold = new Array<number>(N).fill(0)
     const shape = makeShaper(N)
@@ -205,6 +239,7 @@ export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: bool
         bars[i].style.setProperty('--pk', String(Math.min(segments, Math.round(pk[i])) / segments))
         bars[i].dataset.hot = hot && pk[i] >= segments - 1 ? '1' : '0'
       }
+      ledLast.set(box, { lv: bars.map(b => parseFloat(b.style.getPropertyValue('--lv')) || 0), pk: bars.map(b => parseFloat(b.style.getPropertyValue('--pk')) || 0) })
     }
     raf = requestAnimationFrame(tick)
     return () => { cancelAnimationFrame(raf); box.dataset.real = 'false' }

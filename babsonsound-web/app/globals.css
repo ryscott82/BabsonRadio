@@ -77,7 +77,7 @@ html, body {
   background-color: var(--br-bg);
   color: var(--br-text);
   font-family: 'Barlow', system-ui, -apple-system, sans-serif;
-  min-height: 100%;
+  min-height: 100vh; min-height: 100dvh;
 }
 
 .font-display {

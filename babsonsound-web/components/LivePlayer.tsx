@@ -7,6 +7,7 @@ import { fetchPresence, friendsLine, sendHeartbeat } from '@/lib/presence'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNowPlaying } from '@/lib/nowplaying'
 import FitTitle from '@/components/FitTitle'
+import OnAirSign from '@/components/OnAirSign'
 import FullBoard from '@/components/FullBoard'
 import SkipButton from '@/components/SkipButton'
 import VolumeKnob from '@/components/VolumeKnob'
@@ -227,7 +228,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
                 </div>
               )}
             </div>
-            {onAir && <div className="hw-sign" role="img" aria-label="On air"><span>ON AIR</span></div>}
+            {onAir && <OnAirSign />}
           </div>
         </div>
 

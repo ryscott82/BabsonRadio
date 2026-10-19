@@ -50,7 +50,7 @@ export default function ArtTheme({ className, children }: { className?: string; 
   }, [])
 
   // The top bar sits outside this wrapper, so mirror the two colors it needs onto the page root while the home page is open.
-  const live = night && ready && palette.length === 3
+  const live = night && ready && palette.length >= 3
   const rootA = live ? palette[0] : BABSON_GREEN, rootB = live ? palette[1] : BABSON_GREEN
   useEffect(() => {
     if (!ART_THEME || !night) return
@@ -65,14 +65,16 @@ export default function ArtTheme({ className, children }: { className?: string; 
   }, [rootA, rootB, night])
 
   if (!ART_THEME) return <div className={className}>{children}</div>
-  const ok = ready && palette.length === 3
+  const ok = ready && palette.length >= 3
   const use = night && ok
   const [a, b, c] = use ? palette : [BABSON_GREEN, BABSON_GREEN, BABSON_GREEN]
+  // Up to three more real cover colors for the desk; when the cover has fewer, they repeat the ones it has.
+  const d = use && palette[3] ? palette[3] : c, e = use && palette[4] ? palette[4] : a, f = use && palette[5] ? palette[5] : c
   const style = { '--art-1': a, '--art-2': b, '--art-3': c } as React.CSSProperties
   return (
     <Ctx.Provider value={{ on: night, main: use ? a : '', full: night, badge: ok ? palette[2] : '' }}>
       <div className={`${night ? 'art-ui ' : ''}${className ?? ''}`} style={night ? style : undefined}>{children}</div>
-      {night && <ArtDesk colors={[a, b, c]} on={use} />}
+      {night && <ArtDesk colors={[a, b, c, d, e, f]} on={use} />}
     </Ctx.Provider>
   )
 }

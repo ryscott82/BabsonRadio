@@ -25,12 +25,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: "try{var t=localStorage.getItem('br-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}try{var d=document.documentElement,h=new Date().getHours(),n=h>=19||h<6;d.setAttribute('data-night',n?'1':'0');d.setAttribute('data-party','0')}catch(e){}try{d.classList.add('hw-lite');var u=function(){d.classList.remove('hw-lite')};addEventListener('load',function(){setTimeout(u,150)});setTimeout(u,8000)}catch(e){}" }} />
       </head>
-      <body className="min-h-screen bg-br-dk-bg text-br-dk-text">
+      <body className="min-h-dvh flex flex-col bg-br-dk-bg text-br-dk-text">
         <PreviewLock />
         <AuthProvider>
           <Nav />
           <VerifyBanner />
-          <main className="hw-stage hw-main relative z-[1] pt-16 min-h-dvh">
+          <main className="hw-stage hw-main relative z-[1] pt-16 pb-12 flex-1">
             <AnnouncementBanner />
             {children}
           </main>

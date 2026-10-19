@@ -145,7 +145,7 @@ private struct SignedInProfileView: View {
                         .padding(.bottom, 24)
                 }
             }
-            .background(HWDesk())
+            .hwPage()
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -526,7 +526,7 @@ private struct SignedInProfileView: View {
                             .onChange(of: guestEmail) { _, new in if !new.isEmpty { selectedPhone = nil } }
                     }
                     .padding(.horizontal, 14).padding(.vertical, 12)
-                    .background(HWDesk())
+                    .background(HWFieldFill())
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10)
                         .stroke(scheme == .dark ? Color.brDkBorder2 : Color.brLtBorder, lineWidth: 1))
@@ -1281,7 +1281,7 @@ struct HostPanelView: View {
             }
             .padding(20)
         }
-        .background(HWDesk())
+        .hwPage()
         .navigationTitle("Host panel")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await host.load() }
@@ -1341,7 +1341,7 @@ struct HostPanelView: View {
         TextField(placeholder, text: binding, axis: axis)
             .font(BRFont.body(15, .regular)).foregroundColor(text)
             .padding(12)
-            .background(HWDesk())
+            .background(HWFieldFill())
             .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
@@ -1419,7 +1419,7 @@ struct HostPanelView: View {
                         Text(c.text ?? "").font(BRFont.body(14, .regular)).foregroundColor(text)
                     }
                     .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(HWDesk())
+                    .background(HWFieldFill())
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
             }
@@ -1591,7 +1591,7 @@ struct AboutYouSection: View {
                 .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                 .textInputAutocapitalization(.words)
                 .padding(12)
-                .background(HWDesk())
+                .background(HWFieldFill())
                 .clipShape(RoundedRectangle(cornerRadius: 10))
         }
     }

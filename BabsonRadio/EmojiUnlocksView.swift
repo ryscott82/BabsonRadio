@@ -35,7 +35,7 @@ struct EmojiUnlocksView: View {
             }
             .padding(20)
         }
-        .background(HWDesk())
+        .hwPage()
         .navigationTitle("Reaction emojis")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await load() }

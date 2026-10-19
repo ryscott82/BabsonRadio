@@ -456,3 +456,34 @@ struct HWFieldFill: View {
         }
     }
 }
+
+
+// MARK: Pages (Schedule, Library, Search, Profile, sign-in ...)
+// Like the website: the page itself is one big panel on the oak desk. Black leather in dark mode; green leather rim with an ivory
+// ceramic face in light mode. Text always sits on the panel, never straight on the wood.
+
+struct HWPageModifier: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+    @ObservedObject private var theme = ArtTheme.shared
+    func body(content: Content) -> some View {
+        let m: HWMode = theme.albumOn ? .album(theme.main.color) : (scheme == .light ? .light : .dark)
+        let light = m.isLight
+        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+        ZStack {
+            HWDesk(album: theme.albumOn ? theme.main.color : nil)
+            HWLeather(tint: m.leatherTint, corner: 22, stitch: true)
+                .padding(.horizontal, 10).padding(.vertical, 8)
+            content
+                .scrollContentBackground(.hidden)
+                .safeAreaPadding(EdgeInsets(top: light ? 14 : 4, leading: light ? 14 : 4, bottom: light ? 14 : 4, trailing: light ? 14 : 4))
+                .environment(\.hwMode, m)
+                .clipShape(shape)
+                .padding(.horizontal, 10).padding(.vertical, 8)
+        }
+    }
+}
+
+extension View {
+    /// Puts the whole page on a leather / ceramic panel over the oak desk.
+    func hwPage() -> some View { modifier(HWPageModifier()) }
+}

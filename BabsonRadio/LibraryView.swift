@@ -122,7 +122,7 @@ struct LibraryView: View {
                 .padding(20)
                 .animation(.easeInOut(duration: 0.25), value: lib.savedIds)
             }
-            .background(HWDesk())
+            .hwPage()
             .navigationTitle("Library")
             .navigationBarTitleDisplayMode(.inline)
             .profileButton()
@@ -209,7 +209,7 @@ struct EpisodePlayerSheet: View {
             .padding(20)
             Spacer()
         }
-        .background(HWDesk())
+        .hwPage()
         .presentationDragIndicator(.visible)
         // The live stream would play over the video, so pause it.
         .onAppear { if AudioPlayerManager.shared.isPlaying { AudioPlayerManager.shared.stop() } }

@@ -49,7 +49,7 @@ extension Color {
     static var brDkBorder2: Color  { Color(hex: dkNight ? "303030" : "5F5648") }
     static var brDkText: Color     { Color(hex: dkNight ? "E8E8E8" : "F4ECDA") }
     static var brDkSub: Color      { Color(hex: dkNight ? "ABABAB" : "CFC4AE") }
-    static var brDkMuted: Color    { Color(hex: dkNight ? "666666" : "9C9281") }
+    static var brDkMuted: Color    { Color(hex: dkNight ? "8C8C8C" : "A89E8C") }
 
     // Light Mode
     static let brLtBg       = Color(hex: "F5F0E8")
@@ -58,7 +58,7 @@ extension Color {
     static let brLtBorder   = Color(hex: "D8D0BE")
     static let brLtText     = Color(hex: "1A1710")
     static let brLtSub      = Color(hex: "575047")
-    static let brLtMuted    = Color(hex: "857C6C")
+    static let brLtMuted    = Color(hex: "6A6253")
 
     // Adaptive (auto dark/light)
     static let brBackground  = Color("BRBackground")
@@ -99,11 +99,11 @@ struct HWCardSurface: View {
             if dark {
                 Color(hex: "0C0C0A")
                 HWTile(name: HWTex.leatherBlack)
-                Color.black.opacity(0.35)
+                Color.black.opacity(0.12)
                 LinearGradient(colors: [.white.opacity(0.08), .clear, .black.opacity(0.22)], startPoint: .top, endPoint: .bottom)
             } else {
-                Color(hex: "F4EFE2")
-                HWTile(name: HWTex.cface, opacity: 0.45, blend: .multiply)
+                Color(hex: "FBF8EF")
+                HWTile(name: HWTex.cface, opacity: 0.25, blend: .multiply)
                 LinearGradient(colors: [.white.opacity(0.55), .clear], startPoint: .top, endPoint: .center)
             }
         }

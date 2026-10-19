@@ -51,7 +51,7 @@ struct SlotsView: View {
         .refreshable {
             if auth.isSignedIn { await slots.refresh() }
         }
-        .background(HWDesk())
+        .hwPage()
     }
 
     // MARK: - Signed in
@@ -210,7 +210,7 @@ private struct SlotRequestRow: View {
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(HWDesk())
+                .background(HWFieldFill())
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             }
 
@@ -250,7 +250,7 @@ private struct AutoBlockRow: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(HWDesk())
+        .background(HWFieldFill())
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12)
             .stroke(scheme == .dark ? Color.brDkBorder : Color.brLtBorder, lineWidth: 1))
@@ -705,7 +705,7 @@ struct ScheduleView: View {
                 .padding(20)
             }
             .refreshable { await slots.loadFeed() }
-            .background(HWDesk())
+            .hwPage()
             .navigationTitle("")
             .profileButton()
             .navigationBarTitleDisplayMode(.inline)
@@ -748,7 +748,7 @@ struct ScheduleView: View {
                     .onChange(of: first) { _, _ in scrollToNow(proxy) }
                 }
             }
-            .background(HWDesk())
+            .hwPage()
             .navigationTitle("Auto DJ schedule")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showAuto = false } } }
@@ -978,7 +978,7 @@ struct ScheduleDetailView: View {
                     .padding(.bottom, 30)
                 }
             }
-            .background(HWDesk())
+            .hwPage()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
         .presentationDetents([.large])

@@ -67,7 +67,7 @@ private struct PrimaryButton: View {
             Text(title).font(BRFont.display(18)).kerning(3)
                 .frame(maxWidth: .infinity).padding(.vertical, 15)
                 .background(style.accent.opacity(enabled ? 1 : 0.35))
-                .foregroundColor(.white)
+                .foregroundColor(style.scheme == .dark ? Color(hex: "0B1A12") : .white)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)

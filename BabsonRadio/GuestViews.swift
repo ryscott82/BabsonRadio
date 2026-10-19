@@ -85,8 +85,7 @@ struct GuestAuthView: View {
                     .padding(.bottom, 40)
             }
         }
-        .background(HWDesk())
-        .ignoresSafeArea()
+        .hwPage()
         .onAppear { auth.errorMessage = nil; auth.infoMessage = nil }
     }
 
@@ -186,7 +185,7 @@ struct GuestProfileView: View {
                 }
                 .padding(20)
             }
-            .background(HWDesk())
+            .hwPage()
             .navigationTitle("Guest")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -335,7 +334,7 @@ struct AddSchoolEmailView: View {
                 }
                 .padding(.horizontal, 24).padding(.bottom, 40)
             }
-            .background(HWDesk())
+            .hwPage()
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }
         .onAppear { auth.errorMessage = nil; auth.infoMessage = nil }

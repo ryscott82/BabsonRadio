@@ -48,7 +48,7 @@ private struct HWTabButton: View {
     @ObservedObject private var theme = ArtTheme.shared
 
     private var selColor: Color {
-        if theme.albumOn { return theme.main.mixed(with: .init(r: 1, g: 1, b: 1), scheme == .dark ? 0.35 : 0).color }
+        if theme.albumOn { return scheme == .dark ? theme.main.mixed(with: .init(r: 1, g: 1, b: 1), 0.35).color : theme.main.mixed(with: .init(r: 0, g: 0, b: 0), 0.4).color }
         return scheme == .dark ? Color(hex: "6FCF93") : Color(hex: "24653B")
     }
     private var unselColor: Color { scheme == .dark ? Color(hex: "B1AA94") : Color(hex: "6E6858") }

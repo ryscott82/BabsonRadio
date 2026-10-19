@@ -13,7 +13,7 @@ private struct Sheet<Content: View>: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) { content }.padding(20)
         }
-        .background(HWDesk())
+        .hwPage()
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
     }

@@ -131,6 +131,22 @@ struct HWDesk: View {
 
 // MARK: Leather panel
 
+/// Scuffs where leather really wears: the four corners, strongest at the tip and fading toward the middle of each edge.
+struct HWCornerWear: View {
+    var size: CGFloat = 240
+    var opacity: Double = 1
+    var body: some View {
+        ZStack {
+            Image("hw_wear_c_tl").resizable().frame(width: size, height: size).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            Image("hw_wear_c_tr").resizable().frame(width: size, height: size).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            Image("hw_wear_c_bl").resizable().frame(width: size, height: size).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+            Image("hw_wear_c_br").resizable().frame(width: size, height: size).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+        }
+        .opacity(opacity)
+        .allowsHitTesting(false)
+    }
+}
+
 struct HWLeather: View {
     var tint: Color? = nil
     var corner: CGFloat = 22
@@ -161,6 +177,9 @@ struct HWLeather: View {
             }
             LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.16)],
                            startPoint: .top, endPoint: .bottom)
+            // Light scuffing over the leather, heaviest at the corners.
+            HWTile(name: HWTex.wear, opacity: 0.5)
+            HWCornerWear()
             if stitch {
                 shape.inset(by: 7)
                     .stroke(Color(hex: face ? "F6F2E7" : "F6F2E7").opacity(face ? 0.6 : 0.32), style: StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
@@ -170,10 +189,17 @@ struct HWLeather: View {
                 ZStack {
                     Color(hex: "F6F2E8")
                     HWTile(name: HWTex.cface, opacity: 0.39, blend: .multiply)
-                    inner.strokeBorder(Color(hex: "232823").opacity(0.28), lineWidth: 5).blur(radius: 3)
+                    // A little wear on the front, much less than on the corners.
+                    HWTile(name: "hw_wear_face_soft")
+                    // The leather stands proud: its edge throws a shadow onto the face, deepest along the top.
+                    inner.strokeBorder(Color(hex: "1B201B").opacity(0.42), lineWidth: 6).blur(radius: 3.5).offset(y: 2)
+                    inner.strokeBorder(Color(hex: "232823").opacity(0.20), lineWidth: 3).blur(radius: 2)
                 }
                 .clipShape(inner)
                 .overlay(inner.strokeBorder(ringColor.opacity(0.75), lineWidth: 1.5))
+                // Where the leather steps back down to the face: a dark seam, then a lit rounded edge on the leather.
+                .background(inner.inset(by: -2.5).fill(Color.black.opacity(0.55)))
+                .background(inner.inset(by: -4).fill(Color(hex: "FFEBC8").opacity(0.14)))
                 .padding(15)
                 // Corner caps.
                 GeometryReader { g in

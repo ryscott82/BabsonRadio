@@ -116,14 +116,18 @@ struct HWCardSurface: View {
                 Color(hex: "0C0C0A")
                 HWTile(name: HWTex.leatherGreen)
                 LinearGradient(colors: [.black.opacity(0.16), .black.opacity(0.30)], startPoint: .top, endPoint: .bottom)
+                HWTile(name: HWTex.wear, opacity: 0.5)
+                HWCornerWear(size: 70)
                 let face = RoundedRectangle(cornerRadius: max(4, corner - rimW + 1), style: .continuous)
                 ZStack {
                     Color(hex: "F6F2E8")
                     HWTile(name: HWTex.cface, opacity: 0.39, blend: .multiply)
+                    HWTile(name: "hw_wear_face_soft")
                     LinearGradient(colors: [.white.opacity(0.45), .clear], startPoint: .top, endPoint: .center)
                 }
                 .clipShape(face)
                 .overlay(face.strokeBorder(Color(hex: "232823").opacity(0.25), lineWidth: 1))
+                .background(face.inset(by: -1.5).fill(Color.black.opacity(0.5)))
                 .padding(rimW)
                 shape.inset(by: 2).stroke(Color(hex: "F6F2E7").opacity(0.5), style: StrokeStyle(lineWidth: 0.8, dash: [3, 2.5]))
             }

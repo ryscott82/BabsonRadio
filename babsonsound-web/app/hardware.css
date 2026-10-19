@@ -14,8 +14,11 @@
   --hw-wood-bg: #6a4a2f;
   --hw-leather: url(/hw/leather-green.jpg);
   --hw-leather-bg: #0b5a3d;
-  --hw-wear: linear-gradient(transparent, transparent); /* generated wear removed; a real texture goes here later */
-  --hw-face-bg: linear-gradient(rgba(246,242,232,.3), rgba(246,242,232,.3)), url(/hw/cface.jpg) center / cover, #F6F2E8; /* texture 30% fainter */
+  /* Scuffs on the leather: a faint all-over layer plus heavier wear in each corner. */
+  --hw-wear: url(/hw/wear-c-tl.png) 0 0 / 240px 240px no-repeat, url(/hw/wear-c-tr.png) 100% 0 / 240px 240px no-repeat,
+             url(/hw/wear-c-bl.png) 0 100% / 240px 240px no-repeat, url(/hw/wear-c-br.png) 100% 100% / 240px 240px no-repeat,
+             url(/hw/wear.png) 0 0 / 420px auto;
+  --hw-face-bg: url(/hw/wear-face-soft.png) 0 0 / 420px auto, linear-gradient(rgba(246,242,232,.3), rgba(246,242,232,.3)), url(/hw/cface.jpg) center / cover, #F6F2E8; /* texture 30% fainter */
   --hw-face-blend: multiply;
   --hw-face-ring: 0 0 0 1.5px rgba(0,102,68,.75);
   --hw-rim: 30px; /* thickness of the leather around the ivory face (dark mode has no face and keeps 15px) */
@@ -101,7 +104,10 @@ body:has(.hw-stage) { transition: background-color .4s; }
 .hw-panel::before, .hw-main > div[class*="max-w-"]:not(.hw-stage)::before {
   content: ''; position: absolute; inset: var(--hw-rim); z-index: -1; border-radius: 12px; pointer-events: none;
   background: var(--hw-face-bg); background-blend-mode: var(--hw-face-blend, multiply);
-  box-shadow: var(--hw-face-ring), inset 0 2px 5px rgba(30,34,30,.2);
+  /* The leather stands proud of the face: a dark seam and a lit rounded edge on the leather side of the ring, and the rim's shadow
+     falling on the face (deepest along the top). */
+  box-shadow: var(--hw-face-ring), 0 0 0 3.5px rgba(0,0,0,.45), 0 0 0 5px rgba(255,235,200,.13),
+              inset 0 5px 9px rgba(24,28,24,.34), inset 4px 0 7px rgba(24,28,24,.14), inset 0 2px 4px rgba(24,28,24,.18);
 }
 /* Corners: black glass caps on the light amps, small steel screws on the dark ones. */
 .hw-panel::after, .hw-main > div[class*="max-w-"]:not(.hw-stage)::after {

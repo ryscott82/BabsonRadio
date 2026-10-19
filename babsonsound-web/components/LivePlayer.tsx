@@ -222,7 +222,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
       <div className={`flex flex-col gap-8 ${pane ? 'lg:grid lg:grid-cols-[1.1fr_1fr] lg:gap-14 lg:items-center' : 'md:flex-row md:items-center md:gap-12'}`}>
 
         {/* Cover on the desk, record peeking out, ON AIR sign on its corner (live shows only) */}
-        <div className={`relative w-full max-w-[24rem] mx-auto pr-[14%] shrink-0 ${pane ? 'lg:max-w-[37rem] lg:mx-0' : ''}`}>
+        <div className={`relative w-full max-w-[24rem] mx-auto pr-[19%] shrink-0 ${pane ? 'lg:max-w-[37rem] lg:mx-0' : ''}`}>
           <div className="hw-cover" style={glow ? ({ ['--hw-label' as string]: glow }) : undefined}>
             <div className="hw-vinyl" aria-hidden />
             <div className="hw-cover-art flex items-center justify-center"

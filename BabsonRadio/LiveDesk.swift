@@ -218,28 +218,35 @@ struct HWEQ: View {
         return Zones(green: base, yellow: y ?? base, red: r ?? y ?? base)
     }
 
+    nonisolated private static func knee(_ v: Double) -> Double { min(1, v + 0.12 * v * v * v) }
+
+    /// The red lights are for the truly loudest moments: above `cap` (just under the yellow/red boundary) a column only climbs if it is
+    /// within a hair of the loudest column right now, and only while that loudest column is itself near full scale. Everything else tops out in yellow.
+    nonisolated private static func clipGate(_ v: Double, peak: Double) -> Double {
+        let cap = 0.8
+        guard v > cap else { return v }
+        let near = min(1, max(0, (v - (peak - 0.06)) / 0.06))
+        let loud = min(1, max(0, (peak - 0.9) / 0.06))
+        return cap + (v - cap) * near * loud
+    }
+
     nonisolated private static func draw(_ ctx: inout GraphicsContext, _ size: CGSize, _ date: Date,
                                          _ zones: Zones, _ energy: Double, _ clock: BeatClock?, _ live: [Float]?) {
-        let t = date.timeIntervalSinceReferenceDate
-        var pulse = pow(max(0, sin(t * 2 * .pi * 118 / 60)), 4)
-        if let clock { let v = pow(max(0, cos(2 * .pi * clock.phase(at: date))), 4); if v.isFinite { pulse = v } }
 
         let cols = 28, segs = 11
         let gap: CGFloat = 2
         let cw = (size.width - gap * CGFloat(cols - 1)) / CGFloat(cols)
         let sh = (size.height - gap * CGFloat(segs - 1)) / CGFloat(segs)
         guard cw > 0, sh > 0 else { return }
+        let livePeak: Double = (live?.max()).map { HWEQ.knee(Double($0)) } ?? 0     // the loudest column right now
         var glow = [Path(), Path(), Path()]
         var cells: [(CGRect, Int, Bool)] = []
         for c in 0..<cols {
-            let fc = Double(c)
-            let tilt = 1 - 0.45 * fc / Double(cols)                       // lows hit harder than highs
-            let wob = 0.5 + 0.5 * sin(t * (1.1 + fc * 0.19) + fc * 1.7)
-            let raw = (0.16 + 0.42 * wob) * tilt + 0.5 * pulse * tilt * (0.5 + 0.5 * sin(fc * 0.9 + 1))
             let level: Double
+            // The lights follow the real audio only: silence, a stalled stream or a paused player leave them dark (no canned motion).
             // A soft knee at the top lets the loudest hits actually reach the top segments (the red); the middle is unchanged.
-            if let live, c < live.count { let v = Double(live[c]); level = energy * min(1, v + 0.12 * v * v * v) }
-            else { level = energy * min(1, max(0, raw)) }
+            if let live, c < live.count { level = energy * HWEQ.clipGate(HWEQ.knee(Double(live[c])), peak: livePeak) }
+            else { level = 0 }
             let on = Int((level * Double(segs)).rounded())
             for s in 0..<segs {
                 let lit = s < on
@@ -619,7 +626,7 @@ struct PhoneLiveDesk<Drawer: View>: View {
                     .multilineTextAlignment(.center).lineLimit(2)
                     .padding(.horizontal, 14).padding(.vertical, 8)
                     .frame(width: 330)
-                    .background(HWPlate(color: Color(hex: "F6F2E8")))
+                    .background(HWPlate(color: Color(hex: "F2F4F2")))
                     .offset(x: 30, y: 292)
             }
 
@@ -720,7 +727,7 @@ struct HWPlate: View {
         let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
         ZStack {
             color
-            HWTile(name: HWTex.cface, opacity: 0.24, blend: .multiply)
+            HWTile(name: HWTex.cface, opacity: 0.15, blend: .multiply)
             LinearGradient(colors: [.white.opacity(0.35), .clear], startPoint: .top, endPoint: .center)
         }
         .clipShape(shape)

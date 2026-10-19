@@ -119,8 +119,8 @@ struct HWCardSurface: View {
                 HWCornerWear(size: 70)
                 let face = RoundedRectangle(cornerRadius: max(4, corner - rimW + 1), style: .continuous)
                 ZStack {
-                    Color(hex: "F6F2E8")
-                    HWTile(name: HWTex.cface, opacity: 0.39, blend: .multiply)
+                    Color(hex: "F2F4F2")
+                    HWTile(name: HWTex.cface, opacity: 0.24, blend: .multiply)
                     HWTile(name: "hw_wear_face_soft")
                     LinearGradient(colors: [.white.opacity(0.45), .clear], startPoint: .top, endPoint: .center)
                 }

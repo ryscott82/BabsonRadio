@@ -186,8 +186,8 @@ struct HWLeather: View {
             if face {
                 let inner = RoundedRectangle(cornerRadius: 12, style: .continuous)
                 ZStack {
-                    Color(hex: "F6F2E8")
-                    HWTile(name: HWTex.cface, opacity: 0.39, blend: .multiply)
+                    Color(hex: "F2F4F2")
+                    HWTile(name: HWTex.cface, opacity: 0.24, blend: .multiply)
                     // A little wear on the front, much less than on the corners.
                     HWTile(name: "hw_wear_face_soft")
                     // The leather stands proud: its edge throws a shadow onto the face, deepest along the top.

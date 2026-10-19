@@ -105,6 +105,8 @@ export function setBoostDb(db: number) {
 }
 
 /** Call from a click/tap handler: browsers keep the audio context asleep until then. */
+/** True once the stream is routed through the analyser (so silence can be read as silence, not as "no analysis"). */
+export const hasSpectrum = () => !!current
 export function wakeSpectrum() { current?.ctx.resume().catch(() => {}) }
 
 /**
@@ -357,6 +359,8 @@ export function makeShaper(n: number) {
 const PEAK_HOLD_MS = 2500, PEAK_FALL_PER_MS = 0.004
 /** How long the top red light stays lit after a column hits the top. */
 const TOP_HOLD_MS = 1000
+/** Level above which a column is in the red zone's reach; see the clip gate in useLedSpectrum. */
+const CLIP_CAP = 0.8
 const ledLast = new WeakMap<HTMLElement, { lv: number[]; pk: number[] }>()
 /** True on a low or draining battery (Chrome and Android report it; Safari does not, so iPhones fall back to the reduced-motion setting). */
 let lowBattery = false
@@ -403,9 +407,20 @@ export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: bool
       if (lowBattery) { box.dataset.real = 'false'; return }
       readBands(lv)   // keeps the stream's peak (for the red cap) up to date
       const lvls = eq(dt)
-      if (!lvls) { quiet++; if (quiet > 180) box.dataset.real = 'false'; if (quiet <= 4) return; lv.fill(0) } // silence: let the bars fall to the floor
+      if (!lvls) {
+        // Silence (or the analyser warming up): the bars fall to the floor and stay dead. The canned CSS motion is only for when there is no analyser at all.
+        quiet++
+        if (!hasSpectrum()) { if (quiet > 180) box.dataset.real = 'false'; if (quiet <= 4) return }
+        else box.dataset.real = 'true'
+        lv.fill(0)
+      }
       else { quiet = 0; box.dataset.real = 'true' }
-      const shown = lvls ? lvls.map(meterKnee) : lv
+      // Red is for the truly loudest moments: above CLIP_CAP a column only climbs if it is within a hair of the loudest column right now,
+      // and only while that column is itself near full scale. Everything else tops out in yellow.
+      const kneed = lvls ? lvls.map(meterKnee) : null
+      const peakNow = kneed ? Math.max(...kneed) : 0
+      const loudGate = Math.min(1, Math.max(0, (peakNow - 0.9) / 0.06))
+      const shown = kneed ? kneed.map(v => v <= CLIP_CAP ? v : CLIP_CAP + (v - CLIP_CAP) * Math.min(1, Math.max(0, (v - (peakNow - 0.06)) / 0.06)) * loudGate) : lv
       for (let i = 0; i < N; i++) {
         const segs = Math.round(shown[i] * segments)
         if (segs >= pk[i]) { pk[i] = segs; hold[i] = PEAK_HOLD_MS } else if ((hold[i] -= dt) <= 0) pk[i] = Math.max(0, pk[i] - dt * PEAK_FALL_PER_MS)

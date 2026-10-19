@@ -280,13 +280,13 @@ body:has(.hw-stage) {
 .art-ui { --hw-eq: var(--br-accent); }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) .art-ui .hw-panel {
-    background: linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.30)), linear-gradient(var(--art-1), var(--art-1)), var(--hw-leather) center / 300px auto, #333;
-    background-blend-mode: normal, color, normal, normal;
+    background: linear-gradient(rgba(0,0,0,.02), rgba(0,0,0,.14)), linear-gradient(var(--art-1), var(--art-1)), linear-gradient(rgba(255,255,255,.34), rgba(255,255,255,.34)), var(--hw-leather) center / 300px auto, #333;
+    background-blend-mode: normal, color, normal, normal, normal;
   }
 }
 :root[data-theme="light"] .art-ui .hw-panel {
-  background: linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.30)), linear-gradient(var(--art-1), var(--art-1)), var(--hw-leather) center / 300px auto, #333;
-  background-blend-mode: normal, color, normal, normal;
+  background: linear-gradient(rgba(0,0,0,.02), rgba(0,0,0,.14)), linear-gradient(var(--art-1), var(--art-1)), linear-gradient(rgba(255,255,255,.34), rgba(255,255,255,.34)), var(--hw-leather) center / 300px auto, #333;
+  background-blend-mode: normal, color, normal, normal, normal;
 }
 
 /* ── Every other page (Oct 2026) ──────────────────────────────────────────────
@@ -366,3 +366,39 @@ body:has(.hw-stage) {
 
 /* Titles that wrap to a set number of rows and shrink to fit (components/FitTitle.tsx) */
 .hw-fit { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--fit-lines, 2); overflow: hidden; overflow-wrap: break-word; word-break: normal; white-space: normal; }
+
+/* ── Album-color desk: tinted desk plus topographic lines that pulse with the music (see components/ArtDesk.tsx) ── */
+@property --art-1 { syntax: '<color>'; inherits: true; initial-value: #006644; }
+.art-desk { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0; transition: opacity 2.5s ease, --art-1 12s ease-in-out, --art-2 12s ease-in-out, --art-3 12s ease-in-out; }
+.art-desk[data-on="1"] { opacity: 1; }
+.art-desk > * { position: absolute; inset: 0; }
+.art-desk .ln { -webkit-mask-size: cover; mask-size: cover; -webkit-mask-position: center top; mask-position: center top; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  opacity: .5; transform-origin: center; }
+.art-desk[data-play="1"][data-real="0"] .ln { animation: hw-beat .5s ease-in-out infinite; }
+.art-desk .ln1 { animation-delay: .11s !important; } .art-desk .ln2 { animation-delay: .22s !important; }
+@keyframes hw-beat { 0% { opacity: .5; transform: scale(1); } 14% { opacity: 1; transform: scale(1.015); } 100% { opacity: .5; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .art-desk .ln { animation: none !important; } }
+/* light: silver desk, colored lines */
+.art-desk .plate { background: radial-gradient(ellipse at 50% 40%, #EEEFF0, #D8DADC); }
+.art-desk .tint { display: none; }
+.art-desk .ln { background: linear-gradient(160deg, var(--art-1), var(--art-3)); }
+.art-desk .ln0 { -webkit-mask-image: url(/hw/lnl0.png); mask-image: url(/hw/lnl0.png); }
+.art-desk .ln1 { -webkit-mask-image: url(/hw/lnl1.png); mask-image: url(/hw/lnl1.png); }
+.art-desk .ln2 { -webkit-mask-image: url(/hw/lnl2.png); mask-image: url(/hw/lnl2.png); }
+/* dark: black walnut desk, tinted by the cover; lines glow */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .art-desk .plate { background: #1a1210 url(/hw/oak-black.jpg) center top / cover; }
+  :root:not([data-theme="light"]) .art-desk .tint { display: block; mix-blend-mode: color; opacity: .55;
+    background: radial-gradient(ellipse 70% 38% at 25% 22%, var(--art-1), transparent 70%), radial-gradient(ellipse 60% 34% at 80% 60%, var(--art-3), transparent 70%), radial-gradient(ellipse 70% 30% at 30% 90%, var(--art-2), transparent 70%); }
+  :root:not([data-theme="light"]) .art-desk .ln { mix-blend-mode: screen; background: linear-gradient(160deg, color-mix(in srgb, var(--art-1) 45%, #fff), color-mix(in srgb, var(--art-3) 55%, #fff)); }
+  :root:not([data-theme="light"]) .art-desk .ln0 { -webkit-mask-image: url(/hw/lnd0.png); mask-image: url(/hw/lnd0.png); }
+  :root:not([data-theme="light"]) .art-desk .ln1 { -webkit-mask-image: url(/hw/lnd1.png); mask-image: url(/hw/lnd1.png); }
+  :root:not([data-theme="light"]) .art-desk .ln2 { -webkit-mask-image: url(/hw/lnd2.png); mask-image: url(/hw/lnd2.png); }
+}
+:root[data-theme="dark"] .art-desk .plate { background: #1a1210 url(/hw/oak-black.jpg) center top / cover; }
+:root[data-theme="dark"] .art-desk .tint { display: block; mix-blend-mode: color; opacity: .55;
+  background: radial-gradient(ellipse 70% 38% at 25% 22%, var(--art-1), transparent 70%), radial-gradient(ellipse 60% 34% at 80% 60%, var(--art-3), transparent 70%), radial-gradient(ellipse 70% 30% at 30% 90%, var(--art-2), transparent 70%); }
+:root[data-theme="dark"] .art-desk .ln { mix-blend-mode: screen; background: linear-gradient(160deg, color-mix(in srgb, var(--art-1) 45%, #fff), color-mix(in srgb, var(--art-3) 55%, #fff)); }
+:root[data-theme="dark"] .art-desk .ln0 { -webkit-mask-image: url(/hw/lnd0.png); mask-image: url(/hw/lnd0.png); }
+:root[data-theme="dark"] .art-desk .ln1 { -webkit-mask-image: url(/hw/lnd1.png); mask-image: url(/hw/lnd1.png); }
+:root[data-theme="dark"] .art-desk .ln2 { -webkit-mask-image: url(/hw/lnd2.png); mask-image: url(/hw/lnd2.png); }

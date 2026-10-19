@@ -59,7 +59,11 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
       if (start > 0) queueMicrotask(() => setVolume(start))
     } catch { /* ignore */ }
   }, [])
-  const level = canBoost ? volume : Math.min(volume, UNITY)
+  // Staff can switch the browser audio processing off for everyone (admin dashboard): no analyser, no boost.
+  const fxOn = np?.audioFx !== false
+  const fxRef = useRef(true)
+  useEffect(() => { fxRef.current = fxOn }, [fxOn])
+  const level = canBoost && fxOn ? volume : Math.min(volume, UNITY)
   const boostDb = level > UNITY ? ((level - UNITY) / (1 - UNITY)) * MAX_DB : 0
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = Math.min(1, level / UNITY)
@@ -167,7 +171,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
     if (!audioRef.current) {
       const el = new Audio()
       // Real equalizer needs a cross-origin-readable stream. Only opt in when the server allows it, so playback never breaks.
-      if (await probeCors(STREAM_URL)) { el.crossOrigin = 'anonymous'; if (!attachSpectrum(el)) el.removeAttribute('crossorigin') }
+      if (fxRef.current && await probeCors(STREAM_URL)) { el.crossOrigin = 'anonymous'; if (!attachSpectrum(el)) el.removeAttribute('crossorigin') }
       audioRef.current = el
       audioRef.current.volume = Math.min(1, level / UNITY); setBoostDb(boostDb)
       audioRef.current.addEventListener('waiting', () => setIsBuffering(true))
@@ -252,7 +256,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
 
           {/* Volume knob, play knob, skip knob */}
           <div className="grid grid-cols-3 items-start gap-4 mt-5">
-            <div className="justify-self-center"><VolumeKnob value={level} onChange={setVolume} max={canBoost ? 1 : UNITY} unity={UNITY} boostDb={boostDb} /></div>
+            <div className="justify-self-center"><VolumeKnob value={level} onChange={setVolume} max={canBoost && fxOn ? 1 : UNITY} unity={UNITY} boostDb={boostDb} /></div>
             <div className="justify-self-center pt-1">
               <button
                 onClick={togglePlay}

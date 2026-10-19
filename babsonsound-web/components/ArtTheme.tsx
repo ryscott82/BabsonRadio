@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useNowPlaying } from '@/lib/nowplaying'
 import { ART_THEME, BABSON_GREEN, useArtPalette } from '@/lib/artColor'
+import ArtDesk from '@/components/ArtDesk'
 import { getArtTest, onPartyChange, setColorChanging, useParty } from '@/lib/party'
 
 /** Fixed palettes for the admin test switch: [main, green, second]. */
@@ -11,6 +12,7 @@ export const ART_PRESETS: Record<string, { label: string; colors: string[] }> = 
   sunset: { label: 'Sunset', colors: ['#E0572F', '#0F7A4B', '#F2A33A'] },
   violet: { label: 'Violet', colors: ['#8A4FD0', '#1E7F5C', '#D05FA8'] },
   gold: { label: 'Gold', colors: ['#D9A21B', '#2E7D32', '#C8602A'] },
+  lime: { label: 'Acid green', colors: ['#8ACE00', '#2E7D32', '#F2E94E'] },
   rose: { label: 'Rose', colors: ['#D6456E', '#13785A', '#E8884F'] },
 }
 
@@ -69,6 +71,7 @@ export default function ArtTheme({ className, children }: { className?: string; 
   return (
     <Ctx.Provider value={{ on: night, main: use ? a : '', full: night, badge: ok ? palette[2] : '' }}>
       <div className={`${night ? 'art-ui ' : ''}${className ?? ''}`} style={night ? style : undefined}>{children}</div>
+      {night && <ArtDesk colors={[a, b, c]} on={use} />}
     </Ctx.Provider>
   )
 }

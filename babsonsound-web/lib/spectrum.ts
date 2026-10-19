@@ -86,20 +86,25 @@ export function setBoostDb(db: number) {
 export function wakeSpectrum() { current?.ctx.resume().catch(() => {}) }
 
 /** Fills `out` with 0..1 levels, log-spaced from about 50 Hz to 15 kHz. Returns false while there is nothing to read. */
-function readBands(out: number[]): boolean {
+export function readBands(out: number[]): boolean {
   if (!current) return false
   const { an, data, ctx } = current
   an.getByteFrequencyData(data)
   const n = out.length, hz = ctx.sampleRate / an.fftSize
   let any = 0
+  // Bands are spread unevenly: the lows and highs get more of them (finer detail), the crowded mids are squeezed into a few,
+  // and the mids are scooped a little so they don't sit high and make the display look static.
+  const warp = (u: number) => u - (0.6 * Math.sin(2 * Math.PI * u)) / (2 * Math.PI)
   for (let i = 0; i < n; i++) {
-    const lo = Math.max(1, Math.floor((50 * Math.pow(300, i / n)) / hz))
-    const hi = Math.max(lo + 1, Math.ceil((50 * Math.pow(300, (i + 1) / n)) / hz))
+    const g0 = warp(i / n), g1 = warp((i + 1) / n)
+    const lo = Math.max(1, Math.floor((50 * Math.pow(300, g0)) / hz))
+    const hi = Math.max(lo + 1, Math.ceil((50 * Math.pow(300, g1)) / hz))
     let sum = 0
     for (let k = lo; k < hi && k < data.length; k++) sum += data[k]
     const v = sum / (hi - lo) / 255
     any += v
-    out[i] = Math.min(1, v * (1 + 0.35 * (i / n))) // a mild lift for the quieter highs; shaping happens in the caller
+    const u = (i + 0.5) / n, mid = Math.sin(Math.PI * u) // 0 at the ends, 1 in the middle
+    out[i] = Math.min(1, v * (1 - 0.4 * mid * mid) * (1 + 0.5 * u)) // scoop the mids, lift the quieter highs; shaping happens in the caller
   }
   return any > 0.01
 }
@@ -130,7 +135,9 @@ export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: bool
         const raw = lv[i]
         avg[i] += (raw - avg[i]) * 0.04
         const target = Math.max(0, Math.min(1, Math.pow(raw, 1.5) * 0.6 + (raw - avg[i]) * 2.6 + 0.04))
-        shown[i] = Math.max(target, shown[i] * 0.7)
+        // Attack follows how hard the band just hit: a loud burst (well above its recent average) shoots up at once, a soft or steady rise creeps.
+        const atk = Math.min(1, 0.08 + Math.max(0, raw - avg[i]) * 7)
+        shown[i] = target > shown[i] ? shown[i] + (target - shown[i]) * atk : Math.max(target, shown[i] * 0.7)
         const segs = Math.round(shown[i] * segments)
         if (segs >= pk[i]) { pk[i] = segs; hold[i] = 20 } else if (hold[i]-- <= 0) pk[i] = Math.max(0, pk[i] - 0.2)
         bars[i].style.setProperty('--lv', String(segs / segments))

@@ -3,6 +3,7 @@ import { adminDb } from './admin'
 import { currentOnAir, getColorChanging, getNote, hostPrefsFor, type LiveNote } from './live'
 import { listenerSample } from './taste'
 import { getAnnouncement, type Announcement } from './announcement'
+import { getAudioFx } from './audioFx'
 import { lookupBeat } from './beats'
 import { trackActual } from './actualPlaylist'
 import { recordListeners } from './usage'
@@ -46,6 +47,8 @@ export interface NowPlayingInfo {
   showOnly: boolean
   /** A message for the whole audience from the station controls, or null. */
   announcement: Announcement | null
+  /** False when staff switched the browser's audio processing (real EQ, volume boost) off for everyone. */
+  audioFx: boolean
   updatedAt: number
 }
 
@@ -55,7 +58,7 @@ const TTL_MS = 8_000
 let lastSample = 0
 let cache: { at: number; value: Built } | null = null
 
-type Built = Omit<NowPlayingInfo, 'announcement'> & { showOnly: boolean; hostNames?: string[] }
+type Built = Omit<NowPlayingInfo, 'announcement' | 'audioFx'> & { showOnly: boolean; hostNames?: string[] }
 const empty = (configured: boolean): Built => ({
   configured, title: '', artist: '', album: '', art: '', elapsed: 0, duration: 0, playedAt: 0, history: [], bpm: 0, beatOffset: 0,
   isLive: false, streamer: '', playlist: '', listeners: 0, next: null, showTitle: '', blockTitle: '', color: '',
@@ -90,7 +93,8 @@ async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'blockTitle' 
 export async function getNowPlaying(): Promise<NowPlayingInfo> {
   const base = await build()
   const announcement = await getAnnouncement(adminDb()).catch(() => null)
-  return { ...base, announcement }
+  const audioFx = await getAudioFx(adminDb()).catch(() => true)
+  return { ...base, announcement, audioFx }
 }
 
 /** Looks at AzuraCast right now (skipping the few-second cache) and records any schedule correction. Used by the webhook and the studio PC's ping, so it works with nobody on the app. */

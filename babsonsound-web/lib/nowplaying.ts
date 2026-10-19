@@ -25,6 +25,8 @@ export interface NowPlaying {
   showOnly?: boolean
   note: { headline: string; message: string; updatedAt: number; by: string } | null
   announcement: { text: string; updatedAt: number; until: number } | null
+  /** False when staff turned the browser audio processing off. */
+  audioFx?: boolean
   updatedAt: number
   /** client clock (ms) when this was fetched, for the progress bar */
   receivedAt: number

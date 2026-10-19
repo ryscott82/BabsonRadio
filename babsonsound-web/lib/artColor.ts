@@ -117,7 +117,7 @@ export function useArtPalette(url: string | undefined): string[] {
           const base = picked[0]
           picked.push({ h: (base.h + (picked.length === 1 ? 35 : -35) + 360) % 360, s: base.s, l: base.l })
         }
-        const covers = picked.map(p => hexOf(p.h, Math.max(0.55, Math.min(0.9, p.s)), Math.max(0.42, Math.min(0.58, p.l))))
+        const covers = picked.map(p => hexOf(p.h, Math.max(0.5, Math.min(1, p.s)), Math.max(0.3, Math.min(0.7, p.l))))
         // [dominant cover color, a green that pairs with it, second cover color]
         // Green: the cover's own green when it has a real amount of one (at least 10% of the colorful pixels), else a complementary shade.
         const total = ranked.reduce((a, r) => a + r.w, 0)

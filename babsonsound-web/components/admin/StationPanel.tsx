@@ -9,6 +9,7 @@ interface Data {
   nowPlaying: { song: string; listeners: number; isLive: boolean; streamer: string } | null
   shows: Show[]
   announcement: { text: string; until: number } | null
+  audioFx?: boolean
 }
 
 const when = (ms: number) => new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
@@ -104,6 +105,15 @@ export default function StationPanel() {
           </ul>
         )}
         <p className="text-xs text-br-dk-muted">Goes to the front of the line, ahead of votes and the schedule. Not for live shows.</p>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs text-br-dk-sub font-display tracking-widest">audio processing</p>
+        <p className="text-sm text-br-dk-sub">The website&apos;s real equalizer and the volume boost past 0 dB. Turn it off to play the stream straight through the browser with nothing in the sound path. Listeners pick it up within a few seconds; a stream that is already playing changes on its next start.</p>
+        <button type="button" disabled={!!busy} aria-pressed={d.audioFx !== false}
+                onClick={() => run('fx', { action: 'audio-fx', on: d.audioFx === false }, d.audioFx === false ? 'Audio processing is on.' : 'Audio processing is off.')} className={`sk-key ${btn}`}>
+          {d.audioFx === false ? 'Off: tap to turn on' : 'On: tap to turn off'}
+        </button>
       </div>
 
       <div className="space-y-2">

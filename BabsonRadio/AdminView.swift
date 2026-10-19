@@ -187,7 +187,7 @@ struct AdminView: View {
                         Button("Deny") { Task { await model.decide(t, approve: false) } }
                             .buttonStyle(.bordered).tint(Color.brRed)
                     }
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(BRFont.body(13, .semibold))
                 }
                 .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
@@ -229,7 +229,7 @@ struct AdminView: View {
             }
             Text("Message to everyone").font(BRFont.body(12, .semibold)).foregroundColor(sub).padding(.top, 6)
             if let a = model.dash?.announcement { Text("Live now: \(a.text)").font(BRFont.body(13, .regular)).foregroundColor(accent) }
-            TextField("Shows on every page of the site and in the app", text: $announce, axis: .vertical)
+            TextField("", text: $announce, axis: .vertical, prompt: Text("Shows on every page of the site and in the app").foregroundColor(.brPlaceholder))
                 .lineLimit(2...4).textFieldStyle(.roundedBorder)
             HStack {
                 Picker("How long", selection: $minutes) {
@@ -245,7 +245,7 @@ struct AdminView: View {
                     let t = announce
                     Task { await model.control(["action": "announce", "text": t, "minutes": minutes], done: "Sent to everyone."); announce = "" }
                 }
-                .font(.system(size: 14, weight: .semibold)).foregroundColor(accent)
+                .font(BRFont.body(14, .semibold)).foregroundColor(accent)
                 .disabled(announce.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.busy)
             }
             if !model.message.isEmpty { Text(model.message).font(BRFont.body(12, .regular)).foregroundColor(sub) }
@@ -280,9 +280,9 @@ struct AdminView: View {
                 stationButton("BEAVER RAIN", filled: false) { lab.rain(":br:") }
             }
             Button("Turn everything off") { lab.reset() }
-                .font(.system(size: 13, weight: .semibold)).foregroundColor(sub)
+                .font(BRFont.body(13, .semibold)).foregroundColor(sub)
         }
-        .font(.system(size: 14)).foregroundColor(text).tint(accent)
+        .font(BRFont.body(14, .regular)).foregroundColor(text).tint(accent)
         .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
     }
 

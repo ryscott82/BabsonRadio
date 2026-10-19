@@ -195,7 +195,7 @@ struct LivePlayerView: View {
         VStack(spacing: 12) {
             Link(destination: BabsonLinks.join) {
                 Label("Join Babson Sound", systemImage: "person.badge.plus")
-                    .font(BRFont.body(15, .bold)).foregroundStyle(Color.hwCream)
+                    .font(BRFont.body(15, .bold)).modifier(HWKeyInk())
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .background(HWKeyFace(corner: 12))
             }
@@ -305,4 +305,10 @@ final class BoardState: ObservableObject {
         duoBoard = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { [weak self] in self?.duoBoard = false }
     }
+}
+
+/// Lettering on a steel key: cream normally, dark ink on light aluminum keys inside the black drawer.
+struct HWKeyInk: ViewModifier {
+    @Environment(\.hwLightKeys) private var lightKeys
+    func body(content: Content) -> some View { content.foregroundStyle(lightKeys ? Color(hex: "1A1710") : Color.hwCream) }
 }

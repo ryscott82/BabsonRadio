@@ -163,7 +163,7 @@ struct HostOptionsView: View {
                     }
                 }
                 HStack(spacing: 10) {
-                    TextField("Add your own emoji", text: $custom)
+                    TextField("", text: $custom, prompt: Text("Add your own emoji").foregroundColor(.brPlaceholder))
                         .font(BRFont.body(18, .regular))
                         .padding(10)
                         .background(scheme == .dark ? Color.brDkSurface2 : Color.brLtSurface2)

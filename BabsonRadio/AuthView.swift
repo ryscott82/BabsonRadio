@@ -184,7 +184,7 @@ struct AuthView: View {
                            ? "Resend in \(auth.resetCooldown / 60):\(String(format: "%02d", auth.resetCooldown % 60))"
                            : "Forgot password?") { auth.sendPasswordReset(email: fullEmail) }
                         .disabled(auth.resetCooldown > 0)
-                        .font(.system(size: 13))
+                        .font(BRFont.body(13, .regular))
                         .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         .padding(.top, 14)
                 }
@@ -277,7 +277,7 @@ struct AuthView: View {
                             .font(.system(size: 13))
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                             .frame(width: 18)
-                        TextField("Email (leave empty for the developer password)", text: $devEmail)
+                        TextField("", text: $devEmail, prompt: Text("Email (leave empty for the developer password)").foregroundColor(.brPlaceholder))
                             .font(BRFont.body(14, .regular))
                             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                             .autocorrectionDisabled()
@@ -296,7 +296,7 @@ struct AuthView: View {
                             .font(.system(size: 13))
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                             .frame(width: 18)
-                        SecureField("Password", text: $devPassword)
+                        SecureField("", text: $devPassword, prompt: Text("Password").foregroundColor(.brPlaceholder))
                             .font(BRFont.body(14, .regular))
                             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                             .focused($devFieldFocused)
@@ -404,9 +404,9 @@ struct BRTextField: View {
 
             Group {
                 if isSecure {
-                    SecureField(placeholder, text: $text)
+                    SecureField("", text: $text, prompt: Text(placeholder).foregroundColor(.brPlaceholder))
                 } else {
-                    TextField(placeholder, text: $text)
+                    TextField("", text: $text, prompt: Text(placeholder).foregroundColor(.brPlaceholder))
                         .keyboardType(keyboardType)
                         .textInputAutocapitalization(autocapitalization)
                         .autocorrectionDisabled()
@@ -471,7 +471,7 @@ struct PhoneField: View {
                 .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 .frame(width: 20)
 
-            TextField("Phone number", text: $phoneNumber)
+            TextField("", text: $phoneNumber, prompt: Text("Phone number").foregroundColor(.brPlaceholder))
                 .keyboardType(.phonePad)
                 .textContentType(.telephoneNumber)
                 .font(BRFont.body(15, .regular))

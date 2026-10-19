@@ -160,7 +160,7 @@ struct AppleSchoolEmailView: View {
                     .font(BRFont.body(14, .regular)).foregroundColor(style.sub).multilineTextAlignment(.center)
 
                 HStack(spacing: 6) {
-                    TextField("username", text: $username)
+                    TextField("", text: $username, prompt: Text("username").foregroundColor(.brPlaceholder))
                         .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.emailAddress)
                     Menu {
                         ForEach(AuthManager.schoolDomains, id: \.self) { d in Button(d) { domain = d } }
@@ -171,7 +171,7 @@ struct AppleSchoolEmailView: View {
                         }
                     }
                 }
-                .font(.system(size: 16)).foregroundColor(style.text)
+                .font(BRFont.body(16, .regular)).foregroundColor(style.text)
                 .modifier(fieldBox(style))
 
                 Toggle(isOn: $agreed) {
@@ -248,9 +248,9 @@ struct OnboardingView: View {
                 }
 
                 Group {
-                    TextField("First name", text: $firstName).textContentType(.givenName)
-                    TextField("Last name", text: $lastName).textContentType(.familyName)
-                    TextField("Phone number (10 digits)", text: $phone)
+                    TextField("", text: $firstName, prompt: Text("First name").foregroundColor(.brPlaceholder)).textContentType(.givenName)
+                    TextField("", text: $lastName, prompt: Text("Last name").foregroundColor(.brPlaceholder)).textContentType(.familyName)
+                    TextField("", text: $phone, prompt: Text("Phone number (10 digits)").foregroundColor(.brPlaceholder))
                         .keyboardType(.phonePad).textContentType(.telephoneNumber)
                         .onChange(of: phone) { _, v in phone = PhoneField.digits(v) }
                     Picker("Graduation year", selection: $gradYear) {
@@ -289,7 +289,7 @@ struct OnboardingView: View {
                     Button(useRange ? "Use birthday instead" : "use age range instead") {
                         withAnimation { useRange.toggle() }
                     }
-                    .font(.system(size: 12)).foregroundColor(style.sub).underline()
+                    .font(BRFont.body(12, .regular)).foregroundColor(style.sub).underline()
                     Text("Never shown to others.")
                         .font(BRFont.body(11, .regular)).foregroundColor(style.sub)
                 }

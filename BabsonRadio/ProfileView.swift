@@ -163,18 +163,19 @@ private struct SignedInProfileView: View {
                 }
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Done") { dismiss() }
-                        .font(.system(size: 14, weight: .medium))
+                        .font(BRFont.body(14, .medium))
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Sign Out") {
                         auth.signOut()
                         dismiss()
                     }
-                    .font(.system(size: 13))
+                    .font(BRFont.body(13, .regular))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 }
             }
         }
+        .hwSheetStack()
         // Single sheet — avoids SwiftUI crash from stacking two .sheet modifiers
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
@@ -517,7 +518,7 @@ private struct SignedInProfileView: View {
                             .font(.system(size: 14))
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                             .frame(width: 20)
-                        TextField("Or enter their email address", text: $guestEmail)
+                        TextField("", text: $guestEmail, prompt: Text("Or enter their email address").foregroundColor(.brPlaceholder))
                             .font(BRFont.body(15, .regular))
                             .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                             .keyboardType(.emailAddress)
@@ -711,7 +712,7 @@ struct ContactPickerView: View {
                     if contact.savedBy >= 1 {
                         Text("\(contact.savedBy)+ mutuals").font(BRFont.body(12, .semibold)).foregroundColor(scheme == .dark ? .brGold : .brGreen)
                     } else if let p = contact.primaryPhone {
-                        Text(p).font(BRFont.body(12, .regular)).foregroundColor(.secondary)
+                        Text(p).font(BRFont.body(12, .regular)).foregroundColor(.brSecondary)
                     }
                 }
                 Spacer()
@@ -772,6 +773,7 @@ struct ContactPickerView: View {
                 }
             }
         }
+        .hwSheetStack()
     }
 }
 
@@ -1170,6 +1172,7 @@ struct FeedbackView: View {
                 }
             }
         }
+        .hwSheetStack()
     }
 
     private func send() {
@@ -1343,7 +1346,7 @@ struct HostPanelView: View {
     private func insight(_ s: HostStatus) -> HostInsight? { selected.flatMap { s.insights?[$0.id] } }
 
     private func field(_ placeholder: String, _ binding: Binding<String>, axis: Axis = .horizontal) -> some View {
-        TextField(placeholder, text: binding, axis: axis)
+        TextField("", text: binding, axis: axis, prompt: Text(placeholder).foregroundColor(.brPlaceholder))
             .font(BRFont.body(15, .regular)).foregroundColor(text)
             .padding(12)
             .background(HWFieldFill())
@@ -1591,7 +1594,7 @@ struct AboutYouSection: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(BRFont.body(12, .semibold))
                 .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-            TextField(placeholder, text: text)
+            TextField("", text: text, prompt: Text(placeholder).foregroundColor(.brPlaceholder))
                 .font(BRFont.body(15, .regular))
                 .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                 .textInputAutocapitalization(.words)

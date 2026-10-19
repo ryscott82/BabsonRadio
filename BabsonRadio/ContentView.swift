@@ -49,7 +49,7 @@ struct ContentView: View {
                 }
 
             ScheduleView()
-                .padding(.leading, sideW)
+                .padding(.leading, sideW).padding(.top, sideW > 0 ? 64 : 0)
                 .environment(\.hwFlushBottom, sideW > 0)
                 .ignoresSafeArea(.container, edges: sideW > 0 ? .bottom : [])
                 .modifier(TabBarStyle(hidden: hideBar))
@@ -59,7 +59,7 @@ struct ContentView: View {
                 }
 
             LibraryView()
-                .padding(.leading, sideW)
+                .padding(.leading, sideW).padding(.top, sideW > 0 ? 64 : 0)
                 .environment(\.hwFlushBottom, sideW > 0)
                 .ignoresSafeArea(.container, edges: sideW > 0 ? .bottom : [])
                 .modifier(TabBarStyle(hidden: hideBar))
@@ -70,7 +70,7 @@ struct ContentView: View {
 
             if profile.hosting {
                 NavigationStack { HostPanelView() }
-                    .padding(.leading, sideW)
+                    .padding(.leading, sideW).padding(.top, sideW > 0 ? 64 : 0)
                 .environment(\.hwFlushBottom, sideW > 0)
                 .ignoresSafeArea(.container, edges: sideW > 0 ? .bottom : [])
                     .modifier(TabBarStyle(hidden: hideBar))
@@ -80,7 +80,7 @@ struct ContentView: View {
 
             // Search is the right-most tab; Profile is the circle button in the top corner of every page.
             SearchView()
-                .padding(.leading, sideW)
+                .padding(.leading, sideW).padding(.top, sideW > 0 ? 64 : 0)
                 .environment(\.hwFlushBottom, sideW > 0)
                 .ignoresSafeArea(.container, edges: sideW > 0 ? .bottom : [])
                 .modifier(TabBarStyle(hidden: hideBar))
@@ -90,6 +90,9 @@ struct ContentView: View {
                 }
         }
         // Measured on the full-size TabView (before the padding); the pane appears and disappears with no animation.
+        // The floating tab bar sits on tan glass in light mode, so its selected item needs a darker green there (a brighter one is
+        // lower contrast against the tan); in dark mode a brighter green reads best.
+        .tint(ArtTheme.full(scheme) ? theme.accent(scheme) : (scheme == .dark ? Color(hex: "5BE3A6") : Color(hex: "003B27")))
         .environment(\.globalProfile, hSize == .regular)
         .background { Color.clear.onGeometryChange(for: CGSize.self, of: { $0.size }) { paneSize = $0 } }
         // One profile button for every tab on a wide window, so it stays put when you switch.
@@ -98,6 +101,15 @@ struct ContentView: View {
         }
         .overlay(alignment: .leading) {
             if sideW > 0 { LivePlayerView(sidePane: true, paneWidth: sideW) }
+        }
+        // The station name cut into the oak above the page, the same on every tab beside the player.
+        .overlay(alignment: .topLeading) {
+            if sideW > 0 {
+                EtchedText(text: "Babson Radio", size: 34)
+                    .frame(width: max(0, paneSize.width - sideW - 96), height: 64, alignment: .center)
+                    .offset(x: sideW)
+                    .allowsHitTesting(false)
+            }
         }
         .animation(.easeInOut(duration: 0.25), value: hideBar)
     }
@@ -123,6 +135,7 @@ struct ContentView: View {
             .onChange(of: tab) { old, new in if new == 0 && old != 0 { liveLoad += 1 } }
             .onReceive(TabRouter.shared.$request.compactMap { $0 }) { t in tab = t; TabRouter.shared.request = nil }
             .tint(tintColor)
+            .font(BRFont.body(16, .regular))
             .background(pageBackground)
             .overlay(alignment: .top) { statusBlur }
             .task(id: auth.isSignedIn) { ContactsManager.shared.promptOnFirstOpen() }
@@ -166,8 +179,15 @@ struct ContentView: View {
             .overlay { splashOverlay }
     }
 
+    private static var isWideScreen: Bool {
+        guard let b = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first?.screen.bounds, b.height > 0 else { return false }
+        return (0.62...1.3).contains(b.width / b.height)
+    }
+
     @ViewBuilder private var statusBlur: some View {
-        if hSize != .regular && tab != 0 { StatusBarBlur() }
+        // Not on a wide, nearly square screen (the open Duo): its clock and icons sit in a strip down the side, where a frosted band
+        // across the top only smears the oak and the amp behind them.
+        if hSize != .regular && tab != 0 && !Self.isWideScreen { StatusBarBlur() }
     }
 
     /// After the launch splash: the sign-in splash, or the step an Apple / unverified account is stuck on.

@@ -450,10 +450,12 @@ struct PhoneLiveDesk<Drawer: View>: View {
             // Closed foldable: the room above the art and the room between the amp and the drawer are the same (`gap`),
             // and the amp is a little taller so the reaction keys have air below them.
             let wide = isWide(geo.size)
-            let ex: CGFloat = wide ? 18 : 0
-            let gap: CGFloat = wide ? 40 + panelUp / 2 : 0
+            // The space above the art keeps its size; the amp grows to fill what used to be a wide gap under it, leaving a slim one.
+            let topGap: CGFloat = wide ? 40 + panelUp / 2 : 0
+            let gap: CGFloat = wide ? 16 : 0
+            let ex: CGFloat = wide ? 18 + (topGap - gap) : 0
             let ampBottom: CGFloat = 340 + 380 + ex - panelUp
-            let shift: CGFloat = wide ? max(0, 60 - gap) : 0
+            let shift: CGFloat = wide ? max(0, 60 - topGap) : 0
             let W: CGFloat = 390, H: CGFloat = wide ? ampBottom + gap + 34 : 844, full: CGFloat = 844
             let availW = geo.size.width - rightReserve(geo.size)
             let k = min(availW / W, geo.size.height / (H - shift))
@@ -465,6 +467,10 @@ struct PhoneLiveDesk<Drawer: View>: View {
                     .scaleEffect(k, anchor: .topLeading)
                     .frame(width: W * k, height: (H - shift) * k, alignment: .topLeading)
                     .offset(x: max(0, (availW - W * k) / 2))
+                // The open foldable's drawer comes out of the right edge, well clear of the home swipe along the bottom.
+                if wide {
+                    HWSideDrawer(open: $drawerOpen, tint: album ? theme.main.color : Color(hex: "2F7A49"), size: geo.size) { drawer() }
+                }
             }
             .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
             .animation(.easeInOut(duration: 0.2), value: panelUp)
@@ -534,7 +540,9 @@ struct PhoneLiveDesk<Drawer: View>: View {
             panel(extra: extra)
 
             // Drawer lip and sheet.
-            HWDrawerSheet(open: $drawerOpen, tint: album ? theme.main.color : Color(hex: "2F7A49"), closedY: wideLip ?? lipY) { drawer() }
+            if wideLip == nil {
+                HWDrawerSheet(open: $drawerOpen, tint: album ? theme.main.color : Color(hex: "2F7A49"), closedY: lipY) { drawer() }
+            }
         }
         .animation(.easeInOut(duration: 0.25), value: onAir)
     }
@@ -566,14 +574,16 @@ struct PhoneLiveDesk<Drawer: View>: View {
             .frame(width: 310, alignment: .leading)
             .offset(x: 28, y: 20)
 
+            // A taller amp spends its extra height on a taller meter and a little more air above the reaction keys.
+            let grow = extra * 0.5, air = extra * 0.25
             HWEQWell(color: led, playing: audio.isPlaying, beat: audio.beatClock)
-                .frame(width: 322, height: 58)
+                .frame(width: 322, height: 58 + grow)
                 .offset(x: 22, y: 138 - up)
 
             // Volume knob
             HWDial(size: 52, value: Binding(get: { vol.level }, set: { vol.level = $0 }), onChange: { vol.set($0) })
-                .offset(x: 46, y: 224 - up)
-            knobLabel("Volume").offset(x: 42, y: 288 - up)
+                .offset(x: 46, y: 224 - up + grow)
+            knobLabel("Volume").offset(x: 42, y: 288 - up + grow)
 
             // Play key
             Button { if canPlay { audio.toggle() } } label: {
@@ -589,19 +599,19 @@ struct PhoneLiveDesk<Drawer: View>: View {
             }
             .buttonStyle(HWRoundKeyStyle(size: 84, lit: audio.isPlaying))
             .opacity(canPlay ? 1 : 0.4)
-            .offset(x: 141, y: 208 - up)
+            .offset(x: 141, y: 208 - up + grow)
             .accessibilityLabel(audio.isPlaying ? "Stop" : "Play")
 
             // Skip knob
             SkipControl()
                 .frame(width: 52, height: 52)
-                .offset(x: 366 - 46 - 52, y: 224 - up)
-            knobLabel("Skip").offset(x: 366 - 42 - 60, y: 288 - up)
+                .offset(x: 366 - 46 - 52, y: 224 - up + grow)
+            knobLabel("Skip").offset(x: 366 - 42 - 60, y: 288 - up + grow)
 
             // Reaction keys
             LiveExtrasView(mode: .reactions)
                 .frame(width: 366)
-                .offset(x: 0, y: 312 - up)
+                .offset(x: 0, y: 312 - up + grow + air)
         }
         .frame(width: 366, height: ph, alignment: .topLeading)
         .offset(x: 12, y: 340)
@@ -655,30 +665,14 @@ struct HWDrawerSheet<Content: View>: View {
     var closedY: CGFloat = 722
     @ViewBuilder var content: () -> Content
     @GestureState private var drag: CGFloat = 0
-    @Environment(\.hwMode) private var mode
+    @Environment(\.hwMode) private var outerMode
     private let openY: CGFloat = 232
 
     var body: some View {
         let shape = UnevenRoundedRectangle(topLeadingRadius: open ? 22 : 20, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: open ? 22 : 20, style: .continuous)
         let y = min(max((open ? openY : closedY) + drag, openY), closedY)
         ZStack(alignment: .top) {
-            ZStack {
-                Color(hex: "0C0C0A")
-                if case .dark = mode {
-                    // Standard dark mode: black leather, like every other amp.
-                    HWTile(name: HWTex.leatherBlack)
-                    Color.black.opacity(0.6)
-                } else if case .album = mode {
-                    HWTile(name: HWTex.leatherGreen, opacity: 0.55)
-                    tint.opacity(0.78).blendMode(.color)
-                    Color.black.opacity(0.74)
-                } else {
-                    HWTile(name: HWTex.leatherGreen)
-                    tint.opacity(0.5).blendMode(.color)
-                    LinearGradient(colors: [.black.opacity(0.16), .black.opacity(0.30)], startPoint: .top, endPoint: .bottom)
-                }
-                LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.25)], startPoint: .top, endPoint: .bottom)
-            }
+            HWDrawerLeather(tint: tint)
             .clipShape(shape)
             .overlay(shape.strokeBorder(Color.black.opacity(0.5), lineWidth: 1))
             .shadow(color: .black.opacity(0.5), radius: 10, x: 0, y: -2)
@@ -692,6 +686,7 @@ struct HWDrawerSheet<Content: View>: View {
                     content()
                         .environment(\.colorScheme, .dark)
                         .environment(\.hwMode, .dark)
+                        .environment(\.hwLightKeys, outerMode.isLight)
                         .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 120)
                 }
                 .scrollIndicators(.hidden)
@@ -718,6 +713,85 @@ struct HWDrawerSheet<Content: View>: View {
         }
         .frame(width: 338, height: 844 - openY, alignment: .top)
         .offset(x: 26, y: y)
+        .animation(.spring(duration: 0.35), value: open)
+    }
+}
+
+/// The drawer's leather: black in standard dark, a dimmed cover tint in album mode, bright green otherwise.
+struct HWDrawerLeather: View {
+    var tint: Color
+    var body: some View {
+        // Black leather in every mode: the cream text on it keeps its contrast whatever the cover or theme.
+        ZStack {
+            Color(hex: "0C0C0A")
+            HWTile(name: HWTex.leatherBlack)
+            Color.black.opacity(0.6)
+            LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.25)], startPoint: .top, endPoint: .bottom)
+        }
+    }
+}
+
+/// Side drawer for the wide (open foldable) layout: a pull tab on the right edge that slides a leather panel out sideways.
+struct HWSideDrawer<Content: View>: View {
+    @Binding var open: Bool
+    var tint: Color
+    var size: CGSize
+    @ViewBuilder var content: () -> Content
+    @GestureState private var drag: CGFloat = 0
+    @Environment(\.hwMode) private var outerMode
+    private let tabW: CGFloat = 30
+    /// The strip down the right edge of a wide screen that the system keeps for the clock, status icons and floating tab bar.
+    private let safeStrip: CGFloat = 84
+
+    var body: some View {
+        let panelW = min(440, size.width * 0.86)
+        let closedX = panelW   // fully off screen; the tab pokes out left of the panel
+        let x = min(max((open ? 0 : closedX) + drag, 0), closedX)
+        let shape = UnevenRoundedRectangle(topLeadingRadius: 22, bottomLeadingRadius: 22, bottomTrailingRadius: 0, topTrailingRadius: 0, style: .continuous)
+        ZStack(alignment: .leading) {
+            HWDrawerLeather(tint: tint)
+                .clipShape(shape)
+                .overlay(shape.strokeBorder(Color.black.opacity(0.5), lineWidth: 1))
+                .shadow(color: .black.opacity(0.5), radius: 10, x: -2, y: 0)
+                .padding(.leading, tabW - 4)
+            // Pull tab, vertically in the upper middle so the corner tab bar and the home swipe stay clear.
+            VStack {
+                Image(systemName: open ? "chevron.right" : "chevron.left")
+                    .font(.system(size: 13, weight: .bold)).foregroundStyle(Color.hwCream.opacity(0.9))
+                    .frame(width: tabW, height: 160)
+                    .background(HWDrawerLeather(tint: tint).clipShape(UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 14, bottomTrailingRadius: 0, topTrailingRadius: 0, style: .continuous)))
+                    .overlay(UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 14, bottomTrailingRadius: 0, topTrailingRadius: 0, style: .continuous).strokeBorder(Color.black.opacity(0.5), lineWidth: 1))
+                    .contentShape(Rectangle())
+                    .onTapGesture { withAnimation(.spring(duration: 0.35)) { open.toggle() } }
+                    .padding(.top, size.height * 0.28)
+                Spacer(minLength: 0)
+            }
+            .frame(width: tabW)
+            ScrollView {
+                content()
+                    .environment(\.colorScheme, .dark)
+                    .environment(\.hwMode, .dark)
+                    .environment(\.hwLightKeys, outerMode.isLight)
+                    .padding(.leading, 14).padding(.trailing, safeStrip + 10).padding(.top, 40).padding(.bottom, 120)
+            }
+            .scrollIndicators(.hidden)
+            .foregroundStyle(Color.hwCream)
+            .padding(.leading, tabW + 4)
+            .allowsHitTesting(open)
+        }
+        .frame(width: panelW + tabW - 4, height: size.height - 28, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+        .padding(.vertical, 14)
+        .offset(x: x)
+        .gesture(
+            DragGesture(minimumDistance: 8, coordinateSpace: .global)
+                .updating($drag) { v, state, _ in state = v.translation.width }
+                .onEnded { v in
+                    withAnimation(.spring(duration: 0.35)) {
+                        if v.translation.width > 40 { open = false } else if v.translation.width < -40 { open = true }
+                    }
+                }
+        )
         .animation(.spring(duration: 0.35), value: open)
     }
 }

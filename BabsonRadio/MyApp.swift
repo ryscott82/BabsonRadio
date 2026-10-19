@@ -57,6 +57,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         bar.standardAppearance = standard
         bar.compactAppearance = standard
         bar.scrollEdgeAppearance = edge
+
+        // Barlow on bar buttons ("Done", "Sign Out") and tab labels, so no system font is left in the chrome.
+        let button = UIFont(name: "Barlow-SemiBold", size: 16) ?? .systemFont(ofSize: 16, weight: .semibold)
+        for state in [UIControl.State.normal, .highlighted, .disabled] {
+            UIBarButtonItem.appearance().setTitleTextAttributes([.font: button], for: state)
+        }
+        let tabLabel = UIFont(name: "Barlow-SemiBold", size: 10) ?? .systemFont(ofSize: 10, weight: .semibold)
+        UITabBarItem.appearance().setTitleTextAttributes([.font: tabLabel], for: .normal)
+        UITabBarItem.appearance().setTitleTextAttributes([.font: tabLabel], for: .selected)
     }
 
     var body: some Scene {

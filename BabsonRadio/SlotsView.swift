@@ -216,7 +216,7 @@ private struct SlotRequestRow: View {
 
             if canCancel {
                 Button("Cancel request", role: .destructive, action: onCancel)
-                    .font(.system(size: 13))
+                    .font(BRFont.body(13, .regular))
             }
         }
         .padding(16)
@@ -374,8 +374,8 @@ struct RequestSlotForm: View {
         NavigationStack {
             Form {
                 Section("About your show") {
-                    TextField("Title", text: $title)
-                    TextField("What's it about? A sentence or two", text: $details, axis: .vertical)
+                    TextField("", text: $title, prompt: Text("Title").foregroundColor(.brPlaceholder))
+                    TextField("", text: $details, axis: .vertical, prompt: Text("What's it about? A sentence or two").foregroundColor(.brPlaceholder))
                         .lineLimit(3...6)
                     Picker("Category", selection: $category) {
                         ForEach(Self.categories, id: \.self) { Text($0.capitalized).tag($0) }
@@ -384,7 +384,7 @@ struct RequestSlotForm: View {
                 .listRowBackground(HWFieldFill())
 
                 Section {
-                    TextField("Special requests or location (optional)", text: $location)
+                    TextField("", text: $location, prompt: Text("Special requests or location (optional)").foregroundColor(.brPlaceholder))
                 }
                 .listRowBackground(HWFieldFill())
 
@@ -410,7 +410,7 @@ struct RequestSlotForm: View {
                         }
                     }
                     Text("Shown to listeners if approved.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                        .font(BRFont.body(13, .regular)).foregroundStyle(Color.brSecondary)
                 }
                 .listRowBackground(HWFieldFill())
 
@@ -422,17 +422,17 @@ struct RequestSlotForm: View {
                     .pickerStyle(.segmented)
 
                     if type == "prerecorded" {
-                        TextField("Link to your audio (https://…)", text: $audioURL)
+                        TextField("", text: $audioURL, prompt: Text("Link to your audio (https://…)").foregroundColor(.brPlaceholder))
                             .keyboardType(.URL)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                         Text("Link to your recording.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .font(BRFont.body(13, .regular))
+                            .foregroundStyle(Color.brSecondary)
                     } else {
                         Text("We'll send connection details if approved.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .font(BRFont.body(13, .regular))
+                            .foregroundStyle(Color.brSecondary)
                     }
                 }
                 .listRowBackground(HWFieldFill())
@@ -447,12 +447,12 @@ struct RequestSlotForm: View {
                                 } label: {
                                     HStack(alignment: .top, spacing: 10) {
                                         Image(systemName: pubTicks.contains(i) ? "checkmark.square.fill" : "square")
-                                        Text(c).font(.footnote).multilineTextAlignment(.leading)
+                                        Text(c).font(BRFont.body(13, .regular)).multilineTextAlignment(.leading)
                                     }
                                 }
                                 .buttonStyle(.plain)
                             }
-                            TextField("Type your full name to sign", text: $pubName)
+                            TextField("", text: $pubName, prompt: Text("Type your full name to sign").foregroundColor(.brPlaceholder))
                                 .textInputAutocapitalization(.words).autocorrectionDisabled()
                         }
                     } footer: {
@@ -468,16 +468,16 @@ struct RequestSlotForm: View {
                         ForEach(Self.lengths, id: \.self) { Text("\($0) min").tag($0) }
                     }
                     Text("\(snappedStart.formatted(date: .abbreviated, time: .shortened)) – \(snappedEnd.formatted(date: .omitted, time: .shortened))")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .font(BRFont.body(13, .regular))
+                        .foregroundStyle(Color.brSecondary)
                     if let conflict {
                         Text("That overlaps \"\(conflict.title)\", which is already booked.")
-                            .font(.footnote)
+                            .font(BRFont.body(13, .regular))
                             .foregroundStyle(.red)
                     }
                     if tooSoon {
                         Text("Requests need 24 hours' notice.")
-                            .font(.footnote)
+                            .font(BRFont.body(13, .regular))
                             .foregroundStyle(.red)
                     }
                 }
@@ -604,7 +604,7 @@ struct GenreArt: View {
         ZStack {
             LinearGradient(colors: [pair.0, pair.1], startPoint: .topLeading, endPoint: .bottomTrailing)
             Text(String(title.trimmingCharacters(in: .whitespaces).prefix(1)).uppercased())
-                .font(BRFont.display(28)).foregroundColor(.brGold)
+                .font(BRFont.display(28)).foregroundColor(.brAccentText)
         }
     }
 }
@@ -780,7 +780,7 @@ struct ScheduleView: View {
             Button { move(1) } label: { Image(systemName: "chevron.right").frame(width: 34, height: 34) }
                 .disabled(!canForward)
             Button("Today") { first = today }
-                .font(.system(size: 13, weight: .semibold))
+                .font(BRFont.body(13, .semibold))
                 .disabled(first == today)
             Spacer()
             Text(rangeText).font(BRFont.display(13)).kerning(2)

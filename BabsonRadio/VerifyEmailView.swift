@@ -53,7 +53,7 @@ struct VerifyEmailView: View {
                 Button("Resend email") { auth.resendVerification() }
                 Button("Sign out") { auth.signOut() }
             }
-            .font(.system(size: 13))
+            .font(BRFont.body(13, .regular))
             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
 
             Spacer()

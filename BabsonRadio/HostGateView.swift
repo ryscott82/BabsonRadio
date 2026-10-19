@@ -270,7 +270,7 @@ struct AgreementsForm: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Sign by typing your full name").font(BRFont.body(12, .semibold)).foregroundColor(sub)
-                TextField("First Last", text: $name)
+                TextField("", text: $name, prompt: Text("First Last").foregroundColor(.brPlaceholder))
                     .textInputAutocapitalization(.words).autocorrectionDisabled()
                     .font(BRFont.body(16, .regular)).foregroundColor(text)
                     .padding(12)

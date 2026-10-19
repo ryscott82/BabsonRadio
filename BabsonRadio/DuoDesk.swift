@@ -34,22 +34,17 @@ private struct DuoCanvas<Content: View>: View {
     }
 }
 
-/// Letters carved into the wood: a dark floor that is deepest under the top edge, and a thin light line where the
-/// bottom edge catches the light. The grain shows through the carved part.
-private struct EtchedText: View {
+/// "Babson Radio" cut into the oak, always in a light brown: a dark sliver along the upper edge of each letter (the cut's shadow),
+/// the light brown floor, and a thin lit lip along the lower edge where the bevel catches the light. Same in light and dark mode.
+struct EtchedText: View {
     var text: String
     var size: CGFloat
-    @Environment(\.colorScheme) private var scheme
     var body: some View {
         let t = Text(text).font(BRFont.display(size)).tracking(2.5)
-        let night = scheme == .dark
         ZStack {
-            // On the dark oak the carved part is near black and the lit lower edge does most of the work.
-            t.foregroundStyle(Color(hex: "F7DDB3").opacity(night ? 0.42 : 0.55)).offset(y: night ? 1.6 : 1.3)
-            t.foregroundStyle(LinearGradient(colors: night ? [Color.black, Color(hex: "1C1008")] : [Color(hex: "180B03"), Color(hex: "5A3515")],
-                                             startPoint: .top, endPoint: .bottom))
-                .opacity(night ? 0.95 : 0.9)
-                .blendMode(.multiply)
+            t.foregroundStyle(Color(hex: "FFE9C4").opacity(0.5)).offset(y: 1.4)
+            t.foregroundStyle(Color(hex: "2A1505").opacity(0.85)).offset(y: -0.9)
+            t.foregroundStyle(LinearGradient(colors: [Color(hex: "D9B07A"), Color(hex: "C4955C")], startPoint: .top, endPoint: .bottom))
         }
         .lineLimit(1).minimumScaleFactor(0.6)
         .accessibilityRepresentation { Text(text) }
@@ -193,12 +188,12 @@ struct DuoLeftPage: View {
             // The amp is about 350 pt tall; the sleeve takes what is left (and never more than the width allows).
             let s = max(150, min((w - 24) / 1.27, 330, hc - 350 - 56))
             VStack(spacing: 0) {
-                artRow(s).padding(.leading, 12)
+                artRow(s)
                 Spacer(minLength: 10)
                 amp
             }
-            // The amp runs into the bottom left corner of the screen; its corner lines up with the phone's.
-            .padding(.leading, 0).padding(.trailing, 12).padding(.top, 24).padding(.bottom, 0)
+            // Room to breathe: the amp stays a little clear of the left edge and the bottom of the screen.
+            .padding(.leading, 16).padding(.trailing, 14).padding(.top, 24).padding(.bottom, 16)
         }
     }
 
@@ -329,7 +324,7 @@ struct DuoRightPage: View {
                     .frame(maxWidth: .infinity, minHeight: band, maxHeight: band, alignment: .center)
                     .padding(.horizontal, 24)
 
-                DuoAmp(height: h - band) {
+                DuoAmp(height: h - band - 16) {
                     VStack(spacing: 0) {
                         // Reaction keys (this one also keeps the live counts and star data loading).
                         LiveExtrasView(mode: .reactions).padding(.horizontal, -24)
@@ -348,7 +343,7 @@ struct DuoRightPage: View {
                         TunedInRow().padding(.top, 8)
                     }
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 14)
             }
         }
     }

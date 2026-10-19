@@ -35,6 +35,12 @@ struct BRFont {
 // MARK: - Brand Colors
 
 extension Color {
+    /// Colors that flip with light / dark on their own (for views that read no color scheme). All clear 4.5:1 on the ivory face (light)
+    /// and on black leather (dark).
+    static let brPlaceholder = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.659, green: 0.620, blue: 0.549, alpha: 1) : UIColor(red: 0.416, green: 0.384, blue: 0.325, alpha: 1) })
+    static let brSecondary = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.812, green: 0.769, blue: 0.682, alpha: 1) : UIColor(red: 0.341, green: 0.314, blue: 0.278, alpha: 1) })
+    /// Green text: deep green on the light face, bright green on black.
+    static let brAccentText = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.184, green: 0.714, blue: 0.486, alpha: 1) : UIColor(red: 0, green: 0.4, blue: 0.267, alpha: 1) })
     static let brGreen      = Color(hex: "006644")
     static let brGreenMid   = Color(hex: "007A50")
     static let brGold       = Color(hex: "2FB67C") // bright green accent (replaces the old yellow)
@@ -372,7 +378,7 @@ struct DesignedByCredit: View {
     @Environment(\.colorScheme) private var scheme
     var body: some View {
         Link("Ryan Edward Media Group", destination: URL(string: "https://ryanedwardmediagroup.com")!)
-            .font(.system(size: 12, weight: .medium))
+            .font(BRFont.body(12, .medium))
             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)

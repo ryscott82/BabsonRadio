@@ -224,8 +224,9 @@ struct HWKeyFace: View {
     var pressed: Bool = false
     var lit: Bool = false
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.hwLightKeys) private var lightKeys
     var body: some View {
-        let dark = scheme == .dark
+        let dark = scheme == .dark && !lightKeys
         let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)
         let edge = dark ? Color(hex: "0F0F0D") : Color(hex: "6F6D65")
         ZStack {
@@ -261,9 +262,10 @@ struct HWKeyStyle: ButtonStyle {
     var lit: Bool = false
     var height: CGFloat? = 38
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.hwLightKeys) private var lightKeys
     func makeBody(configuration: Configuration) -> some View {
         let down = configuration.isPressed || lit
-        let ink = scheme == .dark ? Color(hex: "EFE9D6") : Color(hex: "1A1710")
+        let ink = (scheme == .dark && !lightKeys) ? Color(hex: "EFE9D6") : Color(hex: "1A1710")
         configuration.label
             .font(BRFont.body(14, .semibold))
             .foregroundStyle(down ? Color.hwLED : ink)
@@ -289,9 +291,10 @@ struct HWKey<Content: View>: View {
     var corner: CGFloat = 10
     var height: CGFloat = 38
     @ViewBuilder var content: () -> Content
+    @Environment(\.hwLightKeys) private var lightKeys
     var body: some View {
         content()
-            .foregroundStyle(Color.hwCream)
+            .foregroundStyle(lightKeys ? Color(hex: "1A1710") : Color.hwCream)
             .frame(maxWidth: .infinity, minHeight: height)
             .background(HWKeyFace(corner: corner, pressed: lit, lit: lit))
     }
@@ -491,7 +494,7 @@ struct HWPanelTitle: View {
     var text: String
     var body: some View {
         Text(text)
-            .font(.system(size: 13, weight: .semibold))
+            .font(BRFont.body(13, .semibold))
             .foregroundStyle(Color.hwCream.opacity(0.78))
     }
 }
@@ -525,6 +528,30 @@ struct HWFieldFill: View {
 // ceramic face in light mode. Text always sits on the panel, never straight on the wood.
 
 private struct HWFlushBottomKey: EnvironmentKey { static let defaultValue = false }
+/// A sheet that draws one oak desk behind its whole navigation stack sets this, so pushed pages do not stack a second desk on top.
+private struct HWDeskProvidedKey: EnvironmentKey { static let defaultValue = false }
+extension EnvironmentValues {
+    var hwDeskProvided: Bool { get { self[HWDeskProvidedKey.self] } set { self[HWDeskProvidedKey.self] = newValue } }
+}
+
+private struct HWSheetStackModifier: ViewModifier {
+    @ObservedObject private var theme = ArtTheme.shared
+    func body(content: Content) -> some View {
+        content
+            .environment(\.hwDeskProvided, true)
+            .background(HWDesk(album: theme.albumOn ? theme.main.color : nil))
+    }
+}
+extension View {
+    /// For the NavigationStack at the root of a sheet: one fixed oak desk behind the whole stack, so pushed pages (and the sheet itself)
+    /// never stack a second desk and no seam shows while scrolling or pushing.
+    func hwSheetStack() -> some View { modifier(HWSheetStackModifier()) }
+}
+/// Set inside a black drawer opened in light mode: keys stay light aluminum with dark lettering even though the text around them is cream.
+private struct HWLightKeysKey: EnvironmentKey { static let defaultValue = false }
+extension EnvironmentValues {
+    var hwLightKeys: Bool { get { self[HWLightKeysKey.self] } set { self[HWLightKeysKey.self] = newValue } }
+}
 extension EnvironmentValues {
     /// True for the pages beside the player on an open foldable: the panel runs down to the bottom edge, like the player's amp.
     var hwFlushBottom: Bool { get { self[HWFlushBottomKey.self] } set { self[HWFlushBottomKey.self] = newValue } }
@@ -535,23 +562,36 @@ struct HWPageModifier: ViewModifier {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.hwGlobalDesk) private var globalDesk
     @Environment(\.isPresented) private var isPresented
+    @Environment(\.hwDeskProvided) private var deskProvided
     @ObservedObject private var theme = ArtTheme.shared
     func body(content: Content) -> some View {
         let m = HWMode.resolve(album: theme.albumOn ? theme.main.color : nil, scheme: scheme)
         let light = m.isLight
         let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
         ZStack {
-            if !(globalDesk && !isPresented) { HWDesk(album: theme.albumOn ? theme.main.color : nil) }
+            if !(deskProvided || (globalDesk && !isPresented)) { HWDesk(album: theme.albumOn ? theme.main.color : nil) }
             HWLeather(tint: m.leatherTint, corner: 22, stitch: true)
-                .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, flushBottom ? 0 : 8)
+                .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, flushBottom ? 16 : 8)
             content
                 .scrollContentBackground(.hidden)
                 .safeAreaPadding(EdgeInsets(top: light ? 14 : 4, leading: light ? 14 : 4, bottom: light ? 14 : 4, trailing: light ? 14 : 4))
                 .environment(\.hwMode, m)
+                .font(BRFont.body(16, .regular))
                 .textRenderer(HWInscribedText(light: light))
                 .clipShape(shape)
-                .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, flushBottom ? 0 : 8)
+                .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, flushBottom ? 16 : 8)
         }
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .modifier(HWNoTopEdgeBlur(active: flushBottom))
+    }
+}
+
+/// iOS 26 softens the top of every scroll view with a blur under the status bar. Beside the player on the open Duo that blur hangs
+/// over the oak and the clock strip, so it is switched off there.
+struct HWNoTopEdgeBlur: ViewModifier {
+    var active: Bool
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *), active { content.scrollEdgeEffectHidden(true, for: .top) } else { content }
     }
 }
 

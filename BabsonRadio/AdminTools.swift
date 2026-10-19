@@ -127,19 +127,19 @@ private struct DecideSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Text(req.title).font(.headline)
-                    Text("\(req.requesterName) · \(req.requesterEmail)").font(.footnote)
-                    Text("\(when(req.startAt)) · \(req.durationMin) min · \(req.category.capitalized)").font(.footnote)
+                    Text(req.title).font(BRFont.body(17, .semibold))
+                    Text("\(req.requesterName) · \(req.requesterEmail)").font(BRFont.body(13, .regular))
+                    Text("\(when(req.startAt)) · \(req.durationMin) min · \(req.category.capitalized)").font(BRFont.body(13, .regular))
                     Text(req.description)
-                    if !req.location.isEmpty { Text("Request: \(req.location)").font(.footnote) }
+                    if !req.location.isEmpty { Text("Request: \(req.location)").font(BRFont.body(13, .regular)) }
                     if !req.audioURL.isEmpty, let u = URL(string: req.audioURL) { Link("Listen to the audio", destination: u) }
-                    if req.makePublic { Text("They agreed to share recordings publicly.").font(.footnote) }
-                    if req.cleanHours { Text("Falls in clean hours.").font(.footnote).foregroundColor(.red) }
+                    if req.makePublic { Text("They agreed to share recordings publicly.").font(BRFont.body(13, .regular)) }
+                    if req.cleanHours { Text("Falls in clean hours.").font(BRFont.body(13, .regular)).foregroundColor(.red) }
                 }
                 .listRowBackground(HWFieldFill())
-                Section("Note to them (optional)") { TextField("Note", text: $note, axis: .vertical) }
+                Section("Note to them (optional)") { TextField("", text: $note, axis: .vertical, prompt: Text("Note").foregroundColor(.brPlaceholder)) }
                 .listRowBackground(HWFieldFill())
-                Section("Connection details (optional)") { TextField("Live stream login or instructions", text: $info, axis: .vertical) }
+                Section("Connection details (optional)") { TextField("", text: $info, axis: .vertical, prompt: Text("Live stream login or instructions").foregroundColor(.brPlaceholder)) }
                 .listRowBackground(HWFieldFill())
                 Section {
                     Button { go(true) } label: { Text(busy ? "One moment…" : "Approve").frame(maxWidth: .infinity) }.disabled(busy)
@@ -205,7 +205,7 @@ struct TrainingAdminView: View {
     var body: some View {
         Sheet(title: "Training") {
             if let e = model.error { Text(e).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
-            TextField("Find a student", text: $query)
+            TextField("", text: $query, prompt: Text("Find a student").foregroundColor(.brPlaceholder))
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .padding(12).background(HWFieldFill())
                 .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -268,8 +268,8 @@ struct AnnounceView: View {
     var body: some View {
         Sheet(title: "Announcement") {
             if let i = info { Text("\(i.phones) phone\(i.phones == 1 ? "" : "s") will get it.").font(BRFont.body(13, .regular)).foregroundColor(sub) }
-            TextField("Title", text: $title).padding(12).background(field).clipShape(RoundedRectangle(cornerRadius: 10))
-            TextField("Message", text: $body_, axis: .vertical).lineLimit(2...4)
+            TextField("", text: $title, prompt: Text("Title").foregroundColor(.brPlaceholder)).padding(12).background(field).clipShape(RoundedRectangle(cornerRadius: 10))
+            TextField("", text: $body_, axis: .vertical, prompt: Text("Message").foregroundColor(.brPlaceholder)).lineLimit(2...4)
                 .padding(12).background(field).clipShape(RoundedRectangle(cornerRadius: 10))
             if let m = message { Text(m).font(BRFont.body(13, .regular)).foregroundColor(accent) }
             Button { confirm = true } label: { Text(busy ? "Sending…" : "Send").frame(maxWidth: .infinity) }
@@ -337,11 +337,11 @@ struct UsersAdminView: View {
 
     var body: some View {
         Sheet(title: "People and roles") {
-            TextField("Find someone", text: $query)
+            TextField("", text: $query, prompt: Text("Find someone").foregroundColor(.brPlaceholder))
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .padding(12).background(HWFieldFill())
                 .clipShape(RoundedRectangle(cornerRadius: 10))
-            if let m = message { Text(m).font(BRFont.body(13, .regular)).foregroundColor(.brGold) }
+            if let m = message { Text(m).font(BRFont.body(13, .regular)).foregroundColor(.brAccentText) }
             if query.trimmingCharacters(in: .whitespaces).count < 2 { Text("Hosts and staff. Search to find anyone else.").font(BRFont.body(12, .regular)).foregroundColor(sub) }
             ForEach(found) { u in
                 HStack {

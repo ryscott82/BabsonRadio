@@ -144,7 +144,7 @@ struct SleepTimerRow: View {
                 if guardian.sleepEnd != nil { Button("Turn off", role: .destructive) { guardian.setSleep(nil) } }
             } label: {
                 Label(guardian.sleepEnd.map { "Sleep timer: stops at \($0.formatted(date: .omitted, time: .shortened))" } ?? "Sleep timer", systemImage: "moon.zzz")
-                    .font(.system(size: 12))
+                    .font(BRFont.body(12, .regular))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             }
         }

@@ -65,6 +65,8 @@ struct VotePanel: View {
     @State private var busy = false
 
     @Environment(\.hwMode) private var hwm
+    @Environment(\.hwLightKeys) private var lightKeys
+    private var keyInk: Color { lightKeys ? Color(hex: "1A1710") : text }
     private var text: Color { hwm.onPanelText }
     private var sub: Color { hwm.onPanelSub }
     @ObservedObject private var theme = ArtTheme.shared
@@ -93,13 +95,13 @@ struct VotePanel: View {
                         Button { vote(o.label) } label: {
                             ZStack(alignment: .leading) {
                                 GeometryReader { g in
-                                    Rectangle().fill(text.opacity(0.3))
+                                    Rectangle().fill(keyInk.opacity(0.3))
                                         .frame(width: g.size.width * CGFloat(mine ? 1 : min(1, Double(o.count) / Double(top))))
                                 }
                                 HStack {
-                                    Text(o.label).font(BRFont.body(14, mine ? .bold : .regular)).foregroundColor(text).lineLimit(1)
+                                    Text(o.label).font(BRFont.body(14, mine ? .bold : .regular)).foregroundColor(keyInk).lineLimit(1)
                                     Spacer(minLength: 4)
-                                    Text("\(o.count)").font(BRFont.body(14, .regular).monospacedDigit()).foregroundColor(text.opacity(0.78))
+                                    Text("\(o.count)").font(BRFont.body(14, .regular).monospacedDigit()).foregroundColor(keyInk.opacity(0.78))
                                 }
                                 .padding(.horizontal, 12)
                             }

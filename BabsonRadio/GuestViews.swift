@@ -81,7 +81,7 @@ struct GuestAuthView: View {
                 .padding(.top, 4)
 
                 Button("I have a Babson email") { dismiss() }
-                    .font(.system(size: 13)).foregroundColor(sub).padding(.top, 12)
+                    .font(BRFont.body(13, .regular)).foregroundColor(sub).padding(.top, 12)
                     .padding(.bottom, 40)
             }
         }
@@ -90,7 +90,7 @@ struct GuestAuthView: View {
     }
 
     private func link(_ title: String, _ action: @escaping () -> Void) -> some View {
-        Button(title, action: action).font(.system(size: 13, weight: .medium)).foregroundColor(accent)
+        Button(title, action: action).font(BRFont.body(13, .medium)).foregroundColor(accent)
     }
 
     private func switchTo(_ m: Mode) { auth.errorMessage = nil; auth.infoMessage = nil; mode = m }
@@ -190,7 +190,7 @@ struct GuestProfileView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Sign Out") { auth.signOut() }.font(.system(size: 13)).foregroundColor(sub)
+                    Button("Sign Out") { auth.signOut() }.font(BRFont.body(13, .regular)).foregroundColor(sub)
                 }
             }
         }
@@ -228,7 +228,7 @@ struct DeleteAccountButton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Button("Delete my account") { if auth.isAppleUser { confirmingApple = true } else { confirming = true } }
-                .font(.system(size: 13)).foregroundColor(.brRed)
+                .font(BRFont.body(13, .regular)).foregroundColor(.brRed)
         }
         .sheet(isPresented: $confirmingApple) {
             VStack(spacing: 16) {
@@ -242,7 +242,7 @@ struct DeleteAccountButton: View {
             .presentationDetents([.medium])
         }
         .alert("Delete your account?", isPresented: $confirming) {
-            SecureField("Password", text: $password)
+            SecureField("", text: $password, prompt: Text("Password").foregroundColor(.brPlaceholder))
             Button("Delete forever", role: .destructive) {
                 auth.deleteAccount(password: password); password = ""
             }

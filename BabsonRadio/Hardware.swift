@@ -137,6 +137,14 @@ struct HWCornerWear: View {
     var opacity: Double = 1
     var body: some View {
         ZStack {
+            // Very faint fine grain in the corners (light speckle on the leather), under the scuffs.
+            Group {
+                Image("hw_grain_c_tl").resizable().frame(width: size * 1.5, height: size * 1.5).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                Image("hw_grain_c_tr").resizable().frame(width: size * 1.5, height: size * 1.5).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                Image("hw_grain_c_bl").resizable().frame(width: size * 1.5, height: size * 1.5).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                Image("hw_grain_c_br").resizable().frame(width: size * 1.5, height: size * 1.5).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            }
+            .opacity(0.5)
             Image("hw_wear_c_tl").resizable().frame(width: size, height: size).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             Image("hw_wear_c_tr").resizable().frame(width: size, height: size).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
             Image("hw_wear_c_bl").resizable().frame(width: size, height: size).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)

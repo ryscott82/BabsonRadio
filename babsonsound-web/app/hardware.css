@@ -15,7 +15,9 @@
   --hw-leather: url(/hw/leather-green.jpg);
   --hw-leather-bg: #0b5a3d;
   /* Scuffs on the leather: wear in each corner only (no all-over scratch layer). */
-  --hw-wear: url(/hw/wear-c-tl.png) 0 0 / 240px 240px no-repeat, url(/hw/wear-c-tr.png) 100% 0 / 240px 240px no-repeat,
+  --hw-wear: url(/hw/grain-c-tl.png) 0 0 / 360px 360px no-repeat, url(/hw/grain-c-tr.png) 100% 0 / 360px 360px no-repeat,
+             url(/hw/grain-c-bl.png) 0 100% / 360px 360px no-repeat, url(/hw/grain-c-br.png) 100% 100% / 360px 360px no-repeat,
+             url(/hw/wear-c-tl.png) 0 0 / 240px 240px no-repeat, url(/hw/wear-c-tr.png) 100% 0 / 240px 240px no-repeat,
              url(/hw/wear-c-bl.png) 0 100% / 240px 240px no-repeat, url(/hw/wear-c-br.png) 100% 100% / 240px 240px no-repeat;
   --hw-face-bg: url(/hw/wear-face-soft.png) 0 0 / 420px auto, linear-gradient(rgba(242,244,242,.55), rgba(242,244,242,.55)), url(/hw/cface.jpg) center / cover, #F2F4F2; /* texture 30% fainter */
   --hw-face-blend: multiply;

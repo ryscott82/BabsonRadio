@@ -120,10 +120,10 @@ struct HWLeather: View {
                 HWTile(name: HWTex.leatherGreen, opacity: 0.55)
                 t.opacity(0.78).blendMode(.color)
                 // Album mode: still black leather, with only a hint of the cover's hue.
-                if case .album = mode { Color.black.opacity(0.62) }
+                if case .album = mode { Color.black.opacity(0.74) } else { Color.black.opacity(0.24) }
             } else {
                 HWTile(name: HWTex.leatherBlack)
-                Color.black.opacity(0.42)
+                Color.black.opacity(0.6)
             }
             HWTile(name: HWTex.wear, opacity: 0.35, blend: .multiply)
             LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.28)],

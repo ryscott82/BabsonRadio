@@ -585,6 +585,7 @@ struct HWDrawerSheet<Content: View>: View {
                 Color(hex: "0C0C0A")
                 HWTile(name: HWTex.leatherGreen, opacity: 0.55)
                 tint.opacity(0.8).blendMode(.color)
+                Color.black.opacity(0.24)
                 HWTile(name: HWTex.wear, opacity: 0.3, blend: .multiply)
                 LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.25)], startPoint: .top, endPoint: .bottom)
             }

@@ -99,7 +99,7 @@ struct HWCardSurface: View {
             if dark {
                 Color(hex: "0C0C0A")
                 HWTile(name: HWTex.leatherBlack)
-                Color.black.opacity(0.12)
+                Color.black.opacity(0.3)
                 LinearGradient(colors: [.white.opacity(0.08), .clear, .black.opacity(0.22)], startPoint: .top, endPoint: .bottom)
             } else {
                 Color(hex: "FBF8EF")

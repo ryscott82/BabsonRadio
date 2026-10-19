@@ -145,7 +145,7 @@ private struct SignedInProfileView: View {
                         .padding(.bottom, 24)
                 }
             }
-            .hwPage()
+            .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -175,7 +175,6 @@ private struct SignedInProfileView: View {
                 }
             }
         }
-        .hwSheetStack()
         // Single sheet — avoids SwiftUI crash from stacking two .sheet modifiers
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
@@ -1346,7 +1345,7 @@ struct HostPanelView: View {
     private func insight(_ s: HostStatus) -> HostInsight? { selected.flatMap { s.insights?[$0.id] } }
 
     private func field(_ placeholder: String, _ binding: Binding<String>, axis: Axis = .horizontal) -> some View {
-        TextField("", text: binding, axis: axis, prompt: Text(placeholder).foregroundColor(.brPlaceholder))
+        TextField("", text: binding, prompt: Text(placeholder).foregroundColor(.brPlaceholder), axis: axis)
             .font(BRFont.body(15, .regular)).foregroundColor(text)
             .padding(12)
             .background(HWFieldFill())

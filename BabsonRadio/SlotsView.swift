@@ -375,7 +375,7 @@ struct RequestSlotForm: View {
             Form {
                 Section("About your show") {
                     TextField("", text: $title, prompt: Text("Title").foregroundColor(.brPlaceholder))
-                    TextField("", text: $details, axis: .vertical, prompt: Text("What's it about? A sentence or two").foregroundColor(.brPlaceholder))
+                    TextField("", text: $details, prompt: Text("What's it about? A sentence or two").foregroundColor(.brPlaceholder), axis: .vertical)
                         .lineLimit(3...6)
                     Picker("Category", selection: $category) {
                         ForEach(Self.categories, id: \.self) { Text($0.capitalized).tag($0) }

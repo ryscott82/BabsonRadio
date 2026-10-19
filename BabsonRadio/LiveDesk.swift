@@ -286,46 +286,100 @@ struct HWOnAirLamp: View {
     @State private var level = LampLevel()
     @ObservedObject private var power = PowerState.shared
     @ObservedObject private var theme = ArtTheme.shared
+    @Environment(\.colorScheme) private var scheme
+    private static var brightness: Double {
+        let screen = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first?.screen
+        return Double(screen?.brightness ?? 0.5)
+    }
+    /// How many times brighter than white the screen can go at this moment (1 = no HDR room).
+    private static var headroom: Double {
+        let screen = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first?.screen
+        return Double(screen?.currentEDRHeadroom ?? 1)
+    }
+    /// Everything that changes from frame to frame, worked out in small typed steps (one big closure made the compiler give up).
+    private struct Look {
+        var lamp: Double
+        var glow: Double
+        var radius: CGFloat
+        var exposure: Double
+    }
+
+    /// How hard the music is hitting right now, 0...1. Real bass and level readings (the same ones the equalizer uses); if the audio tap
+    /// is not up yet, the song's tempo, then a steady 118 bpm, so it is never dead while music plays.
+    private func target(at date: Date) -> Double {
+        guard playing, !power.lowPower else { return 0 }
+        if let bands = AudioSpectrum.shared.snapshotFixed(at: date), bands.count >= 8 {
+            let bassSum: Float = bands[0..<8].reduce(0, +)
+            let allSum: Float = bands.reduce(0, +)
+            let bass: Double = Double(bassSum) / 8.0
+            let all: Double = Double(allSum) / Double(bands.count)
+            let v: Double = 0.65 * bass + 0.35 * all
+            let scaled: Double = min(1.0, max(0.0, (v - 0.12) / 0.6))
+            return pow(scaled, 1.2)
+        }
+        if let beat {
+            let angle: Double = 2.0 * Double.pi * beat.phase(at: date)
+            return pow(max(0.0, cos(angle)), 3.0)
+        }
+        let seconds: Double = date.timeIntervalSinceReferenceDate
+        let phase: Double = seconds * 2.0 * Double.pi * 118.0 / 60.0
+        return pow(max(0.0, sin(phase)), 3.0)
+    }
+
+    private func look(pulse: Double) -> Look {
+        let album: Bool = theme.albumOn
+        let low: Bool = power.lowPower
+        // Deep enough to read as a flicker in album-color mode; otherwise it only breathes a little. Low Power Mode holds it steady.
+        let lamp: Double = low ? 0.9 : (album ? 0.55 + 0.45 * pulse : 0.86 + 0.14 * pulse)
+        let glow: Double = low ? 0.5 : (album ? 0.7 * pulse : 0.55 + 0.15 * pulse)
+        let p: CGFloat = CGFloat(pulse)
+        let radius: CGFloat = low ? 5.0 : (album ? 2.0 + 4.0 * p : 5.0 + 1.5 * p)
+        // HDR brightness, dark mode only (the light amp never gets it): a little in standard dark so the sign pops, a lot on the beat in
+        // dark album-color mode. With the screen turned all the way up it takes everything the display can give. Never more than the
+        // screen can show right now (the headroom above white shrinks as brightness goes up). Off in Low Power Mode.
+        let hdrOn: Bool = scheme == .dark && !low
+        let ask: Double = album ? 1.8 + 1.6 * pulse : 1.35 + 0.15 * pulse
+        let room: Double = max(1.0, Self.headroom)
+        var exposure: Double = 1.0
+        if hdrOn { exposure = Self.brightness >= 0.98 ? room : min(ask, room) }
+        return Look(lamp: lamp, glow: glow, radius: radius, exposure: exposure)
+    }
+
+    /// The sign's red pushed past normal white-level brightness. `exposure` is a multiplier (2 = twice as bright); SwiftUI's
+    /// exposure adjustment works in stops, so it is converted. This is the one place to change if the HDR color API differs.
+    private static func hdrRed(opacity: Double, exposure: Double) -> Color {
+        let base = Color(red: 0.933, green: 0.227, blue: 0.133).opacity(opacity)
+        guard exposure > 1.001 else { return base }
+        if #available(iOS 26.0, *) { return base.exposureAdjust(log2(exposure)) }
+        return base
+    }
+
+    private func sign(_ l: Look) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 4, style: .continuous)
+        let red = Self.hdrRed(opacity: l.lamp, exposure: l.exposure)
+        let halo = Self.hdrRed(opacity: l.glow, exposure: l.exposure)
+        return Text("ON AIR")
+            .font(.custom("BarlowCondensed-Bold", size: 28))
+            .tracking(0.8)
+            .foregroundStyle(red)
+            .shadow(color: halo, radius: l.radius)
+            .frame(width: 94, height: 33)
+            .background(
+                ZStack {
+                    LinearGradient(colors: [Color(hex: "0B0B0A"), Color(hex: "030303")], startPoint: .top, endPoint: .bottom)
+                    HWTile(name: HWTex.glass, opacity: 0.55)
+                    LinearGradient(stops: [.init(color: .white.opacity(0.12), location: 0), .init(color: .white.opacity(0.12), location: 0.3), .init(color: .clear, location: 0.3)],
+                                   startPoint: UnitPoint(x: 0, y: 0.3), endPoint: UnitPoint(x: 1, y: 0.7))
+                }.clipShape(shape)
+            )
+            .overlay(shape.strokeBorder(Color.black, lineWidth: 1.5))
+            .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 3)
+    }
+
     var body: some View {
-        // Follows the music live: the same real bass and level readings the equalizer uses. If the audio tap is not up yet,
-        // it falls back to the song's tempo, then to a steady 118 bpm, so it is never dead while music plays.
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: power.lowPower)) { tl in
-            let t = tl.date.timeIntervalSinceReferenceDate
-            let target: Double = {
-                guard playing, !power.lowPower else { return 0 }
-                if let bands = AudioSpectrum.shared.snapshotFixed(at: tl.date), bands.count >= 8 {
-                    let bass = Double(bands[0..<8].reduce(0, +)) / 8
-                    let all = Double(bands.reduce(0, +)) / Double(bands.count)
-                    let v = 0.65 * bass + 0.35 * all
-                    return pow(min(1, max(0, (v - 0.12) / 0.6)), 1.2)
-                }
-                if let beat { return pow(max(0, cos(2 * .pi * beat.phase(at: tl.date))), 3) }
-                return pow(max(0, sin(t * 2 * .pi * 118 / 60)), 3)
-            }()
-            let pulse = level.step(target: target, at: tl.date)
-            // Deep enough to read as a flicker: dim between beats, full on the beat.
-            // Only in album-color mode does it flicker properly; otherwise it just breathes a little. Low Power Mode holds it steady.
-            let album = theme.albumOn
-            let lamp = power.lowPower ? 0.9 : (album ? 0.55 + 0.45 * pulse : 0.86 + 0.14 * pulse)       // outside album mode: bright, with only a small beat
-            let glow = power.lowPower ? 0.5 : (album ? 0.7 * pulse : 0.55 + 0.15 * pulse)
-            let radius: CGFloat = power.lowPower ? 5 : (album ? 2 + 4 * pulse : 5 + 1.5 * pulse)
-            let shape = RoundedRectangle(cornerRadius: 4, style: .continuous)
-            Text("ON AIR")
-                .font(.custom("BarlowCondensed-Bold", size: 28))
-                .tracking(0.8)
-                .foregroundStyle(Color(hex: "EE3A22").opacity(lamp))
-                .shadow(color: Color(hex: "EE3A22").opacity(glow), radius: radius)
-                .frame(width: 94, height: 33)
-                .background(
-                    ZStack {
-                        LinearGradient(colors: [Color(hex: "0B0B0A"), Color(hex: "030303")], startPoint: .top, endPoint: .bottom)
-                        HWTile(name: HWTex.glass, opacity: 0.55)
-                        LinearGradient(stops: [.init(color: .white.opacity(0.12), location: 0), .init(color: .white.opacity(0.12), location: 0.3), .init(color: .clear, location: 0.3)],
-                                       startPoint: UnitPoint(x: 0, y: 0.3), endPoint: UnitPoint(x: 1, y: 0.7))
-                    }.clipShape(shape)
-                )
-                .overlay(shape.strokeBorder(Color.black, lineWidth: 1.5))
-                .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 3)
+            let pulse: Double = level.step(target: target(at: tl.date), at: tl.date)
+            sign(look(pulse: pulse))
         }
         .accessibilityLabel("On air")
     }
@@ -447,21 +501,24 @@ struct PhoneLiveDesk<Drawer: View>: View {
 
     var body: some View {
         GeometryReader { geo in
-            // Closed foldable: the room above the art and the room between the amp and the drawer are the same (`gap`),
-            // and the amp is a little taller so the reaction keys have air below them.
+            // Closed foldable: three equal gaps. Screen top to the cover, the cover to the amp, and the amp to the bottom of the screen.
+            // The amp takes whatever height is left, so the three stay equal whatever the screen's shape.
             let wide = isWide(geo.size)
-            // The space above the art keeps its size; the amp grows to fill what used to be a wide gap under it, leaving a slim one.
-            let topGap: CGFloat = wide ? 40 + panelUp / 2 : 0
-            let gap: CGFloat = wide ? 16 : 0
-            let ex: CGFloat = wide ? 18 + (topGap - gap) : 0
-            let ampBottom: CGFloat = 340 + 380 + ex - panelUp
-            let shift: CGFloat = wide ? max(0, 60 - topGap) : 0
-            let W: CGFloat = 390, H: CGFloat = wide ? ampBottom + gap + 34 : 844, full: CGFloat = 844
+            let G: CGFloat = wide ? 26 : 0
+            let coverTop: CGFloat = 56, coverBottom: CGFloat = 331      // the tilted sleeve's extent on the 844 pt desk
+            let shift: CGFloat = wide ? max(0, coverTop - G) : 0
+            let panelDY: CGFloat = wide ? (coverBottom + G) - 340 : 0
+            let baseAmpBottom: CGFloat = 340 + panelDY + 380 - panelUp
+            let W: CGFloat = 390, full: CGFloat = 844
             let availW = geo.size.width - rightReserve(geo.size)
-            let k = min(availW / W, geo.size.height / (H - shift))
+            let kW = availW / W
+            let ex: CGFloat = wide ? min(110, max(0, geo.size.height / kW + shift - G - baseAmpBottom)) : 0
+            let ampBottom: CGFloat = baseAmpBottom + ex
+            let H: CGFloat = wide ? ampBottom + G : 844
+            let k = min(kW, geo.size.height / (H - shift))
             ZStack(alignment: .topLeading) {
                 HWDesk(album: album ? theme.main.color : nil)
-                canvas(extra: ex, wideLip: wide ? ampBottom + gap : nil)
+                canvas(extra: ex, wideLip: wide ? ampBottom : nil, panelDY: panelDY)
                     .frame(width: W, height: full, alignment: .topLeading)
                     .offset(y: -shift)
                     .scaleEffect(k, anchor: .topLeading)
@@ -497,7 +554,7 @@ struct PhoneLiveDesk<Drawer: View>: View {
     }
 
     // The 390 x 844 desk.
-    private func canvas(extra: CGFloat, wideLip: CGFloat?) -> some View {
+    private func canvas(extra: CGFloat, wideLip: CGFloat?, panelDY: CGFloat = 0) -> some View {
         ZStack(alignment: .topLeading) {
             Color.clear.frame(width: 390, height: 844)
 
@@ -537,7 +594,7 @@ struct PhoneLiveDesk<Drawer: View>: View {
                     .offset(x: 30, y: 292)
             }
 
-            panel(extra: extra)
+            panel(extra: extra, dy: panelDY)
 
             // Drawer lip and sheet.
             if wideLip == nil {
@@ -547,7 +604,7 @@ struct PhoneLiveDesk<Drawer: View>: View {
         .animation(.easeInOut(duration: 0.25), value: onAir)
     }
 
-    private func panel(extra: CGFloat) -> some View {
+    private func panel(extra: CGFloat, dy: CGFloat = 0) -> some View {
         let up = panelUp
         let ph = 380 - up + extra
         return ZStack(alignment: .topLeading) {
@@ -614,7 +671,7 @@ struct PhoneLiveDesk<Drawer: View>: View {
                 .offset(x: 0, y: 312 - up + grow + air)
         }
         .frame(width: 366, height: ph, alignment: .topLeading)
-        .offset(x: 12, y: 340)
+        .offset(x: 12, y: 340 + dy)
         .animation(.easeInOut(duration: 0.2), value: up)
     }
 

@@ -229,7 +229,7 @@ struct AdminView: View {
             }
             Text("Message to everyone").font(BRFont.body(12, .semibold)).foregroundColor(sub).padding(.top, 6)
             if let a = model.dash?.announcement { Text("Live now: \(a.text)").font(BRFont.body(13, .regular)).foregroundColor(accent) }
-            TextField("", text: $announce, axis: .vertical, prompt: Text("Shows on every page of the site and in the app").foregroundColor(.brPlaceholder))
+            TextField("", text: $announce, prompt: Text("Shows on every page of the site and in the app").foregroundColor(.brPlaceholder), axis: .vertical)
                 .lineLimit(2...4).textFieldStyle(.roundedBorder)
             HStack {
                 Picker("How long", selection: $minutes) {

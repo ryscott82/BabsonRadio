@@ -137,9 +137,9 @@ private struct DecideSheet: View {
                     if req.cleanHours { Text("Falls in clean hours.").font(BRFont.body(13, .regular)).foregroundColor(.red) }
                 }
                 .listRowBackground(HWFieldFill())
-                Section("Note to them (optional)") { TextField("", text: $note, axis: .vertical, prompt: Text("Note").foregroundColor(.brPlaceholder)) }
+                Section("Note to them (optional)") { TextField("", text: $note, prompt: Text("Note").foregroundColor(.brPlaceholder), axis: .vertical) }
                 .listRowBackground(HWFieldFill())
-                Section("Connection details (optional)") { TextField("", text: $info, axis: .vertical, prompt: Text("Live stream login or instructions").foregroundColor(.brPlaceholder)) }
+                Section("Connection details (optional)") { TextField("", text: $info, prompt: Text("Live stream login or instructions").foregroundColor(.brPlaceholder), axis: .vertical) }
                 .listRowBackground(HWFieldFill())
                 Section {
                     Button { go(true) } label: { Text(busy ? "One moment…" : "Approve").frame(maxWidth: .infinity) }.disabled(busy)
@@ -269,7 +269,7 @@ struct AnnounceView: View {
         Sheet(title: "Announcement") {
             if let i = info { Text("\(i.phones) phone\(i.phones == 1 ? "" : "s") will get it.").font(BRFont.body(13, .regular)).foregroundColor(sub) }
             TextField("", text: $title, prompt: Text("Title").foregroundColor(.brPlaceholder)).padding(12).background(field).clipShape(RoundedRectangle(cornerRadius: 10))
-            TextField("", text: $body_, axis: .vertical, prompt: Text("Message").foregroundColor(.brPlaceholder)).lineLimit(2...4)
+            TextField("", text: $body_, prompt: Text("Message").foregroundColor(.brPlaceholder), axis: .vertical).lineLimit(2...4)
                 .padding(12).background(field).clipShape(RoundedRectangle(cornerRadius: 10))
             if let m = message { Text(m).font(BRFont.body(13, .regular)).foregroundColor(accent) }
             Button { confirm = true } label: { Text(busy ? "Sending…" : "Send").frame(maxWidth: .infinity) }

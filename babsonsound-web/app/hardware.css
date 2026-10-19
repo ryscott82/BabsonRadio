@@ -213,6 +213,9 @@ body:has(.hw-stage) { transition: background-color .4s; }
   color: #EE3A22; text-shadow: 0 0 5px rgba(238,58,34,.7), 0 0 14px rgba(238,58,34,.38);
 }
 @media (min-width: 1280px) { .hw-sign > span { font-size: 2.4rem; padding: 3px 18px 4px calc(18px + .03em); } }
+/* Full-screen board: the stage is about 1920 wide, so the sign is scaled up to read from across a room. */
+.hw-board .hw-sign { left: -34px; top: -34px; padding: 7px; border-radius: 12px; box-shadow: 0 0 0 2px #4A4A44, 0 8px 16px rgba(24,16,8,.55); }
+.hw-board .hw-sign > span { font-size: 104px; padding: 6px 38px 8px calc(38px + .03em); border-radius: 8px; }
 .hw-sign > span[data-fl] { opacity: calc(.9 + .1 * var(--fl, 0)); text-shadow: 0 0 calc(4px + 3px * var(--fl, 0)) rgba(238,58,34,calc(.55 + .25 * var(--fl, 0))), 0 0 calc(11px + 5px * var(--fl, 0)) rgba(238,58,34,calc(.3 + .14 * var(--fl, 0))); }
 
 /* ── Amp internals ───────────────────────────────────────────── */

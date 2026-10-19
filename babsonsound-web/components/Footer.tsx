@@ -18,7 +18,7 @@ export default function Footer() {
         </p>
         <nav className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <a href={LINKS.interest} {...ext} className={link}>Interest form</a>
-          <a href={LINKS.about} {...ext} className={link}>About us</a>
+          <a href="/about" className={link}>About us</a>
           <a href={LINKS.events} {...ext} className={link}>Events</a>
           <a href={LINKS.join} {...ext} className={link}>Join Babson Sound</a>
           <a href="/privacy" className={link}>Privacy</a>

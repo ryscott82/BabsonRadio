@@ -80,6 +80,18 @@ export function useNowPlaying(everyMs = 12_000): NowPlaying | null {
     return () => timers.forEach(clearTimeout)
   }, [track])
 
+  // No cover, but one was showing a little while ago: it's on its way. Keep asking every 1.5 s (up to 2 minutes) until it lands.
+  const lastArtAt = useRef(0)
+  const noArt = !!np && !np.art && !np.showOnly
+  const hasArt = !!np?.art
+  useEffect(() => { if (hasArt) lastArtAt.current = Date.now() }, [hasArt])
+  useEffect(() => {
+    if (!noArt || Date.now() - lastArtAt.current > 15 * 60_000 || !lastArtAt.current) return
+    const stop = Date.now() + 120_000
+    const t = setInterval(() => { if (Date.now() > stop) clearInterval(t); else load.current(true) }, 1_500)
+    return () => clearInterval(t)
+  }, [noArt, track])
+
   const checkedKey = useRef('')
   const swappedKey = useRef('')
   // 2 s after a track has finished, check for the next one's cover (the title swap itself waits for the stream delay, below).

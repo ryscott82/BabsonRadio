@@ -35,7 +35,9 @@ export default function ArtTheme({ className, children }: { className?: string; 
   const coverPalette = useArtPalette(np?.art || undefined)
   const [test, setTest] = useState({ on: false, preset: '' })
   useEffect(() => { const sync = () => setTest(getArtTest()); sync(); return onPartyChange(sync) }, [])
-  const palette = test.on && ART_PRESETS[test.preset] ? ART_PRESETS[test.preset].colors : coverPalette
+  // With no cover at all (auto DJ gap, missing art) the desk and visualizer still show, in a warm brass instead of nothing.
+  const NO_ART = ['#B8903E', '#9C7A32', '#7A5C2A']
+  const palette = test.on && ART_PRESETS[test.preset] ? ART_PRESETS[test.preset].colors : (!np?.art && !coverPalette.length ? NO_ART : coverPalette)
   const [timerReady, setReady] = useState(false)
   const ready = timerReady || test.on
   const night = useParty().party

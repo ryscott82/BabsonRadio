@@ -17,6 +17,8 @@ export const metadata: Metadata = {
     siteName: 'Babson Radio',
   },
   twitter: { card: 'summary_large_image' },
+  // Pinterest's "Save" button and extension honor this opt-out on every page.
+  other: { pinterest: 'nopin', 'pinterest-rich-pin': 'false' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

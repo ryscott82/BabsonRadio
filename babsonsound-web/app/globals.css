@@ -389,3 +389,6 @@ body::before {
 /* First switch to the cover colors is instant (see ArtTheme); later changes glide. */
 html[data-art-snap], html[data-art-snap] .art-ui, html[data-art-snap] .art-desk { transition-duration: 0s !important; }
 html[data-art-snap] .art-desk { transition: opacity 1s ease !important; }
+
+/* Pinterest extension overlays (a request from the page can't remove the extension, but this hides its hover button if it appears anyway). */
+span[data-pin-log], [data-pinterest-extension-installed] ~ span[style*="z-index"][data-pin-id], .PIN_BUTTON, [class^="PIN_"] { display: none !important; }

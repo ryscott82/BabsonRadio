@@ -22,7 +22,7 @@ export function probeCors(url: string): Promise<boolean> {
 
 interface Tap { ctx: AudioContext; an: AnalyserNode; data: Uint8Array<ArrayBuffer>; direct: GainNode; dry: GainNode; drive: GainNode; wet: GainNode; ex: GainNode; low: BiquadFilterNode; air: BiquadFilterNode; comp: DynamicsCompressorNode }
 /** The sound is held back this long before the speakers while the analyser hears it right away, so the lights line up with what you hear. */
-export const AUDIO_DELAY_MS = 200
+export const AUDIO_DELAY_MS = 216
 
 const taps = new WeakMap<HTMLAudioElement, Tap>()
 let current: Tap | null = null
@@ -353,8 +353,10 @@ export function makeShaper(n: number) {
  * Drives the LED bars inside `ref` (children <i>) while `playing`: sets --lv (lit height, snapped to whole segments)
  * and --pk (peak cap) on each, and marks the container data-real="true" once real audio is flowing.
  */
-// White peak caps: they stay put for a few seconds after a hit, then sink slowly (segments per millisecond).
+// (Peak values are still tracked, but no longer drawn.) They stay put for a few seconds after a hit, then sink slowly (segments per millisecond).
 const PEAK_HOLD_MS = 2500, PEAK_FALL_PER_MS = 0.004
+/** How long the top red light stays lit after a column hits the top. */
+const TOP_HOLD_MS = 1000
 const ledLast = new WeakMap<HTMLElement, { lv: number[]; pk: number[] }>()
 /** True on a low or draining battery (Chrome and Android report it; Safari does not, so iPhones fall back to the reduced-motion setting). */
 let lowBattery = false
@@ -390,7 +392,7 @@ export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: bool
       return () => cancelAnimationFrame(raf)
     }
     const N = bars.length
-    const lv = new Array<number>(N).fill(0), pk = new Array<number>(N).fill(0), hold = new Array<number>(N).fill(0)
+    const lv = new Array<number>(N).fill(0), pk = new Array<number>(N).fill(0), hold = new Array<number>(N).fill(0), top = new Array<number>(N).fill(0)
     const eq = createIosEq(N)
     let raf = 0, quiet = 0
     let lastT = performance.now()
@@ -404,17 +406,17 @@ export function useLedSpectrum(ref: RefObject<HTMLElement | null>, playing: bool
       if (!lvls) { quiet++; if (quiet > 180) box.dataset.real = 'false'; if (quiet <= 4) return; lv.fill(0) } // silence: let the bars fall to the floor
       else { quiet = 0; box.dataset.real = 'true' }
       const shown = lvls ? lvls.map(meterKnee) : lv
-      // The red top cap means real clipping risk: the song itself within about 2 dB of full scale (its loudest hits), or the volume knob boosting it there.
-      const hot = streamPeak() * Math.pow(10, boostDb / 20) >= 0.8
       for (let i = 0; i < N; i++) {
         const segs = Math.round(shown[i] * segments)
         if (segs >= pk[i]) { pk[i] = segs; hold[i] = PEAK_HOLD_MS } else if ((hold[i] -= dt) <= 0) pk[i] = Math.max(0, pk[i] - dt * PEAK_FALL_PER_MS)
         bars[i].style.setProperty('--lv', String(segs / segments))
         bars[i].style.setProperty('--pk', String(Math.min(segments, Math.round(pk[i])) / segments))
-        bars[i].dataset.hot = hot && pk[i] >= segments - 1 ? '1' : '0'
+        // No white peak caps. When a column reaches the top, its top (red) light stays lit for a second after.
+        if (segs >= segments) top[i] = TOP_HOLD_MS; else top[i] = Math.max(0, top[i] - dt)
+        bars[i].dataset.hot = top[i] > 0 ? '1' : '0'
         // The glow takes the color of the bar's highest lit light (green, then yellow, then red), like the lamps themselves.
-        const top = segs / segments
-        bars[i].style.setProperty('--glow', top > 0.86 ? 'var(--eq-r)' : top > 0.57 ? 'var(--eq-y)' : 'var(--eq-g)')
+        const frac = segs / segments
+        bars[i].style.setProperty('--glow', frac > 0.86 || top[i] > 0 ? 'var(--eq-r)' : frac > 0.57 ? 'var(--eq-y)' : 'var(--eq-g)')
       }
       ledLast.set(box, { lv: bars.map(b => parseFloat(b.style.getPropertyValue('--lv')) || 0), pk: bars.map(b => parseFloat(b.style.getPropertyValue('--pk')) || 0) })
     }

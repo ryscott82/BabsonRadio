@@ -10,13 +10,14 @@ import { apiGet } from '@/lib/auth'
 import ThemeToggle from './ThemeToggle'
 import { LINKS } from '@/lib/links'
 
-// Five links in the bar. Everything else (profile, requesting a spot, host panel, admin) lives in the profile menu.
+// Six links in the bar. Everything else (profile, requesting a spot, host panel, admin) lives in the profile menu.
 const NAV_LINKS = [
   { href: '/', label: 'Live' },
   { href: '/schedule', label: 'Schedule' },
   { href: '/library', label: 'Library' },
   { href: '/browse', label: 'Search' },
   { href: '/submit', label: 'Suggest' },
+  { href: '/about', label: 'About' },
 ]
 
 export default function Nav() {

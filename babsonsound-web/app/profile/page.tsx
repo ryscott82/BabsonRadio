@@ -9,7 +9,7 @@ import MyRatings from '@/components/MyRatings'
 import { api, apiGet, deleteMyAccount, signOut } from '@/lib/auth'
 import { Card, ErrorText, Field, GhostButton, PrimaryButton, formatPhone } from '@/components/AuthUI'
 import Avatar from '@/components/Avatar'
-import { AVATAR_COLORS } from '@/lib/profile'
+import { AVATAR_COLORS, discStyle } from '@/lib/profile'
 
 function ReportForm() {
   const [type, setType] = useState<'bug' | 'feature'>('bug')
@@ -252,7 +252,7 @@ export default function ProfilePage() {
             <div className="flex flex-wrap justify-center gap-3 pt-3 pb-1" role="radiogroup" aria-label="Profile color">
               {AVATAR_COLORS.map(c => (
                 <button key={c.id} type="button" role="radio" aria-checked={me?.avatarColor === c.id} aria-label={c.id} onClick={() => pickColor(c.id)}
-                        className={`h-8 w-8 rounded-full ${me?.avatarColor === c.id ? 'ring-2 ring-offset-2 ring-br-gold ring-offset-br-dk-bg' : ''}`} style={{ background: c.hex }} />
+                        className={`hw-disc h-8 w-8 ${me?.avatarColor === c.id ? 'outline outline-2 outline-offset-2 outline-br-gold' : ''}`} style={discStyle(c.hex)} />
               ))}
             </div>
           )}

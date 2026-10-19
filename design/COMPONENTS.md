@@ -29,7 +29,7 @@ Used on the home/live page. Mockups: the Babson Radio design canvas (Web*, Duo*,
 | `.hw-title` `.hw-sub` | Barlow Condensed title (one line, ellipsis), Barlow secondary text |
 | `.hw-prog` `.hw-well` `.hw-eq` | Progress slot, recessed equalizer well, animated bars (static when paused) |
 | `.sk-btn.hw-knob` | Steel play knob, pushed in while playing |
-| `.hw-key`, `.hw-keys` | Steel key; `aria-pressed="true"` = pushed in (sleep timer Off/15/30/60) |
+| `.hw-key`, `.hw-keys` | Steel key; `aria-pressed="true"` = pushed in |
 
 Not done yet on web: album-art mode hue-shift of leather/wood, per-corner random cap wear, grainy stars, volume knob, schedule card on the live page.
 Listeners cannot send feedback to hosts: the end-of-show comment box was removed from `LiveExtras.tsx`; stars remain.

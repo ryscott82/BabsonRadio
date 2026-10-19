@@ -60,7 +60,6 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   const subline = onAir && np?.showTitle && !np.showOnly
     ? `${np.showTitle}${np.streamer ? ` with ${np.streamer}` : ''}`
     : (np?.artist || 'Babson Radio')
-  const [sleepMin, setSleepMin] = useState<number | null>(null)
   // Knob travel: 0..75% is the element volume (0 to 100%); past 75% adds up to +6 dB of boost with a soft clipper (needs a stream that allows Web Audio).
   const UNITY = 0.75, MAX_DB = 6
   const [volume, setVolume] = useState(0.64)
@@ -133,9 +132,6 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   // Progress between polls: elapsed at the time of the last poll plus the seconds since.
   const pct = np && np.duration > 0
     ? Math.min(100, ((np.elapsed + Math.max(0, clock - np.receivedAt) / 1000) / np.duration) * 100) : 0
-
-  const sleepLeft = guard.sleepAt && clock > 0 ? Math.max(1, Math.ceil((guard.sleepAt - clock) / 60_000)) : 0
-  const sleepActive = guard.sleepAt ? (sleepMin ?? 60) : 0
 
   // Stop immediately if access lapses (sign-out).
   useEffect(() => {
@@ -348,22 +344,6 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
               {groups.slice(0, 3).map(g => <li key={g.text}>{g.text}</li>)}
             </ul>
           )}
-
-          {/* Sleep timer: a slim row of raised keys, the active one pushed in */}
-          <div className="flex items-center gap-3 mt-4">
-            <span className="text-xs font-semibold text-br-dk-text shrink-0">Sleep timer</span>
-            <div className="hw-keys flex-1 max-w-[16rem]" role="group" aria-label="Sleep timer">
-              {[0, 15, 30, 60].map(m => (
-                <button key={m} type="button" disabled={!isPlaying || !user}
-                        aria-pressed={sleepActive === m}
-                        onClick={() => { setSleepMin(m || null); guard.setSleep(m || null) }}
-                        className="sk-key !h-8 !text-xs">
-                  {m === 0 ? 'Off' : m}
-                </button>
-              ))}
-            </div>
-            <span className="hw-sub text-xs" role="status">{sleepLeft ? `Stops in ${sleepLeft} min` : ''}</span>
-          </div>
         </div>
       </div>
       {guard.elsewhere && (

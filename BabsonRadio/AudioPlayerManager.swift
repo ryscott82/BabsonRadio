@@ -298,9 +298,23 @@ class AudioPlayerManager: ObservableObject {
         if pollUsers == 0 && !isPlaying { pollTask?.cancel(); pollTask = nil }
     }
 
+    /// How long a newly shown song stays put before another change is accepted.
+    private let holdSeconds: TimeInterval = 8
+    private var holdUntil = Date.distantPast
+
+    /// Lets the next poll through at once, for when someone has just asked for a skip.
+    func releaseHold() { holdUntil = .distantPast }
+
     func refreshNowPlaying() async {
         guard let np: NowPlayingInfo = try? await BackendAPI.get("/api/nowplaying"), np.configured else { return }
         let changed = np.title != nowPlaying?.title || np.artist != nowPlaying?.artist
+        // A new song, once shown, holds for a few seconds. The server and the stream settle at different moments, so a poll right
+        // after a change can briefly report the old song (or nothing) again; showing that makes the title and cover flicker back and forth.
+        // A song that started later than the one on screen is a real change (a skip by a host, an auto-DJ move), so it goes straight
+        // through; only a change that looks like the old song coming back, or one with no start time, is held.
+        let newer = (np.playedAt ?? 0) > (nowPlaying?.playedAt ?? 0) + 1
+        if changed, nowPlaying != nil, Date() < holdUntil, !newer { return }
+        if changed { holdUntil = Date().addingTimeInterval(holdSeconds) }
         nowPlaying = np
         ArtTheme.shared.colorChanging = np.colorChanging == true
         beatClock = Self.makeBeatClock(np, delay: beatDelay)
@@ -354,6 +368,7 @@ class AudioPlayerManager: ObservableObject {
         guard var cur = nowPlaying, cur.title == old.title, let next = cur.next else { return }
         cur.title = next.title; cur.artist = next.artist; cur.elapsed = 0; cur.duration = 0; cur.next = nil
         nowPlaying = cur
+        holdUntil = Date().addingTimeInterval(holdSeconds)
         nowPlayingTitle = next.title
         nowPlayingSubtitle = next.artist
         updateNowPlayingInfo()

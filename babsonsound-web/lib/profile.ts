@@ -21,12 +21,22 @@ export type AvatarColorId = (typeof AVATAR_COLORS)[number]['id']
 export const DEFAULT_AVATAR: AvatarColorId = 'babson-green'
 export const avatarHex = (id: string | undefined) => AVATAR_COLORS.find(c => c.id === id)?.hex ?? AVATAR_COLORS[0].hex
 
-/** Letter color on a profile circle: dark on the light brand colors, white on the rest. */
-export const avatarInk = (hex: string) => {
+/** True when dark letters read better on the metal disc. Mirrors the iOS app: judged on what the disc looks like once the tint is
+ *  blended into the brushed steel (about 35% steel at 0.66 and 65% of the pick), so dark picks get light letters. */
+export const avatarDark = (hex: string) => {
   const n = parseInt(hex.slice(1), 16)
-  const lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255
-  return lum > 0.62 ? '#1A1710' : '#FFFFFF'
+  const lin = (v: number) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4 }
+  const mix = (c: number) => lin(0.35 * 0.66 * 255 + 0.65 * c)
+  const L = 0.2126 * mix(n >> 16) + 0.7152 * mix((n >> 8) & 255) + 0.0722 * mix(n & 255)
+  return (L + 0.05) * (L + 0.05) >= 0.064
 }
+/** Letter color on a profile disc. */
+export const avatarInk = (hex: string) => (avatarDark(hex) ? '#22221F' : '#FAF6EC')
+
+/** Inline style that turns an element with the `hw-disc` class into a brushed-metal disc tinted with this profile color. */
+export const discStyle = (hex: string): Record<string, string> => ({
+  '--tint': hex, color: avatarInk(hex), textShadow: avatarDark(hex) ? '0 1px 0 rgba(255,255,255,.5)' : '0 1px 0 rgba(0,0,0,.55)',
+})
 
 /** What a host picks for their own shows (Go on air, bottom of the page). */
 export type HostTheme = 'auto' | 'standard' | 'art'

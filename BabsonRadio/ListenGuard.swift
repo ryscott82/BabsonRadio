@@ -3,7 +3,7 @@ import SwiftUI
 import UIKit
 
 // Keeps the station within its monthly listener hours (see /api/listen on the server). Asks before playing, checks in
-// every minute while playing, asks "Still listening?" after a stretch with no activity, runs the sleep timer, and
+// every minute while playing, asks "Still listening?" after a stretch with no activity, and
 // stops the stream when the server says to. If the server can't be reached, listening carries on.
 
 @MainActor
@@ -14,7 +14,6 @@ final class ListenGuard: ObservableObject {
     @Published var notice: String?
     /// Set when the account is already playing on another device (the person can switch to this one).
     @Published var elsewhere: String?
-    @Published var sleepEnd: Date?
 
     private nonisolated struct Reply: Decodable { let ok: Bool; let reason: String?; let message: String?; let idleMin: Int? }
 
@@ -25,7 +24,6 @@ final class ListenGuard: ObservableObject {
     private var askedAt: Date?
     private var loop: Task<Void, Never>?
     private let promptSeconds: TimeInterval = 120
-    private let sleepOffKey = "br_sleep_off"
     /// Stable for this install, so reopening the app isn't mistaken for a second device.
     private static let deviceId: String = {
         if let id = UserDefaults.standard.string(forKey: "br_device_id") { return id }
@@ -52,9 +50,6 @@ final class ListenGuard: ObservableObject {
             }
             if let m = r.idleMin { idleMin = m }
         } catch { /* offline or a server hiccup: let them listen */ }
-        // After 10pm (and before 5am) a sleep timer starts on its own, so a stream isn't left running all night.
-        let h = Calendar.current.component(.hour, from: Date())
-        if (h >= 22 || h < 5), !UserDefaults.standard.bool(forKey: sleepOffKey) { sleepEnd = Date().addingTimeInterval(3600) }
         loop?.cancel()
         loop = Task { [weak self] in
             while !Task.isCancelled {
@@ -72,12 +67,7 @@ final class ListenGuard: ObservableObject {
             let id = sessionId
             Task { let _: EmptyResponse? = try? await BackendAPI.post("/api/listen", ["action": "stop", "sessionId": id]) }
         }
-        sessionId = ""; asking = false; askedAt = nil; sleepEnd = nil
-    }
-
-    func setSleep(_ minutes: Int?) {
-        sleepEnd = minutes.map { Date().addingTimeInterval(Double($0) * 60) }
-        UserDefaults.standard.set(minutes == nil, forKey: sleepOffKey)
+        sessionId = ""; asking = false; askedAt = nil
     }
 
     private func halt(_ message: String) {
@@ -88,7 +78,6 @@ final class ListenGuard: ObservableObject {
     private func tick() async {
         guard AudioPlayerManager.shared.isPlaying else { end(); return }
         let now = Date()
-        if let s = sleepEnd, now >= s { halt("Sleep timer ended. Good night."); return }
         let idleFor = now.timeIntervalSince(lastActive)
         if askedAt == nil, idleFor >= Double(idleMin) * 60 { askedAt = now; asking = true }
         if let a = askedAt, now.timeIntervalSince(a) >= promptSeconds {
@@ -127,26 +116,5 @@ enum ActivityMonitor {
         g.delaysTouchesEnded = false
         g.delegate = Handler.shared
         w.addGestureRecognizer(g)
-    }
-}
-
-/// "Sleep timer" under the play button while playing.
-struct SleepTimerRow: View {
-    @ObservedObject private var guardian = ListenGuard.shared
-    @ObservedObject private var audio = AudioPlayerManager.shared
-    @ObservedObject private var auth = AuthManager.shared
-    @Environment(\.colorScheme) private var scheme
-
-    var body: some View {
-        if audio.isPlaying && auth.isSignedIn {
-            Menu {
-                ForEach([15, 30, 60], id: \.self) { m in Button("\(m) minutes") { guardian.setSleep(m) } }
-                if guardian.sleepEnd != nil { Button("Turn off", role: .destructive) { guardian.setSleep(nil) } }
-            } label: {
-                Label(guardian.sleepEnd.map { "Sleep timer: stops at \($0.formatted(date: .omitted, time: .shortened))" } ?? "Sleep timer", systemImage: "moon.zzz")
-                    .font(BRFont.body(12, .regular))
-                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
-            }
-        }
     }
 }

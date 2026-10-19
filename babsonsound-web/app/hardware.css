@@ -18,6 +18,7 @@
   --hw-face-bg: linear-gradient(rgba(246,242,232,.3), rgba(246,242,232,.3)), url(/hw/cface.jpg) center / cover, #F6F2E8; /* texture 30% fainter */
   --hw-face-blend: multiply;
   --hw-face-ring: 0 0 0 1.5px rgba(0,102,68,.75);
+  --hw-rim: 30px; /* thickness of the leather around the ivory face (dark mode has no face and keeps 15px) */
   --hw-stitch: rgba(246,236,200,.6);
   --hw-key-tint: linear-gradient(rgba(236,236,230,.30), rgba(236,236,230,.30));
   --hw-key-ink: #1A1710;
@@ -38,6 +39,7 @@
     --hw-face-bg: transparent;
     --hw-face-blend: normal;
     --hw-face-ring: none;
+    --hw-rim: 15px;
     --hw-stitch: rgba(232,212,160,.38);
     --hw-key-tint: linear-gradient(rgba(30,30,28,.55), rgba(30,30,28,.55));
     --hw-key-ink: #EFE9D6;
@@ -58,6 +60,7 @@
   --hw-face-bg: transparent;
   --hw-face-blend: normal;
   --hw-face-ring: none;
+  --hw-rim: 15px;
   --hw-stitch: rgba(232,212,160,.38);
   --hw-key-tint: linear-gradient(rgba(30,30,28,.55), rgba(30,30,28,.55));
   --hw-key-ink: #EFE9D6;
@@ -83,11 +86,11 @@ body:has(.hw-stage) { transition: background-color .4s; }
 /* ── Leather panel ───────────────────────────────────────────── */
 .hw-panel, .hw-main > div[class*="max-w-"]:not(.hw-stage) {
   position: relative; isolation: isolate; overflow: hidden;
-  border-radius: 20px; padding: 28px;
+  border-radius: 20px; padding: calc(28px + var(--hw-rim) - 15px);
   color: var(--br-text);
   background: var(--hw-wear), linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.30)), var(--hw-leather-bg) var(--hw-leather) center / 300px auto;
   box-shadow: inset 0 0 22px rgba(240,230,205,.07), 0 14px 24px rgba(24,16,8,.45), 0 2px 4px rgba(24,16,8,.3), inset 0 1px 0 rgba(250,246,236,.5), inset 0 -2px 0 rgba(24,26,18,.14);
-  outline: 1.5px dashed var(--hw-stitch); outline-offset: -8px;
+  outline: 1.5px dashed var(--hw-stitch); outline-offset: calc(var(--hw-rim) / -2);
 }
 /* Lettering looks cut into the amp: a thin lit lip under each letter on the ivory face; pressed into the black leather in dark mode. */
 .hw-panel, .hw-main > div[class*="max-w-"]:not(.hw-stage) { text-shadow: 0 1px 0 rgba(255,255,255,.85); }
@@ -96,7 +99,7 @@ body:has(.hw-stage) { transition: background-color .4s; }
 .hw-panel .hw-well, .hw-panel .hw-glass-screen { text-shadow: none; }
 /* The face: ivory ceramic in light mode, nothing (bare leather) in dark mode. */
 .hw-panel::before, .hw-main > div[class*="max-w-"]:not(.hw-stage)::before {
-  content: ''; position: absolute; inset: 15px; z-index: -1; border-radius: 12px; pointer-events: none;
+  content: ''; position: absolute; inset: var(--hw-rim); z-index: -1; border-radius: 12px; pointer-events: none;
   background: var(--hw-face-bg); background-blend-mode: var(--hw-face-blend, multiply);
   box-shadow: var(--hw-face-ring), inset 0 2px 5px rgba(30,34,30,.2);
 }
@@ -104,10 +107,10 @@ body:has(.hw-stage) { transition: background-color .4s; }
 .hw-panel::after, .hw-main > div[class*="max-w-"]:not(.hw-stage)::after {
   content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit;
   background:
-    radial-gradient(circle at 0 0, rgba(255,255,255,.22) 0 3px, #161614 4px 24px, transparent 25px),
-    radial-gradient(circle at 100% 0, rgba(255,255,255,.22) 0 3px, #161614 4px 24px, transparent 25px),
-    radial-gradient(circle at 0 100%, rgba(255,255,255,.22) 0 3px, #161614 4px 24px, transparent 25px),
-    radial-gradient(circle at 100% 100%, rgba(255,255,255,.22) 0 3px, #161614 4px 24px, transparent 25px);
+    radial-gradient(circle at 0 0, rgba(255,255,255,.22) 0 3px, #161614 4px calc(24px + var(--hw-rim) - 15px), transparent calc(25px + var(--hw-rim) - 15px)),
+    radial-gradient(circle at 100% 0, rgba(255,255,255,.22) 0 3px, #161614 4px calc(24px + var(--hw-rim) - 15px), transparent calc(25px + var(--hw-rim) - 15px)),
+    radial-gradient(circle at 0 100%, rgba(255,255,255,.22) 0 3px, #161614 4px calc(24px + var(--hw-rim) - 15px), transparent calc(25px + var(--hw-rim) - 15px)),
+    radial-gradient(circle at 100% 100%, rgba(255,255,255,.22) 0 3px, #161614 4px calc(24px + var(--hw-rim) - 15px), transparent calc(25px + var(--hw-rim) - 15px));
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .hw-panel::after, :root:not([data-theme="light"]) .hw-main > div[class*="max-w-"]:not(.hw-stage)::after {
@@ -125,8 +128,8 @@ body:has(.hw-stage) { transition: background-color .4s; }
     radial-gradient(circle at 12px calc(100% - 12px), #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),
     radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px);
 }
-.hw-panel.hw-tight { padding: 24px; }
-.hw-panel.hw-snug { padding: 22px; }
+.hw-panel.hw-tight { padding: calc(24px + var(--hw-rim) - 15px); }
+.hw-panel.hw-snug { padding: calc(22px + var(--hw-rim) - 15px); }
 
 /* ── Steel keys (every .sk-key inside a panel) ───────────────── */
 .hw-panel .sk-key, .hw-main .sk-key, .hw-board .sk-key, .hw-bar .sk-key, .hw-banner .sk-key, .hw-key, .hw-pill {
@@ -243,8 +246,8 @@ body:has(.hw-stage) { transition: background-color .4s; }
 .hw-keys > button { flex: 1; height: 40px; border-radius: 12px; font-family: 'Barlow', system-ui, sans-serif; font-weight: 700; font-size: 15px; }
 
 /* ── Web page extras ─────────────────────────────────────────── */
-.hw-panel.hw-big { padding: 40px 46px; }
-@media (max-width: 640px) { .hw-panel.hw-big { padding: 30px 26px; } }
+.hw-panel.hw-big { padding: calc(40px + var(--hw-rim) - 15px) calc(46px + var(--hw-rim) - 15px); }
+@media (max-width: 640px) { .hw-panel.hw-big { padding: calc(30px + var(--hw-rim) - 15px) calc(26px + var(--hw-rim) - 15px); } }
 
 /* Top bar, footer and station-message strip */
 .hw-bar { background: var(--hw-bar-bg); border-bottom: 1px solid rgba(255,255,255,.45);
@@ -325,9 +328,9 @@ body:has(.hw-stage) { transition: background-color .4s; }
    The home page keeps its own panels: its root carries .hw-stage and is skipped. */
 .hw-main > div[class*="max-w-"]:not(.hw-stage) {
   overflow: visible; isolation: isolate;
-  width: calc(100% - 24px); margin-top: 22px; margin-bottom: 40px; padding: 38px 40px;
+  width: calc(100% - 24px); margin-top: 22px; margin-bottom: 40px; padding: calc(38px + var(--hw-rim) - 15px) calc(40px + var(--hw-rim) - 15px);
 }
-@media (max-width: 640px) { .hw-main > div[class*="max-w-"]:not(.hw-stage) { padding: 30px 24px; margin-top: 14px; } }
+@media (max-width: 640px) { .hw-main > div[class*="max-w-"]:not(.hw-stage) { padding: calc(30px + var(--hw-rim) - 15px) calc(24px + var(--hw-rim) - 15px); margin-top: 14px; } }
 @media (min-width: 1024px) { .hw-main > .fit { height: auto; max-height: calc(100dvh - 9.5rem); } .hw-main > .fit > .fit-body { flex: 0 1 auto; } }
 
 /* Cards on a sheet: a raised plate (cream in light, lifted black leather in dark). */
@@ -471,3 +474,19 @@ body:has(.hw-stage) { transition: background-color .4s; }
   background: var(--hw-wear), linear-gradient(rgba(0,0,0,.34), rgba(0,0,0,.5)), linear-gradient(color-mix(in srgb, var(--art-1) 4%, transparent), color-mix(in srgb, var(--art-1) 4%, transparent)), #1A1A18 var(--hw-leather) center / 300px auto;
   background-blend-mode: normal, normal, normal, normal;
 }
+
+
+/* Metal profile discs: brushed steel under the member's color, a turning sheen, a machined rim. Set --tint on the element
+   (lib/profile.ts discStyle). Same recipe as the iOS HWAvatar. */
+.hw-disc { position: relative; display: inline-block; border-radius: 50%; isolation: isolate; flex-shrink: 0;
+  background: url(/hw/steel.jpg) center / 160px auto, #8F8E88;
+  box-shadow: 0 3px 3px rgba(0,0,0,.42), inset 0 0 0 1.5px rgba(255,255,255,.55), inset 0 0 0 2.5px rgba(78,77,71,.55), inset -1px -1px 0 2.5px rgba(0,0,0,.18); }
+.hw-disc::before, .hw-disc::after { content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; }
+.hw-disc::before { background: var(--tint, #8F8E88); mix-blend-mode: color; z-index: 0; }
+.hw-disc::after { z-index: 0;
+  background:
+    radial-gradient(circle at 32% 20%, rgba(255,255,255,.5), rgba(255,255,255,0) 62%),
+    linear-gradient(rgba(0,0,0,0) 50%, rgba(0,0,0,.24)),
+    conic-gradient(from -25deg, rgba(255,255,255,0), rgba(255,255,255,.30), rgba(255,255,255,0), rgba(0,0,0,.16),
+                   rgba(255,255,255,0), rgba(255,255,255,.24), rgba(255,255,255,0), rgba(0,0,0,.14), rgba(255,255,255,0)),
+    linear-gradient(color-mix(in srgb, var(--tint, transparent) 32%, transparent), color-mix(in srgb, var(--tint, transparent) 32%, transparent)); }

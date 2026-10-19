@@ -684,16 +684,14 @@ struct HWDrawerSheet<Content: View>: View {
                 // Content only exists once opened enough to read; it never takes touches while closed.
                 ScrollView {
                     content()
-                        .environment(\.colorScheme, .dark)
-                        .environment(\.hwMode, .dark)
-                        .environment(\.hwLightKeys, outerMode.isLight)
-                        .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 120)
+                        .modifier(HWDrawerContentStyle())
+                        .padding(.horizontal, outerMode.isLight ? 30 : 14).padding(.top, outerMode.isLight ? 22 : 8).padding(.bottom, 120)
                 }
                 .scrollIndicators(.hidden)
                 .opacity(open ? 1 : 0)
                 .allowsHitTesting(open)
             }
-            .foregroundStyle(Color.hwCream)
+            .foregroundStyle(outerMode.isLight ? Color(hex: "1A1710") : Color.hwCream)
 
             // Grab area: the lip while closed, the handle strip while open.
             Color.clear
@@ -720,13 +718,35 @@ struct HWDrawerSheet<Content: View>: View {
 /// The drawer's leather: black in standard dark, a dimmed cover tint in album mode, bright green otherwise.
 struct HWDrawerLeather: View {
     var tint: Color
+    @Environment(\.hwMode) private var mode
     var body: some View {
-        // Black leather in every mode: the cream text on it keeps its contrast whatever the cover or theme.
+        // Styled like the amp cards: in light mode green leather with an ivory face set in; in dark and album mode black leather.
+        HWLeather(tint: mode.leatherTint, corner: 22, stitch: true)
+    }
+}
+
+/// The pull tab: plain leather (green in light mode, black otherwise), no ivory face.
+struct HWDrawerTabBack: View {
+    @Environment(\.hwMode) private var mode
+    var body: some View {
         ZStack {
             Color(hex: "0C0C0A")
-            HWTile(name: HWTex.leatherBlack)
-            Color.black.opacity(0.6)
-            LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.25)], startPoint: .top, endPoint: .bottom)
+            if mode.isLight { HWTile(name: HWTex.leatherGreen); Color.black.opacity(0.2) } else { HWTile(name: HWTex.leatherBlack); Color.black.opacity(0.6) }
+            LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.2)], startPoint: .top, endPoint: .bottom)
+        }
+    }
+}
+
+/// What goes in the drawer. Light mode keeps the light look (dark lettering on the ivory face, aluminum keys); dark and album mode
+/// read as cream on black leather.
+struct HWDrawerContentStyle: ViewModifier {
+    @Environment(\.hwMode) private var outer
+    @Environment(\.colorScheme) private var scheme
+    func body(content: Content) -> some View {
+        if outer.isLight {
+            content.environment(\.hwLightKeys, false)
+        } else {
+            content.environment(\.colorScheme, .dark).environment(\.hwMode, .dark).environment(\.hwLightKeys, false)
         }
     }
 }
@@ -759,7 +779,7 @@ struct HWSideDrawer<Content: View>: View {
                 Image(systemName: open ? "chevron.right" : "chevron.left")
                     .font(.system(size: 13, weight: .bold)).foregroundStyle(Color.hwCream.opacity(0.9))
                     .frame(width: tabW, height: 160)
-                    .background(HWDrawerLeather(tint: tint).clipShape(UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 14, bottomTrailingRadius: 0, topTrailingRadius: 0, style: .continuous)))
+                    .background(HWDrawerTabBack().clipShape(UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 14, bottomTrailingRadius: 0, topTrailingRadius: 0, style: .continuous)))
                     .overlay(UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 14, bottomTrailingRadius: 0, topTrailingRadius: 0, style: .continuous).strokeBorder(Color.black.opacity(0.5), lineWidth: 1))
                     .contentShape(Rectangle())
                     .onTapGesture { withAnimation(.spring(duration: 0.35)) { open.toggle() } }
@@ -769,13 +789,11 @@ struct HWSideDrawer<Content: View>: View {
             .frame(width: tabW)
             ScrollView {
                 content()
-                    .environment(\.colorScheme, .dark)
-                    .environment(\.hwMode, .dark)
-                    .environment(\.hwLightKeys, outerMode.isLight)
-                    .padding(.leading, 14).padding(.trailing, safeStrip + 10).padding(.top, 40).padding(.bottom, 120)
+                    .modifier(HWDrawerContentStyle())
+                    .padding(.leading, outerMode.isLight ? 30 : 14).padding(.trailing, safeStrip + 10).padding(.top, 40).padding(.bottom, 120)
             }
             .scrollIndicators(.hidden)
-            .foregroundStyle(Color.hwCream)
+            .foregroundStyle(outerMode.isLight ? Color(hex: "1A1710") : Color.hwCream)
             .padding(.leading, tabW + 4)
             .allowsHitTesting(open)
         }

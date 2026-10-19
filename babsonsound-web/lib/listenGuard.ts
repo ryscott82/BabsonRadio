@@ -9,7 +9,6 @@ import { api } from '@/lib/auth'
 // See /api/listen. If the server can't be reached, listening carries on (the server is the stricter check, not a gate on a bad connection).
 
 const PROMPT_MS = 2 * 60_000
-const SLEEP_KEY = 'br_sleep_default'
 const DEVICE_KEY = 'br_device_id'
 
 /** A stable id for this browser, so reloading the page isn't mistaken for a second device. */
@@ -27,7 +26,6 @@ export function useListenGuard(playing: boolean, stop: () => void) {
   const [notice, setNotice] = useState('')
   const [elsewhere, setElsewhere] = useState(false)
   const [asking, setAsking] = useState(false)
-  const [sleepAt, setSleepAt] = useState<number | null>(null)
   const sid = useRef('')
   const active = useRef(Date.now())
   const idleMin = useRef(60)
@@ -60,27 +58,21 @@ export function useListenGuard(playing: boolean, stop: () => void) {
       }
       if (r.idleMin) idleMin.current = r.idleMin
     } catch { /* offline or server hiccup: let them listen */ }
-    // After 10pm (and before 5am) a sleep timer starts on its own, so a stream isn't left running all night.
-    const h = new Date().getHours()
-    let off = false
-    try { off = localStorage.getItem(SLEEP_KEY) === 'off' } catch { /* private mode */ }
-    if (!off && (h >= 22 || h < 5)) setSleepAt(Date.now() + 60 * 60_000)
     return true
   }, [])
 
-  // While playing: check in each minute, watch the idle clock and the sleep timer.
+  // While playing: check in each minute, watch the idle clock and the idle prompt.
   useEffect(() => {
     if (!playing) {
       if (sid.current && auth.currentUser) api('/api/listen', { action: 'stop', sessionId: sid.current }).catch(() => {})
       sid.current = ''
-      queueMicrotask(() => { setSleepAt(null); setAsking(false) })
+      queueMicrotask(() => { setAsking(false) })
       askedAt.current = 0
       return
     }
     let lastBeat = Date.now()
     const t = setInterval(async () => {
       const now = Date.now()
-      if (sleepAt && now >= sleepAt) { halt('Sleep timer ended. Good night.'); return }
       const idleFor = now - active.current
       if (!askedAt.current && idleFor >= idleMin.current * 60_000) { askedAt.current = now; setAsking(true) }
       if (askedAt.current && now - askedAt.current >= PROMPT_MS) { halt('Stopped because no one seemed to be listening. Tap play to start again.'); return }
@@ -94,12 +86,8 @@ export function useListenGuard(playing: boolean, stop: () => void) {
       }
     }, 5_000)
     return () => clearInterval(t)
-  }, [playing, sleepAt, halt])
+  }, [playing, halt])
 
   const stillHere = useCallback(() => { active.current = Date.now(); askedAt.current = 0; setAsking(false) }, [])
-  const setSleep = useCallback((minutes: number | null) => {
-    setSleepAt(minutes ? Date.now() + minutes * 60_000 : null)
-    try { localStorage.setItem(SLEEP_KEY, minutes ? 'on' : 'off') } catch { /* ignore */ }
-  }, [])
-  return { notice, elsewhere, dismissElsewhere: () => { setElsewhere(false); setNotice('') }, clearNotice: () => setNotice(''), asking, stillHere, begin, sleepAt, setSleep }
+  return { notice, elsewhere, dismissElsewhere: () => { setElsewhere(false); setNotice('') }, clearNotice: () => setNotice(''), asking, stillHere, begin }
 }

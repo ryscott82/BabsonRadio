@@ -1,6 +1,6 @@
 'use client'
 
-import { avatarHex, avatarInk } from '@/lib/profile'
+import { avatarHex, discStyle } from '@/lib/profile'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -84,10 +84,10 @@ export default function Nav() {
                 onClick={() => { setMenuOpen(!menuOpen); setMobileOpen(false) }}
                 aria-label="Profile menu"
                 aria-expanded={menuOpen}
-                className="rounded-full w-9 h-9 flex items-center justify-center font-display text-sm select-none"
-                style={{ background: avatarHex(avatarId), color: avatarInk(avatarHex(avatarId)) }}
+                className="hw-disc w-9 h-9 flex items-center justify-center font-display text-sm select-none"
+                style={discStyle(avatarHex(avatarId))}
               >
-                {initials}
+                <span className="relative z-[1]">{initials}</span>
               </button>
               {menuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-52 sk-raised rounded-xl overflow-hidden">

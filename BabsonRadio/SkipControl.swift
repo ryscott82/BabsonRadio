@@ -14,7 +14,7 @@ final class SkipModel: ObservableObject {
 
     func ask() async {
         error = ""
-        do { skip = try await BackendAPI.post("/api/skip", [:]) }
+        do { skip = try await BackendAPI.post("/api/skip", [:]); AudioPlayerManager.shared.releaseHold() }
         catch { self.error = (error as? BackendError)?.message ?? error.localizedDescription }
     }
 }

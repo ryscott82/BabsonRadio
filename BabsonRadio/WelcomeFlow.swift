@@ -135,7 +135,7 @@ struct WelcomeView: View {
             }
             if auth.isLoading { ProgressView().controlSize(.large) }
         }
-        .hwPage()
+        .hwSplash()
         .sheet(isPresented: $showEmail) { AuthView() }
     }
 }
@@ -198,7 +198,7 @@ struct AppleSchoolEmailView: View {
             .padding(.horizontal, 28)
         }
         .scrollDismissesKeyboard(.interactively)
-        .hwPage()
+        .hwSplash()
     }
 }
 
@@ -311,7 +311,7 @@ struct OnboardingView: View {
             .padding(.horizontal, 28).padding(.bottom, 40)
         }
         .scrollDismissesKeyboard(.interactively)
-        .hwPage()
+        .hwSplash()
         .interactiveDismissDisabled()
         .task {
             // Fill in whatever we already have (a name from Apple, or details from an email sign-up).

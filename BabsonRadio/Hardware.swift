@@ -626,6 +626,36 @@ extension View {
     func hwPage() -> some View { modifier(HWPageModifier()) }
 }
 
+/// Sign-in and welcome screens: one big amp card on the oak desk (ivory ceramic face in a green leather rim in light mode, black
+/// leather with stitching in dark mode), like the amps on the live tab. Text colors follow light/dark, so content needs no changes.
+struct HWSplashModifier: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.hwGlobalDesk) private var globalDesk
+    @Environment(\.isPresented) private var isPresented
+    @Environment(\.hwDeskProvided) private var deskProvided
+    func body(content: Content) -> some View {
+        let dark = scheme == .dark
+        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+        ZStack {
+            if !(deskProvided || (globalDesk && !isPresented)) { HWDesk(album: nil) }
+            HWCardSurface(dark: dark, corner: 22)
+                .padding(.horizontal, 12).padding(.top, 10).padding(.bottom, 10)
+            content
+                .scrollContentBackground(.hidden)
+                .safeAreaPadding(EdgeInsets(top: 14, leading: 14, bottom: 14, trailing: 14))
+                .font(BRFont.body(16, .regular))
+                .textRenderer(HWInscribedText(light: !dark))
+                .clipShape(shape)
+                .padding(.horizontal, 12).padding(.top, 10).padding(.bottom, 10)
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
+    }
+}
+
+extension View {
+    func hwSplash() -> some View { modifier(HWSplashModifier()) }
+}
+
 
 extension View {
     /// Makes an icon look cut into the metal: a dark cut that is deepest along its upper edge, and a thin lit lip along the lower edge

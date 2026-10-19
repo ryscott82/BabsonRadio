@@ -21,6 +21,9 @@ export function probeCors(url: string): Promise<boolean> {
 }
 
 interface Tap { ctx: AudioContext; an: AnalyserNode; data: Uint8Array<ArrayBuffer>; direct: GainNode; dry: GainNode; drive: GainNode; wet: GainNode; ex: GainNode; low: BiquadFilterNode; air: BiquadFilterNode; comp: DynamicsCompressorNode }
+/** The sound is held back this long before the speakers while the analyser hears it right away, so the lights line up with what you hear. */
+export const AUDIO_DELAY_MS = 200
+
 const taps = new WeakMap<HTMLAudioElement, Tap>()
 let current: Tap | null = null
 
@@ -34,6 +37,9 @@ export function attachSpectrum(el: HTMLAudioElement): boolean {
     const an = ctx.createAnalyser()
     an.fftSize = 2048; an.smoothingTimeConstant = 0.15; an.minDecibels = -90; an.maxDecibels = -6
     const src = ctx.createMediaElementSource(el)
+    const out = ctx.createDelay(1)
+    out.delayTime.value = AUDIO_DELAY_MS / 1000
+    out.connect(ctx.destination)
     src.connect(an) // analyser is a side branch; the sound itself goes src -> gain -> speakers
     // Sound path: src -> direct -> speakers while the knob is at or below 100% (untouched). Past 100% the sound goes through
     // dry + a saturated copy (drive -> tube-style shaper -> wet), summed and rounded off by a soft clipper.
@@ -42,7 +48,7 @@ export function attachSpectrum(el: HTMLAudioElement): boolean {
     sat.curve = tubeCurve(); sat.oversample = '4x'
     clip.curve = softClipCurve(); clip.oversample = '2x'
     dry.gain.value = 0; wet.gain.value = 0; drive.gain.value = 1; bus.gain.value = 0.9
-    src.connect(direct); direct.connect(ctx.destination)
+    src.connect(direct); direct.connect(out)
     src.connect(dry); dry.connect(bus)
     src.connect(drive); drive.connect(sat); sat.connect(wet); wet.connect(bus)
     // Sparkle: only the highs are driven into a shaper and blended back in (harmonic excitement instead of a crushed mix).
@@ -55,7 +61,7 @@ export function attachSpectrum(el: HTMLAudioElement): boolean {
     air.type = 'highshelf'; air.frequency.value = 9000; air.gain.value = 0
     comp.threshold.value = 0; comp.ratio.value = 1; comp.knee.value = 18; comp.attack.value = 0.012; comp.release.value = 0.16
     lim.threshold.value = -1.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.08
-    bus.connect(low); low.connect(air); air.connect(comp); comp.connect(clip); clip.connect(lim); lim.connect(ctx.destination)
+    bus.connect(low); low.connect(air); air.connect(comp); comp.connect(clip); clip.connect(lim); lim.connect(out)
     const tap: Tap = { ctx, an, data: new Uint8Array(new ArrayBuffer(an.frequencyBinCount)), direct, dry, drive, wet, ex, low, air, comp }
     taps.set(el, tap); current = tap
     setBoostDb(boostDb)

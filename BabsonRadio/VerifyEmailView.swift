@@ -60,7 +60,7 @@ struct VerifyEmailView: View {
         }
         .padding(.horizontal, 28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .hwPage()
+        .hwSplash()
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { auth.checkVerification() }   // back from the inbox
         }

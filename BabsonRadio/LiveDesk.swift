@@ -429,10 +429,8 @@ struct DeskSleeve: View {
             } else {
                 ZStack {
                     LinearGradient(colors: [Color(hex: "27302B"), Color(hex: "0E1210")], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    VStack(spacing: -2) {
-                        Text("BABSON").font(.custom("BarlowCondensed-SemiBold", size: size * 0.075)).tracking(size * 0.025).foregroundStyle(Color.hwCream.opacity(0.7))
-                        Text("RADIO").font(.custom("BarlowCondensed-Bold", size: size * 0.22)).tracking(size * 0.02).foregroundStyle(Color.hwCream.opacity(0.92))
-                    }
+                    Image("LaunchLogo").resizable().scaledToFit().frame(width: size * 0.62)
+                        .shadow(color: .black.opacity(0.45), radius: size * 0.03, x: 0, y: size * 0.02)
                 }
                 .frame(width: size, height: size)
             }

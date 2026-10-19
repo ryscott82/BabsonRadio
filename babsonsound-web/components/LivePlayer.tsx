@@ -232,10 +232,8 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
                 <img src={np.art} alt={hasSong ? `Cover for ${np.title}` : ''} className="absolute inset-0 w-full h-full object-cover"
                      style={art.full ? undefined : { filter: 'var(--cover-filter)' }} />
               ) : (
-                <div className="text-center">
-                  <p className="font-display text-br-brass/80 text-sm tracking-[0.4em]">Babson</p>
-                  <p className="font-display text-white text-4xl tracking-[0.2em]">Radio</p>
-                </div>
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src="/beaver.png" alt="" className="w-[62%] h-auto drop-shadow-[0_3px_6px_rgba(0,0,0,.45)]" />
               )}
             </div>
             {onAir && <OnAirSign />}

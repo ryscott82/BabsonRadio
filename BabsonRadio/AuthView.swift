@@ -217,7 +217,7 @@ struct AuthView: View {
                     .padding(.bottom, 40)
             }
         }
-        .hwPage()
+        .hwSplash()
         .onTapGesture { focusedField = nil }
         .animation(.easeInOut(duration: 0.2), value: auth.errorMessage)
         .sheet(isPresented: $showGuest) { GuestAuthView() }

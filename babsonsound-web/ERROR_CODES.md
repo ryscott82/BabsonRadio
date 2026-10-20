@@ -76,7 +76,7 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 
 | Code | What it is | What the user should do | What staff check |
 |---|---|---|---|
-| BR-PRE-001 | **Site isn't open yet**: The website is in pre-launch mode and this request didn't include the preview password. | Babson Radio opens on October 22. Check back then. | Unlock in a browser at /coming-soon (Developer access), or send the X-Preview-Key header. iOS: set BackendConfig.previewKey. To open the site for everyone, set PRELAUNCH_OFF=1 in Vercel and redeploy. |
+| BR-PRE-001 | **Site isn't open yet**: The website is in pre-launch mode and this request didn't include the preview password. | Babson Radio opens on October 30. Check back then. | Unlock in a browser at /coming-soon (Developer access), or send the X-Preview-Key header. iOS: set BackendConfig.previewKey. To open the site for everyone, set PRELAUNCH_OFF=1 in Vercel and redeploy. |
 | BR-PRE-002 | **Invite-only until launch**: Before launch, only emails on the beta tester list can create an account or open the site. | Ask the station to add your Babson email, then try again. | Add the email at /admin/testers (Admin → Beta Testers). Remove the restriction on launch day by setting PRELAUNCH_OFF=1. |
 
 ## Age and birthday

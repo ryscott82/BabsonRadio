@@ -112,7 +112,7 @@ body:has(.hw-stage) { transition: background-color .4s; }
 .hw-panel::after, .hw-main > div[class*="max-w-"]:not(.hw-stage)::after {
   content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit;
   /* Black plastic with a fine speckled grain: the texture, cut to four corner circles by a mask. */
-  background: url(/hw/plastic.jpg?v=2) 0 0 / 80px 80px #141412;
+  background: linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.45)), url(/hw/plastic.jpg?v=3) 0 0 / 48px 48px #141412;
   -webkit-mask: radial-gradient(circle at 0 0, #000 0 calc(24px + var(--hw-rim) - 15px), transparent calc(calc(24px + var(--hw-rim) - 15px) + 1px)), radial-gradient(circle at 100% 0, #000 0 calc(24px + var(--hw-rim) - 15px), transparent calc(calc(24px + var(--hw-rim) - 15px) + 1px)), radial-gradient(circle at 0 100%, #000 0 calc(24px + var(--hw-rim) - 15px), transparent calc(calc(24px + var(--hw-rim) - 15px) + 1px)), radial-gradient(circle at 100% 100%, #000 0 calc(24px + var(--hw-rim) - 15px), transparent calc(calc(24px + var(--hw-rim) - 15px) + 1px));
   mask: radial-gradient(circle at 0 0, #000 0 calc(24px + var(--hw-rim) - 15px), transparent calc(calc(24px + var(--hw-rim) - 15px) + 1px)), radial-gradient(circle at 100% 0, #000 0 calc(24px + var(--hw-rim) - 15px), transparent calc(calc(24px + var(--hw-rim) - 15px) + 1px)), radial-gradient(circle at 0 100%, #000 0 calc(24px + var(--hw-rim) - 15px), transparent calc(calc(24px + var(--hw-rim) - 15px) + 1px)), radial-gradient(circle at 100% 100%, #000 0 calc(24px + var(--hw-rim) - 15px), transparent calc(calc(24px + var(--hw-rim) - 15px) + 1px));
 }

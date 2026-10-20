@@ -374,7 +374,7 @@
     "code": "BR-PRE-001",
     "title": "Site isn't open yet",
     "meaning": "The website is in pre-launch mode and this request didn't include the preview password.",
-    "userFix": "Babson Radio opens on October 22. Check back then.",
+    "userFix": "Babson Radio opens on October 30. Check back then.",
     "staffCheck": "Unlock in a browser at /coming-soon (Developer access), or send the X-Preview-Key header. iOS: set BackendConfig.previewKey. To open the site for everyone, set PRELAUNCH_OFF=1 in Vercel and redeploy."
   },
   {

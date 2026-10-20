@@ -80,7 +80,7 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
         Radio is back
       </h1>
       <p className="text-br-dk-sub text-base sm:text-lg mb-10 max-w-md">
-        {arrived ? "We're getting on the air. Check back in a moment." : 'Student radio returns October 22.'}
+        {arrived ? "We're getting on the air. Check back in a moment." : 'Student radio returns October 30.'}
       </p>
 
       <a href={LINKS.interest} target="_blank" rel="noopener noreferrer"
@@ -90,7 +90,7 @@ export default function ComingSoon({ launchISO }: { launchISO: string }) {
       <p className="text-br-dk-sub text-base sm:text-lg mb-5">Takes under a minute. Tell us what you want to hear.</p>
       <ShareFormButton className="mb-14" />
 
-      <div className="flex items-start gap-3 sm:gap-6 mb-14" role="timer" aria-label="Time until October 22">
+      <div className="flex items-start gap-3 sm:gap-6 mb-14" role="timer" aria-label="Time until October 30">
         <Tile value={t.days} label="DAYS" />
         <Tile value={t.hours} label="HOURS" />
         <Tile value={t.mins} label="MINUTES" />

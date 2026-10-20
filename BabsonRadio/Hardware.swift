@@ -207,7 +207,7 @@ struct HWLeather: View {
                         // Black plastic with a fine speckled grain.
                         ZStack {
                             Circle().fill(Color(hex: "161614"))
-                            HWTile(name: "hw_plastic").clipShape(Circle())
+                            HWTile(name: "hw_plastic").frame(width: 150, height: 150).scaleEffect(0.32).frame(width: 48, height: 48).clipShape(Circle())   // grain at about a third of its size
                         }
                         .frame(width: 48, height: 48)
                             .position(x: right ? g.size.width : 0, y: bottom ? g.size.height : 0)

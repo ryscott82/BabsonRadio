@@ -14,10 +14,8 @@
   --hw-wood-bg: #6a4a2f;
   --hw-leather: url(/hw/leather-green.jpg);
   --hw-leather-bg: #0b5a3d;
-  /* Scuffs on the leather: wear in each corner only (no all-over scratch layer). */
-  --hw-wear: url(/hw/grain-c-tl.png?v=2) 0 0 / 360px 360px no-repeat, url(/hw/grain-c-tr.png?v=2) 100% 0 / 360px 360px no-repeat,
-             url(/hw/grain-c-bl.png?v=2) 0 100% / 360px 360px no-repeat, url(/hw/grain-c-br.png?v=2) 100% 100% / 360px 360px no-repeat,
-             url(/hw/wear-c-tl.png) 0 0 / 240px 240px no-repeat, url(/hw/wear-c-tr.png) 100% 0 / 240px 240px no-repeat,
+  /* Scuffs on the leather: wear in each corner only. */
+  --hw-wear: url(/hw/wear-c-tl.png) 0 0 / 240px 240px no-repeat, url(/hw/wear-c-tr.png) 100% 0 / 240px 240px no-repeat,
              url(/hw/wear-c-bl.png) 0 100% / 240px 240px no-repeat, url(/hw/wear-c-br.png) 100% 100% / 240px 240px no-repeat;
   --hw-face-bg: url(/hw/wear-face-soft.png) 0 0 / 420px auto, linear-gradient(rgba(242,244,242,.55), rgba(242,244,242,.55)), url(/hw/cface.jpg) center / cover, #F2F4F2; /* texture 30% fainter */
   --hw-face-blend: multiply;
@@ -113,14 +111,14 @@ body:has(.hw-stage) { transition: background-color .4s; }
 /* Corners: black glass caps on the light amps, small steel screws on the dark ones. */
 .hw-panel::after, .hw-main > div[class*="max-w-"]:not(.hw-stage)::after {
   content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit;
-  background:
-    radial-gradient(circle at 0 0, rgba(255,255,255,.22) 0 3px, #161614 4px calc(24px + var(--hw-rim) - 15px), transparent calc(25px + var(--hw-rim) - 15px)),
-    radial-gradient(circle at 100% 0, rgba(255,255,255,.22) 0 3px, #161614 4px calc(24px + var(--hw-rim) - 15px), transparent calc(25px + var(--hw-rim) - 15px)),
-    radial-gradient(circle at 0 100%, rgba(255,255,255,.22) 0 3px, #161614 4px calc(24px + var(--hw-rim) - 15px), transparent calc(25px + var(--hw-rim) - 15px)),
-    radial-gradient(circle at 100% 100%, rgba(255,255,255,.22) 0 3px, #161614 4px calc(24px + var(--hw-rim) - 15px), transparent calc(25px + var(--hw-rim) - 15px));
+  /* Black plastic with a fine speckled grain: the texture, cut to four corner circles by a mask. */
+  background: url(/hw/plastic.jpg?v=1) 0 0 / 256px 256px #141412;
+  -webkit-mask: radial-gradient(circle at 0 0, #000 0 calc(24px + var(--hw-rim) - 15px), transparent calc(calc(24px + var(--hw-rim) - 15px) + 1px)), radial-gradient(circle at 100% 0, #000 0 calc(24px + var(--hw-rim) - 15px), transparent calc(calc(24px + var(--hw-rim) - 15px) + 1px)), radial-gradient(circle at 0 100%, #000 0 calc(24px + var(--hw-rim) - 15px), transparent calc(calc(24px + var(--hw-rim) - 15px) + 1px)), radial-gradient(circle at 100% 100%, #000 0 calc(24px + var(--hw-rim) - 15px), transparent calc(calc(24px + var(--hw-rim) - 15px) + 1px));
+  mask: radial-gradient(circle at 0 0, #000 0 calc(24px + var(--hw-rim) - 15px), transparent calc(calc(24px + var(--hw-rim) - 15px) + 1px)), radial-gradient(circle at 100% 0, #000 0 calc(24px + var(--hw-rim) - 15px), transparent calc(calc(24px + var(--hw-rim) - 15px) + 1px)), radial-gradient(circle at 0 100%, #000 0 calc(24px + var(--hw-rim) - 15px), transparent calc(calc(24px + var(--hw-rim) - 15px) + 1px)), radial-gradient(circle at 100% 100%, #000 0 calc(24px + var(--hw-rim) - 15px), transparent calc(calc(24px + var(--hw-rim) - 15px) + 1px));
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .hw-panel::after, :root:not([data-theme="light"]) .hw-main > div[class*="max-w-"]:not(.hw-stage)::after {
+    -webkit-mask: none; mask: none;
     background:
       radial-gradient(circle at 12px 12px, #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),
       radial-gradient(circle at calc(100% - 12px) 12px, #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),
@@ -129,6 +127,7 @@ body:has(.hw-stage) { transition: background-color .4s; }
   }
 }
 :root[data-theme="dark"] .hw-panel::after, :root[data-theme="dark"] .hw-main > div[class*="max-w-"]:not(.hw-stage)::after {
+  -webkit-mask: none; mask: none;
   background:
     radial-gradient(circle at 12px 12px, #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),
     radial-gradient(circle at calc(100% - 12px) 12px, #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),

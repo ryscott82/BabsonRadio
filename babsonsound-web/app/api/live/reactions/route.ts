@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/http'
 import { EMOJIS, bucketMinute, currentOnAir, hostPrefsFor } from '@/lib/server/live'
 import { themedEmojis } from '@/lib/server/easterEggs'
+import { reactionsLocked } from '@/lib/server/cpuBudget'
 import { EARNED_EMOJIS, bump, emojisFor } from '@/lib/server/earnedEmojis'
 
 export const runtime = 'nodejs'
@@ -43,13 +44,15 @@ async function prefsCached(db: Firestore, cur: NonNullable<Awaited<ReturnType<ty
 
 export async function GET() {
   return handle(async () => {
+    // Over the server-time budget: do no work. The edge keeps this answer for 30 s, so even a crowd costs almost nothing.
+    if (await reactionsLocked()) return { occId: '', emojis: EMOJIS, events: [], now: Date.now(), paused: true }
     const db = adminDb()
     const now = Date.now()
     const cur = await currentOnAir(db, now)
     if (!cur) return { occId: '', emojis: EMOJIS, events: [], now }
     const mine = (await prefsCached(db, cur))?.emojis ?? []
     return { occId: cur.occId, emojis: mine.length ? mine : EMOJIS, events: await recentEvents(db, cur.occId, now), now }
-  }, { 'Cache-Control': 'public, s-maxage=2, stale-while-revalidate=4' })
+  }, { 'Cache-Control': 'public, s-maxage=2, stale-while-revalidate=4' }, 'reactions')
 }
 
 const sent = new Map<string, number[]>() // best effort, per server instance
@@ -65,6 +68,8 @@ const stored = { minute: 0, n: 0 }
 
 export async function POST(req: Request) {
   return handle(async () => {
+    // Paused for server time: say OK so nobody sees an error. Their own screen still rains.
+    if (await reactionsLocked()) return { ok: true, paused: true }
     const t = await requireMember(req)
     const b = await readJson(req)
     const emoji = str(b.emoji, 24)
@@ -101,5 +106,5 @@ export async function POST(req: Request) {
     await db.collection('users').doc(t.uid).set({ emojiUse: { [emoji]: FieldValue.increment(1) } }, { merge: true }).catch(() => {})
     await bump(db, t.uid)
     return { ok: true }
-  })
+  }, undefined, 'reactions')
 }

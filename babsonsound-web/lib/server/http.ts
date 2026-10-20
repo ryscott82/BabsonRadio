@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import type { DecodedIdToken } from 'firebase-admin/auth'
 import { adminAuth } from './admin'
 import { classifyServerError, codeForMessage } from '../errors'
+import { counted } from './cpuBudget'
 
 export class HttpError extends Error {
   constructor(public status: number, message: string, public code?: string) {
@@ -94,9 +95,9 @@ export function str(v: unknown, max = 200): string {
   return typeof v === 'string' ? v.trim().slice(0, max) : ''
 }
 
-export async function handle(fn: () => Promise<unknown>, headers?: Record<string, string>): Promise<Response> {
+export async function handle(fn: () => Promise<unknown>, headers?: Record<string, string>, bucket: 'reactions' | 'other' = 'other'): Promise<Response> {
   try {
-    return NextResponse.json(await fn(), headers ? { headers } : undefined)
+    return NextResponse.json(await counted(bucket, fn), headers ? { headers } : undefined)
   } catch (e) {
     if (e instanceof HttpError) {
       const code = e.code ?? codeForMessage(e.status, e.message)

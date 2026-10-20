@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
 import { plexMono } from '@/components/admin/opsFont'
+import CpuMeter from '@/components/admin/CpuMeter'
 
 interface Data {
   forecast: { mode: string; sigma: number; historyDays: number; level: number; lifts: { label: string; lift: number; hours: number; avg: number }[] } | null
@@ -103,6 +104,8 @@ export default function UsagePage() {
             </div>
           </div>
         )}
+
+        <CpuMeter />
 
         <div className="sk-raised p-4 space-y-3">
           <p className="text-sm text-br-dk-text">Settings</p>

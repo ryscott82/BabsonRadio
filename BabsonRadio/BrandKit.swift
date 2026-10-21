@@ -11,12 +11,20 @@ import SwiftUI
 // ─────────────────────────────────────────────────────────────
 
 struct BRFont {
-    /// Track titles, ON AIR sign, big headings: Barlow Condensed (sentence case, not all caps).
+    /// Test switch: true sets titles and headings in Apple's own SF Pro, Black weight, Expanded width (the Apple Music look) instead of
+    /// Barlow Condensed. It is wide, so sizes are scaled by `expandedScale`. Set to false to go back to Barlow Condensed.
+    static let expanded = true
+    static let expandedScale: CGFloat = 0.68
+    /// SF Pro Expanded Black. SF is a variable font on Apple platforms, so weight and width are just settings.
+    static func sfExpanded(_ size: CGFloat, _ weight: Font.Weight = .black) -> Font {
+        Font.system(size: size * expandedScale, weight: weight).width(.expanded)
+    }
+    /// Track titles, ON AIR sign, big headings: Barlow Condensed (sentence case, not all caps), or SF Expanded Black (see `expanded`).
     static func display(_ size: CGFloat) -> Font {
-        Font.custom("BarlowCondensed-Bold", size: size)
+        expanded ? sfExpanded(size) : Font.custom("BarlowCondensed-Bold", size: size)
     }
     static func displaySemi(_ size: CGFloat) -> Font {
-        Font.custom("BarlowCondensed-SemiBold", size: size)
+        expanded ? sfExpanded(size, .heavy) : Font.custom("BarlowCondensed-SemiBold", size: size)
     }
     /// Everything else: Barlow 400/500/600/700/800.
     static func body(_ size: CGFloat, _ weight: Font.Weight = .medium) -> Font {

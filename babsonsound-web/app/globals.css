@@ -6,20 +6,20 @@
 /* ── Brand tokens ───────────────────────────────────────────── */
 /* The existing br-dk-* class names now resolve to whichever theme is active, so every page
    themes without edits. "Accent" matches the app: gold in dark, green in light. */
-/* Type scale for Normalidad Extended: it is about 1.5x as wide as Barlow, so sizes come down (about 62% on headings; small text is
-   kept from going unreadably small). The Barlow-era sizes were Tailwind's defaults. */
+/* Type scale for Normalidad Extended: it is about 1.5x as wide as Barlow, so sizes are set smaller than Tailwind's defaults (about 80% on headings,
+   a bit more on small text). The Barlow-era sizes were Tailwind's defaults. */
 @theme {
-  --text-xs: 0.625rem;
-  --text-sm: 0.6875rem;
-  --text-base: 0.75rem;
-  --text-lg: 0.8125rem;
-  --text-xl: 0.875rem;
-  --text-2xl: 0.93rem;
-  --text-3xl: 1.16rem;
-  --text-4xl: 1.395rem;
-  --text-5xl: 1.86rem;
-  --text-6xl: 2.325rem;
-  --text-7xl: 2.79rem;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.895rem;
+  --text-base: 0.975rem;
+  --text-lg: 1.055rem;
+  --text-xl: 1.14rem;
+  --text-2xl: 1.21rem;
+  --text-3xl: 1.51rem;
+  --text-4xl: 1.81rem;
+  --text-5xl: 2.42rem;
+  --text-6xl: 3.02rem;
+  --text-7xl: 3.63rem;
 }
 
 @theme inline {
@@ -91,7 +91,7 @@
 
 /* ── Base ────────────────────────────────────────────────────── */
 html, body {
-  font-size: 0.75rem;
+  font-size: 0.975rem;
   background-color: var(--br-bg);
   color: var(--br-text);
   font-family: normalidad-extended, 'Barlow', system-ui, -apple-system, sans-serif;

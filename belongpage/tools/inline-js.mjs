@@ -6,7 +6,7 @@ const js = readFileSync('js/babson-sound.js', 'utf8');
 if (/[^\x00-\x7f]/.test(js)) { console.error('js/babson-sound.js must be ASCII only'); process.exit(1); }
 const b64 = Buffer.from(js, 'utf8').toString('base64');
 const block = `<script id="br-site-js">Function(atob("${b64}"))()</script>\n`;
-for (const f of ['home.html', 'radio.html', 'events.html', 'leadership-team.html']) {
+for (const f of ['home.html', 'events.html', 'leadership-team.html']) {
   let s = readFileSync(f, 'utf8').replace(/<script id="br-site-js">[\s\S]*?<\/script>\n?/, '').replace(/\s*$/, '\n');
   writeFileSync(f, s + block);
   console.log(f, 'ok');

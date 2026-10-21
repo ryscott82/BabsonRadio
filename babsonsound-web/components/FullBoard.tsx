@@ -73,7 +73,7 @@ export default function FullBoard({ boardRef, eqRef, np, hasSong, onAir, glow, a
 
         {/* Title */}
         <div className="hw-panel absolute" style={{ position: 'absolute', left: 810, top: 250, width: 550, height: 400, padding: '56px 38px' }}>
-          <FitTitle as="div" text={hasSong ? np!.title : 'Babson Radio'} className="hw-board-title" />
+          <FitTitle marquee as="div" text={hasSong ? np!.title : 'Babson Radio'} className="hw-board-title" />
           <div className="hw-board-sub">{hasSong ? sub : 'Live from campus'}</div>
           {hasSong && np!.next && <div className="hw-board-next">Next: {np!.next.title}{np!.next.artist ? ` · ${np!.next.artist}` : ''}</div>}
           <div className="hw-board-qr">

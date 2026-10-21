@@ -42,7 +42,7 @@ export default async function HomePage() {
         <div className="grid lg:grid-cols-[1.1fr_1fr] gap-14 items-stretch lg:[&>*:last-child]:self-start">
           <section className="hw-panel hw-big">
             <div className="flex items-baseline justify-between gap-4 pb-3 border-b border-br-dk-border">
-              <h2 className="hw-title !whitespace-normal text-[1.18rem]">On the air today</h2>
+              <h2 className="hw-title !whitespace-normal text-[1.53rem]">On the air today</h2>
               <Link href="/schedule" className="text-sm font-semibold text-br-gold underline underline-offset-4">See the week</Link>
             </div>
             {schedule.length > 0 ? (
@@ -52,11 +52,11 @@ export default async function HomePage() {
                     <span className="w-14 shrink-0 font-bold text-br-gold text-sm tabular-nums">{slot.startTime}</span>
                     {slot.isLive ? <span aria-hidden className="w-2 h-2 rounded-full bg-br-red shrink-0" /> : <span aria-hidden className="w-2 shrink-0" />}
                     <div className="min-w-0 flex-1">
-                      <p className="text-[15px] font-semibold text-br-dk-text truncate">{slot.showName}</p>
+                      <p className="text-[19px] font-semibold text-br-dk-text truncate">{slot.showName}</p>
                       {slot.hostNames?.length > 0 && <p className="text-xs hw-sub truncate">{slot.hostNames.join(' and ')}</p>}
                     </div>
                     {slot.isLive
-                      ? <span className="font-display text-br-red text-[11px] tracking-[0.2em]">Live</span>
+                      ? <span className="font-display text-br-red text-[14px] tracking-[0.2em]">Live</span>
                       : <Link href="/schedule" className="sk-key hw-pill inline-flex items-center gap-1.5 h-8 px-4 rounded-full text-xs font-semibold shrink-0">
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M6 9a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6zM10 19a2 2 0 004 0" /></svg>
                           Remind me
@@ -79,7 +79,7 @@ export default async function HomePage() {
       <section className="hw-panel hw-big">
         <div className="flex items-baseline justify-between gap-4">
           <div>
-            <h2 className="hw-title !whitespace-normal text-[1.18rem]">You might like...</h2>
+            <h2 className="hw-title !whitespace-normal text-[1.53rem]">You might like...</h2>
             <p className="text-sm hw-sub">Based on what you saved and liked.</p>
           </div>
           <Link href="/library" className="text-sm font-semibold text-br-gold underline underline-offset-4">Browse the library</Link>

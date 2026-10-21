@@ -65,20 +65,20 @@ export default function AdminPage() {
       {/* Status strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className={tile}>
-          <p className="text-[11px] text-br-dk-sub">On air</p>
+          <p className="text-[14px] text-br-dk-sub">On air</p>
           <p className="text-br-dk-text truncate">{dash?.onAir.title || 'Nothing scheduled'}</p>
           <p className="text-xs text-br-dk-muted">{dash?.onAir.title ? (dash.onAir.isShow ? 'show' : 'genre block') : ''}{dash?.onAir.endAt ? ` · until ${clock(dash.onAir.endAt)}` : ''}</p>
         </div>
         <div className={tile}>
-          <p className="text-[11px] text-br-dk-sub">{dash?.nowPlaying.isLive ? `Live · ${dash.nowPlaying.streamer}` : dash?.nowPlaying.playlist ? `Playlist · ${dash.nowPlaying.playlist}` : 'Playing'}</p>
+          <p className="text-[14px] text-br-dk-sub">{dash?.nowPlaying.isLive ? `Live · ${dash.nowPlaying.streamer}` : dash?.nowPlaying.playlist ? `Playlist · ${dash.nowPlaying.playlist}` : 'Playing'}</p>
           <p className="text-br-dk-text truncate">{dash?.nowPlaying.song || '–'}</p>
         </div>
         <div className={tile}>
-          <p className="text-[11px] text-br-dk-sub">Listening now</p>
+          <p className="text-[14px] text-br-dk-sub">Listening now</p>
           <p className="text-2xl text-br-dk-text tabular-nums">{dash?.nowPlaying.listeners ?? '–'}</p>
         </div>
         <div className={tile}>
-          <p className="text-[11px] text-br-dk-sub">Last 24 hours</p>
+          <p className="text-[14px] text-br-dk-sub">Last 24 hours</p>
           <p className="text-br-dk-text tabular-nums">{dash ? `${dash.last24h.sessions} sessions · ${dash.last24h.hours} h` : '–'}</p>
           {dash?.announcement && <p className="text-xs text-br-gold truncate">Message live</p>}
         </div>

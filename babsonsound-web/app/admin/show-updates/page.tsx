@@ -43,9 +43,9 @@ export default function AdminShowUpdatesPage() {
           <p className="text-xs text-br-dk-sub">{i.requesterName || 'A host'} · {new Date(i.createdAt).toLocaleString()}</p>
           {(['showName', 'description'] as const).filter(k => i.requested[k]).map(k => (
             <div key={k} className="grid sm:grid-cols-2 gap-3 text-sm">
-              <div><p className="font-display text-[10px] tracking-widest text-br-dk-sub mb-1">{k === 'showName' ? 'Name now' : 'Description now'}</p>
+              <div><p className="font-display text-[13px] tracking-widest text-br-dk-sub mb-1">{k === 'showName' ? 'Name now' : 'Description now'}</p>
                 <p className="text-br-dk-sub whitespace-pre-wrap">{i.current[k] || '(empty)'}</p></div>
-              <div><p className="font-display text-[10px] tracking-widest text-br-gold mb-1">Requested</p>
+              <div><p className="font-display text-[13px] tracking-widest text-br-gold mb-1">Requested</p>
                 <p className="text-br-dk-text whitespace-pre-wrap">{i.requested[k]}</p></div>
             </div>
           ))}

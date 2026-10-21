@@ -155,7 +155,7 @@ export default function ScheduleList() {
                     <p className="text-sm text-br-dk-text truncate">{it.title}</p>
                     <p className="text-xs text-br-dk-sub truncate">{time(it.startAt)} – {time(it.endAt)}{it.hosts.length ? ` · ${it.hosts[0]}` : ''}</p>
                   </div>
-                  {it.startAt <= now && it.endAt > now && <span className="text-[10px] font-display tracking-widest text-br-red">Live</span>}
+                  {it.startAt <= now && it.endAt > now && <span className="text-[13px] font-display tracking-widest text-br-red">Live</span>}
                   {it.endAt > now && (
                     <Bell on={bells.has(it.reminderKey)} label={`Remind me before ${it.title}`}
                           onClick={e => { e.stopPropagation(); toggleBell(it) }} />
@@ -206,7 +206,7 @@ export default function ScheduleList() {
           <div className="grid grid-cols-[2.75rem_repeat(3,minmax(0,1fr))]" style={{ height: 24 * HOUR_PX }}>
             <div className="relative">
               {hours.map(h => (
-                <span key={h} className="absolute right-1 text-[10px] text-br-dk-sub -translate-y-1/2"
+                <span key={h} className="absolute right-1 text-[13px] text-br-dk-sub -translate-y-1/2"
                       style={{ top: h * HOUR_PX, display: h === 0 ? 'none' : undefined }}>{hourLabel(h)}</span>
               ))}
             </div>
@@ -236,7 +236,7 @@ export default function ScheduleList() {
                              
                            }}>
                         <p className="text-xs leading-tight text-br-dk-text pr-6 line-clamp-2">{it.title}</p>
-                        {tall && <p className="text-[10px] text-br-dk-sub truncate">{time(it.startAt)}{it.hosts.length ? ` · ${it.hosts[0]}` : ''}</p>}
+                        {tall && <p className="text-[13px] text-br-dk-sub truncate">{time(it.startAt)}{it.hosts.length ? ` · ${it.hosts[0]}` : ''}</p>}
                         {height >= 34 && it.endAt > now && (
                           <span className="absolute top-1 right-1">
                             <Bell small on={bells.has(it.reminderKey)} label={`Remind me before ${it.title}`}
@@ -276,7 +276,7 @@ export default function ScheduleList() {
                       className="sk-key rounded-xl w-full py-3 text-sm font-display tracking-[0.2em] text-br-dk-text">
                 {bells.has(open.reminderKey) ? 'REMINDER ON' : 'REMIND ME 5 MINUTES BEFORE'}
               </button>
-              <p className="text-[11px] text-br-dk-muted text-center -mt-2">Sent to the Babson Radio iPhone app, not this browser.</p>
+              <p className="text-[14px] text-br-dk-muted text-center -mt-2">Sent to the Babson Radio iPhone app, not this browser.</p>
               <button onClick={() => setOpen(null)} className="sk-key rounded-xl w-full py-3 text-sm font-display tracking-[0.2em] text-br-dk-text">Close</button>
             </div>
           </div>

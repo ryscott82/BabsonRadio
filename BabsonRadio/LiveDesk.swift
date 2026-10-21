@@ -509,8 +509,11 @@ struct PhoneLiveDesk<Drawer: View>: View {
     private var panelUp: CGFloat {
         let f = UIFont(name: "BarlowCondensed-Bold", size: 40) ?? UIFont.systemFont(ofSize: 40, weight: .bold)
         // Same width as the title frame (310): if it fits on one line, close the empty second line.
-        let w = (titleText as NSString).size(withAttributes: [.font: f]).width
-        return w <= 310 ? 38 : 0
+        // SF Expanded Black is about 1.45x as wide as the same size in a regular system font.
+        let w = BRFont.expanded
+            ? (titleText as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 40 * BRFont.expandedScale, weight: .black)]).width * 1.45
+            : (titleText as NSString).size(withAttributes: [.font: f]).width
+        return w <= 310 ? 33 : 0
     }
     private var panelBottom: CGFloat { 340 + 380 - panelUp }
     /// "Show name with Host" for live shows, else the artist.
@@ -651,13 +654,13 @@ struct PhoneLiveDesk<Drawer: View>: View {
             }
 
             // Title (two lines at most, shrinks to fit) and the line under it.
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(titleText)
                     .font(BRFont.display(40))
                     .foregroundStyle(mode.onPanelText)
                     .lineLimit(2).minimumScaleFactor(0.5)
                     .lineSpacing(-2)
-                    .frame(maxWidth: .infinity, minHeight: 86 - up, maxHeight: 86 - up, alignment: .bottomLeading)
+                    .frame(maxWidth: .infinity, minHeight: 66 - up, maxHeight: 66 - up, alignment: .bottomLeading)
                     .shadow(color: .black.opacity(0.45), radius: 0, x: 0, y: 1)
                 Text(subText)
                     .font(BRFont.body(18, .medium))
@@ -665,7 +668,7 @@ struct PhoneLiveDesk<Drawer: View>: View {
                     .lineLimit(1).minimumScaleFactor(0.7)
             }
             .frame(width: 310, alignment: .leading)
-            .offset(x: 28, y: 20)
+            .offset(x: 28, y: 28)
 
             // A taller amp spends its extra height on a taller meter and a little more air above the reaction keys.
             let grow = extra * 0.5, air = extra * 0.25

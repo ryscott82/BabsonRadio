@@ -44,8 +44,8 @@ export default function SkipButton({ np }: { np: NowPlaying | null }) {
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path d="M6 6l9 6-9 6V6zm10 0h2v12h-2V6z" /></svg>
       </button>
       <span className="text-xs font-semibold text-br-dk-text">Ask to skip</span>
-      <span className="text-[11px] hw-sub tabular-nums -mt-1" role="status">{skip.mine ? 'Skip requested · ' : ''}{skip.votes}/{skip.needed}{skip.mine ? '' : ' requested'}</span>
-      {err && <span role="alert" className="text-[11px] text-br-red max-w-[10rem] text-center">{err}</span>}
+      <span className="text-[14px] hw-sub tabular-nums -mt-1" role="status">{skip.mine ? 'Skip requested · ' : ''}{skip.votes}/{skip.needed}{skip.mine ? '' : ' requested'}</span>
+      {err && <span role="alert" className="text-[14px] text-br-red max-w-[10rem] text-center">{err}</span>}
     </div>
   )
 }

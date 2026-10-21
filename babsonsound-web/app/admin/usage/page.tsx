@@ -98,7 +98,7 @@ export default function UsagePage() {
               {days.map(([day, v]) => (
                 <div key={day} className="flex-1 flex flex-col items-center justify-end h-full" title={`Day ${day}: ${v} h`}>
                   <div className="w-full bg-br-gold/70 rounded-sm" style={{ height: `${(v / max) * 100}%` }} />
-                  <span className="text-[9px] text-br-dk-sub mt-1">{day}</span>
+                  <span className="text-[12px] text-br-dk-sub mt-1">{day}</span>
                 </div>
               ))}
             </div>

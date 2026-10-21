@@ -81,7 +81,7 @@ export default function Telemetry() {
       <div className="flex items-center gap-3">
         <h2 className="text-br-gold text-xs">Telemetry</h2>
         <span className="flex items-center gap-1.5 text-xs text-br-dk-text"><span className={`inline-block w-2 h-2 rounded-full ${dot}`} />{status}</span>
-        <span className="ml-auto text-[11px] text-br-dk-muted tabular-nums">window {span}m · sample {EVERY_MS / 1000}s</span>
+        <span className="ml-auto text-[14px] text-br-dk-muted tabular-nums">window {span}m · sample {EVERY_MS / 1000}s</span>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">

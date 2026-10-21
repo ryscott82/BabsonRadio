@@ -52,7 +52,7 @@ export default function InsightsPage() {
               ['MOST REACTIONS', buzz && buzz.reactions ? buzz.label : '–', buzz && buzz.reactions ? `${buzz.reactions.toFixed(0)} reactions` : ''],
             ].map(([k, v, sub]) => (
               <div key={k} className="sk-raised rounded-xl p-4">
-                <p className="font-display text-[11px] tracking-widest text-br-dk-sub">{k}</p>
+                <p className="font-display text-[14px] tracking-widest text-br-dk-sub">{k}</p>
                 <p className="text-br-dk-text text-lg mt-1 truncate">{v}</p>
                 <p className="text-xs text-br-dk-muted truncate">{sub}</p>
               </div>

@@ -55,7 +55,7 @@ export default function ListeningLog() {
             <div className="flex items-end gap-1 h-24" role="img" aria-label="Listening minutes by hour of day">
               {local.map((v, h) => <div key={h} title={`${h}:00 · ${v} min`} className="flex-1 bg-br-gold/70 rounded-t" style={{ height: `${Math.max(2, (v / max) * 100)}%` }} />)}
             </div>
-            <div className="flex justify-between text-[10px] text-br-dk-muted mt-1"><span>12am</span><span>6am</span><span>12pm</span><span>6pm</span><span>11pm</span></div>
+            <div className="flex justify-between text-[13px] text-br-dk-muted mt-1"><span>12am</span><span>6am</span><span>12pm</span><span>6pm</span><span>11pm</span></div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-br-dk-text">

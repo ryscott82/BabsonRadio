@@ -179,7 +179,7 @@ export default function SlotsPage() {
           <div key={r.id} className="sk-raised rounded-xl p-4 space-y-2">
             <div className="flex justify-between gap-4">
               <p className="text-sm text-br-dk-text">{r.title}</p>
-              <span className={`font-display text-[11px] tracking-widest ${r.status === 'declined' ? 'text-br-red' : r.status === 'approved' ? 'text-br-green' : 'text-br-dk-sub'}`}>{STATUS[r.status]}</span>
+              <span className={`font-display text-[14px] tracking-widest ${r.status === 'declined' ? 'text-br-red' : r.status === 'approved' ? 'text-br-green' : 'text-br-dk-sub'}`}>{STATUS[r.status]}</span>
             </div>
             <p className="text-xs text-br-dk-sub">{fmt(r.startAt)} · {r.durationMin} min · {SLOT_TYPES[r.type]}</p>
             {r.staffNote && <p className="text-xs text-br-dk-text">Staff note: {r.staffNote}</p>}

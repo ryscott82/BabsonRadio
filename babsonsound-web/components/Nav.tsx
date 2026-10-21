@@ -55,8 +55,8 @@ export default function Nav() {
 
         {/* Wordmark */}
         <Link href="/" className="flex items-baseline gap-2.5 shrink-0" style={{ fontFamily: "normalidad-extended, 'Barlow', system-ui, sans-serif" }}>
-          <span className="uppercase text-br-gold text-[11px] font-semibold tracking-[0.34em]">Babson</span>
-          <span className="uppercase text-br-dk-text text-[1rem] font-bold tracking-[0.32em] leading-none">Radio</span>
+          <span className="uppercase text-br-gold text-[14px] font-semibold tracking-[0.34em]">Babson</span>
+          <span className="uppercase text-br-dk-text text-[1.3rem] font-bold tracking-[0.32em] leading-none">Radio</span>
         </Link>
 
         {/* Desktop nav */}
@@ -66,7 +66,7 @@ export default function Nav() {
               key={link.href}
               href={link.href}
               aria-current={active(link.href) ? 'page' : undefined}
-              className={`${active(link.href) ? 'sk-key hw-pill text-br-gold' : 'text-br-dk-text hover:text-br-gold'} text-[15px] font-semibold px-4 py-1.5 rounded-xl transition-colors`}
+              className={`${active(link.href) ? 'sk-key hw-pill text-br-gold' : 'text-br-dk-text hover:text-br-gold'} text-[19px] font-semibold px-4 py-1.5 rounded-xl transition-colors`}
             >
               {link.label}
             </Link>

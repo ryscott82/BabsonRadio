@@ -28,3 +28,4 @@ tools/art_report.csv
 # Python
 __pycache__/
 *.pyc
+.vercel

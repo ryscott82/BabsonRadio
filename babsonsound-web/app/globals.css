@@ -1,3 +1,4 @@
+@import url('https://use.typekit.net/uag7bwr.css');
 @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700&display=swap');
 @import "tailwindcss";
 @import "./hardware.css";
@@ -5,6 +6,22 @@
 /* ── Brand tokens ───────────────────────────────────────────── */
 /* The existing br-dk-* class names now resolve to whichever theme is active, so every page
    themes without edits. "Accent" matches the app: gold in dark, green in light. */
+/* Type scale for Normalidad Extended: it is about 1.5x as wide as Barlow, so sizes come down (about 62% on headings; small text is
+   kept from going unreadably small). The Barlow-era sizes were Tailwind's defaults. */
+@theme {
+  --text-xs: 0.625rem;
+  --text-sm: 0.6875rem;
+  --text-base: 0.75rem;
+  --text-lg: 0.8125rem;
+  --text-xl: 0.875rem;
+  --text-2xl: 0.93rem;
+  --text-3xl: 1.16rem;
+  --text-4xl: 1.395rem;
+  --text-5xl: 1.86rem;
+  --text-6xl: 2.325rem;
+  --text-7xl: 2.79rem;
+}
+
 @theme inline {
   --color-br-green:      #006644;
   --color-br-green-mid:  #007A50;
@@ -21,7 +38,7 @@
   --color-br-dk-sub:      var(--br-sub);
   --color-br-dk-muted:    var(--br-muted);
 
-  --font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+  --font-display: normalidad-extended, 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
 }
 
 /* ── Themes ──────────────────────────────────────────────────── */
@@ -74,9 +91,10 @@
 
 /* ── Base ────────────────────────────────────────────────────── */
 html, body {
+  font-size: 0.75rem;
   background-color: var(--br-bg);
   color: var(--br-text);
-  font-family: 'Barlow', system-ui, -apple-system, sans-serif;
+  font-family: normalidad-extended, 'Barlow', system-ui, -apple-system, sans-serif;
   min-height: 100vh; min-height: 100dvh;
 }
 

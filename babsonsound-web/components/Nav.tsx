@@ -54,9 +54,9 @@ export default function Nav() {
       <div className="max-w-6xl lg:max-w-[1800px] mx-auto px-4 lg:px-8 xl:px-12 h-16 flex items-center gap-8">
 
         {/* Wordmark */}
-        <Link href="/" className="flex items-baseline gap-2.5 shrink-0" style={{ fontFamily: "'Barlow', system-ui, sans-serif" }}>
+        <Link href="/" className="flex items-baseline gap-2.5 shrink-0" style={{ fontFamily: "normalidad-extended, 'Barlow', system-ui, sans-serif" }}>
           <span className="uppercase text-br-gold text-[11px] font-semibold tracking-[0.34em]">Babson</span>
-          <span className="uppercase text-br-dk-text text-[1.6rem] font-bold tracking-[0.32em] leading-none">Radio</span>
+          <span className="uppercase text-br-dk-text text-[1rem] font-bold tracking-[0.32em] leading-none">Radio</span>
         </Link>
 
         {/* Desktop nav */}

@@ -242,7 +242,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
 
         {/* The amp */}
         <div className="hw-panel hw-big min-w-0">
-          <FitTitle text={hasSong ? np!.title : 'Live Stream'} className="hw-title hw-title-fit text-[2.75rem] lg:text-[3.1rem]" />
+          <FitTitle text={hasSong ? np!.title : 'Live Stream'} className="hw-title hw-title-fit text-[1.7rem] lg:text-[1.92rem]" />
           <p className="hw-sub !text-br-dk-text text-lg font-medium line-clamp-2 mt-0.5">
             {hasSong ? subline : 'Babson College — Internet Radio'}
           </p>

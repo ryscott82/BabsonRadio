@@ -111,7 +111,7 @@
     for (var i = kids.length - 1; i >= 0; i--) {
       var n = kids[i];
       var t = n.nodeType === 3 ? n.nodeValue : (n.nodeType === 1 && n.tagName !== 'SCRIPT' && n.tagName !== 'STYLE' ? n.textContent : '');
-      if (t && t.length > 1000 && t.indexOf('initCountdown') !== -1 && t.indexOf('initCleanup') !== -1) n.parentNode.removeChild(n);
+      if (t && t.length > 1000 && t.indexOf('BABSON SOUND - sitewide script') !== -1) n.parentNode.removeChild(n);
     }
   }
 

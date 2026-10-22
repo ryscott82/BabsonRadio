@@ -1,29 +1,17 @@
-/* ==========================================================================
-   BABSON SOUND - sitewide stylesheet (home, events, leadership team)
-   Paste once into the Campus Groups site's custom CSS.
-   Look: the SOUND logo. Black, forest green, white, hand-cut and photocopied.
-   Font: Normalidad Wide Bold (Adobe Fonts kit uag7bwr, same as the Babson Radio site).
-   It only restyles existing classes plus the .br-* blocks, and never touches the
-   markup Campus Groups fills in (stats, featured events, officers).
-   Dark only: the logo lives on black, so there is no light-mode variant.
-   ========================================================================== */
+/* BABSON SOUND sitewide CSS. Normalidad Wide (Adobe Fonts) + Casey Neistat (embedded) fonts. See README.md */
 @import url("https://use.typekit.net/uag7bwr.css");
-
+@font-face{font-family:"casey-neistat";font-style:normal;font-weight:400;font-display:swap;src:url(data:font/woff2;base64,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) format("woff2")}
 :root{
-  --br-font:"normalidad-wide","Arial Black","Helvetica Neue",Arial,sans-serif;
-  --br-green:#173d1c; --br-green-hi:#2f6b36; --br-green-text:#6ccf7b;
-  --br-bg:#000; --br-surface:#0c0c0c; --br-surface2:#141414; --br-border:#2a2a2a; --br-border2:rgba(255,255,255,.4);
-  --br-text:#fff; --br-sub:#a9b0a9; --br-accent:#173d1c; --br-accent-text:#6ccf7b; --br-on-accent:#fff;
-  --br-hard:7px 7px 0 var(--br-green);
-  --br-noise:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .5 -.2'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+--br-font:"normalidad-wide","Arial Black","Helvetica Neue",Arial,sans-serif;
+--br-green:#173d1c; --br-green-hi:#2f6b36; --br-green-text:#6ccf7b;
+--br-bg:#000; --br-surface:#0c0c0c; --br-surface2:#141414; --br-border:#2a2a2a; --br-border2:rgba(255,255,255,.4);
+--br-text:#fff; --br-sub:#a9b0a9; --br-accent:#173d1c; --br-accent-text:#6ccf7b; --br-on-accent:#fff;
+--br-hard:7px 7px 0 var(--br-green);
+--br-noise:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .5 -.2'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
 }
-
-/* ---- Base --------------------------------------------------------------- */
 html,body,.main-container{background:#000!important;color:var(--br-text)}
 body{overflow-x:clip}
-/* one font everywhere (icon fonts excluded) */
 body,body *:not(i):not([class*="icon"]){font-family:var(--br-font)!important}
-/* photocopy grain over the whole page */
 html:after{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.32;mix-blend-mode:screen;background-image:var(--br-noise)}
 section{background:#000!important;color:var(--br-text)}
 section.bg--primary{background:var(--br-surface)!important}
@@ -36,20 +24,14 @@ a{color:var(--br-accent-text)}
 ::selection{background:var(--br-green-hi);color:#fff}
 section h2{display:flex;align-items:center;gap:16px;justify-content:center}
 section h2:before,section h2:after{content:"";height:8px;width:34px;background:var(--br-green-hi);transform:skewX(-30deg)}
-
-/* ---- Header / nav (Campus Groups' own, when shown) ---------------------- */
 .nav-container,.nav-container .bar,nav.bar{background:#000!important;border-bottom:3px solid #fff!important;box-shadow:none!important}
 .menu-horizontal>li>span>a,.menu-horizontal>li>a,.bar .menu-horizontal a{font-weight:700!important;font-size:15px!important;letter-spacing:.1em;color:var(--br-sub)!important;text-transform:uppercase}
 .menu-horizontal>li.active>span>a,.menu-horizontal a:hover{color:#fff!important}
 .hamburger-toggle i{color:#fff!important}
 .logo{max-height:2.6em}
-
-/* ---- Buttons ------------------------------------------------------------ */
 .stack-blue-btn,.stack-blue-btn .btn__text{background:transparent!important;border:0!important;box-shadow:none!important}
 .stack-blue-btn a,a.btn,.btn--primary{display:inline-block;font-weight:700!important;font-size:15px!important;letter-spacing:.05em;text-transform:uppercase;background:#fff!important;color:#000!important;padding:13px 28px!important;border-radius:0!important;text-decoration:none!important;border:3px solid #fff!important;transition:transform .1s,box-shadow .1s}
 .stack-blue-btn a:hover,a.btn:hover,.btn--primary:hover{transform:translate(-3px,-3px);box-shadow:6px 6px 0 var(--br-green-hi)}
-
-/* ---- Hero (the group banner) -------------------------------------------- */
 .cover.imagebg,.cover.imagebg.height-80{background:#000!important;background-image:none!important;height:auto!important;min-height:0!important;padding:34px 0 52px!important;position:relative;overflow:hidden}
 .cover.imagebg .background-image-holder,.cover.imagebg:before,.cover.imagebg:after{display:none!important}
 .cover.imagebg .pos-vertical-center{position:static!important;transform:none!important;top:auto!important}
@@ -57,23 +39,15 @@ section h2:before,section h2:after{content:"";height:8px;width:34px;background:v
 .br-logo{display:block;width:min(100%,820px);height:auto;margin:0 auto}
 .cover.imagebg h3{color:#fff!important;font-weight:700!important;letter-spacing:.14em;font-size:clamp(13px,1.9vw,19px)!important;margin:8px 0 26px!important}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-
-/* ---- Page title banners (events, leadership) ---------------------------- */
 .simple-section-title-bg,.simple-section-title-bg.imagebg{background:#000!important;background-image:none!important;position:relative;overflow:hidden;border-bottom:3px solid #fff;padding:48px 0 60px!important}
 .simple-section-title-bg .background-image-holder,.simple-section-title-bg:before{display:none!important}
-.simple-section-title-bg:after{content:"";position:absolute;right:-6%;top:50%;width:min(60vw,520px);aspect-ratio:1;transform:translateY(-50%) rotate(-8deg);pointer-events:none;opacity:.95;
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 760'%3E%3Cpolygon fill='%23173d1c' stroke='%23fff' stroke-width='6' points='405,20 505,285 785,262 565,430 650,725 410,560 150,735 255,440 20,300 318,285'/%3E%3C/svg%3E") center/contain no-repeat}
 .simple-section-title-bg .container{position:relative;z-index:2}
 .simple-section-title-bg h1{font-size:clamp(40px,9vw,100px)!important;line-height:.85;letter-spacing:-.04em;margin:0;transform:rotate(-2deg);text-shadow:5px 4px 0 var(--br-green-hi)}
-
-/* ---- Quick-facts plug (Officers / Members / ...) ------------------------ */
 .mailer-section-icons .text-block{background:#000;border:3px solid #fff;border-radius:0;padding:22px 12px;box-shadow:var(--br-hard);margin-bottom:18px}
 .mailer-section-icons h2{display:block!important;font-size:44px!important;line-height:1;color:#fff!important}
 .mailer-section-icons h2:before,.mailer-section-icons h2:after{display:none}
 .mailer-section-icons p{font-size:13px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--br-green-text);margin:4px 0 0}
 .blue-lg-icon,.blue-lg-icon i,.icon-cont{color:var(--br-green-text)!important}
-
-/* ---- Featured-events plug ----------------------------------------------- */
 .wrapper-events--featured .feature,.section-cont__content-events--featured .feature{background:#000;border:3px solid #fff;border-radius:0;overflow:hidden;box-shadow:var(--br-hard);padding-bottom:16px}
 .wrapper-events--featured img{border-radius:0;filter:grayscale(1) contrast(1.15)}
 .section-cont__content-events_month_featured,.section-cont__content-events_day_featured{font-weight:700;font-size:22px;letter-spacing:.08em;color:var(--br-green-text)!important}
@@ -81,14 +55,10 @@ section h2:before,section h2:after{content:"";height:8px;width:34px;background:v
 .section-cont__content-events_name_featured{color:#fff!important;font-size:20px!important;margin-top:6px}
 .cg_dynamic_msg{background:#000;border:3px dashed var(--br-border2);border-radius:0;padding:34px 20px;color:var(--br-sub)!important;font-size:clamp(17px,2.4vw,22px)!important}
 .section-cont__content-events--featured a:not([class]){color:var(--br-green-text)!important;font-weight:700;letter-spacing:.1em;font-size:16px;text-transform:uppercase}
-
-/* ---- Benefit cards ------------------------------------------------------ */
 .feature-3.boxed,.boxed--border{background:#000!important;border:3px solid #fff!important;border-radius:0!important;box-shadow:var(--br-hard)}
 .feature-3 p{color:var(--br-sub)}
 .features-small-9 .box-cont:nth-child(odd) .feature-3{transform:rotate(-.8deg)}
 .features-small-9 .box-cont:nth-child(even) .feature-3{transform:rotate(.7deg) translateY(8px)}
-
-/* ---- Leadership / officers plug ----------------------------------------- */
 [class*="section-cont__content-officers--"]{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:22px;margin:0!important}
 [class*="section-cont__content-officers--"]>[class*="col-"]{width:auto!important;max-width:none!important;float:none!important;padding:0!important;margin:0!important}
 [class*="section-cont__content-officers--"] .feature-8{background:#000;border:3px solid #fff;border-radius:0;padding:22px 12px;box-shadow:var(--br-hard);height:100%;width:100%}
@@ -98,8 +68,6 @@ section h2:before,section h2:after{content:"";height:8px;width:34px;background:v
 [class*="section-cont__content-officers--"] h3{margin:0 0 8px!important}
 [class*="section-cont__content-officers--"] h3 span{font-size:17px!important;line-height:1.1;display:block;color:#fff}
 .section-cont__content-officers_position{display:inline-block;font-weight:700;font-size:12px;letter-spacing:.12em;background:var(--br-green);color:#fff!important;padding:3px 10px;border-radius:0;text-transform:uppercase;transform:rotate(-2deg)}
-
-/* ---- Join banner + footer ----------------------------------------------- */
 .imageblock.subscribe-video-1{background:var(--br-green)!important;border-top:3px solid #fff;border-bottom:3px solid #fff}
 .imageblock.subscribe-video-1 h1,.imageblock.subscribe-video-1 p{color:#fff!important}
 .imageblock.subscribe-video-1 .imageblock__content{filter:grayscale(1) contrast(1.2)}
@@ -107,29 +75,18 @@ section h2:before,section h2:after{content:"";height:8px;width:34px;background:v
 .switchable.simple-three,.footer-1,footer{background:#000!important;border-top:3px solid #fff}
 .simple-three input,.simple-three textarea{background:#000!important;color:#fff!important;border:2px solid var(--br-border2)!important;border-radius:0}
 .imageblock.subscribe-video-1{height:auto!important;min-height:min(480px,70vh)!important}
-
-/* ==========================================================================
-   Shared blocks
-   ========================================================================== */
 .br-kicker{display:block;text-align:center;font-weight:700;font-size:13px;letter-spacing:.26em;text-transform:uppercase;color:var(--br-green-text);margin-bottom:8px}
 .br-lead{max-width:640px;margin:0 auto}
 .br-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:26px}
 .br-btn{display:inline-block;font-weight:700;font-size:15px;letter-spacing:.05em;text-transform:uppercase;background:#fff;color:#000!important;padding:14px 26px;border:3px solid #fff;border-radius:0;text-decoration:none!important;transition:transform .1s,box-shadow .1s;cursor:pointer}
 .br-btn:hover{transform:translate(-3px,-3px);box-shadow:6px 6px 0 var(--br-green-hi)}
 .br-btn.ghost{background:transparent;color:#fff!important}
-
-/* Scroll reveal (added by babson-sound.js; content stays visible if JS is off) */
 .br-js .br-reveal{opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease;transition-delay:var(--br-delay,0s)}
 .br-js .br-reveal.in{opacity:1;transform:none}
-/* Cursor spotlight on cards */
 .br-spot{position:relative;overflow:hidden}
 .br-spot:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.1),transparent 70%)}
 .br-spot:hover:before{opacity:1}
 @media(prefers-reduced-motion:reduce){.br-js .br-reveal{opacity:1;transform:none;transition:none}.br-spot:before{display:none}}
-
-/* ==========================================================================
-   Built-in nav bar (hidden automatically when the Campus Groups nav is present)
-   ========================================================================== */
 .br-nav{position:fixed;top:0;left:0;right:0;z-index:9999;background:#000;border-bottom:3px solid #fff}
 .br-nav-in{max-width:1080px;margin:0 auto;padding:0 20px;height:64px;display:flex;align-items:center;gap:22px}
 .br-mark{display:flex;flex-direction:column;line-height:.9;text-decoration:none!important}
@@ -146,14 +103,12 @@ section h2:before,section h2:after{content:"";height:8px;width:34px;background:v
 .br-nav-spacer{height:64px}
 .br-nav[hidden]+.br-nav-spacer{display:none!important}
 @media(max-width:760px){
-  .br-nav-in{height:auto;flex-wrap:wrap;padding-top:10px;padding-bottom:8px;gap:8px 14px}
-  .br-links{order:3;flex-basis:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .br-links a{font-size:13px;padding:6px 10px;white-space:nowrap}
-  .br-nav .br-join{margin-left:auto;padding:7px 16px;font-size:14px}
-  .br-nav-spacer{height:98px}
+.br-nav-in{height:auto;flex-wrap:wrap;padding-top:10px;padding-bottom:8px;gap:8px 14px}
+.br-links{order:3;flex-basis:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.br-links a{font-size:13px;padding:6px 10px;white-space:nowrap}
+.br-nav .br-join{margin-left:auto;padding:7px 16px;font-size:14px}
+.br-nav-spacer{height:98px}
 }
-
-/* ---- Marquee: a strip of white tape under the hero ---------------------- */
 .br-marquee{overflow:hidden;background:#fff;border:0;padding:10px 0;white-space:nowrap;transform:rotate(-1.2deg) scale(1.03);margin:14px 0 22px;position:relative;z-index:2}
 .br-marquee-track{display:inline-flex;animation:brmarq 38s linear infinite;will-change:transform}
 .br-marquee span{font-weight:700;font-size:20px;letter-spacing:.04em;color:#000;padding:0 22px}
@@ -162,10 +117,6 @@ section h2:before,section h2:after{content:"";height:8px;width:34px;background:v
 .br-marquee:hover .br-marquee-track{animation-play-state:paused}
 .br-marquee+section{padding-top:48px}
 @media(prefers-reduced-motion:reduce){.br-marquee-track{animation:none!important}}
-
-/* ==========================================================================
-   Radio launch countdown (home page)
-   ========================================================================== */
 .br-soon{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:15px;letter-spacing:.2em;color:#fff;background:var(--br-green-hi);padding:5px 16px;border:2px solid #fff;border-radius:0;transform:rotate(-2deg)}
 .br-soon i{width:6px;height:6px;border-radius:50%;background:#fff;animation:brpulse 1.4s infinite}
 .br-count-sec{position:relative;overflow:hidden;text-align:center}
@@ -175,7 +126,6 @@ h2.br-mega{font-size:clamp(32px,8vw,104px)!important;line-height:.86!important;l
 h2.br-mega:before,h2.br-mega:after{display:none}
 h2.br-mega em{font-style:normal;background:var(--br-green);padding:0 .12em;text-shadow:none}
 .br-count-sec .br-lead{font-size:clamp(14px,1.6vw,18px);color:#cfd5cf}
-
 .br-count{max-width:900px;margin:34px auto 0;padding:24px 20px 20px;background:#000;border:4px solid #fff;box-shadow:8px 8px 0 var(--br-green);transform:rotate(.6deg);position:relative}
 .br-cd{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .br-cell{background:var(--br-green);padding:14px 4px 10px;text-align:center;clip-path:polygon(0 3%,10% 0,45% 3%,80% 0,100% 4%,99% 96%,85% 100%,50% 97%,15% 100%,0 96%)}
@@ -186,12 +136,9 @@ h2.br-mega em{font-style:normal;background:var(--br-green);padding:0 .12em;text-
 .br-count.done .br-cd-done{display:block;animation:brflick 1.4s steps(2,end) infinite}
 @keyframes brflick{0%,100%{opacity:1}46%{opacity:1}50%{opacity:.3}54%{opacity:1}}
 .br-when{margin:18px 0 0;font-weight:700;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--br-sub)}
-
 .br-launched .br-soon,.br-launched .br-when{display:none}
 @media(prefers-reduced-motion:reduce){.br-soon i,.br-count.done .br-cd-done{animation:none!important}}
 @media(max-width:560px){.br-cd{gap:6px}.br-count{padding:18px 12px 16px}}
-
-/* Semester classics */
 .br-classics{max-width:900px;margin:10px auto 34px;text-align:center}
 .br-classics h3{font-size:clamp(24px,3.6vw,40px)!important;margin:6px 0 22px;letter-spacing:-.03em}
 .br-chips{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:12px}
@@ -199,38 +146,21 @@ h2.br-mega em{font-style:normal;background:var(--br-green);padding:0 .12em;text-
 .br-chips li:nth-child(odd){background:#fff;color:#000;transform:rotate(-1.4deg)}
 .br-chips li:nth-child(even){transform:rotate(1deg)}
 .br-chips li.more{border-style:dashed;background:none;color:var(--br-sub);transform:none}
-
-/* Card hover lift */
 .feature-3.boxed,.mailer-section-icons .text-block,[class*="section-cont__content-officers--"] .feature-8,.wrapper-events--featured .feature{transition:transform .12s ease,box-shadow .12s ease}
 .feature-3.boxed:hover,.mailer-section-icons .text-block:hover,[class*="section-cont__content-officers--"] .feature-8:hover,.wrapper-events--featured .feature:hover{transform:translate(-3px,-3px) rotate(0);box-shadow:10px 10px 0 var(--br-green-hi)}
-
-/* Credit line */
 .br-credit{text-align:center;padding:28px 16px 36px;font-weight:700;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--br-sub);border-top:3px solid #fff;background:#000}
 .br-credit a{color:var(--br-green-text);text-decoration:none;border-bottom:2px solid currentColor}
-
-/* ==========================================================================
-   Spacing fixes (added after the first live check). Paste at the very end of the CSS.
-   ========================================================================== */
-/* 1. No sideways scroll: the tilted marquee strip stuck out past the page edge */
 html,body{overflow-x:hidden}
 .br-marquee{transform:rotate(-1.2deg);margin:28px -4vw 34px;padding:10px 0}
 .cover.imagebg,.cover.imagebg.height-80{padding-bottom:40px!important}
-
-/* 2. Hero JOIN button: theme was forcing white text onto the white button */
 .stack-blue-btn .btn__text a,.stack-blue-btn a,.cover.imagebg .stack-blue-btn a,.cover.imagebg .btn__text a{color:#000!important;-webkit-text-fill-color:#000!important;text-shadow:none!important}
-
-/* 3. "Babson Radio is back" headline: sized for the wide font, no overlapping lines */
 h2.br-mega{font-size:clamp(28px,6vw,72px)!important;line-height:1.1!important;letter-spacing:-.02em;margin:.55em 0 .5em!important;text-shadow:4px 3px 0 var(--br-green-hi)}
 h2.br-mega em{display:inline-block;padding:.04em .16em .08em;line-height:1.05;margin-top:.12em}
 .br-count-sec .br-kicker{margin-top:22px}
-
-/* 4. Countdown block spacing */
 .br-count{margin-top:40px}
 .br-when{margin:24px 0 12px}
 .br-count-sec .br-lead{margin-top:6px}
 .br-count-sec .br-actions{margin-top:32px}
-
-/* 5. Benefit cards: equal heights, real padding, calmer tilt */
 .features-small-9 .row{display:flex;flex-wrap:wrap;align-items:stretch}
 .features-small-9 .box-cont{display:flex;float:none;margin-bottom:28px}
 .features-small-9 .box-cont .feature-3{width:100%;height:100%;padding:38px 30px!important;margin:0}
@@ -239,19 +169,11 @@ h2.br-mega em{display:inline-block;padding:.04em .16em .08em;line-height:1.05;ma
 .features-small-9 .feature-3 h4{margin-top:14px}
 .features-small-9 .feature-3:hover{transform:translate(-3px,-3px) rotate(0)}
 @media(max-width:767px){.features-small-9 .box-cont{width:100%;max-width:100%}}
-
-/* 6. Events block + misc gaps */
 .cg_dynamic_msg{margin-bottom:20px}
 .section-cont__content-events--featured a:not([class]){display:inline-block;margin-top:6px}
 .br-classics{margin-bottom:40px}
 section.bg--primary.space--sm{padding-top:72px!important}
-
-/* 7. Phone nav: hide the scrollbar under the links */
 .br-links{scrollbar-width:none}.br-links::-webkit-scrollbar{display:none}
-
-/* ==========================================================================
-   Request Studio Access + Request a DJ (home, first section under the logo)
-   ========================================================================== */
 .br-studio{padding:clamp(44px,7vw,80px) 0 clamp(20px,4vw,40px)!important;text-align:center}
 .br-studio-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,4vw,48px);max-width:1000px;margin:0 auto;align-items:stretch}
 .br-studio-card{display:flex;flex-direction:column;padding:clamp(26px,3.4vw,40px) clamp(20px,3vw,34px);background:#000;border:4px solid #fff;box-shadow:10px 10px 0 var(--br-green);position:relative}
@@ -264,3 +186,27 @@ section.bg--primary.space--sm{padding-top:72px!important}
 .br-studio h2{margin:0 0 18px!important;font-size:clamp(24px,3vw,36px)!important;line-height:1.05}
 .br-studio p{font-size:clamp(15px,1.6vw,17px);line-height:1.55;color:#cfd5cf;margin:0 auto 12px;max-width:620px}
 .br-studio .br-actions{margin-top:26px}
+h1,h2,h3,h4,h5,.h4,.h5,.br-cd-done{--br-font:"casey-neistat","Arial Narrow",Impact,sans-serif;font-weight:400!important;letter-spacing:.02em;word-spacing:.3em;line-height:1.05}
+h2{font-size:clamp(34px,5vw,58px)!important}
+h4{font-size:clamp(24px,2.6vw,30px)!important}
+h2.br-mega{font-size:clamp(40px,8vw,96px)!important;line-height:1.1!important;letter-spacing:.01em;text-shadow:3px 3px 0 var(--br-green-hi)}
+.br-studio h2{font-size:clamp(30px,3.6vw,46px)!important}
+.br-classics h3{font-size:clamp(30px,4.4vw,54px)!important}
+.br-cd-done{font-size:clamp(34px,7vw,74px)}
+.cover.imagebg h3{font-size:clamp(22px,3vw,32px)!important;letter-spacing:.05em}
+.simple-section-title-bg h1{font-size:clamp(56px,11vw,130px)!important;letter-spacing:.02em;text-shadow:4px 3px 0 var(--br-green-hi)}
+.mailer-section-icons h2{font-size:56px!important}
+[class*="section-cont__content-officers--"] h3 span{font-size:26px!important;line-height:1.05}
+.section-cont__content-events_name_featured{font-size:28px!important}
+.cg_dynamic_msg{font-size:clamp(24px,3vw,32px)!important}
+
+
+
+.simple-section-title-bg .container{position:relative;z-index:2;text-align:left}
+.simple-section-title-bg h1{display:block;width:auto;text-align:left;margin:0!important;font-size:clamp(56px,11vw,130px)!important;line-height:.9!important;transform:rotate(-2deg);color:#fff!important;-webkit-text-stroke:0;paint-order:normal;text-shadow:5px 4px 0 var(--br-green-hi)}
+
+.simple-section-title-bg,.simple-section-title-bg.imagebg{padding:54px 0!important}
+.simple-section-title-bg h1{position:relative;display:inline-block;margin-left:min(9vw,80px)!important;text-align:center}
+.simple-section-title-bg h1:before{content:"";position:absolute;left:50%;top:50%;width:min(62vw,540px);aspect-ratio:1;transform:translate(-50%,-50%) rotate(-8deg);z-index:-1;pointer-events:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 800'%3E%3Cpolygon fill='%23173d1c' stroke='%23fff' stroke-width='9' stroke-linejoin='miter' points='400,24 491,286 769,292 547,459 628,725 400,567 171,725 252,459 30,292 308,286'/%3E%3C/svg%3E") center/contain no-repeat}
+.simple-section-title-bg h1,h2.br-mega,.br-coming h1{text-shadow:-3px -3px 0 #000,3px -3px 0 #000,-3px 3px 0 #000,3px 3px 0 #000,0 -3px 0 #000,0 3px 0 #000,-3px 0 0 #000,3px 0 0 #000,5px 5px 0 #000!important}
+.br-kicker{display:none!important}

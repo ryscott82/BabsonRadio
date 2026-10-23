@@ -5,7 +5,7 @@
 //   LAUNCH_OPEN=1   manual override: open the site now, whatever the clock says.
 //   LAUNCH_SECRET   random secret (16+ chars). Signs the launch pass cookie and the unsubscribe links. Falls back to CRON_SECRET.
 //
-// Before the launch time only developers, admins, directors, hosts, beta testers and people with `earlyAccess` get in.
+// Before the launch time only admins, directors and radio-trained students get in.
 // Everyone else can sign up and sign in but is "locked". At the launch time the site opens by itself: no redeploy.
 
 export const LAUNCH_AT_DEFAULT = '2026-10-30T14:00:00Z'

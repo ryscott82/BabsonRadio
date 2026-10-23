@@ -7,7 +7,7 @@ export const runtime = 'nodejs'
 const cookie = (value: string, maxAgeS: number) =>
   `${PASS_COOKIE}=${value}; Path=/; Max-Age=${maxAgeS}; HttpOnly; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
 
-// Developers, admins, directors, hosts, beta testers and early-access accounts trade their sign-in for a launch pass
+// Admins, directors and radio-trained students trade their sign-in for a launch pass
 // (an HttpOnly cookie for the website; `gate` is the same value for the app's X-Launch-Pass header).
 // Locked people get a 403 and nothing else. After launch nobody needs a pass.
 export async function POST(req: Request) {

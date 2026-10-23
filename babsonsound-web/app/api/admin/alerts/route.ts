@@ -1,5 +1,6 @@
 import { adminDb } from '@/lib/server/admin'
-import { handle, requireDirector, isDeveloperToken } from '@/lib/server/http'
+import { handle, requireDirector } from '@/lib/server/http'
+import { accessOf } from '@/lib/server/access'
 
 export const runtime = 'nodejs'
 
@@ -9,7 +10,7 @@ export async function GET(req: Request) {
   return handle(async () => {
     const t = await requireDirector(req)
     const db = adminDb()
-    const admin = isDeveloperToken(t) || (await db.collection('users').doc(t.uid).get()).get('role') === 'superAdmin'
+    const admin = (await accessOf(t)).level === 'admin'
     const pending = await db.collection('slotRequests').where('status', '==', 'pending').get()
     const since = Date.now() - 14 * 86_400_000
     const cancelled = await db.collection('slotRequests').where('status', '==', 'cancelled').get()

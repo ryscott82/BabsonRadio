@@ -1,60 +1,34 @@
 import { adminAuth, adminDb } from '@/lib/server/admin'
-import { BABSON_EMAIL, handle, isBabsonToken, isDeveloperToken, isTesterToken, requireUser } from '@/lib/server/http'
-import { ensureGuestUserDoc, guestLibraryAccess } from '@/lib/server/guests'
+import { handle, requireUser } from '@/lib/server/http'
+import { ensureGuestUserDoc } from '@/lib/server/guests'
 import { finishSchoolUpgrade } from '@/lib/server/upgrade'
 import { isLocked } from '@/lib/server/launchAccess'
+import { accessOf, forgetAccess, isSchoolEmail } from '@/lib/server/access'
 
 export const runtime = 'nodejs'
 
 // One call tells the apps what the signed-in person may do.
-//   canListenLive    → live radio: everyone who is signed in (a beta tester still waiting for approval cannot yet)
-//   canAccessBacklog → the Library: students and developers, plus guests with a sponsor's pass or a student who has them in their contacts
+//   level            guest | student | director | admin
+//   canListenLive    live radio: everyone signed in, once the site is open
+//   canAccessBacklog the Library: students and above (guests never)
+// `tier` is kept for older app builds: 'student' for student and above, otherwise 'guest'.
 export async function GET(req: Request) {
   return handle(async () => {
     const t = await requireUser(req)
-    // Before launch, accounts without early access can finish sign-up but are not let in: nothing is listenable yet.
-    const locked = await isLocked(t)
-    if (isDeveloperToken(t)) return { tier: 'developer', canListenLive: true, canAccessBacklog: true }
-
     const email = (t.email ?? '').toLowerCase()
-    if (BABSON_EMAIL.test(email) || isTesterToken(t)) {
-      const ok = isBabsonToken(t)
-      // A guest who just switched to their school email becomes a student here.
-      const upgraded = ok ? await finishSchoolUpgrade(adminDb(), t) : false
-      return { tier: 'student', locked, needsVerification: !ok, canListenLive: ok && !locked, canAccessBacklog: ok && !locked, upgraded }
-    }
+    // A guest who just switched to their school email becomes a student here.
+    if (isSchoolEmail(email) && t.email_verified === true && await finishSchoolUpgrade(adminDb(), t).catch(() => false)) forgetAccess(t.uid)
+    const a = await accessOf(t)
+    const locked = await isLocked(t)
+    const base = { level: a.level, studioTrained: a.studio, radioTrained: a.radio, locked, canListenLive: !locked }
 
+    if (a.level !== 'guest') return { ...base, tier: 'student', needsVerification: false, canAccessBacklog: !locked }
+
+    // Guest. A school address that is not verified yet is told to verify it.
+    const needsVerification = isSchoolEmail(email)
     const db = adminDb()
-    // Waiting for the station to approve them as a beta tester: can't use anything yet.
-    if ((await db.collection('users').doc(t.uid).get()).get('betaStatus') === 'pending') {
-      return { tier: 'pending', canListenLive: false, canAccessBacklog: false }
-    }
     const emailVerified = t.email_verified === true || (await adminAuth().getUser(t.uid)).emailVerified
     await ensureGuestUserDoc(db, t.uid, email, t.name ?? 'Guest')
-
-    const [library, passSnap, reqSnap] = await Promise.all([
-      guestLibraryAccess(db, t.uid, email, emailVerified),
-      db.collection('guestPasses').doc(t.uid).get(),
-      db.collection('guestRequests').where('guestUid', '==', t.uid).get(),
-    ])
-    const now = Date.now()
-    const pass = passSnap.exists && passSnap.get('revoked') !== true && passSnap.get('expiresAt').toMillis() > now
-      ? { sponsorName: passSnap.get('sponsorName'), expiresAt: passSnap.get('expiresAt').toMillis() }
-      : null
-    const latest = reqSnap.docs
-      .map(d => ({ status: d.get('status'), createdAt: d.get('createdAt').toMillis() }))
-      .sort((a, b) => b.createdAt - a.createdAt)[0]
-
-    return {
-      tier: 'guest',
-      locked,
-      emailVerified,
-      pass,
-      requestStatus: latest?.status ?? null,
-      canListenLive: !locked,
-      canAccessBacklog: library.ok && !locked,
-      libraryVia: library.via,
-      libraryUntil: library.until,
-    }
+    return { ...base, tier: 'guest', needsVerification, emailVerified, canAccessBacklog: false }
   })
 }

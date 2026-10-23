@@ -16,7 +16,7 @@ const isOpenPath = (p: string) => OPEN_PATHS.some(o => p === o || p.startsWith(`
 
 /**
  * Before launch: signed-out visitors see the countdown on `/`, and locked accounts see only the waiting screen.
- * Staff, directors and testers (not locked) get the normal site. At launch time everyone moves into the site on their own.
+ * Admins, directors and trained hosts (not locked) get the normal site. At launch time everyone moves into the site on their own.
  * `chrome` is the normal site (nav, page, footer); `page` is just the route, for the sign-up check-your-email step.
  */
 export default function LaunchShell({ chrome, page }: { chrome: ReactNode; page: ReactNode }) {

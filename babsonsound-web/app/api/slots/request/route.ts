@@ -57,10 +57,10 @@ export async function POST(req: Request) {
 
     if (await findConflict(db, start, end)) throw new HttpError(409, 'That time is already booked. Pick another.')
 
-    // Hosts must be trained. The on-air agreements (which include the clean music hours) are signed right after they submit,
+    // Pre-recorded shows are open to students. Live shows need the radioTrained badge (directors and admins always have it). The on-air agreements (which include the clean music hours) are signed right after they submit,
     // so the request is saved first and carries a flag for whether the account has signed yet.
     const ready = await readiness(db, t)
-    if (!ready.trained) throw new HttpError(403, 'Finish host training before you request a slot.', 'BR-TRN-001')
+    if (type === 'live' && !ready.trained) throw new HttpError(403, 'Finish radio training to request a live show.', 'BR-TRN-001')
     const cleanHours = touchesCleanHours(startMs, startMs + durationMin * 60_000)
 
     const mine = await db.collection('slotRequests').where('requesterUid', '==', t.uid).get()

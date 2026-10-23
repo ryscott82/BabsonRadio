@@ -29,7 +29,7 @@ const when = (ms: number) =>
 const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
 export default function HostPage() {
-  const { user, isBabson, isDeveloper, loading } = useAuth()
+  const { user, isBabson, loading } = useAuth()
   const router = useRouter()
   const [st, setSt] = useState<Status | null>(null)
   const [error, setError] = useState('')
@@ -42,14 +42,14 @@ export default function HostPage() {
 
   useEffect(() => { if (!loading && !user) router.replace('/auth') }, [loading, user, router])
   useEffect(() => {
-    if (!user || !(isBabson || isDeveloper)) return
+    if (!user || !isBabson) return
     queueMicrotask(load)
     const t = setInterval(load, 20_000)
     return () => clearInterval(t)
-  }, [user, isBabson, isDeveloper, load])
+  }, [user, isBabson, load])
 
   if (!user) return null
-  if (!isBabson && !isDeveloper) return <p className="max-w-2xl mx-auto px-4 py-10 text-sm text-br-dk-sub">The host panel is for students.</p>
+  if (!isBabson) return <p className="max-w-2xl mx-auto px-4 py-10 text-sm text-br-dk-sub">The host panel is for students.</p>
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">

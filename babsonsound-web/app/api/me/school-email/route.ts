@@ -1,6 +1,7 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from '@/lib/server/admin'
-import { BABSON_EMAIL, HttpError, handle, isBabsonToken, isDeveloperToken, readJson, requireUser, str } from '@/lib/server/http'
+import { BABSON_EMAIL, HttpError, handle, readJson, requireUser, str } from '@/lib/server/http'
+import { accessOf } from '@/lib/server/access'
 import { validGradYear } from '@/lib/terms'
 
 export const runtime = 'nodejs'
@@ -10,7 +11,7 @@ export const runtime = 'nodejs'
 export async function POST(req: Request) {
   return handle(async () => {
     const t = await requireUser(req)
-    if (isBabsonToken(t) || isDeveloperToken(t)) throw new HttpError(400, 'Your account already has a school email.')
+    if ((await accessOf(t)).level !== 'guest') throw new HttpError(400, 'Your account already has a school email.')
     const b = await readJson(req)
     const email = str(b.email, 200).toLowerCase()
     const firstName = str(b.firstName, 40), lastName = str(b.lastName, 60), gradYear = str(b.gradYear, 10)

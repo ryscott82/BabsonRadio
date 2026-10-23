@@ -1,13 +1,13 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { removeContactGraph } from '@/lib/server/contactGraph'
-import { isTester } from '@/lib/server/testers'
 import { finishSchoolUpgrade } from '@/lib/server/upgrade'
 import { cleanBirthday } from '@/lib/server/birthdays'
 import { PUBLIC_AGREEMENT_VERSION, PUBLIC_CLAUSES } from '@/lib/publicContent'
 import { CONCENTRATIONS, MAX_CONCENTRATIONS, TERMS_VERSION, normText, validGradYear } from '@/lib/terms'
 import { AVATAR_COLORS, DEFAULT_AVATAR, MAX_HOST_EMOJIS } from '@/lib/profile'
-import { HttpError, handle, isBabsonToken, isDeveloperToken, readJson, requireUser, str } from '@/lib/server/http'
+import { HttpError, handle, readJson, requireUser, str } from '@/lib/server/http'
+import { accessOf, forgetAccess } from '@/lib/server/access'
 
 export const runtime = 'nodejs'
 
@@ -15,7 +15,8 @@ export async function GET(req: Request) {
   return handle(async () => {
     const t = await requireUser(req)
     // A guest who just signed in with their confirmed school email becomes a student here.
-    if (isBabsonToken(t)) await finishSchoolUpgrade(adminDb(), t).catch(() => {})
+    if (t.email_verified === true && await finishSchoolUpgrade(adminDb(), t).catch(() => false)) forgetAccess(t.uid)
+    const a = await accessOf(t)
     const u = await adminDb().collection('users').doc(t.uid).get()
     if (!u.exists) throw new HttpError(404, 'Profile not found.')
     return {
@@ -25,10 +26,10 @@ export async function GET(req: Request) {
       username: u.get('username') ?? '',
       email: u.get('email') ?? t.email ?? '',
       phoneNumber: u.get('phoneNumber') ?? '',
-      role: u.get('role') ?? 'listener',
-      isDeveloper: isDeveloperToken(t),
-      isBabson: isBabsonToken(t),
-      isTester: t.tester === true || (await isTester(t.email)),
+      level: a.level,
+      studioTrained: a.studio,
+      radioTrained: a.radio,
+      isBabson: a.level !== 'guest',
       invisible: u.get('invisible') === true,
       avatarColor: u.get('avatarColor') ?? DEFAULT_AVATAR,
       joinedAt: (u.get('joinedAt') as { toMillis?: () => number } | undefined)?.toMillis?.() ?? null,

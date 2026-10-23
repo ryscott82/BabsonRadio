@@ -22,18 +22,18 @@ const NAV_LINKS = [
 
 export default function Nav() {
   const HOST_LINK = { href: '/host', label: 'Host' }
-  const { user, userDoc, isAdmin, isDirector, isBabson, isDeveloper, isGuest, isHost } = useAuth()
+  const { user, userDoc, isAdmin, isDirector, isBabson, isGuest } = useAuth()
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)      // profile menu
   const [mobileOpen, setMobileOpen] = useState(false)  // hamburger menu on phones
   const [hosting, setHosting] = useState(false) // a show of theirs is on air or about to be (controls window is open)
   useEffect(() => {
-    if (!user || !(isBabson || isDeveloper)) { queueMicrotask(() => setHosting(false)); return }
+    if (!user || !isBabson) { queueMicrotask(() => setHosting(false)); return }
     const load = () => apiGet<{ hosting: boolean }>('/api/host/access').then(r => setHosting(r.hosting)).catch(() => setHosting(false))
     load()
     const t = setInterval(() => { if (!document.hidden) load() }, 60_000)
     return () => clearInterval(t)
-  }, [user, isBabson, isDeveloper])
+  }, [user, isBabson])
   const avatarId = typeof userDoc?.avatarColor === 'string' ? userDoc.avatarColor : undefined
   const initials = (() => {
     const first = (userDoc?.firstName ?? userDoc?.displayName ?? user?.displayName ?? user?.email ?? 'U').trim()
@@ -42,9 +42,10 @@ export default function Nav() {
   })()
   if (pathname === '/coming-soon') return null
 
-  const showHost = hosting
+  const showHost = hosting && !isGuest
+  const links = isGuest ? NAV_LINKS.slice(0, 1) : showHost ? [...NAV_LINKS, HOST_LINK] : NAV_LINKS // guests: Live only
   const showAdmin = isAdmin || isDirector
-  const canRequest = isBabson || isDeveloper
+  const canRequest = isBabson
   const active = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href))
   const item = 'block px-4 py-3 text-sm text-br-dk-text hover:bg-br-dk-surface2 transition-colors'
   const close = () => { setMenuOpen(false); setMobileOpen(false) }
@@ -61,7 +62,7 @@ export default function Nav() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1 flex-1">
-          {(showHost ? [...NAV_LINKS, HOST_LINK] : NAV_LINKS).map(link => (
+          {links.map(link => (
             <Link
               key={link.href}
               href={link.href}
@@ -92,14 +93,13 @@ export default function Nav() {
               </button>
               {menuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-52 sk-raised rounded-xl overflow-hidden">
-                  <Link href="/profile" onClick={close} className={item}>Profile</Link>
+                  {!isGuest && <Link href="/profile" onClick={close} className={item}>Profile</Link>}
                   {canRequest && <Link href="/slots" onClick={close} className={`${item} border-t border-br-dk-border`}>Request a spot</Link>}
                   {isBabson && <Link href="/guest-access" onClick={close} className={`${item} border-t border-br-dk-border`}>Invite friends</Link>}
-                  {isGuest && <Link href="/auth/guest" onClick={close} className={`${item} border-t border-br-dk-border`}>My guest access</Link>}
                   {showAdmin && <Link href="/admin" onClick={close} className={`${item} border-t border-br-dk-border`}>Radio operations</Link>}
                   <button
                     onClick={() => { signOut(); close() }}
-                    className="w-full text-left px-4 py-3 text-sm text-br-dk-sub hover:text-br-dk-text hover:bg-br-dk-surface2 transition-colors border-t border-br-dk-border"
+                    className={`w-full text-left px-4 py-3 text-sm text-br-dk-sub hover:text-br-dk-text hover:bg-br-dk-surface2 transition-colors ${isGuest ? '' : 'border-t border-br-dk-border'}`}
                   >
                     Sign out
                   </button>
@@ -130,7 +130,7 @@ export default function Nav() {
       {/* Mobile nav dropdown: just the four links; the rest is under the profile circle */}
       {mobileOpen && (
         <div className="md:hidden bg-br-dk-surface border-t border-br-dk-border px-4 py-3 flex flex-col gap-1">
-          {(showHost ? [...NAV_LINKS, HOST_LINK] : NAV_LINKS).map(link => (
+          {links.map(link => (
             <Link key={link.href} href={link.href} onClick={close}
               className="font-display tracking-widest text-sm text-br-dk-sub hover:text-br-dk-text py-2">
               {link.label}

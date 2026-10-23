@@ -1,11 +1,12 @@
 import 'server-only'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 import type { DecodedIdToken } from 'firebase-admin/auth'
-import { HttpError, isDeveloperToken } from './http'
+import { HttpError } from './http'
+import { accessOf } from './access'
 import { CONDUCT_VERSION } from '../conduct'
 import { looksLikeFullName } from '../publicContent'
 
-// Conduct agreement (everyone, once per version) and training status. Staff (director, admin, developer) skip the training gate.
+// Conduct agreement (everyone, once per version) and training status. Directors and admins skip the training gate.
 
 export interface Signature { typedName: string; accepted: true; version: string }
 
@@ -35,10 +36,9 @@ export async function signConduct(db: Firestore, t: DecodedIdToken, input: unkno
   return id
 }
 
-export async function isStaff(db: Firestore, t: DecodedIdToken): Promise<boolean> {
-  if (isDeveloperToken(t)) return true
-  const role = (await db.collection('users').doc(t.uid).get()).get('role')
-  return role === 'director' || role === 'superAdmin'
+export async function isStaff(_db: Firestore, t: DecodedIdToken): Promise<boolean> {
+  const l = (await accessOf(t)).level
+  return l === 'director' || l === 'admin'
 }
 
 /** How long an admin's "yes, they are at training" stays valid for taking the quiz. */
@@ -55,7 +55,7 @@ export async function readiness(db: Firestore, t: DecodedIdToken): Promise<Readi
     db.collection('training').doc(t.uid).get(),
     isStaff(db, t),
   ])
-  const trained = staff || (tr.exists && tr.get('certifiedAt') != null && tr.get('revokedAt') == null)
+  const trained = (await accessOf(t)).radio // the radioTrained badge (directors and admins count as trained)
   const at = ms(tr.get('checkInAt')), ok = ms(tr.get('checkInApprovedAt')), now = Date.now()
   const approved = ok > 0 && ok >= at && now - ok < CHECKIN_VALID_MS
   const checkIn: CheckIn = approved ? 'approved' : at > 0 && ok < at && now - at < CHECKIN_VALID_MS ? 'pending' : 'none'

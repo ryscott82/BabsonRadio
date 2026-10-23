@@ -8,7 +8,7 @@ import { api, apiGet } from '@/lib/auth'
 import { plexMono } from '@/components/admin/opsFont'
 
 interface Row {
-  uid: string; name: string; email: string; role: string; trained: boolean; certifiedAt: number | null; certifiedBy: string
+  uid: string; name: string; email: string; level: string; trained: boolean; certifiedAt: number | null; certifiedBy: string
   score: number | null; attempts: number; requestedAt: number | null; requestNote: string; conductSigned: boolean; checkInAt: number | null
 }
 type Filter = 'checked in' | 'all' | 'trained' | 'untrained' | 'requested'
@@ -65,7 +65,7 @@ export default function AdminTrainingPage() {
           {shown.map(r => (
             <li key={r.uid} className="p-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <div className="min-w-0 flex-1">
-                <p className="text-sm text-br-dk-text truncate">{r.name || r.email} <span className="text-xs text-br-dk-muted">{r.role}</span></p>
+                <p className="text-sm text-br-dk-text truncate">{r.name || r.email} <span className="text-xs text-br-dk-muted">{r.level}</span></p>
                 <p className="text-xs text-br-dk-sub truncate">{r.email}</p>
                 {r.checkInAt && <p className="text-xs text-br-gold">Says they are at training now ({new Date(r.checkInAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })})</p>}
                 {r.requestedAt && <p className="text-xs text-br-gold">Asked for training {new Date(r.requestedAt).toLocaleDateString()}{r.requestNote ? `: "${r.requestNote}"` : ''}</p>}

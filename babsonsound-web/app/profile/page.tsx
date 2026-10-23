@@ -173,9 +173,9 @@ function Row({ title, hint, open, onToggle, children }: { title: string; hint?: 
 }
 
 export default function ProfilePage() {
-  const { user, userDoc, loading, isBabson, isDeveloper, isGuest, isAdmin, isDirector } = useAuth()
+  const { user, userDoc, loading, isBabson, isGuest, isAdmin, isDirector } = useAuth()
   const router = useRouter()
-  const member = isBabson || isDeveloper
+  const member = isBabson
   const [me, setMe] = useState<{ invisible: boolean; avatarColor: string; joinedAt: number | null; answered: boolean } | null>(null)
   const [hosting, setHosting] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -194,7 +194,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (loading) return
     if (!user) router.replace('/auth')
-    else if (isGuest) router.replace('/auth/guest')
+    else if (isGuest) router.replace('/')
   }, [loading, user, isGuest, router])
 
   const loadMe = () => apiGet<{ invisible: boolean; avatarColor: string; joinedAt: number | null; gradYear: string; concentrations: string[]; birthday?: unknown }>('/api/me')

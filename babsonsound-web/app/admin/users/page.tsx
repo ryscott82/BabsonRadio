@@ -6,13 +6,15 @@ import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
 import { ErrorText } from '@/components/AuthUI'
 
-interface Row { id: string; name: string; username: string; email: string; role: string; accountType: string; betaTester?: boolean }
+type Level = 'guest' | 'student' | 'director' | 'admin'
+interface Row { id: string; name: string; username: string; email: string; level: Level; studioTrained: boolean; radioTrained: boolean; owner: boolean; you: boolean }
 
-const ROLE_LABEL: Record<string, string> = { listener: 'Listener', showHost: 'Show host', director: 'Director', superAdmin: 'Admin', developer: 'Developer' }
-const PRIVILEGED = ['superAdmin', 'developer']
+const LEVEL_LABEL: Record<Level, string> = { guest: 'Guest', student: 'Student', director: 'Director', admin: 'Admin' }
+const LEVELS = Object.keys(LEVEL_LABEL) as Level[]
+const SCHOOL = /@(babson|olin|wellesley)\.edu$/i
 
 export default function AdminUsersPage() {
-  const { user, isAdmin, isDeveloper, loading } = useAuth()
+  const { user, isAdmin, loading } = useAuth()
   const router = useRouter()
   const [rows, setRows] = useState<Row[]>([])
   const [q, setQ] = useState('')
@@ -27,12 +29,12 @@ export default function AdminUsersPage() {
   useEffect(() => { if (!loading && (!user || !isAdmin)) router.replace('/') }, [loading, user, isAdmin, router])
   useEffect(() => { if (user && isAdmin) queueMicrotask(load) }, [user, isAdmin, load])
 
-  async function setRole(r: Row, role: string) {
+  async function save(r: Row, change: Partial<Pick<Row, 'level' | 'studioTrained' | 'radioTrained'>>) {
     setError(''); setNote('')
     try {
-      const res = await api<{ note?: string }>('/api/admin/users', { uid: r.id, role })
-      setRows(prev => prev.map(x => (x.id === r.id ? { ...x, role } : x)))
-      setNote(`${r.name || r.email} is now ${ROLE_LABEL[role]?.toLowerCase()}.${res.note ? ` ${res.note}` : ''}`)
+      await api('/api/admin/users', { uid: r.id, ...change })
+      setRows(prev => prev.map(x => (x.id === r.id ? { ...x, ...change, ...(change.level === 'guest' ? { studioTrained: false, radioTrained: false } : {}) } : x)))
+      setNote(`Saved ${r.name || r.email}.`)
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save.') }
   }
 
@@ -48,32 +50,45 @@ export default function AdminUsersPage() {
         <span className="text-xs text-br-dk-sub shrink-0">{rows.length} accounts</span>
       </div>
       <p className="text-sm text-br-dk-sub">
-        Listener: normal student access. Show host: manages shows and uploads. Director: sets show times and approves slot requests. Admin: runs the station and manages listeners and hosts. Developer: everything, and the only role that can make or remove admins and developers. Only students with a school email can hold these roles.
+        Guest: live radio only. Student: school email, can use the library and request pre-recorded shows. Director: sets show times and approves requests. Admin: runs the station and manages people.
+        Radio trained lets a student request live shows and go on air. Studio trained is for the studio. Directors and admins count as both. Owner accounts cannot be changed.
+        Only people with a school email can be students, directors or admins.
       </p>
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search name, email or username"
              className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text" />
       <ErrorText>{error}</ErrorText>
-      {note && <p role="status" className="text-sm text-br-gold">{note}</p>}
+      {note && <p role="status" className="text-sm text-br-green">{note}</p>}
       <div className="space-y-2">
         {shown.length === 0 && <p className="text-sm text-br-dk-sub">No accounts found.</p>}
         {shown.map(r => {
-          const student = r.accountType !== 'guest' && r.role !== 'guest'
-          // Admins can't touch admin or developer accounts (or promote anyone to them); developers can.
-          const locked = !isDeveloper && PRIVILEGED.includes(r.role)
-          const options = Object.entries(ROLE_LABEL).filter(([v]) => isDeveloper || !PRIVILEGED.includes(v))
+          const school = SCHOOL.test(r.email)
+          const fixed = r.you || r.owner
+          const high = r.level === 'director' || r.level === 'admin'
           return (
-            <div key={r.id} className="sk-raised rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+            <div key={r.id} className="sk-raised rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm text-br-dk-text truncate">{r.name || '(no name)'}{r.username ? ` · @${r.username}` : ''}</p>
-                <p className="text-xs text-br-dk-sub truncate">{r.email}{r.accountType === 'guest' ? ' · guest' : ''}{r.betaTester ? ' · beta tester' : ''}</p>
+                <p className="text-xs text-br-dk-sub truncate">{r.email}{r.owner ? ' · owner' : ''}</p>
               </div>
-              {student && r.id !== user.uid && !locked ? (
-                <select value={r.role} onChange={e => setRole(r, e.target.value)} aria-label={`Role for ${r.name || r.email}`}
-                        className="sk-field rounded-lg px-2 py-1.5 text-sm text-br-dk-text shrink-0">
-                  {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
+              {fixed ? (
+                <span className="text-xs text-br-dk-sub shrink-0">{r.you ? 'You · ' : ''}{LEVEL_LABEL[r.level]}</span>
               ) : (
-                <span className="text-xs text-br-dk-sub shrink-0">{r.id === user.uid ? `You · ${ROLE_LABEL[r.role] ?? ''}` : locked ? ROLE_LABEL[r.role] : 'Guest'}</span>
+                <div className="flex items-center gap-3 shrink-0">
+                  {r.level !== 'guest' && (
+                    <>
+                      <label className="text-xs text-br-dk-sub flex items-center gap-1">
+                        <input type="checkbox" checked={high || r.radioTrained} disabled={high} onChange={e => save(r, { radioTrained: e.target.checked })} /> Radio
+                      </label>
+                      <label className="text-xs text-br-dk-sub flex items-center gap-1">
+                        <input type="checkbox" checked={high || r.studioTrained} disabled={high} onChange={e => save(r, { studioTrained: e.target.checked })} /> Studio
+                      </label>
+                    </>
+                  )}
+                  <select value={r.level} onChange={e => save(r, { level: e.target.value as Level })} aria-label={`Level for ${r.name || r.email}`}
+                          className="sk-field rounded-lg px-2 py-1.5 text-sm text-br-dk-text">
+                    {LEVELS.filter(l => school || l === 'guest').map(l => <option key={l} value={l}>{LEVEL_LABEL[l]}</option>)}
+                  </select>
+                </div>
               )}
             </div>
           )

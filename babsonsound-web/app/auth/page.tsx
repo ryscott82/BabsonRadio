@@ -5,44 +5,23 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { gradYearOptions } from '@/lib/terms'
-import { signIn, signUp, signOut, resendVerification, sendPasswordReset } from '@/lib/auth'
+import { isBabsonEmail, signIn, signUp, signOut, resendVerification, sendPasswordReset } from '@/lib/auth'
 import { useResetCooldown, mmss } from '@/lib/useResetCooldown'
 import { normalizeUS } from '@/lib/phone'
 import { AgreeBox, Card, ErrorText, Field, GhostButton, PrimaryButton, formatPhone } from '@/components/AuthUI'
 
 export default function AuthPage() {
-  const { user, loading, isBabson, needsVerification, hasMemberAccess, isPendingTester, reload } = useAuth()
+  const { user, loading, needsVerification, reload } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && user && (isBabson || hasMemberAccess)) router.replace('/')
-  }, [loading, user, isBabson, hasMemberAccess, router])
+    if (!loading && user && !needsVerification) router.replace('/')
+  }, [loading, user, needsVerification, router])
 
   if (loading) return <Spinner />
   if (user && needsVerification) return <VerifyPanel email={user.email!} onCheck={reload} />
-  if (user && isPendingTester) return <PendingPanel email={user.email!} onCheck={reload} />
-  if (user && !isBabson) {
-    // Signed in as a guest: send them to the guest page to see request status.
-    router.replace('/auth/guest')
-    return <Spinner />
-  }
   if (user) return <Spinner />
   return <Forms />
-}
-
-function PendingPanel({ email, onCheck }: { email: string; onCheck: () => Promise<void> | void }) {
-  return (
-    <Card title="You're on the list" subtitle="Waiting for approval">
-      <p className="text-sm text-br-dk-sub">
-        Your account ({email}) is created. The station reviews beta tester requests by hand, and you can&apos;t use the site until you are approved.
-        Check back soon.
-      </p>
-      <div className="mt-5 space-y-3">
-        <PrimaryButton type="button" onClick={() => onCheck()}>Check again</PrimaryButton>
-        <GhostButton type="button" onClick={() => signOut()}>Sign out</GhostButton>
-      </div>
-    </Card>
-  )
 }
 
 function Spinner() {
@@ -132,8 +111,13 @@ function Forms() {
             </label>
           </>
         )}
-        <Field label="School email" value={typed} onChange={e => setTyped(e.target.value)} type="email"
+        <Field label="Email" value={typed} onChange={e => setTyped(e.target.value)} type="email"
                autoComplete="username" autoCapitalize="none" placeholder="you@babson.edu" />
+        {mode === 'create' && (
+          <p className="text-xs text-br-dk-sub -mt-2">
+            {isBabsonEmail(email) ? 'You will join as a Student.' : 'Babson, Olin or Wellesley email: Student. Any other email: Guest.'}
+          </p>
+        )}
         <Field label="Password" value={password} onChange={e => setPassword(e.target.value)}
                type="password" autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
                placeholder={mode === 'create' ? 'At least 8 characters' : 'Password'} />
@@ -148,7 +132,7 @@ function Forms() {
         {mode === 'signin' && (
           <button type="button" disabled={resetLeft > 0} className="block mx-auto text-sm text-br-dk-sub hover:text-br-dk-text disabled:opacity-60 disabled:hover:text-br-dk-sub"
             onClick={async () => {
-              if (!email) return setError('Enter your Babson username above first.')
+              if (!email) return setError('Enter your email above first.')
               try { await sendPasswordReset(email); setError('If that account exists, a reset link is on its way.') }
               catch (e) { setError(e instanceof Error ? e.message : 'Try again in a moment.') }
               setResetBump(n => n + 1)
@@ -156,10 +140,6 @@ function Forms() {
         )}
       </form>
 
-      <p className="text-center text-sm text-br-dk-sub mt-8">
-        Not a Babson student?{' '}
-        <Link href="/auth/guest" className="text-br-gold hover:underline">Request guest access</Link>
-      </p>
     </Card>
   )
 }

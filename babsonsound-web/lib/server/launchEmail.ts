@@ -48,7 +48,7 @@ async function accounts(): Promise<Acct[]> {
 }
 
 async function optedOut(db: Firestore): Promise<{ uids: Set<string>; emails: Set<string> }> {
-  const snap = await db.collection('users').where('emailOptOut', '==', true).get()
+  const snap = await db.collection('users').where('unsubscribed', '==', true).get()
   return { uids: new Set(snap.docs.map(d => d.id)), emails: new Set(snap.docs.map(d => String(d.get('email') ?? '').toLowerCase()).filter(Boolean)) }
 }
 
@@ -72,17 +72,21 @@ export async function preview(db: Firestore) {
     accounts(), optedOut(db),
     db.collection('launchEmail').where('status', '==', 'sent').count().get(),
   ])
-  const bySchool = { babson: 0, olin: 0, wellesley: 0, other: 0 }
+  const bySchool = { babson: 0, olin: 0, wellesley: 0, other: 0 } // every account with an email; "other" = guests
   for (const a of all) bySchool[school(a.email)]++
   const verified = all.filter(a => a.verified)
+  const verifiedBySchool = { babson: 0, olin: 0, wellesley: 0, other: 0 }
+  for (const a of verified) verifiedBySchool[school(a.email)]++
   return {
     total: all.length,
     verified: verified.length,
     unverified: all.length - verified.length,
-    optedOut: out.uids.size,
+    unsubscribed: out.uids.size,
+    optedOut: out.uids.size, // same number; the admin page reads this name
     alreadySent: sentCount.data().count,
     // extras for the admin page
     bySchool,
+    verifiedBySchool,
     /** verified and not unsubscribed (before taking away the ones already sent) */
     eligible: verified.filter(a => !out.uids.has(a.uid) && !out.emails.has(a.email)).length,
   }
@@ -152,7 +156,7 @@ export async function sendChunk(db: Firestore) {
 
   const slice = run.list.slice(run.next, run.next + CHUNK).map(s => { const i = s.indexOf('|'); return { uid: s.slice(0, i), email: s.slice(i + 1) } })
   // Re-check opt-outs right now: someone may have unsubscribed since the list was built.
-  const userDocs = slice.length ? await db.getAll(...slice.map(r => db.collection('users').doc(r.uid)), { fieldMask: ['emailOptOut'] }) : []
+  const userDocs = slice.length ? await db.getAll(...slice.map(r => db.collection('users').doc(r.uid)), { fieldMask: ['unsubscribed'] }) : []
   let sent = 0, failed = 0, skipped = 0, processed = 0
   const failures: string[] = []
   let lastCall = 0
@@ -160,7 +164,7 @@ export async function sendChunk(db: Firestore) {
   for (const [i, r] of slice.entries()) {
     if (Date.now() - started > BUDGET_MS) break
     processed++
-    if (userDocs[i]?.get('emailOptOut') === true) { skipped++; continue }
+    if (userDocs[i]?.get('unsubscribed') === true) { skipped++; continue }
     const ref = db.collection('launchEmail').doc(keyOf(r.email))
     const claim = await db.runTransaction(async tx => {
       const d = await tx.get(ref)

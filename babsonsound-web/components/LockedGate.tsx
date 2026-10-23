@@ -11,12 +11,12 @@ export default function LockedGate({ children }: { children: ReactNode }) {
   if (hasLibraryAccess) return <>{children}</>
 
   const message = !user
-    ? 'Sign in with your Babson email to listen.'
+    ? 'Sign in with your Babson, Olin or Wellesley email to listen.'
     : needsVerification
-      ? 'Verify your Babson email to unlock this.'
+      ? 'Verify your email to unlock this.'
       : isGuest
-        ? 'The Library opens when a Babson student sponsors you. Ask one from your guest page.'
-        : 'This is for Babson students.'
+        ? 'The Library is for Students. Sign in with your Babson, Olin or Wellesley email.'
+        : 'This is for Students.'
 
   return (
     <div className="sk-raised rounded-2xl p-8 text-center">
@@ -24,7 +24,6 @@ export default function LockedGate({ children }: { children: ReactNode }) {
       <p className="text-br-dk-sub text-sm mb-5">{message}</p>
       <div className="flex justify-center gap-4 font-display tracking-widest text-sm">
         <Link href="/auth" className="text-br-gold">Sign in</Link>
-        {!user && <Link href="/auth/guest" className="text-br-dk-sub hover:text-br-dk-text">Guest access</Link>}
       </div>
     </div>
   )

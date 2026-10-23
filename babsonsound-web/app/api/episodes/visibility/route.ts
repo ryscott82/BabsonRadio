@@ -1,6 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/http'
+import { accessOf } from '@/lib/server/access'
 import { assertAllAdults, recordConsent, revokeConsent } from '@/lib/server/publicContent'
 
 export const runtime = 'nodejs'
@@ -22,8 +23,8 @@ export async function POST(req: Request) {
     const isHost = hostUids.includes(t.uid)
 
     if (b.public !== true) {
-      const role = isHost ? '' : (await db.collection('users').doc(t.uid).get()).get('role')
-      if (!isHost && t.developer !== true && role !== 'superAdmin' && role !== 'director') throw new HttpError(403, 'Only a host of this episode can change that.', 'BR-PUB-005')
+      const level = isHost ? '' : (await accessOf(t)).level
+      if (!isHost && level !== 'admin' && level !== 'director') throw new HttpError(403, 'Only a host of this episode can change that.', 'BR-PUB-005')
       await ref.update({ visibility: 'private', publicConsentId: null, madePrivateAt: Timestamp.now() })
       await revokeConsent(db, snap.get('publicConsentId'))
       return { ok: true, visibility: 'private' }

@@ -1,5 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
+import { forgetAccess } from '@/lib/server/access'
 import { HttpError, handle, readJson, requireDirector, str } from '@/lib/server/http'
 import { TRAINING_VERSION } from '@/lib/training'
 import { CHECKIN_VALID_MS } from '@/lib/server/conduct'
@@ -19,12 +20,12 @@ export async function GET(req: Request) {
     const ms = (v: unknown) => (v as { toMillis?: () => number } | null | undefined)?.toMillis?.() ?? null
     const rows = users.docs.filter(d => d.id !== 'preview-developer' && /@(babson|olin|wellesley)\.edu$/i.test(String(d.get('email') ?? ''))).map(d => {
       const t = byUid.get(d.id)
-      const certifiedAt = ms(t?.get('certifiedAt')), revokedAt = ms(t?.get('revokedAt'))
+      const certifiedAt = ms(t?.get('certifiedAt'))
       return {
         uid: d.id,
         name: [d.get('firstName') ?? d.get('displayName') ?? '', d.get('lastName') ?? ''].join(' ').trim(),
-        email: d.get('email') ?? '', role: d.get('role') ?? 'listener',
-        trained: certifiedAt != null && revokedAt == null,
+        email: d.get('email') ?? '', level: d.get('level') ?? 'student',
+        trained: d.get('radioTrained') === true, studioTrained: d.get('studioTrained') === true,
         certifiedAt, certifiedBy: t?.get('certifiedBy') ?? '', score: t?.get('score') ?? null, attempts: t?.get('attempts') ?? 0,
         requestedAt: certifiedAt == null ? ms(t?.get('requestedAt')) : null, requestNote: t?.get('requestNote') ?? '',
         conductSigned: d.get('conductVersion') != null,
@@ -44,11 +45,18 @@ export async function POST(req: Request) {
     if (!uid) throw new HttpError(400, 'Pick a person.')
     const ref = adminDb().collection('training').doc(uid)
     const now = Timestamp.now()
-    if (action === 'certify') await ref.set({ certifiedAt: now, revokedAt: null, version: TRAINING_VERSION, certifiedBy: me.email ?? me.uid, requestedAt: null }, { merge: true })
-    else if (action === 'revoke') await ref.set({ revokedAt: now }, { merge: true })
+    const user = adminDb().collection('users').doc(uid)
+    if (action === 'certify') {
+      await ref.set({ certifiedAt: now, revokedAt: null, version: TRAINING_VERSION, certifiedBy: me.email ?? me.uid, requestedAt: null }, { merge: true })
+      await user.update({ radioTrained: true, studioTrained: true }) // the badges are what the server checks
+    } else if (action === 'revoke') {
+      await ref.set({ revokedAt: now }, { merge: true })
+      await user.update({ radioTrained: false, studioTrained: false })
+    }
     else if (action === 'approveCheckin') await ref.set({ checkInApprovedAt: now, checkInApprovedBy: me.email ?? me.uid, requestedAt: null }, { merge: true })
     else if (action === 'clearRequest') await ref.set({ requestedAt: null }, { merge: true })
     else throw new HttpError(400, 'Unknown action.')
+    forgetAccess(uid)
     return { ok: true }
   })
 }

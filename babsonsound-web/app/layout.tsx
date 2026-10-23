@@ -6,6 +6,7 @@ import Footer from '@/components/Footer'
 import AnnouncementBanner from '@/components/AnnouncementBanner'
 import VerifyBanner from '@/components/VerifyBanner'
 import LaunchShell from '@/components/launch/LaunchShell'
+import GuestFence from '@/components/GuestFence'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://babsonradio.com'),
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             page={children}
             chrome={
               <>
+                <GuestFence />
                 <Nav />
                 <VerifyBanner />
                 <main className="hw-stage hw-main relative z-[1] pt-16 pb-12 flex-1">

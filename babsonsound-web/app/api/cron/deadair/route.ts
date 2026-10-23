@@ -55,7 +55,7 @@ async function alertAdmins(title: string, body: string) {
   await notifyAdmins('ops', { title, body })
   if (!mailConfigured()) return
   try {
-    const admins = await adminDb().collection('users').where('role', '==', 'superAdmin').get()
+    const admins = await adminDb().collection('users').where('level', '==', 'admin').get()
     await Promise.all(admins.docs.map(d => String(d.get('email') ?? '')).filter(Boolean).map(e =>
       sendMail(e, `Babson Radio: ${title}`, body, `<p>${body}</p><p>Check the station at https://babsonradio.com/admin</p>`)))
   } catch (e) { console.error('[deadair mail]', e) }

@@ -9,35 +9,31 @@ service cloud.firestore {
     // ── helpers ──────────────────────────────────────────────
     function signedIn() { return request.auth != null; }
 
-    // Verified @babson.edu, @olin.edu or @wellesley.edu address. (Firebase lowercases emails in the token.)
-    function isBabson() {
+    // One access level per person, stored on users/{uid}.level: guest | student | director | admin. Only the server writes it
+    // (and the badges studioTrained / radioTrained, and unsubscribed). The hidden App Store reviewer account has demo == true.
+    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function level() { return me().get('level', 'guest'); }
+
+    // Verified @babson.edu, @olin.edu or @wellesley.edu address, or still inside the 7-day sign-up grace.
+    // Exact domains only: students.babson.edu does not match. (Firebase lowercases emails in the token.)
+    function schoolVerified() {
       return signedIn()
         && (request.auth.token.email_verified == true
             || request.time.toMillis() < request.auth.token.get('graceUntil', 0))
-        && (request.auth.token.email.matches('.*@(babson|olin|wellesley)\\.edu$')
-            || request.auth.token.get('tester', false) == true
-            || request.auth.token.get('openMember', false) == true); // public mode, see PUBLIC_MODE.md
+        && request.auth.token.email.matches('.*@(babson|olin|wellesley)\\.edu$');
     }
 
-    // Developer accounts: created with scripts/create-developer.mjs (custom claim, no babson.edu email).
-    function isDeveloper() {
-      return signedIn() && request.auth.token.developer == true;
+    // Students and above. Guests get LIVE RADIO ONLY: that is gated by the server, because the stream itself is
+    // not in Firestore, and guests never read stored content such as the episode backlog.
+    function isStudent() {
+      return signedIn() && level() in ['student', 'director', 'admin']
+        && (schoolVerified() || me().get('demo', false) == true);
     }
-
-    // Students and developers. Guests (trial or sponsored pass) get LIVE RADIO ONLY —
-    // that is gated in the apps, because the stream itself is not in Firestore — and
-    // never any stored content such as the episode backlog.
-    function isMember() { return isBabson() || isDeveloper(); }
-
-    function role() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-    }
-    function isStaff() {
-      return isDeveloper() || (isBabson() && role() in ['superAdmin', 'showHost']);
-    }
-    function isAdmin() { return isDeveloper() || (isBabson() && role() == 'superAdmin'); }
-    // Directors run show times and slot requests only.
-    function isDirector() { return isAdmin() || (isBabson() && role() == 'director'); }
+    function isMember() { return isStudent(); }
+    function isAdmin() { return isStudent() && level() == 'admin'; }
+    function isStaff() { return isAdmin(); }
+    // Directors run show times and slot requests; admins can do everything directors can.
+    function isDirector() { return isStudent() && level() in ['director', 'admin']; }
 
     // ── public ───────────────────────────────────────────────
     match /shows/{id} {
@@ -49,7 +45,7 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Episodes are students/developers only unless visibility == 'public', which only the server sets, after an adult host
+    // Episodes are students and above only unless visibility == 'public', which only the server sets, after an adult host
     // signs the public-sharing agreement. A missing field means private.
     // NOTE: this protects the Firestore document (incl. its audioURL/youtubeID), not the
     // media file itself — private media would also need signed URLs / Storage rules.
@@ -71,14 +67,18 @@ service cloud.firestore {
 
     // ── users ────────────────────────────────────────────────
     // Created by the server only (signup / guest routes). Owners may edit a few
-    // harmless fields — never role, email, phone or hostOfShows.
+    // harmless fields: never level, badges, email or phone.
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow create: if false;
       allow update: if signedIn() && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['displayName', 'firstName', 'notifyNewEpisode', 'notifyGoesLive']);
-      allow update: if isAdmin();
+      // Admins edit people through the server (/api/admin/users). Never from a client: level, badges and the
+      // unsubscribe flag are server-only, so nobody can write their own.
+      allow update: if isAdmin()
+        && !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['level', 'role', 'studioTrained', 'radioTrained', 'unsubscribed', 'unsubscribedAt', 'demo', 'email']);
       allow delete: if false;
 
       // Contact-network edges: written by /api/contacts/match only.
@@ -135,7 +135,7 @@ service cloud.firestore {
     match /liveRequests/{id}  { allow read, write: if false; }
     match /skipVotes/{id}     { allow read, write: if false; }
     match /broadcasts/{id}    { allow read, write: if false; }
-    // Launch email state and failure log, listening-hour budget, one-device sessions, phone change requests, host training.
+    // Launch email state (launchEmail/{sha256(email)} sent markers, launchEmail/_run) and failure log, listening-hour budget, one-device sessions, phone change requests, host training.
     // (Anything not listed is denied anyway; these lines just say so.)
     match /launchEmail/{id}          { allow read, write: if false; }
     match /launchEmailFailures/{id}  { allow read, write: if false; }

@@ -1,64 +1,73 @@
+import { FieldValue } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from '@/lib/server/admin'
-import { BABSON_EMAIL, HttpError, handle, isDeveloperToken, readJson, requireStaff, str } from '@/lib/server/http'
+import { HttpError, handle, readJson, requireAdmin, str } from '@/lib/server/http'
+import { LEVELS, forgetAccess, isOwnerEmail, isSchoolEmail, type Level } from '@/lib/server/access'
 
 export const runtime = 'nodejs'
 
-// listener < showHost / director < superAdmin ("Admin") < developer. Admins manage listeners and hosts; only a developer
-// can create or remove admins and developers.
-const ROLES = ['listener', 'showHost', 'director', 'superAdmin', 'developer'] as const
-const PRIVILEGED = ['superAdmin', 'developer']
+// One access level per person: guest < student < director < admin. Badges (studioTrained, radioTrained) are separate flags.
+// Only admins manage people. Owner accounts (OWNER_EMAILS) cannot be changed by anyone else. The hidden demo account is not listed.
 
 // Everyone with an account (newest first), for the admin Users page.
 export async function GET(req: Request) {
   return handle(async () => {
-    const me = await requireStaff(req)
+    const me = await requireAdmin(req)
     const snap = await adminDb().collection('users').orderBy('joinedAt', 'desc').limit(500).get()
     return {
-      canManageAdmins: isDeveloperToken(me),
-      users: snap.docs.filter(d => d.id !== 'preview-developer').map(d => ({
-        id: d.id,
-        name: [d.get('firstName') ?? d.get('displayName') ?? '', d.get('lastName') ?? ''].join(' ').trim(),
-        username: d.get('username') ?? '',
-        email: d.get('email') ?? '',
-        role: d.get('role') ?? 'listener',
-        accountType: d.get('accountType') ?? '',
-        betaTester: d.get('betaTester') === true,
-      })),
+      levels: LEVELS,
+      users: snap.docs.filter(d => d.get('demo') !== true).map(d => {
+        const email = String(d.get('email') ?? '')
+        return {
+          id: d.id,
+          name: [d.get('firstName') ?? d.get('displayName') ?? '', d.get('lastName') ?? ''].join(' ').trim(),
+          username: d.get('username') ?? '',
+          email,
+          level: (LEVELS as string[]).includes(d.get('level')) ? d.get('level') : 'guest',
+          studioTrained: d.get('studioTrained') === true,
+          radioTrained: d.get('radioTrained') === true,
+          owner: isOwnerEmail(email),
+          you: d.id === me.uid,
+        }
+      }),
     }
   })
 }
 
-// Change someone's role: { uid, role: 'listener' | 'showHost' | 'director' | 'superAdmin' | 'developer' }
+// Change someone's level and/or badges: { uid, level?: 'guest'|'student'|'director'|'admin', studioTrained?: boolean, radioTrained?: boolean }
 export async function POST(req: Request) {
   return handle(async () => {
-    const me = await requireStaff(req)
+    const me = await requireAdmin(req)
     const b = await readJson(req)
     const uid = str(b.uid, 128)
-    const role = str(b.role, 20)
-    if (!uid || !(ROLES as readonly string[]).includes(role)) throw new HttpError(400, 'Invalid request.')
-    if (uid === me.uid) throw new HttpError(400, 'You cannot change your own role.')
+    const level = b.level === undefined ? null : str(b.level, 20) as Level
+    if (!uid) throw new HttpError(400, 'Invalid request.')
+    if (level !== null && !LEVELS.includes(level)) throw new HttpError(400, 'Invalid request.')
+    if (level === null && typeof b.studioTrained !== 'boolean' && typeof b.radioTrained !== 'boolean') throw new HttpError(400, 'Nothing to change.')
+    if (uid === me.uid && level !== null) throw new HttpError(400, 'You cannot change your own level.')
     const ref = adminDb().collection('users').doc(uid)
     const u = await ref.get()
     if (!u.exists) throw new HttpError(404, 'User not found.')
-    // Only student accounts (Babson, Olin or Wellesley) can be hosts or admins, never guests.
-    if (!BABSON_EMAIL.test(String(u.get('email') ?? '').toLowerCase())) {
-      throw new HttpError(400, 'Only students with a school email can be hosts or admins.')
+    const email = String(u.get('email') ?? '').toLowerCase()
+    if (isOwnerEmail(email)) throw new HttpError(403, 'Owner accounts cannot be changed.')
+    // Students and above need a school email.
+    if (level && level !== 'guest' && !isSchoolEmail(email)) throw new HttpError(400, 'Only people with a school email can be students, directors or admins.')
+
+    const update: Record<string, unknown> = {}
+    if (level) {
+      update.level = level
+      update.role = FieldValue.delete() // old field, replaced by level
+      if (level === 'guest') { update.studioTrained = false; update.radioTrained = false }
     }
-    // Developer status is a sign-in claim (it is what the rules and the server trust), so read it from the account.
-    const authUser = await adminAuth().getUser(uid)
-    const claims = authUser.customClaims ?? {}
-    const currentIsDev = claims.developer === true
-    const current = currentIsDev ? 'developer' : String(u.get('role') ?? 'listener')
-    if (!isDeveloperToken(me) && (PRIVILEGED.includes(role) || PRIVILEGED.includes(current))) {
-      throw new HttpError(403, 'Only a developer can change who is an admin or developer.')
-    }
-    if (role === 'developer') await adminAuth().setCustomUserClaims(uid, { ...claims, developer: true })
-    else if (currentIsDev) {
-      const { developer: _drop, ...rest } = claims
-      void _drop
-      await adminAuth().setCustomUserClaims(uid, rest)
-    }
-    await ref.update({ role })
-    return { ok: true, note: role === 'developer' || currentIsDev ? 'They need to sign out and back in for this to take effect.' : undefined }
+    if (typeof b.studioTrained === 'boolean') update.studioTrained = b.studioTrained
+    if (typeof b.radioTrained === 'boolean') update.radioTrained = b.radioTrained
+    await ref.update(update)
+
+    // Old sign-in claims are no longer used for access; clear them so they cannot confuse anything.
+    const claims = (await adminAuth().getUser(uid)).customClaims ?? {}
+    const { developer: _d, tester: _t, openMember: _o, ...rest } = claims as Record<string, unknown>
+    void _d; void _t; void _o
+    if (Object.keys(rest).length !== Object.keys(claims).length) await adminAuth().setCustomUserClaims(uid, rest)
+    forgetAccess(uid)
+    return { ok: true }
   })
 }

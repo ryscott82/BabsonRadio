@@ -1,6 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { handle, readJson, requireUser, str } from '@/lib/server/http'
+import { accessOf } from '@/lib/server/access'
 import { loadConfig } from '@/lib/server/autoschedule'
 import { localDate } from '@/lib/server/tz'
 import { getNowPlaying } from '@/lib/server/nowplaying'
@@ -18,16 +19,6 @@ export const runtime = 'nodejs'
 
 type Deny = { ok: false; reason: string; message: string }
 
-// Roles barely change, so they are remembered for 5 minutes instead of read on every check-in.
-const roles = new Map<string, { at: number; role: string }>()
-async function roleOf(db: FirebaseFirestore.Firestore, uid: string, now: number): Promise<string> {
-  const hit = roles.get(uid)
-  if (hit && now - hit.at < 300_000) return hit.role
-  const role = String((await db.collection('users').doc(uid).get()).get('role') ?? '')
-  roles.set(uid, { at: now, role })
-  if (roles.size > 2000) roles.clear()
-  return role
-}
 const deny = (reason: string, message: string): Deny => ({ ok: false, reason, message })
 
 export async function POST(req: Request) {
@@ -46,13 +37,13 @@ export async function POST(req: Request) {
       return { ok: true }
     }
 
-    const [cfg, uc, budget, np, role, s] = await Promise.all([
-      loadConfig(db), loadUsageConfig(db), budgetState(db, now), getNowPlaying(), roleOf(db, t.uid, now), sref.get(),
+    const [cfg, uc, budget, np, access, s] = await Promise.all([
+      loadConfig(db), loadUsageConfig(db), budgetState(db, now), getNowPlaying(), accessOf(t), sref.get(),
     ])
     const policy = policyFor(budget)
     const live = !!(np.isShow || np.isLive)
-    const guest = role === 'guest'
-    const staff = ['superAdmin', 'director'].includes(role) || t.developer === true
+    const guest = access.level === 'guest'
+    const staff = access.level === 'director' || access.level === 'admin'
 
     // One device at a time. Someone else's stream (a different device, playing within the last 90 s) stops a new start
     // unless the person chooses to switch; after a switch the old device is stopped at its next check-in.

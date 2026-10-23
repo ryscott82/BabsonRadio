@@ -4,7 +4,8 @@ import type { DecodedIdToken } from 'firebase-admin/auth'
 import { endAfter, localParts, occursOn, parseClock, type Repeat } from '../autoschedule'
 import { loadConfig } from './autoschedule'
 import { localDate, localToUtc } from './tz'
-import { HttpError, isBabsonToken, isDeveloperToken, requireUser } from './http'
+import { HttpError, requireUser } from './http'
+import { accessOf } from './access'
 
 // Show hosts: who is on air is worked out from the schedule, not from a role someone has to switch on and off.
 // A host's panel (radio controls and set list) is open from 4 hours before their show to 4 hours after it.
@@ -63,27 +64,23 @@ export async function hostShows(db: Firestore, uid: string, now: number, days = 
   return out.sort((a, b) => a.startAt - b.startAt)
 }
 
-/** Developers and admins can always use the controls. */
-export async function isStaffUser(db: Firestore, t: DecodedIdToken): Promise<boolean> {
-  if (isDeveloperToken(t)) return true
-  if (!isBabsonToken(t)) return false
-  return (await db.collection('users').doc(t.uid).get()).get('role') === 'superAdmin'
+/** Admins can always use the controls. */
+export async function isStaffUser(_db: Firestore, t: DecodedIdToken): Promise<boolean> {
+  return (await accessOf(t)).level === 'admin'
 }
 
-/** Directors, admins and developers can change live info on any show. Hosts only on their own. */
-export async function canEditAnyShow(db: Firestore, t: DecodedIdToken): Promise<boolean> {
-  if (isDeveloperToken(t)) return true
-  if (!isBabsonToken(t)) return false
-  const role = (await db.collection('users').doc(t.uid).get()).get('role')
-  return role === 'superAdmin' || role === 'director'
+/** Directors and admins can change live info on any show. Hosts only on their own. */
+export async function canEditAnyShow(_db: Firestore, t: DecodedIdToken): Promise<boolean> {
+  const l = (await accessOf(t)).level
+  return l === 'admin' || l === 'director'
 }
 
 export interface HostContext { t: DecodedIdToken; staff: boolean; shows: HostShow[]; open: HostShow[] }
 
-/** Signed-in student (or developer) with the list of their shows and which are inside the 4-hour window. */
+/** Signed-in student or above (guests get 403). "Host" is not a role: it is whoever has a booked or approved show. With the list of their shows and which are inside the 4-hour window. */
 export async function hostContext(req: Request, db: Firestore, now = Date.now()): Promise<HostContext> {
   const t = await requireUser(req)
-  if (!isBabsonToken(t) && !isDeveloperToken(t)) throw new HttpError(403, 'Verify your school email to do this.')
+  if ((await accessOf(t)).level === 'guest') throw new HttpError(403, 'This is for Babson, Olin and Wellesley students.', 'BR-PERM-001')
   const [staff, shows] = await Promise.all([isStaffUser(db, t), hostShows(db, t.uid, now)])
   return { t, staff, shows, open: shows.filter(s => showOpen(s, now)) }
 }

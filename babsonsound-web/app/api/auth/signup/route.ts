@@ -1,18 +1,14 @@
-import { after } from 'next/server'
-import { notifyAdmins } from '@/lib/server/push'
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from '@/lib/server/admin'
-import { PUBLIC_ACCESS } from '@/lib/access'
 import { ANY_EMAIL, BABSON_EMAIL, HttpError, handle, readJson, str } from '@/lib/server/http'
 import { indexKeyFromE164 } from '@/lib/server/phone'
 import { normalizeUS } from '@/lib/phone'
 import { VERIFY_GRACE_MS } from '@/lib/verify-grace'
 import { TERMS_VERSION, validGradYear } from '@/lib/terms'
-import { isTester } from '@/lib/server/testers'
 
 export const runtime = 'nodejs'
 
-// Creates a student account. Email verification is sent by the client afterwards; members must verify
+// Creates an account (student for a school email, otherwise guest). Email verification is sent by the client afterwards; members must verify
 // within 7 days (Firestore rules and the server accept the `graceUntil` claim until then).
 export async function POST(req: Request) {
   return handle(async () => {
@@ -31,11 +27,7 @@ export async function POST(req: Request) {
     if (!lastName) throw new HttpError(400, 'Enter your last name.')
     if (!ANY_EMAIL.test(email)) throw new HttpError(400, 'Enter a valid email address.')
     const school = BABSON_EMAIL.test(email)
-    const tester = await isTester(email)
-    // Other domains can only sign up here if the station added them as a beta tester (or the site is in public mode).
-    const open = PUBLIC_ACCESS && !school && !tester
-    // Anyone else can still make an account, but it waits for the station to approve them as a beta tester.
-    const pending = !school && !tester && !open
+    // Anyone can sign up. A verified school email makes them a student; any other email is a guest (live radio only).
     if (!phone) throw new HttpError(400, 'Enter a valid 10-digit US phone number.')
     if (password.length < 8 || password.length > 128) throw new HttpError(400, 'Password must be 8–128 characters.')
 
@@ -52,7 +44,7 @@ export async function POST(req: Request) {
     try {
       uid = (await adminAuth().createUser({ email, password, displayName: firstName, emailVerified: false })).uid
       // 7 days of full use before the email link is required (rules and the server check this claim).
-      await adminAuth().setCustomUserClaims(uid, { graceUntil: Date.now() + VERIFY_GRACE_MS, ...(tester ? { tester: true } : {}), ...(open ? { openMember: true } : {}) })
+      await adminAuth().setCustomUserClaims(uid, { graceUntil: Date.now() + VERIFY_GRACE_MS })
     } catch (e) {
       const code = (e as { code?: string }).code
       if (code === 'auth/email-already-exists') throw new HttpError(409, 'An account with that email already exists. Try signing in.')
@@ -69,11 +61,9 @@ export async function POST(req: Request) {
           termsAcceptedAt: Timestamp.now(), termsVersion: TERMS_VERSION,
           // The sign-up form says "We'll email you when we launch." The launch email only goes to accounts with this.
           ...(b.launchNotice === false ? {} : { launchNoticeConsentAt: Timestamp.now() }),
-          role: 'listener', accountType: pending ? 'pending' : 'babson',
-          ...(pending ? { betaStatus: 'pending' } : {}),
-          ...(tester ? { betaTester: true } : {}),
-          ...(open ? { openMember: true } : {}),
-          hostOfShows: [], notifyNewEpisode: [], notifyGoesLive: [],
+          level: school ? 'student' : 'guest', accountType: school ? 'babson' : 'guest',
+          studioTrained: false, radioTrained: false,
+          notifyNewEpisode: [], notifyGoesLive: [],
           joinedAt: Timestamp.now(),
         })
       })
@@ -81,7 +71,6 @@ export async function POST(req: Request) {
       await adminAuth().deleteUser(uid).catch(() => {})
       throw e
     }
-    if (pending) after(() => notifyAdmins('testers', { title: 'Tester waiting for approval', body: email }))
     return { ok: true }
   })
 }

@@ -7,7 +7,7 @@ import { adminDb } from './admin'
 // Push notifications to admins' phones (through Firebase Cloud Messaging, which is free).
 // A phone registers once from the Admin screen in the app. Each device chooses which kinds it wants.
 
-export const PUSH_KINDS = ['reports', 'requests', 'cancellations', 'testers', 'ops', 'birthday', 'announcements'] as const
+export const PUSH_KINDS = ['reports', 'requests', 'cancellations', 'ops', 'birthday', 'announcements'] as const
 export type PushKind = (typeof PUSH_KINDS)[number]
 
 /** Kinds each person chooses for themselves from their own profile (everyone, not just admins). */
@@ -26,11 +26,11 @@ export async function notifyAdmins(kind: PushKind, msg: { title: string; body: s
     const docs = snap.docs.filter(d => d.get('uid') !== exceptUid)
     if (!docs.length) return
 
-    // Only people who are still admins (or developers) get them.
+    // Only people who are still admins get them.
     const uids = [...new Set(docs.map(d => String(d.get('uid'))))]
     const users = await db.getAll(...uids.map(u => db.collection('users').doc(u)))
-    const staff = new Set(users.filter(u => u.get('role') === 'superAdmin').map(u => u.id))
-    const keep = docs.filter(d => staff.has(String(d.get('uid'))) || d.get('dev') === true)
+    const staff = new Set(users.filter(u => u.get('level') === 'admin' || u.get('role') === 'superAdmin').map(u => u.id))
+    const keep = docs.filter(d => staff.has(String(d.get('uid'))))
     const gone = docs.filter(d => !keep.includes(d))
     await Promise.all(gone.map(d => d.ref.delete()))
     if (!keep.length || !getApps().length) return

@@ -1,7 +1,8 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { deleteAccountData } from '@/lib/server/deleteAccount'
-import { HttpError, handle, isDeveloperToken, readJson, requireUser, str } from '@/lib/server/http'
+import { HttpError, handle, readJson, requireUser, str } from '@/lib/server/http'
+import { accessOf } from '@/lib/server/access'
 import { encryptJson } from '@/lib/server/pii'
 import { indexKeyFromE164 } from '@/lib/server/phone'
 import { normalizeUS } from '@/lib/phone'
@@ -29,13 +30,13 @@ function ageOn(y: number, m: number, d: number, now = new Date()): number | null
 export async function POST(req: Request) {
   return handle(async () => {
     const t = await requireUser(req)
-    if (isDeveloperToken(t)) return { ok: true }
+    if ((await accessOf(t)).demo) return { ok: true } // the Apple reviewer account skips this step
     const b = await readJson(req)
     const db = adminDb()
     const ref = db.collection('users').doc(t.uid)
     const u = await ref.get()
     if (!u.exists) throw new HttpError(404, 'Profile not found.')
-    const guest = u.get('role') === 'guest'
+    const guest = (u.get('level') ?? u.get('role')) === 'guest'
 
     // 1. Age first, so an under-13 never gets any more of their data stored.
     let age: number | null = null

@@ -7,6 +7,7 @@ import VoteCard from '@/components/VoteCard'
 import LiveShell from '@/components/LiveShell'
 import AutoUpcoming from '@/components/AutoUpcoming'
 import ArtTheme from '@/components/ArtTheme'
+import { HideForGuests } from '@/components/GuestFence'
 import { getRecentEpisodes, getTodaySchedule } from '@/lib/firestore'
 
 export const revalidate = 60 // re-fetch data every 60 seconds
@@ -29,7 +30,7 @@ export default async function HomePage() {
           <section className="hw-panel hw-big">
             <div className="flex items-baseline justify-between gap-4 pb-3 border-b border-br-dk-border">
               <h2 className="hw-title !whitespace-normal text-[1.53rem]">On the air today</h2>
-              <Link href="/schedule" className="text-sm font-semibold text-br-gold underline underline-offset-4">See the week</Link>
+              <HideForGuests><Link href="/schedule" className="text-sm font-semibold text-br-gold underline underline-offset-4">See the week</Link></HideForGuests>
             </div>
             {schedule.length > 0 ? (
               <ul className="divide-y divide-br-dk-border">
@@ -43,10 +44,10 @@ export default async function HomePage() {
                     </div>
                     {slot.isLive
                       ? <span className="font-display text-br-red text-[14px] tracking-[0.2em]">Live</span>
-                      : <Link href="/schedule" className="sk-key hw-pill inline-flex items-center gap-1.5 h-8 px-4 rounded-full text-xs font-semibold shrink-0">
+                      : <HideForGuests><Link href="/schedule" className="sk-key hw-pill inline-flex items-center gap-1.5 h-8 px-4 rounded-full text-xs font-semibold shrink-0">
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M6 9a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6zM10 19a2 2 0 004 0" /></svg>
                           Remind me
-                        </Link>}
+                        </Link></HideForGuests>}
                   </li>
                 ))}
               </ul>
@@ -61,8 +62,8 @@ export default async function HomePage() {
         </div>
       </LiveShell>
 
-      {/* Library picks */}
-      <section className="hw-panel hw-big">
+      {/* Library picks (Students only: guests get the Live page and nothing else) */}
+      <HideForGuests><section className="hw-panel hw-big">
         <div className="flex items-baseline justify-between gap-4">
           <div>
             <h2 className="hw-title !whitespace-normal text-[1.53rem]">You might like...</h2>
@@ -81,7 +82,7 @@ export default async function HomePage() {
         ) : (
           <p className="text-sm hw-sub py-6">No episodes yet. Replays and podcasts will show up here.</p>
         )}
-      </section>
+      </section></HideForGuests>
     </ArtTheme>
   )
 }

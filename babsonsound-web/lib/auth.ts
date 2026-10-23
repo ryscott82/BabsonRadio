@@ -1,12 +1,9 @@
-import { TERMS_VERSION } from '@/lib/terms'
 import {
-  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   sendEmailVerification,
   sendPasswordResetEmail,
-  updateProfile,
   verifyBeforeUpdateEmail,
   reauthenticateWithCredential,
   EmailAuthProvider,
@@ -99,44 +96,6 @@ export async function refreshUser(): Promise<User | null> {
   return auth.currentUser
 }
 
-// ── Guests (email + password; free, no email-link setup) ─────
-// Guests get LIVE radio only: an automatic trial, then a student-sponsored pass. Never the backlog.
-
-export async function guestSignUp(email: string, password: string, name: string) {
-  if (isBabsonEmail(email)) throw fail('You have a school email. Create a student account instead.', 'BR-ACC-001')
-  if (password.length < 8) throw fail('Password must be at least 8 characters.', 'BR-ACC-005')
-  let user: User
-  try {
-    ;({ user } = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password))
-  } catch (e) {
-    const code = firebaseAuthCode(e)
-    const msg: Record<string, string> = {
-      'BR-ACC-002': 'An account with that email already exists. Try signing in.',
-      'BR-ACC-009': 'Enter a valid email address.',
-      'BR-ACC-005': 'That password is too weak.',
-    }
-    throw fail(msg[code] ?? messageForCode(code, 'Could not create the account. Please try again.'), code)
-  }
-  await updateProfile(user, { displayName: name.trim() || 'Guest' })
-  await sendEmailVerification(user).catch(() => {})
-  await user.getIdToken(true)
-  await apiGet('/api/guest/status') // first call starts the one-time live trial
-  await api('/api/me', { acceptTerms: TERMS_VERSION }).catch(() => {}) // record that they agreed
-  return user
-}
-
-export async function guestSignIn(email: string, password: string) {
-  if (isBabsonEmail(email)) throw fail('Use the student sign-in with your school email.', 'BR-ACC-001')
-  let user: User
-  try {
-    ;({ user } = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password))
-  } catch (e) {
-    throw fbFail(e, 'Incorrect email or password.')
-  }
-  await apiGet('/api/guest/status').catch(() => {})
-  return user
-}
-
 // ── Shared ────────────────────────────────────────────────────
 
 // One reset email per address every few minutes (and a short pause between any two), so the button can not be mashed.
@@ -193,7 +152,7 @@ export async function signOut() {
 }
 
 // ── launch pass (before launch only) ──
-// Developers, admins, directors, hosts, beta testers and early-access accounts trade their sign-in for a pass (an HttpOnly
+// Admins, directors and radio-trained students trade their sign-in for a pass (an HttpOnly
 // cookie) so the pages open for them. Locked accounts are told no and stay on the waiting screen. See /api/launch/pass.
 const PASS_AT = 'br-pass-at', PASS_DENIED_AT = 'br-pass-denied-at'
 const recent = (key: string, ms: number) => { try { return Date.now() - Number(sessionStorage.getItem(key) ?? 0) < ms } catch { return false } }

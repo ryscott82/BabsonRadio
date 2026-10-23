@@ -1,5 +1,5 @@
 import { adminDb } from '@/lib/server/admin'
-import { HttpError, handle, isDeveloperToken, readJson, requireStaff, str } from '@/lib/server/http'
+import { HttpError, handle, readJson, requireStaff, str } from '@/lib/server/http'
 import { PUSH_KINDS, USER_KINDS, cleanKinds, saveDevice, type PushKind } from '@/lib/server/push'
 
 export const runtime = 'nodejs'
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     // Birthday and announcement notifications are the person's own choice (set from their profile); keep them if they were on.
     const prev = await adminDb().collection('deviceTokens').doc(token).get()
     if (prev.exists && prev.get('uid') === t.uid) kinds = [...kinds, ...cleanKinds(prev.get('kinds')).filter(k => USER_KINDS.includes(k))]
-    await saveDevice(t.uid, token, kinds, isDeveloperToken(t))
+    await saveDevice(t.uid, token, kinds, false)
     return { kinds: kinds.filter(k => !USER_KINDS.includes(k)) }
   })
 }

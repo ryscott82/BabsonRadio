@@ -1,7 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from '@/lib/server/admin'
-import { BABSON_EMAIL, HttpError, handle, isDeveloperToken, readJson, requireUser, str } from '@/lib/server/http'
-import { isTester } from '@/lib/server/testers'
+import { BABSON_EMAIL, HttpError, handle, readJson, requireUser, str } from '@/lib/server/http'
+import { accessOf, forgetAccess } from '@/lib/server/access'
 import { VERIFY_GRACE_MS } from '@/lib/verify-grace'
 import { TERMS_VERSION } from '@/lib/terms'
 
@@ -14,7 +14,7 @@ export const runtime = 'nodejs'
 export async function POST(req: Request) {
   return handle(async () => {
     const t = await requireUser(req)
-    if (isDeveloperToken(t)) throw new HttpError(400, 'Developer accounts do not need a school email.')
+    if ((await accessOf(t)).demo) throw new HttpError(400, 'This account does not need a school email.')
     const b = await readJson(req)
     const email = str(b.email, 200).toLowerCase()
     if (b.agreed !== true) throw new HttpError(400, 'Agree to the Terms of Use and Privacy Policy to create an account.', 'BR-ACC-019')
@@ -28,7 +28,6 @@ export async function POST(req: Request) {
     if (rec.emailVerified && rec.email && BABSON_EMAIL.test(rec.email.toLowerCase())) {
       throw new HttpError(400, 'Your account already has a verified school email.')
     }
-    const tester = await isTester(email)
 
     try {
       await auth.updateUser(t.uid, { email, emailVerified: false })
@@ -42,7 +41,6 @@ export async function POST(req: Request) {
     await auth.setCustomUserClaims(t.uid, {
       ...claims,
       graceUntil: typeof claims.graceUntil === 'number' ? claims.graceUntil : Date.now() + VERIFY_GRACE_MS,
-      ...(tester ? { tester: true } : {}),
     })
 
     // Same username rule as email sign-up: the part before the @ (Olin and Wellesley get a suffix).
@@ -50,16 +48,19 @@ export async function POST(req: Request) {
     const domainName = email.slice(at + 1, email.indexOf('.', at))
     const username = domainName === 'babson' ? email.slice(0, at) : `${email.slice(0, at)}-${domainName}`
     const ref = adminDb().collection('users').doc(t.uid)
-    const exists = (await ref.get()).exists
+    const snap = await ref.get()
+    const exists = snap.exists
+    // Only guests (or brand-new profiles) become students here: never touch an admin or director level.
+    const becomesStudent = !exists || (snap.get('level') ?? snap.get('role') ?? 'guest') === 'guest'
     const first = str(b.firstName, 40), last = str(b.lastName, 60)
     await ref.set({
-      email, username, role: 'listener', accountType: 'babson', signInProvider: 'apple',
+      email, username, ...(becomesStudent ? { level: 'student', studioTrained: false, radioTrained: false, accountType: 'babson' } : {}), signInProvider: 'apple',
       termsAcceptedAt: Timestamp.now(), termsVersion: TERMS_VERSION,
       ...(first ? { firstName: first, displayName: first } : {}),
       ...(last ? { lastName: last } : {}),
-      ...(tester ? { betaTester: true } : {}),
-      ...(exists ? {} : { hostOfShows: [], notifyNewEpisode: [], notifyGoesLive: [], joinedAt: Timestamp.now() }),
+      ...(exists ? {} : { notifyNewEpisode: [], notifyGoesLive: [], joinedAt: Timestamp.now() }),
     }, { merge: true })
+    forgetAccess(t.uid)
     return { ok: true }
   })
 }

@@ -26,67 +26,37 @@ export async function requireUser(req: Request): Promise<DecodedIdToken> {
   return t
 }
 
-// Babson Radio is open to Babson, Olin and Wellesley students. (The name is historical.)
-export const BABSON_EMAIL = /^[a-z0-9._%+-]+@(babson|olin|wellesley)\.edu$/
+// Access levels live in ./access (guest | student | director | admin). Guards below all return the verified token.
+export { SCHOOL_EMAIL as BABSON_EMAIL } from './access'
+
+/** Any well-formed email address (anyone can sign up; non-school addresses become guests). */
+export const ANY_EMAIL = /^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/
 
 /** New accounts get a `graceUntil` claim (ms) at sign-up: they can use the platform until then without verifying. */
 export const graceActive = (t: DecodedIdToken) => typeof t.graceUntil === 'number' && Date.now() < t.graceUntil
 
-/** Any well-formed email address (beta testers can come from any domain). */
-export const ANY_EMAIL = /^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/
-
-/** Beta testers carry a `tester` claim (set at sign-up from the allowlist) that gives them member access. */
-export const isTesterToken = (t: DecodedIdToken) => t.tester === true
-
-export function isBabsonToken(t: DecodedIdToken): boolean {
-  if (!(t.email_verified === true || graceActive(t)) || !t.email) return false
-  return BABSON_EMAIL.test(t.email.toLowerCase()) || isTesterToken(t) || t.openMember === true
-}
-
-/** Developer accounts are created by script with a custom claim; they don't need a babson.edu email. */
-export const isDeveloperToken = (t: DecodedIdToken) => t.developer === true
-
-/** Babson student with a verified babson.edu address. */
-export async function requireBabson(req: Request): Promise<DecodedIdToken> {
+async function need(req: Request, ok: (a: import('./access').Access) => boolean, msg: string, code = 'BR-PERM-002'): Promise<DecodedIdToken> {
   const t = await requireUser(req)
-  if (!isBabsonToken(t)) {
-    throw new HttpError(403, 'Verify your school email to do this.')
-  }
+  const { accessOf } = await import('./access')
+  if (!ok(await accessOf(t))) throw new HttpError(403, msg, code)
   return t
 }
 
-/** Verified Babson student OR developer. */
-export async function requireMember(req: Request): Promise<DecodedIdToken> {
-  const t = await requireUser(req)
-  if (!isBabsonToken(t) && !isDeveloperToken(t)) {
-    throw new HttpError(403, 'Verify your school email to do this.')
-  }
-  return t
-}
-
-/** Developer, or a verified Babson student whose users doc says superAdmin. */
-export async function requireStaff(req: Request): Promise<DecodedIdToken> {
-  const t = await requireUser(req)
-  if (isDeveloperToken(t)) return t
-  if (isBabsonToken(t)) {
-    const { adminDb } = await import('./admin')
-    const u = await adminDb().collection('users').doc(t.uid).get()
-    if (u.get('role') === 'superAdmin') return t
-  }
-  throw new HttpError(403, 'Staff only.')
-}
-
-/** Directors (show times and slot requests only), plus admins and developers. */
-export async function requireDirector(req: Request): Promise<DecodedIdToken> {
-  const t = await requireUser(req)
-  if (isDeveloperToken(t)) return t
-  if (isBabsonToken(t)) {
-    const { adminDb } = await import('./admin')
-    const role = (await adminDb().collection('users').doc(t.uid).get()).get('role')
-    if (role === 'superAdmin' || role === 'director') return t
-  }
-  throw new HttpError(403, 'Directors and admins only.')
-}
+/** Student, director or admin (verified school email). Guests get 403. */
+export const requireStudent = (req: Request) =>
+  need(req, a => a.level !== 'guest', 'This is for Babson, Olin and Wellesley students.', 'BR-PERM-001')
+/** Kept so older call sites read the same: members are students and above. */
+export const requireMember = requireStudent
+export const requireBabson = requireStudent
+/** Student or above who is radio trained (directors and admins always are). Needed for live shows. */
+export const requireRadioTrained = (req: Request) =>
+  need(req, a => a.level !== 'guest' && a.radio, 'Finish radio training to go live.')
+/** Director or admin. */
+export const requireDirector = (req: Request) =>
+  need(req, a => a.level === 'director' || a.level === 'admin', 'Directors and admins only.')
+/** Admin only. */
+export const requireAdmin = (req: Request) => need(req, a => a.level === 'admin', 'Admins only.')
+export const requireStaff = requireAdmin
 
 export async function readJson(req: Request): Promise<Record<string, unknown>> {
   const body = await req.json().catch(() => null)

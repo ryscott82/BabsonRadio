@@ -263,10 +263,10 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
           {!loading && !canListenLive && (
             <p className="hw-sub text-sm mt-3">
               {!user
-                ? <>Sign in to listen. No Babson email? <Link href="/auth/guest" className="text-br-gold underline">Create a guest account</Link>.</>
+                ? <>Sign in or <Link href="/auth?mode=create" className="text-br-gold underline">create an account</Link> to listen.</>
                 : isGuest
                   ? <>Listening isn&apos;t available right now. Try again in a moment.</>
-                  : <>Verify your Babson email to listen. <Link href="/auth" className="text-br-gold underline">Continue</Link>.</>}
+                  : <>Verify your email to listen. <Link href="/auth" className="text-br-gold underline">Continue</Link>.</>}
             </p>
           )}
 

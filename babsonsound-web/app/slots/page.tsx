@@ -32,8 +32,8 @@ function localInput(ms: number) {
 }
 
 export default function SlotsPage() {
-  const { user, isBabson, isDeveloper, loading } = useAuth()
-  const member = !!user && (isBabson || isDeveloper)
+  const { user, isBabson, loading } = useAuth()
+  const member = !!user && isBabson
   const [mine, setMine] = useState<Mine[]>([])
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')

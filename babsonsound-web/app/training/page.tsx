@@ -5,8 +5,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import HostGate from '@/components/HostGate'
 
 export default function TrainingPage() {
-  const { user, isBabson, isDeveloper, loading } = useAuth()
-  const member = !!user && (isBabson || isDeveloper)
+  const { user, isBabson, loading } = useAuth()
+  const member = !!user && isBabson
   if (loading) return null
   if (!member) return (
     <div className="max-w-md mx-auto px-4 py-16 text-center space-y-3">

@@ -19,7 +19,7 @@ const two = (n: number) => String(n).padStart(2, '0')
 function Tile({ value, label }: { value: string; label: string }) {
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="sk-raised rounded-xl w-[3.7rem] sm:w-24 lg:w-28 py-3 sm:py-5 text-center">
+      <div className="sk-field rounded-xl w-[3.7rem] sm:w-24 lg:w-28 py-3 sm:py-5 text-center">
         <span className="font-display text-4xl sm:text-6xl lg:text-7xl text-br-dk-text tabular-nums leading-none">{value}</span>
       </div>
       <span className="font-display tracking-[0.2em] text-[0.65rem] sm:text-xs text-br-dk-sub uppercase">{label}</span>

@@ -8,10 +8,11 @@ export default function CountdownHome() {
   return (
     <main className="hw-stage relative z-[1] min-h-dvh flex flex-col items-center justify-center px-4 py-10 text-center">
       <div className="absolute top-4 right-4"><ThemeToggle /></div>
+      <div className="sk-raised rounded-3xl px-5 sm:px-16 py-8 sm:py-10 flex flex-col items-center max-w-full">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/beaver.png" alt="" className="w-16 sm:w-20 h-auto mb-5 drop-shadow-[0_3px_6px_rgba(0,0,0,.45)]" />
       <p className="font-display uppercase tracking-[0.4em] text-br-gold text-sm mb-3">Babson Radio</p>
-      <h1 className="font-display uppercase text-br-dk-text text-5xl sm:text-7xl lg:text-8xl leading-[0.95] tracking-wide mb-8 sm:mb-10">Radio is back</h1>
+      <h1 className="font-display uppercase text-br-dk-text text-5xl sm:text-7xl lg:text-8xl leading-[0.95] tracking-wide mb-8 sm:mb-8">Radio is back</h1>
 
       <CountdownTiles />
       <p className="text-br-dk-sub text-base sm:text-lg mt-8 sm:mt-10 mb-8">October 30 at 10am Eastern</p>
@@ -22,6 +23,7 @@ export default function CountdownHome() {
       </p>
       <Link href="/auth" className="text-sm text-br-dk-sub hover:text-br-dk-text underline underline-offset-4 mt-6">Sign in</Link>
       <span className="sr-only">{LAUNCH_TEXT}</span>
+      </div>
     </main>
   )
 }

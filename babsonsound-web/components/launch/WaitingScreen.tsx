@@ -21,6 +21,7 @@ export default function WaitingScreen() {
 
   return (
     <main className="hw-stage relative z-[1] min-h-dvh flex flex-col items-center justify-center px-4 py-10 text-center">
+      <div className="sk-raised rounded-3xl px-5 sm:px-12 py-8 sm:py-10 flex flex-col items-center w-full max-w-lg">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/beaver.png" alt="" className="w-16 h-auto mb-6 drop-shadow-[0_3px_6px_rgba(0,0,0,.45)]" />
       <h1 className="font-display text-br-dk-text text-3xl sm:text-4xl leading-tight max-w-md mb-4">
@@ -35,7 +36,7 @@ export default function WaitingScreen() {
             <GhostButton type="button" onClick={() => setDeleting(true)} className="block mx-auto underline underline-offset-4">Delete my account</GhostButton>
           </>
         ) : (
-          <form onSubmit={remove} className="space-y-4 text-left sk-raised rounded-2xl p-5">
+          <form onSubmit={remove} className="space-y-4 text-left">
             <Field label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)}
                    autoComplete="current-password" autoFocus />
             <ErrorText>{error}</ErrorText>
@@ -43,6 +44,7 @@ export default function WaitingScreen() {
             <GhostButton type="button" onClick={() => { setDeleting(false); setError(''); setPassword('') }} className="block mx-auto">Cancel</GhostButton>
           </form>
         )}
+      </div>
       </div>
     </main>
   )

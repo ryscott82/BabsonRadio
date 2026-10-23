@@ -19,8 +19,8 @@ const two = (n: number) => String(n).padStart(2, '0')
 function Tile({ value, label }: { value: string; label: string }) {
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="sk-field rounded-xl w-[3.7rem] sm:w-24 lg:w-28 py-3 sm:py-5 text-center">
-        <span className="font-display text-4xl sm:text-6xl lg:text-7xl text-br-dk-text tabular-nums leading-none">{value}</span>
+      <div className="sk-field rounded-xl w-[3rem] sm:w-24 lg:w-28 py-3 sm:py-4 text-center">
+        <span className="font-display text-3xl sm:text-6xl lg:text-7xl text-br-dk-text tabular-nums leading-none">{value}</span>
       </div>
       <span className="font-display tracking-[0.2em] text-[0.65rem] sm:text-xs text-br-dk-sub uppercase">{label}</span>
     </div>
@@ -31,7 +31,7 @@ function Tile({ value, label }: { value: string; label: string }) {
 export function CountdownTiles() {
   const t = useCountdown()
   return (
-    <div className="flex items-start gap-2 sm:gap-5" role="timer" aria-label="Time until launch">
+    <div className="flex items-start gap-1 sm:gap-5" role="timer" aria-label="Time until launch">
       <Tile value={t ? two(t.days) : '--'} label="Days" />
       <Tile value={t ? two(t.hours) : '--'} label="Hours" />
       <Tile value={t ? two(t.mins) : '--'} label="Minutes" />

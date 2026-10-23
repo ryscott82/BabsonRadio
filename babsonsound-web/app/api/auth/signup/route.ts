@@ -22,11 +22,12 @@ export async function POST(req: Request) {
     const gradYear = str(b.gradYear, 10)
 
     if (b.agreed !== true) throw new HttpError(400, 'Agree to the Terms of Use and Privacy Policy to create an account.')
-    if (!validGradYear(gradYear)) throw new HttpError(400, 'Pick your graduation year.')
     if (!firstName) throw new HttpError(400, 'Enter your first name.')
     if (!lastName) throw new HttpError(400, 'Enter your last name.')
     if (!ANY_EMAIL.test(email)) throw new HttpError(400, 'Enter a valid email address.')
     const school = BABSON_EMAIL.test(email)
+    // Graduation year is for students only; guests are not asked.
+    if (school && !validGradYear(gradYear)) throw new HttpError(400, 'Pick your graduation year.')
     // Anyone can sign up. A verified school email makes them a student; any other email is a guest (live radio only).
     if (!phone) throw new HttpError(400, 'Enter a valid 10-digit US phone number.')
     if (password.length < 8 || password.length > 128) throw new HttpError(400, 'Password must be 8–128 characters.')
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
         if ((await tx.get(phoneRef)).exists) throw new HttpError(409, 'That phone number is already registered.')
         tx.set(phoneRef, { uid })
         tx.set(db.collection('users').doc(uid), {
-          firstName, lastName, username, displayName: firstName, email, phoneNumber: phone, gradYear,
+          firstName, lastName, username, displayName: firstName, email, phoneNumber: phone, gradYear: school ? gradYear : '',
           termsAcceptedAt: Timestamp.now(), termsVersion: TERMS_VERSION,
           // The sign-up form says "We'll email you when we launch." The launch email only goes to accounts with this.
           ...(b.launchNotice === false ? {} : { launchNoticeConsentAt: Timestamp.now() }),

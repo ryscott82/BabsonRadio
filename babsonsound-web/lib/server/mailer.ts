@@ -29,33 +29,6 @@ export async function sendMail(to: string, subject: string, text: string, html: 
   }
 }
 
-/** "You've been selected to beta test Babson Radio." */
-export function betaWelcome(email: string) {
-  const subject = 'You’ve been selected to beta test Babson Radio'
-  const link = 'https://babsonradio.com/auth'
-  const text = [
-    'Hi,',
-    '',
-    'You’ve been selected to beta test Babson Radio, the student-run radio station at Babson.',
-    '',
-    `To get in, create your account at ${link} using this email address (${email}). It has to be the same address, since that’s how we recognize you.`,
-    '',
-    'Once you’re in, listen live, look around, and tell us what breaks or what feels off. There’s a Report bug / feature button at the bottom of every page.',
-    '',
-    'Thanks for helping us get this ready.',
-    '',
-    'Babson Radio',
-  ].join('\n')
-  const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1710;line-height:1.5">
-<p>Hi,</p>
-<p>You’ve been selected to beta test <strong>Babson Radio</strong>, the student-run radio station at Babson.</p>
-<p>To get in, <a href="${link}" style="color:#006644">create your account</a> using this email address (<strong>${esc(email)}</strong>). It has to be the same address, since that’s how we recognize you.</p>
-<p>Once you’re in, listen live, look around, and tell us what breaks or what feels off. There’s a Report bug / feature button at the bottom of every page.</p>
-<p>Thanks for helping us get this ready.</p>
-<p>Babson Radio</p></div>`
-  return { subject, text, html }
-}
-
 /** Tell a student how their show request went. */
 export function slotDecisionMail(o: { approved: boolean; title: string; when: string; note: string; connectionInfo: string }) {
   const subject = o.approved ? `Your show “${o.title}” is approved` : `About your show request “${o.title}”`

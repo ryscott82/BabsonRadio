@@ -88,22 +88,6 @@ service cloud.firestore {
       }
     }
 
-    // ── guest access (all writes via server routes) ──────────
-    match /guestTrials/{uid} {
-      allow read: if signedIn() && request.auth.uid == uid;
-      allow write: if false;
-    }
-    match /guestPasses/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid
-                      || resource.data.sponsorUid == request.auth.uid);
-      allow write: if false;
-    }
-    match /guestRequests/{id} {
-      allow read: if signedIn() && (resource.data.guestUid == request.auth.uid
-                      || resource.data.sponsorUid == request.auth.uid);
-      allow write: if false;
-    }
-
     // ── on-air slots (all writes via server routes) ──────────
     // Approved bookings: any member can see what's taken.
     match /airSlots/{id} {
@@ -118,7 +102,6 @@ service cloud.firestore {
 
     // Server-only: phone lookup index, pending invites, sync rate limits.
     match /phoneIndex/{id}    { allow read, write: if false; }
-    match /guestInvites/{id}  { allow read, write: if false; }
     match /contactSyncs/{id}  { allow read, write: if false; }
     match /contactGraph/{id}  { allow read, write: if false; }
     match /contactPopularity/{id} { allow read, write: if false; }

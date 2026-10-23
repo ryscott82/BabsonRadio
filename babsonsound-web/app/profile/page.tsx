@@ -184,7 +184,6 @@ export default function ProfilePage() {
   const [showDelete, setShowDelete] = useState(false)
   const [pw, setPw] = useState('')
   const [busy, setBusy] = useState(false)
-  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (!user || !member) return
@@ -218,14 +217,6 @@ export default function ProfilePage() {
     setMe({ ...me, avatarColor: id }); setError('')
     try { await api('/api/me', { avatarColor: id }) } catch (e) { setMe(m => (m ? { ...m, avatarColor: prev } : m)); setError(e instanceof Error ? e.message : 'Could not save.') }
   }
-  async function invite() {
-    const url = 'https://babsonradio.com'
-    try {
-      if (navigator.share) await navigator.share({ title: 'Babson Radio', url })
-      else { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2_000) }
-    } catch { /* cancelled */ }
-  }
-
   const first = userDoc?.firstName ?? userDoc?.displayName ?? user.displayName ?? ''
   const fullName = [first, userDoc?.lastName].filter(Boolean).join(' ')
   const since = me?.joinedAt ? new Date(me.joinedAt).toLocaleDateString([], { month: 'long', year: 'numeric' }) : ''
@@ -273,20 +264,6 @@ export default function ProfilePage() {
         )}
 
         {showAbout && <AboutYou onSaved={loadMe} />}
-
-        {isBabson && (
-          <Link href="/guest-access" className={rowLink}>
-            <p className="text-br-dk-text text-sm font-medium">Invite friends</p>
-            <p className="text-br-dk-sub text-xs mt-1">Friends you invite get guest access automatically.</p>
-          </Link>
-        )}
-
-        {member && !isBabson && (
-          <button type="button" onClick={invite} className={`${rowLink} w-full text-left`}>
-            <p className="text-br-dk-text text-sm font-medium">Invite friends</p>
-            {copied && <p className="text-br-gold text-xs mt-1">Link copied.</p>}
-          </button>
-        )}
 
         {member && <Row title="My ratings" open={open === 'ratings'} onToggle={() => toggle('ratings')}><MyRatings /></Row>}
 

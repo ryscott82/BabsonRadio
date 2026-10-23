@@ -192,7 +192,7 @@ body:has(.hw-stage) { transition: background-color .4s; }
 .hw-cover-art::after { content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
   background: linear-gradient(118deg, rgba(255,255,255,.16), rgba(255,255,255,0) 38%), linear-gradient(rgba(255,255,255,.1), transparent 12%); }
 .hw-vinyl {
-  position: absolute; z-index: 1; top: 2%; left: 30%; width: 92%; aspect-ratio: 1; border-radius: 50%;
+  position: absolute; z-index: 1; top: 2%; left: 48%; width: 92%; aspect-ratio: 1; border-radius: 50%;
   /* The label color (follows the cover) also tints a band near the outer edge, so it shows in the part of the record that sticks out. */
   background: radial-gradient(circle at center, transparent 0 76%, color-mix(in srgb, var(--hw-label, #1d6b4a) 70%, transparent) 78% 89%, transparent 91%),
               repeating-radial-gradient(circle at center, #0E0E0E 0 1.5px, #1E1E1E 1.5px 3px);

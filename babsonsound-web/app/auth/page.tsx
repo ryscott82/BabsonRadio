@@ -61,13 +61,13 @@ function Forms() {
       if (!lastName.trim()) return setError('Enter your last name.')
       if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setError('Enter a valid email address.')
       if (!normalizeUS(phone)) return setError('Enter a valid 10-digit US phone number.')
-      if (!gradYear) return setError('Pick your graduation year.')
+      if (isBabsonEmail(email) && !gradYear) return setError('Pick your graduation year.')
       if (!agreed) return setError('Agree to the Terms of Use and Privacy Policy to create an account.')
       if (password.length < 8) return setError('Password must be at least 8 characters.')
     }
     setBusy(true)
     try {
-      if (mode === 'create') await signUp(email, password, firstName.trim(), lastName.trim(), phone, gradYear)
+      if (mode === 'create') await signUp(email, password, firstName.trim(), lastName.trim(), phone, isBabsonEmail(email) ? gradYear : '')
       else await signIn(email, password)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
@@ -101,14 +101,6 @@ function Forms() {
                    autoComplete="family-name" placeholder="Last name" />
             <Field label="Phone number" value={phone} onChange={e => setPhone(formatPhone(e.target.value))}
                    type="tel" autoComplete="tel-national" inputMode="tel" placeholder="(555) 555-5555" />
-            <label className="block">
-              <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">Graduation year</span>
-              <select value={gradYear} onChange={e => setGradYear(e.target.value)}
-                      className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none">
-                <option value="">Select</option>
-                {gradYearOptions().map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </label>
           </>
         )}
         <Field label="Email" value={typed} onChange={e => setTyped(e.target.value)} type="email"
@@ -117,6 +109,16 @@ function Forms() {
           <p className="text-xs text-br-dk-sub -mt-2">
             {isBabsonEmail(email) ? 'You will join as a Student.' : 'Babson, Olin or Wellesley email: Student. Any other email: Guest.'}
           </p>
+        )}
+        {mode === 'create' && isBabsonEmail(email) && (
+          <label className="block">
+              <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">Graduation year</span>
+              <select value={gradYear} onChange={e => setGradYear(e.target.value)}
+                      className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none">
+                <option value="">Select</option>
+                {gradYearOptions().map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </label>
         )}
         <Field label="Password" value={password} onChange={e => setPassword(e.target.value)}
                type="password" autoComplete={mode === 'create' ? 'new-password' : 'current-password'}

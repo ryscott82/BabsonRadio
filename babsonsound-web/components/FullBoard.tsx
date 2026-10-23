@@ -61,7 +61,7 @@ export default function FullBoard({ boardRef, eqRef, np, hasSong, onAir, glow, a
 
         {/* Cover and record */}
         <div className="hw-cover absolute" style={{ left: 84, top: 92, width: 590, ['--hw-label' as string]: glow || undefined }}>
-          <div className="hw-vinyl" aria-hidden />
+          <div className="hw-vinyl" style={{ left: "30%" }} aria-hidden />
           <div className="hw-cover-art flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#003D27,#006644)' }}>
             {np?.art
               // eslint-disable-next-line @next/next/no-img-element

@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 
 // Guests (any email that is not Babson, Olin or Wellesley) only get the Live page. These stay reachable for everyone.
-const ALLOWED = ['/', '/auth', '/about', '/privacy', '/terms', '/unsubscribe']
+const ALLOWED = ['/', '/auth', '/about', '/privacy', '/terms', '/unsubscribe', '/delete-account']
 
 /** Sends a guest who opens any other page back to Live. The server refuses those calls too. */
 export default function GuestFence() {

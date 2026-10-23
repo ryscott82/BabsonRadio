@@ -2,9 +2,13 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { type User } from 'firebase/auth'
-import { ensureLaunchPass, onAuthChange, getUserDoc, isBabsonEmail, refreshUser } from '@/lib/auth'
+import { apiGet, ensureLaunchPass, onAuthChange, getUserDoc, refreshUser } from '@/lib/auth'
 
 export type Level = 'guest' | 'student' | 'director' | 'admin'
+
+/** What /api/me says about access. The server is the source of truth, so the browser does not guess from the email. */
+interface Me { level: Level; studioTrained: boolean; radioTrained: boolean; isBabson: boolean }
+const loadMe = () => apiGet<Me>('/api/me').catch(() => null)
 
 interface UserDoc {
   id: string
@@ -61,6 +65,7 @@ const AuthContext = createContext<AuthContextValue>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser]         = useState<User | null>(null)
   const [userDoc, setUserDoc]   = useState<UserDoc | null>(null)
+  const [me, setMe]             = useState<Me | null>(null)
   const [loading, setLoading]   = useState(true)
   const [graceUntil, setGrace]  = useState(0)
   const [now, setNow]           = useState(() => Date.now())
@@ -73,8 +78,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const tokenResult = await firebaseUser.getIdTokenResult().catch(() => null)
         setGrace(typeof tokenResult?.claims.graceUntil === 'number' ? tokenResult.claims.graceUntil : 0)
         setUserDoc((await getUserDoc(firebaseUser.uid).catch(() => null)) as UserDoc | null)
+        setMe(await loadMe())
       } else {
         setUserDoc(null)
+        setMe(null)
         setGrace(0)
       }
       setLoading(false)
@@ -95,24 +102,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const claims = (await u?.getIdTokenResult(true))?.claims
     setGrace(typeof claims?.graceUntil === 'number' ? claims.graceUntil : 0)
     setNow(Date.now())
-    if (u) setUserDoc((await getUserDoc(u.uid).catch(() => null)) as UserDoc | null)
+    if (u) {
+      setUserDoc((await getUserDoc(u.uid).catch(() => null)) as UserDoc | null)
+      setMe(await loadMe())
+    }
   }, [])
 
-  const level: Level = userDoc?.level && ['guest', 'student', 'director', 'admin'].includes(userDoc.level) ? userDoc.level : 'guest'
+  const level: Level = me?.level ?? 'guest'
   const demo = userDoc?.demo === true // the hidden App Store reviewer account
-  const babsonEmail = !!user?.email && (isBabsonEmail(user.email) || level !== 'guest')
   const inGrace = graceUntil > now
   const unverified = !!user && !user.emailVerified && !demo
-  const isBabson = level !== 'guest' && (user?.emailVerified === true || inGrace || demo)
+  const isBabson = !!me?.isBabson && (user?.emailVerified === true || inGrace || demo)
   const needsVerification = unverified && !inGrace
   const verifyDeadline = unverified && inGrace ? graceUntil : null
-  const isGuest = !!user && !babsonEmail
+  const isGuest = !!user && !me?.isBabson
   const isStudent = isBabson
   const isAdmin = isBabson && level === 'admin'
   const isDirector = isBabson && (level === 'admin' || level === 'director')
-  const high = isDirector
-  const studioTrained = high || (isBabson && userDoc?.studioTrained === true)
-  const radioTrained = high || (isBabson && userDoc?.radioTrained === true)
+  const studioTrained = isDirector || (isBabson && me?.studioTrained === true)
+  const radioTrained = isDirector || (isBabson && me?.radioTrained === true)
 
   return (
     <AuthContext.Provider value={{

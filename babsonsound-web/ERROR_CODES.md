@@ -76,8 +76,22 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 
 | Code | What it is | What the user should do | What staff check |
 |---|---|---|---|
-| BR-PRE-001 | **Site isn't open yet**: The website is in pre-launch mode and this request didn't include the preview password. | Babson Radio opens on October 30. Check back then. | Unlock in a browser at /coming-soon (Developer access), or send the X-Preview-Key header. iOS: set BackendConfig.previewKey. To open the site for everyone, set PRELAUNCH_OFF=1 in Vercel and redeploy. |
-| BR-PRE-002 | **Invite-only until launch**: Before launch, only emails on the beta tester list can create an account or open the site. | Ask the station to add your Babson email, then try again. | Add the email at /admin/testers (Admin → Beta Testers). Remove the restriction on launch day by setting PRELAUNCH_OFF=1. |
+| BR-PRE-001 | **Site isn't open yet**: Babson Radio is not open yet and this request had no launch pass. | Babson Radio opens on October 30 at 10 am Eastern. Check back then. | Developers, admins, directors, hosts and beta testers get a pass automatically after signing in (POST /api/launch/pass). Developer sign-in is at /auth/dev. To open the site for everyone now, set LAUNCH_OPEN=1 in Vercel and redeploy. |
+| BR-PRE-003 | **Account is waiting for launch**: The account is ready, but Babson Radio is not open to it yet. Before the launch time only staff, hosts, beta testers and early-access accounts get in. | Come back when Babson Radio opens on October 30 at 10 am Eastern. | The site opens by itself at LAUNCH_AT (default 2026-10-30T14:00:00Z). To let one person in early: Admin → Beta testers, or POST /api/admin/early-access. To open everyone now: set LAUNCH_OPEN=1 in Vercel and redeploy. |
+| BR-PRE-004 | **Launch lock isn't set up**: The server has no LAUNCH_SECRET (or CRON_SECRET) to sign launch passes with, so nobody can be let in early. | Tell the station team. | Set LAUNCH_SECRET in Vercel (openssl rand -hex 24) and redeploy. |
+
+## Unsubscribe
+
+| Code | What it is | What the user should do | What staff check |
+|---|---|---|---|
+| BR-UNS-001 | **Unsubscribe link didn't work**: The unsubscribe link is damaged, or the account no longer exists. | Open the link again from the email. If it still fails, reply to the email and we will remove you. | Tokens are signed with LAUNCH_SECRET. If that was changed, old links stop working. |
+
+## Launch email
+
+| Code | What it is | What the user should do | What staff check |
+|---|---|---|---|
+| BR-LCH-001 | **Launch email isn't set up**: RESEND_API_KEY or LAUNCH_SECRET is missing on the server. |  | Set RESEND_API_KEY, MAIL_FROM and LAUNCH_SECRET in Vercel and redeploy. |
+| BR-LCH-002 | **Launch test email was refused**: Resend did not accept the test email. |  | Read the reason in the error. Common: the sending domain is not verified in Resend, or the free plan's daily limit is used up. |
 
 ## Age and birthday
 

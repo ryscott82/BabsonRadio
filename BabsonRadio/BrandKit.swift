@@ -241,8 +241,6 @@ enum BabsonLinks {
     static let events = URL(string: "https://belong.babson.edu/bcr/events/")!
     /// Same page the "Join Now" button on our Belong page opens.
     static let join   = URL(string: "https://belong.babson.edu/bcr/club_signup")!
-    /// The interest form (shared with friends from the player screen).
-    static let interest = URL(string: "https://docs.google.com/forms/d/1e83KoSDG4Ns-BFChmZZAlPhjvGvaO1a5YokSaViEuEM/viewform")!
     static let privacy = URL(string: "https://babsonradio.com/privacy")!
 
     /// Instagram handle without the @ (e.g. "babsonsound"). Leave "" to hide the Instagram links.

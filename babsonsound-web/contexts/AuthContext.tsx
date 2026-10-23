@@ -4,8 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { type User } from 'firebase/auth'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { api, apiGet, onAuthChange, getUserDoc, isBabsonEmail, refreshUser } from '@/lib/auth'
-import { hasUnlockCookie, rememberUnlock } from '@/lib/prelaunch-client'
+import { apiGet, ensureLaunchPass, onAuthChange, getUserDoc, isBabsonEmail, refreshUser } from '@/lib/auth'
 
 interface UserDoc {
   id: string
@@ -80,21 +79,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [onTesterList, setOnTesterList] = useState(false)
   const [now, setNow]           = useState(() => Date.now())
 
-  // Pre-launch: a signed-in beta tester gets the pass for the site (no developer password needed).
-  useEffect(() => {
-    if (!user || user.uid === 'preview-developer' || hasUnlockCookie()) return
-    api<{ gate: string }>('/api/prelaunch/session', {})
-      .then(r => {
-        rememberUnlock(r.gate, null, true)
-        if (location.pathname === '/coming-soon') location.replace('/')
-      })
-      .catch(() => {}) // not on the tester list (or the site is already open)
-  }, [user])
-
   useEffect(() => {
     const unsub = onAuthChange(async (firebaseUser) => {
       setUser(firebaseUser)
       if (firebaseUser) {
+        await ensureLaunchPass() // before launch: early-access accounts get their pass before any page decides what to show
         const tokenResult = await firebaseUser.getIdTokenResult().catch(() => null)
         setDev(tokenResult?.claims.developer === true)
         setGrace(typeof tokenResult?.claims.graceUntil === 'number' ? tokenResult.claims.graceUntil : 0)

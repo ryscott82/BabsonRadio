@@ -1,7 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from '@/lib/server/admin'
 import { BABSON_EMAIL, HttpError, handle, isDeveloperToken, readJson, requireUser, str } from '@/lib/server/http'
-import { prelaunchOn } from '@/lib/prelaunch'
 import { isTester } from '@/lib/server/testers'
 import { VERIFY_GRACE_MS } from '@/lib/verify-grace'
 import { TERMS_VERSION } from '@/lib/terms'
@@ -30,9 +29,6 @@ export async function POST(req: Request) {
       throw new HttpError(400, 'Your account already has a verified school email.')
     }
     const tester = await isTester(email)
-    if (prelaunchOn() && !tester) {
-      throw new HttpError(403, 'Babson Radio is invite-only until launch. Ask the station to add your email.', 'BR-PRE-002')
-    }
 
     try {
       await auth.updateUser(t.uid, { email, emailVerified: false })

@@ -24,5 +24,5 @@ New email sign-ups now also get 7 days (was 3) before they must click the verifi
 ## Notes
 - Apple "Hide My Email" is fine: the Apple address is replaced by the school email.
 - Apple only gives the name the first time. If it is missing, About you asks for it.
-- Beta testers on an Apple sign-in need their school email on the tester list while the site is pre-launch (same rule as email sign-up).
+- Before launch, an Apple sign-in with a school email can finish sign-up like any other account, but it sees the waiting screen until the site opens (or the account is a beta tester / has early access).
 - Error codes: BR-AGE-001 (under 13), BR-AGE-002 (parent box), BR-AGE-003 (birthday), BR-APL-001 (not an Apple account), BR-SRV-009 (PII_KEY missing). Keys are in `/support/errors`.

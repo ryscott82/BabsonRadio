@@ -1,41 +1,31 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { PRELAUNCH_COOKIE, calendarKey, cookieValid, safeEqual, passwordMatches, prelaunchOn } from '@/lib/prelaunch'
+import { PASS_COOKIE, PASS_HEADER, launchOpen, passUid, publicWhileLocked } from '@/lib/launchLock'
 
-// Pre-launch lock: until PRELAUNCH_OFF=1, only /coming-soon is public. Everything else needs the
-// developer password (cookie from the unlock form, or an X-Preview-Key header for the iOS app).
+// Launch lock. Before the launch time (lib/launch.ts) only the public pages and APIs are reachable; everything else needs a
+// launch pass (cookie, or the X-Launch-Pass header for the app), which /api/launch/pass hands to developers, admins,
+// directors, beta testers and early-access accounts. After the launch time this returns at once and costs nothing.
+// The server checks again on every signed-in API call (lib/server/launchAccess.ts), so this is a second lock, not the only one.
 export async function proxy(req: NextRequest) {
-  if (!prelaunchOn()) return NextResponse.next()
+  if (launchOpen()) return NextResponse.next()
 
   const { pathname } = req.nextUrl
-  // /api/cron/* authenticates itself with CRON_SECRET (Vercel Cron can't send our cookie).
-  if (pathname === '/coming-soon' || pathname === '/privacy' || pathname === '/terms' || pathname === '/api/prelaunch/unlock' ||
-      // beta testers: the sign-in page, sign-up (checks the tester list itself) and the pass endpoint
-      pathname === '/auth' || pathname === '/api/auth/signup' || pathname === '/api/prelaunch/session' || pathname.startsWith('/api/cron/')) return NextResponse.next()
+  if (publicWhileLocked(pathname)) return NextResponse.next()
 
-  if (pathname === '/api/calendar.ics') {
-    const k = req.nextUrl.searchParams.get('k') ?? '', want = await calendarKey()
-    if (want && safeEqual(k, want)) return NextResponse.next()
-  }
-
-  const unlocked =
-    (await cookieValid(req.cookies.get(PRELAUNCH_COOKIE)?.value)) ||
-    (await passwordMatches(req.headers.get('x-preview-key') ?? '')) ||
-    // the app stores the unlock token (not the password) after a developer sign-in
-    (await cookieValid(req.headers.get('x-preview-key') ?? undefined))
-  if (unlocked) return NextResponse.next()
+  const pass = req.cookies.get(PASS_COOKIE)?.value ?? req.headers.get(PASS_HEADER) ?? req.headers.get('x-preview-key')
+  if (await passUid(pass)) return NextResponse.next()
 
   if (pathname.startsWith('/api/')) {
     return NextResponse.json(
       { error: "Babson Radio isn't open yet.", code: 'BR-PRE-001' },
-      { status: 401, headers: { 'X-Robots-Tag': 'noindex' } },
+      { status: 401, headers: { 'X-Robots-Tag': 'noindex', 'Cache-Control': 'no-store' } },
     )
   }
-  const res = NextResponse.redirect(new URL('/coming-soon', req.url))
+  const res = NextResponse.redirect(new URL('/', req.url))
   res.headers.set('X-Robots-Tag', 'noindex')
   return res
 }
 
 export const config = {
-  // Skip Next's own assets and static files so the countdown page can load its fonts/images.
+  // Skip Next's own assets and static files so the public pages can load their fonts/images.
   matcher: ['/((?!_next/static|_next/image|favicon.ico|robots.txt|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|woff2?)$).*)'],
 }

@@ -3,8 +3,6 @@ import EpisodeCard from '@/components/EpisodeCard'
 type EpisodeProps = React.ComponentProps<typeof EpisodeCard>['episode']
 import { LikesProvider, LikeBar } from '@/components/Likes'
 import Link from 'next/link'
-import { LINKS } from '@/lib/links'
-import InterestFormCta from '@/components/InterestFormCta'
 import VoteCard from '@/components/VoteCard'
 import LiveShell from '@/components/LiveShell'
 import AutoUpcoming from '@/components/AutoUpcoming'
@@ -21,18 +19,6 @@ export default async function HomePage() {
 
   return (
     <ArtTheme className="max-w-[1340px] mx-auto px-4 lg:px-10 py-10 space-y-10 hw-stage">
-
-      {/* ── Interest form (beta testers only) ───────── */}
-      <InterestFormCta><section className="hw-panel hw-snug flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
-        <div className="flex-1">
-          <h2 className="hw-title !whitespace-normal text-2xl">Tell us what you want to hear</h2>
-          <p className="text-xs hw-sub">Music, podcasts, sports highlights. Under a minute.</p>
-        </div>
-        <a href={LINKS.interest} target="_blank" rel="noopener noreferrer"
-           className="sk-key hw-pill inline-flex items-center justify-center h-10 px-6 rounded-xl text-sm font-semibold shrink-0">
-          Fill out the form
-        </a>
-      </section></InterestFormCta>
 
       <LiveShell>
         {/* Cover and amp */}

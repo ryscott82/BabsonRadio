@@ -39,7 +39,7 @@ export default function AboutPage() {
       </Section>
 
       <Section title="Be on the air">
-        <p>Anyone at Babson can host a show, from a music hour to a talk show to a one-off special. We train new hosts and help with the equipment. Tell us what you would like to make on the <a href={LINKS.interest} target="_blank" rel="noopener noreferrer" className={a}>interest form</a>.</p>
+        <p>Anyone at Babson can host a show, from a music hour to a talk show to a one-off special. We train new hosts and help with the equipment. Email us with what you would like to make.</p>
       </Section>
 
       <Section title="Babson Sound">

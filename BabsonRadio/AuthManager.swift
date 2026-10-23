@@ -45,7 +45,7 @@ class AuthManager: ObservableObject {
     @Published var isInvisible = false
     /// False until the first sign-in check has finished, so the splash screen knows when the app is ready.
     @Published var hasResolvedAuth = false
-    /// On the beta tester list. The interest-form links only show for signed-out visitors and testers.
+    /// On the beta tester list.
     @Published var isTester = false
     /// Signed in with Apple but no school email yet: the app asks for one (verified within 7 days).
     @Published var needsSchoolEmail = false

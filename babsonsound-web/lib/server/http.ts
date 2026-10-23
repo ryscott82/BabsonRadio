@@ -4,6 +4,7 @@ import type { DecodedIdToken } from 'firebase-admin/auth'
 import { adminAuth } from './admin'
 import { classifyServerError, codeForMessage } from '../errors'
 import { counted } from './cpuBudget'
+import { launchOpen } from '../launchLock'
 
 export class HttpError extends Error {
   constructor(public status: number, message: string, public code?: string) {
@@ -14,11 +15,15 @@ export class HttpError extends Error {
 export async function requireUser(req: Request): Promise<DecodedIdToken> {
   const m = (req.headers.get('authorization') ?? '').match(/^Bearer (.+)$/i)
   if (!m) throw new HttpError(401, 'Sign in required.')
+  let t: DecodedIdToken
   try {
-    return await adminAuth().verifyIdToken(m[1])
+    t = await adminAuth().verifyIdToken(m[1])
   } catch {
     throw new HttpError(401, 'Your session expired. Please sign in again.')
   }
+  // Before launch, signed-in people without early access can only use the sign-up follow-up routes (lib/launch.ts).
+  if (!launchOpen()) await (await import('./launchAccess')).enforceLaunchLock(req, t)
+  return t
 }
 
 // Babson Radio is open to Babson, Olin and Wellesley students. (The name is historical.)

@@ -10,14 +10,10 @@ import {
   verifyBeforeUpdateEmail,
   reauthenticateWithCredential,
   EmailAuthProvider,
-  inMemoryPersistence,
-  setPersistence,
-  signInWithCustomToken,
   type User,
 } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from './firebase'
-import { TAB_TOKEN, hasUnlockCookie, isReload, tabUnlocked } from './prelaunch-client'
 import { withCode, firebaseAuthCode, messageForCode } from './errors'
 
 const fail = (message: string, code: string) => new Error(withCode(message, code))
@@ -193,6 +189,29 @@ export async function deleteMyAccount(password: string) {
 
 export async function signOut() {
   await firebaseSignOut(auth)
+  forgetLaunchPass()
+}
+
+// ── launch pass (before launch only) ──
+// Developers, admins, directors, hosts, beta testers and early-access accounts trade their sign-in for a pass (an HttpOnly
+// cookie) so the pages open for them. Locked accounts are told no and stay on the waiting screen. See /api/launch/pass.
+const PASS_AT = 'br-pass-at', PASS_DENIED_AT = 'br-pass-denied-at'
+const recent = (key: string, ms: number) => { try { return Date.now() - Number(sessionStorage.getItem(key) ?? 0) < ms } catch { return false } }
+const mark = (key: string) => { try { sessionStorage.setItem(key, String(Date.now())) } catch { /* storage blocked */ } }
+
+/** Asks for the pass if there is none yet. Quiet on failure; a person without early access never gets one. */
+export async function ensureLaunchPass(force = false) {
+  if (!force && (recent(PASS_AT, 10 * 3_600_000) || recent(PASS_DENIED_AT, 5 * 60_000))) return
+  try {
+    await api('/api/launch/pass', {})
+    mark(PASS_AT)
+  } catch { mark(PASS_DENIED_AT) }
+}
+
+/** Sign-out: drop the pass cookie and the reminders. */
+function forgetLaunchPass() {
+  try { sessionStorage.removeItem(PASS_AT); sessionStorage.removeItem(PASS_DENIED_AT) } catch { /* storage blocked */ }
+  fetch('/api/launch/pass', { method: 'DELETE' }).catch(() => {})
 }
 
 export async function getUserDoc(uid: string) {
@@ -200,29 +219,8 @@ export async function getUserDoc(uid: string) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null
 }
 
-// The developer sign-in lives in memory only, so a full page load in the same tab (typed URL) would drop it.
-// Restore it from the tab's stored token, before anything decides the visitor is signed out.
-let restoring: Promise<void> | null = null
-function restorePreviewSignIn(): Promise<void> {
-  restoring ??= (async () => {
-    try {
-      if (isReload() || !hasUnlockCookie() || !tabUnlocked()) return
-      const token = sessionStorage.getItem(TAB_TOKEN)
-      if (!token) return
-      await auth.authStateReady()
-      if (auth.currentUser) return
-      await setPersistence(auth, inMemoryPersistence)
-      await signInWithCustomToken(auth, token)
-    } catch { /* not signed in; the visitor can unlock again */ }
-  })()
-  return restoring
-}
-
 export function onAuthChange(callback: (user: User | null) => void) {
-  let unsub = () => {}
-  let stopped = false
-  restorePreviewSignIn().then(() => { if (!stopped) unsub = onAuthStateChanged(auth, callback) })
-  return () => { stopped = true; unsub() }
+  return onAuthStateChanged(auth, callback)
 }
 
 /**

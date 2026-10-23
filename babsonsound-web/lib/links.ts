@@ -4,8 +4,6 @@ export const CALENDAR_URL = `${SITE_URL}/api/calendar.ics`
 export const AUTODJ_CALENDAR_URL = `${SITE_URL}/api/calendar-autodj.ics`
 
 export const LINKS = {
-  // Babson Radio interest form (Google Forms). The main call to action right now.
-  interest: 'https://docs.google.com/forms/d/1e83KoSDG4Ns-BFChmZZAlPhjvGvaO1a5YokSaViEuEM/viewform',
   about: 'https://belong.babson.edu/BCR',
   // Babson College's own privacy policy (also applies to Babson Radio).
   babsonPrivacy: 'https://babson.edu/privacy-policy/',

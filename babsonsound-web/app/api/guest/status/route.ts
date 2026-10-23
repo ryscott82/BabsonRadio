@@ -2,6 +2,7 @@ import { adminAuth, adminDb } from '@/lib/server/admin'
 import { BABSON_EMAIL, handle, isBabsonToken, isDeveloperToken, isTesterToken, requireUser } from '@/lib/server/http'
 import { ensureGuestUserDoc, guestLibraryAccess } from '@/lib/server/guests'
 import { finishSchoolUpgrade } from '@/lib/server/upgrade'
+import { isLocked } from '@/lib/server/launchAccess'
 
 export const runtime = 'nodejs'
 
@@ -11,6 +12,8 @@ export const runtime = 'nodejs'
 export async function GET(req: Request) {
   return handle(async () => {
     const t = await requireUser(req)
+    // Before launch, accounts without early access can finish sign-up but are not let in: nothing is listenable yet.
+    const locked = await isLocked(t)
     if (isDeveloperToken(t)) return { tier: 'developer', canListenLive: true, canAccessBacklog: true }
 
     const email = (t.email ?? '').toLowerCase()
@@ -18,7 +21,7 @@ export async function GET(req: Request) {
       const ok = isBabsonToken(t)
       // A guest who just switched to their school email becomes a student here.
       const upgraded = ok ? await finishSchoolUpgrade(adminDb(), t) : false
-      return { tier: 'student', needsVerification: !ok, canListenLive: ok, canAccessBacklog: ok, upgraded }
+      return { tier: 'student', locked, needsVerification: !ok, canListenLive: ok && !locked, canAccessBacklog: ok && !locked, upgraded }
     }
 
     const db = adminDb()
@@ -44,11 +47,12 @@ export async function GET(req: Request) {
 
     return {
       tier: 'guest',
+      locked,
       emailVerified,
       pass,
       requestStatus: latest?.status ?? null,
-      canListenLive: true,
-      canAccessBacklog: library.ok,
+      canListenLive: !locked,
+      canAccessBacklog: library.ok && !locked,
       libraryVia: library.via,
       libraryUntil: library.until,
     }

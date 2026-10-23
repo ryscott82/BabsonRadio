@@ -69,6 +69,11 @@ function Forms() {
   const [resetBump, setResetBump] = useState(0)
   const resetLeft = useResetCooldown(email, resetBump)
 
+  // The countdown page's Sign up button links here with ?mode=create.
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('mode') === 'create') queueMicrotask(() => setMode('create'))
+  }, [])
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
@@ -135,6 +140,11 @@ function Forms() {
         {mode === 'create' && <AgreeBox checked={agreed} onChange={setAgreed} />}
         <ErrorText>{error}</ErrorText>
         <PrimaryButton type="submit" busy={busy}>{mode === 'create' ? 'CREATE ACCOUNT' : 'SIGN IN'}</PrimaryButton>
+        {mode === 'create' && (
+          <p className="text-center text-xs text-br-dk-sub">
+            <Link href="/privacy" target="_blank" className="underline underline-offset-4">We&apos;ll email you when we launch.</Link>
+          </p>
+        )}
         {mode === 'signin' && (
           <button type="button" disabled={resetLeft > 0} className="block mx-auto text-sm text-br-dk-sub hover:text-br-dk-text disabled:opacity-60 disabled:hover:text-br-dk-sub"
             onClick={async () => {
@@ -182,6 +192,7 @@ function VerifyPanel({ email, onCheck }: { email: string; onCheck: () => Promise
           <GhostButton onClick={() => signOut()}>Sign out</GhostButton>
         </div>
         {msg && <p className="text-center text-sm text-br-dk-sub">{msg}</p>}
+        <p className="text-center text-xs text-br-dk-sub">Check your spam folder.</p>
       </div>
     </Card>
   )

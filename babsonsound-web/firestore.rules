@@ -135,5 +135,15 @@ service cloud.firestore {
     match /liveRequests/{id}  { allow read, write: if false; }
     match /skipVotes/{id}     { allow read, write: if false; }
     match /broadcasts/{id}    { allow read, write: if false; }
+    // Launch email state and failure log, listening-hour budget, one-device sessions, phone change requests, host training.
+    // (Anything not listed is denied anyway; these lines just say so.)
+    match /launchEmail/{id}          { allow read, write: if false; }
+    match /launchEmailFailures/{id}  { allow read, write: if false; }
+    match /usage/{id}                { allow read, write: if false; }
+    match /usageHours/{id}           { allow read, write: if false; }
+    match /listenGuard/{id}          { allow read, write: if false; }
+    match /listenDays/{id}           { allow read, write: if false; }
+    match /phoneChanges/{id}         { allow read, write: if false; }
+    match /training/{id}             { allow read, write: if false; }
   }
 }

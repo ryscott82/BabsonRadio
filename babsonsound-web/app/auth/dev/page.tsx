@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signInWithEmailAndPassword, signOut as fbSignOut } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
+import { ensureLaunchPass } from '@/lib/auth'
 import { Card, ErrorText, Field, PrimaryButton } from '@/components/AuthUI'
 
 // Unlisted developer sign-in. Real Firebase credentials; only accounts with the
@@ -24,6 +25,7 @@ export default function DevSignIn() {
         await fbSignOut(auth)
         throw new Error('That account is not a developer account.')
       }
+      await ensureLaunchPass(true) // before launch the admin pages need the launch pass
       router.replace('/admin')
     } catch (err) {
       setError(err instanceof Error && err.message.includes('developer') ? err.message : 'Incorrect email or password.')

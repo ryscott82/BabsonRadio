@@ -6,7 +6,6 @@ import { PUBLIC_ACCESS } from '@/lib/access'
 import { ANY_EMAIL, BABSON_EMAIL, HttpError, handle, readJson, str } from '@/lib/server/http'
 import { indexKeyFromE164 } from '@/lib/server/phone'
 import { normalizeUS } from '@/lib/phone'
-import { prelaunchOn } from '@/lib/prelaunch'
 import { VERIFY_GRACE_MS } from '@/lib/verify-grace'
 import { TERMS_VERSION, validGradYear } from '@/lib/terms'
 import { isTester } from '@/lib/server/testers'
@@ -37,9 +36,6 @@ export async function POST(req: Request) {
     const open = PUBLIC_ACCESS && !school && !tester
     // Anyone else can still make an account, but it waits for the station to approve them as a beta tester.
     const pending = !school && !tester && !open
-    if (prelaunchOn() && !tester && !pending) {
-      throw new HttpError(403, 'Babson Radio is invite-only until launch. Ask the station to add your email.', 'BR-PRE-002')
-    }
     if (!phone) throw new HttpError(400, 'Enter a valid 10-digit US phone number.')
     if (password.length < 8 || password.length > 128) throw new HttpError(400, 'Password must be 8–128 characters.')
 
@@ -71,6 +67,8 @@ export async function POST(req: Request) {
         tx.set(db.collection('users').doc(uid), {
           firstName, lastName, username, displayName: firstName, email, phoneNumber: phone, gradYear,
           termsAcceptedAt: Timestamp.now(), termsVersion: TERMS_VERSION,
+          // The sign-up form says "We'll email you when we launch." The launch email only goes to accounts with this.
+          ...(b.launchNotice === false ? {} : { launchNoticeConsentAt: Timestamp.now() }),
           role: 'listener', accountType: pending ? 'pending' : 'babson',
           ...(pending ? { betaStatus: 'pending' } : {}),
           ...(tester ? { betaTester: true } : {}),

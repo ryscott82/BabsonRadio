@@ -373,16 +373,23 @@
   {
     "code": "BR-PRE-001",
     "title": "Site isn't open yet",
-    "meaning": "The website is in pre-launch mode and this request didn't include the preview password.",
-    "userFix": "Babson Radio opens on October 30. Check back then.",
-    "staffCheck": "Unlock in a browser at /coming-soon (Developer access), or send the X-Preview-Key header. iOS: set BackendConfig.previewKey. To open the site for everyone, set PRELAUNCH_OFF=1 in Vercel and redeploy."
+    "meaning": "Babson Radio is not open yet and this request had no launch pass.",
+    "userFix": "Babson Radio opens on October 30 at 10 am Eastern. Check back then.",
+    "staffCheck": "Developers, admins, directors, hosts and beta testers get a pass automatically after signing in (POST /api/launch/pass). Developer sign-in is at /auth/dev. To open the site for everyone now, set LAUNCH_OPEN=1 in Vercel and redeploy."
   },
   {
-    "code": "BR-PRE-002",
-    "title": "Invite-only until launch",
-    "meaning": "Before launch, only emails on the beta tester list can create an account or open the site.",
-    "userFix": "Ask the station to add your Babson email, then try again.",
-    "staffCheck": "Add the email at /admin/testers (Admin → Beta Testers). Remove the restriction on launch day by setting PRELAUNCH_OFF=1."
+    "code": "BR-PRE-003",
+    "title": "Account is waiting for launch",
+    "meaning": "The account is ready, but Babson Radio is not open to it yet. Before the launch time only staff, hosts, beta testers and early-access accounts get in.",
+    "userFix": "Come back when Babson Radio opens on October 30 at 10 am Eastern.",
+    "staffCheck": "The site opens by itself at LAUNCH_AT (default 2026-10-30T14:00:00Z). To let one person in early: Admin → Beta testers, or POST /api/admin/early-access. To open everyone now: set LAUNCH_OPEN=1 in Vercel and redeploy."
+  },
+  {
+    "code": "BR-PRE-004",
+    "title": "Launch lock isn't set up",
+    "meaning": "The server has no LAUNCH_SECRET (or CRON_SECRET) to sign launch passes with, so nobody can be let in early.",
+    "userFix": "Tell the station team.",
+    "staffCheck": "Set LAUNCH_SECRET in Vercel (openssl rand -hex 24) and redeploy."
   },
   {
     "code": "BR-HST-001",
@@ -544,5 +551,26 @@
     "meaning": "The play log is limited to 93 days at a time.",
     "userFix": "Export in smaller chunks.",
     "staffCheck": ""
+  },
+  {
+    "code": "BR-UNS-001",
+    "title": "Unsubscribe link didn't work",
+    "meaning": "The unsubscribe link is damaged, or the account no longer exists.",
+    "userFix": "Open the link again from the email. If it still fails, reply to the email and we will remove you.",
+    "staffCheck": "Tokens are signed with LAUNCH_SECRET. If that was changed, old links stop working."
+  },
+  {
+    "code": "BR-LCH-001",
+    "title": "Launch email isn't set up",
+    "meaning": "RESEND_API_KEY or LAUNCH_SECRET is missing on the server.",
+    "userFix": "",
+    "staffCheck": "Set RESEND_API_KEY, MAIL_FROM and LAUNCH_SECRET in Vercel and redeploy."
+  },
+  {
+    "code": "BR-LCH-002",
+    "title": "Launch test email was refused",
+    "meaning": "Resend did not accept the test email.",
+    "userFix": "",
+    "staffCheck": "Read the reason in the error. Common: the sending domain is not verified in Resend, or the free plan's daily limit is used up."
   }
 ]

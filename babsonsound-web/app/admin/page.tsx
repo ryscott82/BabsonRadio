@@ -130,7 +130,7 @@ export default function AdminPage() {
               ['/admin/feedback', 'Bugs and ideas'], ['/admin/requests', 'Listener requests'],
               ...(isAdmin ? [['/admin/usage', 'Listening hours']] : []),
               ...(isAdmin ? [['/admin/phone-changes', 'Phone changes']] : []),
-              ...(isAdmin ? [['/admin/users', 'Users and roles'], ['/admin/testers', 'Beta testers'], ['/admin/birthdays', 'Birthdays'], ['/admin/notify', 'Send a notification']] : []),
+              ...(isAdmin ? [['/admin/users', 'Users and roles'], ['/admin/testers', 'Beta testers'], ['/admin/launch-email', 'Launch email'], ['/admin/birthdays', 'Birthdays'], ['/admin/notify', 'Send a notification']] : []),
             ]} />
             <ToolGroup title="numbers" links={[
               ['/admin/insights', 'What listeners like'],

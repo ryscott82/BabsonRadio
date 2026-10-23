@@ -51,8 +51,9 @@ e.g. "Can't reach Babson Radio. Check your connection. (BR-CLI-001)". Codes are 
 (`ERROR_CODES.md`). Button text names the action: "Unlock", "Approve", "Sign in".
 
 ## Pre-launch
-Until `PRELAUNCH_OFF=1`, the only public page is `/coming-soon`: "RADIO IS BACK" with a countdown to
-Oct 30, 2026 (10 am ET) and a small "Developer access" password form.
+Before the launch time (`LAUNCH_AT`, default Oct 30, 2026 at 10 am ET) the homepage is a countdown with a sign-up button.
+People can create accounts but see a waiting screen; staff, hosts and beta testers get the normal site. The site opens by itself
+at the launch time. `LAUNCH_OPEN=1` opens it early. The lock lives in `proxy.ts`, `lib/launchLock.ts` and `lib/server/launchAccess.ts`.
 
 ## Color and layout rules (Oct 2026)
 - The site is Babson green only: cream paper in light mode, near-black green in dark mode. Category thumbnails and genre fallbacks are shades of green. Red is only for On Air and errors.

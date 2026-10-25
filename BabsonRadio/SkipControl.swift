@@ -32,7 +32,7 @@ struct SkipControl: View {
 
     private var np: NowPlayingInfo? { audio.nowPlaying }
     private var autoPlay: Bool { (np?.title.isEmpty == false) && np?.isLive != true && np?.isShow != true }
-    private var key: String { "\(np?.title ?? "")|\(np?.playedAt ?? 0)|\(auth.isSignedIn)|\(autoPlay)" }
+    private var key: String { "\(np?.title ?? "")|\(np?.playedAt ?? 0)|\(auth.isSignedIn)|\(auth.currentUser?.isGuest == true)|\(autoPlay)" }
 
     private func knobIcon(_ dim: Bool = false) -> some View {
         Image(systemName: "forward.end.fill")
@@ -42,7 +42,14 @@ struct SkipControl: View {
 
     var body: some View {
         Group {
-            if auth.isSignedIn, let sk = model.skip, sk.eligible {
+            if !auth.isSignedIn || auth.currentUser?.isGuest == true {
+                // Guests and signed-out listeners see the key too; pressing it opens the sign-in screen.
+                if autoPlay {
+                    Button { auth.goToSignIn() } label: { knobIcon() }
+                        .buttonStyle(HWRoundKeyStyle(size: size, lit: false))
+                        .accessibilityLabel("Sign in to ask to skip this song")
+                }
+            } else if let sk = model.skip, sk.eligible {
                 Button { Task { await model.ask() } } label: { knobIcon() }
                 .buttonStyle(HWRoundKeyStyle(size: size, lit: sk.mine))
                 .disabled(sk.mine)
@@ -63,7 +70,7 @@ struct SkipControl: View {
                     .background(Capsule().fill(Color.black.opacity(0.7)))
                     .offset(x: 12, y: -8)
                 }
-            } else if auth.isSignedIn {
+            } else {
                 // Not skippable right now (a live show, or the station's skip link isn't set up): show it dimmed so it never just vanishes.
                 ZStack { HWRoundKeyFace(size: size, pressed: true); knobIcon(true).hwEngraved().offset(y: 2) }
                     .frame(width: size, height: size)
@@ -76,7 +83,7 @@ struct SkipControl: View {
         .background(
             Color.clear.frame(width: 1, height: 1)
                 .task(id: key) {
-                    guard auth.isSignedIn, autoPlay else { model.skip = nil; return }
+                    guard auth.isSignedIn, auth.currentUser?.isGuest != true, autoPlay else { model.skip = nil; return }
                     // Check the count every 10 seconds while the station's own music plays.
                     while !Task.isCancelled { await model.load(); try? await Task.sleep(nanoseconds: 10_000_000_000) }
                 }

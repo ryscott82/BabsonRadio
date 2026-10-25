@@ -3,9 +3,14 @@
 import { useEffect, type ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { signOut } from '@/lib/auth'
 
 // Guests (any email that is not Babson, Olin or Wellesley) only get the Live page. These stay reachable for everyone.
 const ALLOWED = ['/', '/auth', '/about', '/privacy', '/terms', '/unsubscribe', '/delete-account']
+
+// Pages a guest is sent to sign in for (they sign out first, so the sign-in page opens instead of bouncing back).
+const SIGN_IN_PAGES = ['/schedule', '/library', '/browse', '/shows']
+const under = (path: string, p: string) => path === p || path.startsWith(`${p}/`)
 
 /** Sends a guest who opens any other page back to Live. The server refuses those calls too. */
 export default function GuestFence() {
@@ -14,6 +19,7 @@ export default function GuestFence() {
   const router = useRouter()
   useEffect(() => {
     if (loading || !isGuest) return
+    if (SIGN_IN_PAGES.some(p => under(pathname, p))) { signOut().finally(() => router.replace('/auth')); return }
     if (!ALLOWED.some(p => pathname === p || (p !== '/' && pathname.startsWith(`${p}/`)))) router.replace('/')
   }, [loading, isGuest, pathname, router])
   return null

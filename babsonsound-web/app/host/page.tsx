@@ -331,7 +331,7 @@ function Shows({ st }: { st: Status }) {
             <p className="text-sm text-br-dk-text truncate">{s.title}</p>
             <p className="text-xs text-br-dk-sub">{when(s.startAt)} – {clock(s.endAt)}</p>
           </div>
-          <span className={`text-[13px] font-display tracking-widest shrink-0 ${s.open ? 'text-br-gold' : 'text-br-dk-sub'}`}>{s.open ? 'Panel open' : 'Upcoming'}</span>
+          <span className={`text-[10px] font-display tracking-widest shrink-0 ${s.open ? 'text-br-gold' : 'text-br-dk-sub'}`}>{s.open ? 'Panel open' : 'Upcoming'}</span>
         </div>
       ))}
     </section>

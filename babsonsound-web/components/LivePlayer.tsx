@@ -242,7 +242,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
 
         {/* The amp */}
         <div className="hw-panel hw-big min-w-0">
-          <FitTitle marquee text={hasSong ? np!.title : 'Live Stream'} className="hw-title hw-title-fit text-[2.2rem] lg:text-[2.5rem]" />
+          <FitTitle marquee text={hasSong ? np!.title : 'Live Stream'} className="hw-title hw-title-fit text-[2.75rem] lg:text-[3.1rem]" />
           <p className="hw-sub !text-br-dk-text text-lg font-medium line-clamp-2 mt-0.5">
             {hasSong ? subline : 'Babson College — Internet Radio'}
           </p>
@@ -317,7 +317,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
           {/* Song links and full screen on one row of keys */}
           <div className="flex items-center gap-3 mt-6">
             {hasSong && !np!.showOnly && <SongLinks keys title={np!.title} artist={np!.artist} />}
-            <button onClick={openBoard} className="hidden lg:inline-flex sk-key hw-pill items-center gap-2 h-8 px-4 rounded-lg text-[14px] font-bold tracking-[0.12em] ml-auto shrink-0">
+            <button onClick={openBoard} className="hidden lg:inline-flex sk-key hw-pill items-center gap-2 h-8 px-4 rounded-lg text-[11px] font-bold tracking-[0.12em] ml-auto shrink-0">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
               FULL SCREEN
             </button>

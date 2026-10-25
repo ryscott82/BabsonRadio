@@ -36,7 +36,7 @@ export default function AutoUpcoming({ items, limit = 5, className = '' }: { ite
           return (
             <li key={b.id} className="flex items-center gap-4 py-3">
               <span className="w-28 shrink-0 font-bold text-br-gold text-sm tabular-nums">{onNow ? 'Now' : `${day(b.startAt)}${clock(b.startAt)}`}</span>
-              <p className="min-w-0 flex-1 text-[19px] font-semibold text-br-dk-text truncate">{b.title}</p>
+              <p className="min-w-0 flex-1 text-[15px] font-semibold text-br-dk-text truncate">{b.title}</p>
               <span className="text-xs hw-sub shrink-0">{onNow ? `until ${clock(b.endAt)}` : 'Auto DJ'}</span>
             </li>
           )

@@ -43,6 +43,8 @@ class AuthManager: ObservableObject {
     @Published var schoolEmailSentTo: String? = nil
     /// Invisible mode: hides you from "tuned in" lists and from friends' "liked this" hints.
     @Published var isInvisible = false
+    /// Bumped when something asks for the sign-in screen (the skip key, or a guest reaching for a student-only tab).
+    @Published var signInRequest = 0
     /// False until the first sign-in check has finished, so the splash screen knows when the app is ready.
     @Published var hasResolvedAuth = false
     /// On the beta tester list.
@@ -67,6 +69,12 @@ class AuthManager: ObservableObject {
                 errorMessage = (error as? BackendError)?.message ?? "Couldn't save that setting."
             }
         }
+    }
+
+    /// Takes the person to the sign-in screen. A guest is signed out first, so the screen opens instead of staying hidden.
+    func goToSignIn() {
+        if isSignedIn { signOut() }
+        signInRequest += 1
     }
 
     /// LIVE radio: everyone who is signed in (students, developers and guests).

@@ -38,6 +38,9 @@ struct ContentView: View {
         return chrome(tabs(hideBar: hideBar, sideW: sideW))
     }
 
+    /// Guests only get Live. Anything else they reach for sends them to sign in.
+    private var isGuest: Bool { auth.currentUser?.isGuest == true }
+
     private func tabs(hideBar: Bool, sideW: CGFloat) -> some View {
         TabView(selection: $tab) {
             LivePlayerView()
@@ -48,6 +51,7 @@ struct ContentView: View {
                     BRTabIcon(systemName: "radio", label: "Live")
                 }
 
+            if !isGuest {
             ScheduleView()
                 .padding(.leading, sideW).padding(.top, sideW > 0 ? 64 : 0)
                 .environment(\.hwFlushBottom, sideW > 0)
@@ -57,7 +61,9 @@ struct ContentView: View {
                 .tabItem {
                     BRTabIcon(systemName: "calendar", label: "Schedule")
                 }
+            }
 
+            if !isGuest {
             LibraryView()
                 .padding(.leading, sideW).padding(.top, sideW > 0 ? 64 : 0)
                 .environment(\.hwFlushBottom, sideW > 0)
@@ -67,6 +73,7 @@ struct ContentView: View {
                 .tabItem {
                     BRTabIcon(systemName: "books.vertical", label: "Library")
                 }
+            }
 
             if profile.hosting {
                 NavigationStack { HostPanelView() }
@@ -79,6 +86,7 @@ struct ContentView: View {
             }
 
             // Search is the right-most tab; Profile is the circle button in the top corner of every page.
+            if !isGuest {
             SearchView()
                 .padding(.leading, sideW).padding(.top, sideW > 0 ? 64 : 0)
                 .environment(\.hwFlushBottom, sideW > 0)
@@ -88,6 +96,7 @@ struct ContentView: View {
                 .tabItem {
                     BRTabIcon(systemName: "magnifyingglass", label: "Search")
                 }
+            }
         }
         // Measured on the full-size TabView (before the padding); the pane appears and disappears with no animation.
         // The floating tab bar sits on tan glass in light mode, so its selected item needs a darker green there (a brighter one is
@@ -132,7 +141,11 @@ struct ContentView: View {
 
     private func lifecycle<V: View>(_ content: V) -> some View {
         content
-            .onChange(of: tab) { old, new in if new == 0 && old != 0 { liveLoad += 1 } }
+            .onChange(of: tab) { old, new in
+                if isGuest && new != 0 { tab = 0; auth.goToSignIn(); return }
+                if new == 0 && old != 0 { liveLoad += 1 }
+            }
+            .onChange(of: auth.signInRequest) { _, _ in withAnimation { welcomeSkipped = false } }
             .onReceive(TabRouter.shared.$request.compactMap { $0 }) { t in tab = t; TabRouter.shared.request = nil }
             .tint(tintColor)
             .font(BRFont.body(16, .regular))

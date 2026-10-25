@@ -51,7 +51,7 @@ export default function VoteCard() {
   return (
     <section className="hw-panel hw-big space-y-4">
       <div>
-        <h2 className="hw-title !whitespace-normal text-[1.53rem]">What would you like to hear?</h2>
+        <h2 className="hw-title !whitespace-normal text-[1.9rem]">What would you like to hear?</h2>
         <div className="flex items-baseline justify-between gap-4 mt-1 text-xs">
           <span className="text-br-gold font-medium">{s.upNext?.label ? `${s.upNext.label} won ${clock(s.upNext.blockStart)}.` : ''}</span>
           <span className="hw-sub">{total} vote{total === 1 ? '' : 's'} · one vote per hour</span>

@@ -37,7 +37,7 @@ export default async function ShowsPage() {
                   </div>
                 )}
                 {show.isFeatured && (
-                  <div className="absolute top-3 left-3 font-display text-[12px] tracking-widest bg-br-red text-white px-2 py-0.5 rounded">
+                  <div className="absolute top-3 left-3 font-display text-[9px] tracking-widest bg-br-red text-white px-2 py-0.5 rounded">
                     Featured
                   </div>
                 )}
@@ -45,7 +45,7 @@ export default async function ShowsPage() {
 
               {/* Info */}
               <div className="p-4">
-                <p className="font-display text-br-dk-sub text-[13px] tracking-widest mb-1">
+                <p className="font-display text-br-dk-sub text-[10px] tracking-widest mb-1">
                   {show.category}
                 </p>
                 <h3 className="text-br-dk-text font-semibold text-base group-hover:text-br-gold transition-colors mb-1">

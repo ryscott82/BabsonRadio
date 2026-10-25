@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { resendVerification } from '@/lib/auth'
 
@@ -8,18 +9,20 @@ import { resendVerification } from '@/lib/auth'
 export default function VerifyBanner() {
   const { user, verifyDeadline, reload } = useAuth()
   const [msg, setMsg] = useState('')
-  if (!user || !verifyDeadline) return null
-  const when = new Date(verifyDeadline).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })
+  const path = usePathname()
+  if (!user || !verifyDeadline || path.startsWith('/admin') || path === '/coming-soon') return null
+  const when = new Date(verifyDeadline).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
 
   return (
-    <div role="status" className="fixed top-16 inset-x-0 z-30 bg-br-gold/15 border-b border-br-gold/40 px-4 py-2 text-center text-sm text-br-dk-text">
-      Verify your email by {when} to keep your access. Check your inbox and spam for the link.{' '}
-      <button className="underline text-br-gold" onClick={async () => {
-        try { await resendVerification(); setMsg('Sent again.') } catch (e) { setMsg(e instanceof Error ? e.message : 'Try again in a minute.') }
-      }}>Resend</button>
-      {' · '}
-      <button className="underline text-br-gold" onClick={() => reload()}>I verified</button>
-      {msg && <span className="ml-2 text-br-dk-sub">{msg}</span>}
+    <div role="status" className="relative z-[2] mt-16 -mb-16 bg-br-dk-bg border-b-2 border-br-gold px-4 py-3 text-center text-[15px] text-br-dk-text flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+      <span>Verify your email by {when} to keep your access.</span>
+      <span className="inline-flex items-center gap-3">
+        <button className="sk-key rounded-lg px-3 py-1.5 text-sm" onClick={async () => {
+          try { await resendVerification(); setMsg('Sent again.') } catch (e) { setMsg(e instanceof Error ? e.message : 'Try again in a minute.') }
+        }}>Resend email</button>
+        <button className="sk-key rounded-lg px-3 py-1.5 text-sm" onClick={() => reload()}>I verified</button>
+      </span>
+      {msg && <span className="basis-full text-br-dk-sub text-sm">{msg}</span>}
     </div>
   )
 }

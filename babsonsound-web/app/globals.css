@@ -413,7 +413,7 @@ html[data-art-snap] .art-desk { transition: opacity 1s ease !important; }
 span[data-pin-log], [data-pinterest-extension-installed] ~ span[style*="z-index"][data-pin-id], .PIN_BUTTON, [class^="PIN_"] { display: none !important; }
 
 /* ── Operations menu: big tiles on blue (home of /admin) ── */
-.ops-hub { --hub-bg:#1f7a4d; --hub-tile:#2d9462; --hub-card:rgba(4,50,28,.4);
+.ops-hub { --hub-bg:#1a6e44; --hub-tile:#2a8f5f; --hub-card:rgba(4,50,28,.4);
   background: var(--hub-bg); color:#fff; min-height: calc(100dvh - 4rem); font-size: 16px; }
 .ops-hub .ops-tile-icon { display:flex; align-items:center; justify-content:center; width:96px; height:96px; background: var(--hub-tile); color:#fff; }
 .ops-hub .ops-card { background: var(--hub-card); border:1px solid rgba(255,255,255,.28); color:#fff; }
@@ -422,7 +422,7 @@ span[data-pin-log], [data-pinterest-extension-installed] ~ span[style*="z-index"
 .ops-hub .ops-tile { outline: 2px solid transparent; outline-offset: 4px; color:#fff; text-decoration:none; }
 .ops-hub .ops-tile:hover, .ops-hub .ops-tile:focus-visible { outline-color:#fff; }
 :root[data-theme="dark"] .ops-hub, :root:not([data-theme="light"]) .ops-hub { --hub-bg:#165c3a; --hub-tile:#247a52; }
-@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .ops-hub { --hub-bg:#1f7a4d; --hub-tile:#2d9462; } }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .ops-hub { --hub-bg:#1a6e44; --hub-tile:#2a8f5f; } }
 .ops-hub .sk-raised { color: var(--br-text); }
 .ops { --br-accent-hub:#1db569; }
 .ops-hub .ops-field { background:#fff; color:#0d3a24; border:1px solid #9dddbd; padding:.55rem .75rem; font-size:16px; border-radius:0; }
@@ -458,3 +458,11 @@ html .hw-main .ops.ops-hub .sk-btn[aria-pressed="true"], html .hw-main .ops.ops-
   .br-splash { animation: br-splash-in .35s ease-out both; }
   @keyframes br-splash-in { from { opacity: 0; } to { opacity: 1; } }
 }
+
+/* Admin: Segoe UI, then Open Sans, regular weight everywhere (like a plain Windows settings screen) */
+html .hw-main .ops, html .hw-main .ops * { font-family: 'Segoe UI', var(--font-ops), 'Open Sans', system-ui, sans-serif !important; font-weight: 400 !important; font-style: normal; letter-spacing: normal !important; }
+html .hw-main .ops h1, html .hw-main .ops h1 * { font-weight: 300 !important; }
+html .hw-main .ops .italic, html .hw-main .ops em, html .hw-main .ops i { font-style: normal; }
+
+/* Red text on the green needs to be light to read */
+html .hw-main .ops.ops-hub .text-br-red, html .hw-main .ops.ops-hub .text-red-400 { color:#ffd9d5; }

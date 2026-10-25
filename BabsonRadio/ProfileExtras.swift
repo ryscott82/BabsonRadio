@@ -182,7 +182,7 @@ struct HostOptionsView: View {
                     }
                     .buttonStyle(.plain).disabled(custom.isEmpty)
                 }
-                if let error { Text(error).font(BRFont.body(12, .regular)).foregroundColor(.brRed) }
+                if let error { Text(error).font(BRFont.body(12, .regular)).foregroundColor(.brErrorText) }
             }
             .padding(18).brCard().padding(.horizontal, inset)
         }
@@ -239,7 +239,7 @@ struct PhoneChangeSection: View {
                     .font(BRFont.body(14, .semibold)).foregroundColor(accent).disabled(busy)
             } else {
                 PhoneField(phoneNumber: $phone)
-                if !message.isEmpty { Text(message).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
+                if !message.isEmpty { Text(message).font(BRFont.body(13, .regular)).foregroundColor(.brErrorText) }
                 Button { Task { await send() } } label: {
                     Text("Request change").font(BRFont.body(15, .semibold))
                         .frame(maxWidth: .infinity).padding(.vertical, 12)

@@ -877,7 +877,8 @@ struct BRUser: Identifiable {
         if parts.count >= 2 {
             return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
         }
-        return String(displayName.prefix(2)).uppercased()
+        // One name and no last name yet: just the first letter (never the second letter of the first name, which gave "RY" for Ryan).
+        return String(displayName.prefix(1)).uppercased()
     }
 }
 

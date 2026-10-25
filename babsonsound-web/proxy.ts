@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { PASS_COOKIE, PASS_HEADER, launchOpen, passUid, publicWhileLocked } from '@/lib/launchLock'
+import { PASS_COOKIE, PASS_HEADER, launchOpen, lockedUserMayCall, passUid, publicWhileLocked } from '@/lib/launchLock'
 
 // Launch lock. Before the launch time (lib/launch.ts) only the public pages and APIs are reachable; everything else needs a
 // launch pass (cookie, or the X-Launch-Pass header for the app), which /api/launch/pass hands to admins,
@@ -10,6 +10,8 @@ export async function proxy(req: NextRequest) {
 
   const { pathname } = req.nextUrl
   if (publicWhileLocked(pathname)) return NextResponse.next()
+  // Profile and sign-up follow-ups (name, color, About you, delete account) work for everyone who is signed in. The route checks the sign-in itself.
+  if (pathname.startsWith('/api/') && lockedUserMayCall(pathname)) return NextResponse.next()
 
   const pass = req.cookies.get(PASS_COOKIE)?.value ?? req.headers.get(PASS_HEADER) ?? req.headers.get('x-preview-key')
   if (await passUid(pass)) return NextResponse.next()

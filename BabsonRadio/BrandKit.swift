@@ -49,6 +49,8 @@ extension Color {
     static let brSecondary = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.812, green: 0.769, blue: 0.682, alpha: 1) : UIColor(red: 0.341, green: 0.314, blue: 0.278, alpha: 1) })
     /// Green text: deep green on the light face, bright green on black.
     static let brAccentText = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.184, green: 0.714, blue: 0.486, alpha: 1) : UIColor(red: 0, green: 0.4, blue: 0.267, alpha: 1) })
+    /// Red for error TEXT: light red on dark surfaces (the plain red is only 3:1 on black), deep red on the ivory face. Both clear 4.5:1.
+    static let brErrorText = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 1.0, green: 0.541, blue: 0.502, alpha: 1) : UIColor(red: 0.702, green: 0.149, blue: 0.122, alpha: 1) })
     static let brGreen      = Color(hex: "006644")
     static let brGreenMid   = Color(hex: "007A50")
     static let brGold       = Color(hex: "2FB67C") // bright green accent (replaces the old yellow)
@@ -408,5 +410,17 @@ struct InstagramGlyph: View {
         .frame(width: size * 0.92, height: size * 0.92)
         .frame(width: size, height: size)
         .accessibilityHidden(true)
+    }
+}
+
+
+extension Color {
+    /// Dark or white text, whichever reads better on this solid color.
+    static func brInk(on color: Color) -> Color {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(color).getRed(&r, green: &g, blue: &b, alpha: &a)
+        func lin(_ v: CGFloat) -> Double { let x = Double(v); return x <= 0.03928 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4) }
+        let L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+        return (L + 0.05) / 0.0662 >= 1.05 / (L + 0.05) ? Color(hex: "1A1710") : .white
     }
 }

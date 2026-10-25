@@ -169,60 +169,101 @@ struct CategoryTile: View {
     var onTap: () -> Void = {}
     @Environment(\.colorScheme) var scheme
 
+    private var dark: Bool { scheme == .dark }
+
     var body: some View {
         Button(action: onTap) {
-            ZStack(alignment: .bottomLeading) {
-                // Background
+            ZStack {
+                // Leather cabinet in the category's color
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(LinearGradient(
-                        colors: gradientColors,
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ))
-                    .frame(height: 90)
+                    .fill(LinearGradient(colors: [leather, leather.opacity(0.78)], startPoint: .top, endPoint: .bottom))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.14), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.35), radius: 4, y: 3)
 
-                // Subtle grain
-                Canvas { context, size in
-                    for row in stride(from: 0, to: size.height, by: 2) {
-                        for col in stride(from: 0, to: size.width, by: 2) {
-                            let seed = Double(Int(row) &* 613 &+ Int(col) &* 317)
-                            let n = sin(seed * 0.5831) * 0.5 + 0.5
-                            if n > 0.78 {
-                                context.fill(
-                                    Path(CGRect(x: col, y: row, width: 2, height: 2)),
-                                    with: .color(.white.opacity((n - 0.78) * 0.35))
-                                )
+                // Face plate
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(LinearGradient(
+                        colors: dark ? [Color(hex: "262622"), Color(hex: "121210")] : [Color(hex: "F6F0E0"), Color(hex: "E2D8C0")],
+                        startPoint: .top, endPoint: .bottom))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.black.opacity(dark ? 0.6 : 0.28), lineWidth: 1))
+                    .padding(7)
+
+                HStack(spacing: 12) {
+                    // Brushed steel knob with a ring in the category color
+                    ZStack {
+                        Circle().fill(AngularGradient(
+                            colors: [Color(hex: "838281"), Color(hex: "D9D8D3"), Color(hex: "6B6A66"), Color(hex: "ECEBE6"), Color(hex: "7C7B77"), Color(hex: "D3D2CD"), Color(hex: "838281")],
+                            center: .center))
+                        Circle().stroke(led, lineWidth: 2.5).padding(-3)
+                        Image(systemName: iconName)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(Color(hex: "1A1710"))
+                    }
+                    .frame(width: 38, height: 38)
+                    .shadow(color: .black.opacity(0.4), radius: 2, y: 2)
+
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text(category.rawValue.uppercased())
+                            .font(BRFont.display(16))
+                            .kerning(1.5)
+                            .foregroundColor(dark ? Color(hex: "EFE9D6") : Color(hex: "1A1710"))
+                            .lineLimit(1).minimumScaleFactor(0.7)
+                        // Level lights
+                        HStack(spacing: 4) {
+                            ForEach(0..<6, id: \.self) { n in
+                                Capsule()
+                                    .fill(n < lit ? led : Color.black.opacity(dark ? 0.55 : 0.18))
+                                    .frame(width: 10, height: 5)
+                                    .shadow(color: n < lit ? led.opacity(0.7) : .clear, radius: 2)
                             }
                         }
                     }
+                    Spacer(minLength: 0)
                 }
-                .frame(height: 90)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .allowsHitTesting(false)
-
-                // Icon + label
-                VStack(alignment: .leading, spacing: 4) {
-                    Image(systemName: iconName)
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.white.opacity(0.9))
-                    Text(category.rawValue.uppercased())
-                        .font(BRFont.display(16))
-                        .kerning(1.5)
-                        .foregroundColor(.white)
-                }
-                .padding(14)
+                .padding(.horizontal, 20)
             }
+            .overlay(alignment: .topLeading) { screw }
+            .overlay(alignment: .topTrailing) { screw }
+            .overlay(alignment: .bottomLeading) { screw }
+            .overlay(alignment: .bottomTrailing) { screw }
+            .frame(height: 90)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(category.rawValue)
     }
 
-    var gradientColors: [Color] {
+    private var screw: some View {
+        Circle().fill(Color(hex: "BDBBB3")).frame(width: 5, height: 5).padding(5)
+            .overlay(Circle().stroke(Color.black.opacity(0.4), lineWidth: 0.5).padding(5))
+    }
+
+    /// Cabinet color for each category.
+    private var leather: Color {
         switch category {
-        case .music:     return [Color(hex: "003D27"), Color(hex: "006644")]
-        case .interview: return [Color(hex: "1A2E4A"), Color(hex: "2E5C8A")]
-        case .podcast:   return [Color(hex: "2A1A08"), Color(hex: "5C3A10")]
-        case .talk:      return [Color(hex: "1A0A2E"), Color(hex: "4A1A7A")]
-        case .news:      return [Color(hex: "2A0808"), Color(hex: "7A1A1A")]
+        case .music:     return Color(hex: "0B5B3C")
+        case .interview: return Color(hex: "24476F")
+        case .podcast:   return Color(hex: "7A4A18")
+        case .talk:      return Color(hex: "5A2B8C")
+        case .news:      return Color(hex: "8E2626")
+        }
+    }
+    /// Light color (knob ring and level lights).
+    private var led: Color {
+        switch category {
+        case .music:     return Color(hex: "2FD08A")
+        case .interview: return Color(hex: "4FA3FF")
+        case .podcast:   return Color(hex: "FFAE42")
+        case .talk:      return Color(hex: "B97CFF")
+        case .news:      return Color(hex: "FF5A4F")
+        }
+    }
+    private var lit: Int {
+        switch category {
+        case .music: return 5
+        case .interview: return 4
+        case .podcast: return 3
+        case .talk: return 4
+        case .news: return 2
         }
     }
 

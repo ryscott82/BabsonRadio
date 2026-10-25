@@ -232,7 +232,7 @@ private struct SignedInProfileView: View {
                     if let by = auth.verifyDeadline {
                         Text("Verify your email by \(by.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())).")
                             .font(BRFont.body(12, .medium))
-                            .foregroundColor(.brRed)
+                            .foregroundColor(.brErrorText)
                     }
                     Text("Member since \(user.joinedDate.formatted(.dateTime.month(.wide).year()))")
                         .font(BRFont.body(13, .regular))
@@ -254,7 +254,7 @@ private struct SignedInProfileView: View {
                 }
                 .padding(.vertical, 8)
                 if let e = store.colorError {
-                    Text(e).font(BRFont.body(12, .regular)).foregroundColor(.brRed)
+                    Text(e).font(BRFont.body(12, .regular)).foregroundColor(.brErrorText)
                 }
             }
         }
@@ -566,7 +566,7 @@ private struct SignedInProfileView: View {
                     .animation(.easeInOut(duration: 0.2), value: inviteSent)
 
                     if let inviteError {
-                        Text(inviteError).font(BRFont.body(12, .regular)).foregroundColor(.brRed)
+                        Text(inviteError).font(BRFont.body(12, .regular)).foregroundColor(.brErrorText)
                     }
                 }
                 .padding(18)
@@ -621,11 +621,11 @@ private struct ContactInviteRow: View {
             // Avatar
             ZStack {
                 Circle()
-                    .fill(contact.avatarColor.opacity(0.8))
+                    .fill(contact.avatarColor)
                     .frame(width: 38, height: 38)
                 Text(contact.initials)
                     .font(BRFont.display(14))
-                    .foregroundColor(.white)
+                    .foregroundColor(Color.brInk(on: contact.avatarColor))
             }
 
             VStack(alignment: .leading, spacing: 2) {
@@ -703,8 +703,8 @@ struct ContactPickerView: View {
         Button(action: { if let phone = contact.primaryPhone { onSelect(phone) } }) {
             HStack(spacing: 12) {
                 ZStack {
-                    Circle().fill(contact.avatarColor.opacity(0.8)).frame(width: 36, height: 36)
-                    Text(contact.initials).font(BRFont.display(13)).foregroundColor(.white)
+                    Circle().fill(contact.avatarColor).frame(width: 36, height: 36)
+                    Text(contact.initials).font(BRFont.display(13)).foregroundColor(Color.brInk(on: contact.avatarColor))
                 }
                 VStack(alignment: .leading) {
                     Text(contact.name).font(BRFont.body(15, .medium))
@@ -838,7 +838,7 @@ private struct ActiveInviteRow: View {
                 }
                 .foregroundColor(
                     invite.isExpired
-                        ? .brRed
+                        ? .brErrorText
                         : (scheme == .dark ? .brDkSub : .brLtSub)
                 )
             }
@@ -1110,7 +1110,7 @@ struct BRContact: Identifiable {
         if parts.count >= 2 {
             return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
         }
-        return String(name.prefix(2)).uppercased()
+        return String(name.prefix(1)).uppercased()
     }
 
     var avatarColor: Color {
@@ -1157,7 +1157,7 @@ struct FeedbackView: View {
                     TextEditor(text: $message).frame(minHeight: 140)
                 }
                 .listRowBackground(HWFieldFill())
-                if let errorText { Section { Text(errorText).foregroundStyle(.red) }.listRowBackground(HWFieldFill()) }
+                if let errorText { Section { Text(errorText).foregroundStyle(Color.brErrorText) }.listRowBackground(HWFieldFill()) }
                 if sent { Section { Text("Sent. Thank you, we read every one.").foregroundStyle(scheme == .dark ? Color.brGold : Color.brGreen) }.listRowBackground(HWFieldFill()) }
             }
             .hwPage()
@@ -1270,7 +1270,7 @@ struct HostPanelView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                if let err = host.error { Text(err).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
+                if let err = host.error { Text(err).font(BRFont.body(13, .regular)).foregroundColor(.brErrorText) }
                 if let s = host.status {
                     controls(s)
                     if s.controlsOpen, selected != nil {
@@ -1720,7 +1720,7 @@ struct NotificationChoicesSection: View {
             Toggle("Happy birthday message", isOn: Binding(get: { push.birthdayOn }, set: { v in Task { await push.setMine(birthday: v) } }))
             Toggle("Station announcements (live events and news)", isOn: Binding(get: { push.announcementsOn }, set: { v in Task { await push.setMine(announcements: v) } }))
             if !push.status.isEmpty {
-                Text(push.status).font(BRFont.body(12, .regular)).foregroundColor(.brRed)
+                Text(push.status).font(BRFont.body(12, .regular)).foregroundColor(.brErrorText)
             }
         }
         .font(BRFont.body(14, .regular))

@@ -15,6 +15,7 @@ import { ExtrasStack, ReactionKeys } from '@/components/LiveExtras'
 import { useArtColor, useArtPalette } from '@/lib/artColor'
 import { useArtMain } from '@/components/ArtTheme'
 import { useListenGuard } from '@/lib/listenGuard'
+import { takeTryIt } from '@/lib/splash'
 import { attachSpectrum, probeCors, registerAudio, sharedAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
@@ -199,6 +200,16 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
       startAudio()
     }
   }
+
+  // The first-visit splash's "Try it out" starts the stream here, from the same tap.
+  const tryRef = useRef({ go: () => {}, playing: false, ok: false })
+  useEffect(() => { tryRef.current = { go: () => { void togglePlay() }, playing: isPlaying, ok: canListenLive } })
+  useEffect(() => {
+    const run = () => { if (takeTryIt() && tryRef.current.ok && !tryRef.current.playing) tryRef.current.go() }
+    window.addEventListener('br:try-it', run)
+    run()
+    return () => window.removeEventListener('br:try-it', run)
+  }, [])
 
   function startAudio() {
     if (!audioRef.current) {

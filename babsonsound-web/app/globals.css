@@ -264,8 +264,8 @@ body::before {
   --br-bg:#f5f7f6; --br-surface:#ffffff; --br-surface2:#eaf0ed;
   --br-border:#d2dcd6; --br-border2:#aebcb4;
   --br-text:#14211a; --br-sub:#46594f; --br-muted:#5f7368;
-  --br-accent:#1d5db5;
-  --sk-field:#ffffff; --sk-btn-top:#e3ecf8; --sk-btn-bot:#e3ecf8; --sk-btn-edge:#aebcb4; --sk-btn-ink:#0f4a96;
+  --br-accent:#1db569;
+  --sk-field:#ffffff; --sk-btn-top:#e3f8ee; --sk-btn-bot:#e3f8ee; --sk-btn-edge:#aebcb4; --sk-btn-ink:#0f9653;
   --sk-btn-text-shadow: none;
   background: var(--br-bg); color: var(--br-text);
   font-family: 'Segoe UI', var(--font-ops), system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
@@ -277,8 +277,8 @@ body::before {
     --br-bg:#060908; --br-surface:#0b110e; --br-surface2:#101a15;
     --br-border:#1c2a22; --br-border2:#2a3f33;
     --br-text:#c9e4d3; --br-sub:#8fa99a; --br-muted:#5c7566;
-    --br-accent:#6db3f2;
-    --sk-field:#050807; --sk-btn-top:#12263f; --sk-btn-bot:#12263f; --sk-btn-edge:#2a3f33; --sk-btn-ink:#6db3f2;
+    --br-accent:#6df2b0;
+    --sk-field:#050807; --sk-btn-top:#123f29; --sk-btn-bot:#123f29; --sk-btn-edge:#2a3f33; --sk-btn-ink:#6df2b0;
   }
 }
 :root[data-theme="dark"] .ops {
@@ -286,8 +286,8 @@ body::before {
   --br-bg:#060908; --br-surface:#0b110e; --br-surface2:#101a15;
   --br-border:#1c2a22; --br-border2:#2a3f33;
   --br-text:#c9e4d3; --br-sub:#8fa99a; --br-muted:#5c7566;
-  --br-accent:#6db3f2;
-  --sk-field:#050807; --sk-btn-top:#12263f; --sk-btn-bot:#12263f; --sk-btn-edge:#2a3f33; --sk-btn-ink:#6db3f2;
+  --br-accent:#6df2b0;
+  --sk-field:#050807; --sk-btn-top:#123f29; --sk-btn-bot:#123f29; --sk-btn-edge:#2a3f33; --sk-btn-ink:#6df2b0;
 }
 .hw-main .ops .font-display { font-family: inherit; letter-spacing: 0.04em; }
 .hw-main .ops .sk-raised, .hw-main .ops .sk-hero { background: var(--br-surface); border: 1px solid var(--br-border); border-radius: 3px; box-shadow: none; }
@@ -413,20 +413,20 @@ html[data-art-snap] .art-desk { transition: opacity 1s ease !important; }
 span[data-pin-log], [data-pinterest-extension-installed] ~ span[style*="z-index"][data-pin-id], .PIN_BUTTON, [class^="PIN_"] { display: none !important; }
 
 /* ── Operations menu: big tiles on blue (home of /admin) ── */
-.ops-hub { --hub-bg:#2a5fb0; --hub-tile:#3f8fd2; --hub-card:rgba(10,40,95,.38);
+.ops-hub { --hub-bg:#1f7a4d; --hub-tile:#2d9462; --hub-card:rgba(4,50,28,.4);
   background: var(--hub-bg); color:#fff; min-height: calc(100dvh - 4rem); font-size: 16px; }
 .ops-hub .ops-tile-icon { display:flex; align-items:center; justify-content:center; width:96px; height:96px; background: var(--hub-tile); color:#fff; }
 .ops-hub .ops-card { background: var(--hub-card); border:1px solid rgba(255,255,255,.28); color:#fff; }
-.ops-hub .ops-btn { background:#173f80; color:#fff; border:1px solid rgba(255,255,255,.5); font-size:16px; }
-.ops-hub .ops-btn:hover { background:#0f2f66; }
+.ops-hub .ops-btn { background:#0f5233; color:#fff; border:1px solid rgba(255,255,255,.5); font-size:16px; }
+.ops-hub .ops-btn:hover { background:#0a3f27; }
 .ops-hub .ops-tile { outline: 2px solid transparent; outline-offset: 4px; color:#fff; text-decoration:none; }
 .ops-hub .ops-tile:hover, .ops-hub .ops-tile:focus-visible { outline-color:#fff; }
-:root[data-theme="dark"] .ops-hub, :root:not([data-theme="light"]) .ops-hub { --hub-bg:#1d4a91; --hub-tile:#3478bd; }
-@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .ops-hub { --hub-bg:#2a5fb0; --hub-tile:#3f8fd2; } }
+:root[data-theme="dark"] .ops-hub, :root:not([data-theme="light"]) .ops-hub { --hub-bg:#165c3a; --hub-tile:#247a52; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .ops-hub { --hub-bg:#1f7a4d; --hub-tile:#2d9462; } }
 .ops-hub .sk-raised { color: var(--br-text); }
-.ops { --br-accent-hub:#1d5db5; }
-.ops-hub .ops-field { background:#fff; color:#10243f; border:1px solid #9db8dd; padding:.55rem .75rem; font-size:16px; border-radius:0; }
-.ops-hub .ops-field::placeholder { color:#4a5f7f; }
+.ops { --br-accent-hub:#1db569; }
+.ops-hub .ops-field { background:#fff; color:#0d3a24; border:1px solid #9dddbd; padding:.55rem .75rem; font-size:16px; border-radius:0; }
+.ops-hub .ops-field::placeholder { color:#3f7258; }
 .ops-hub .ops-field:focus-visible { outline:3px solid #fff; outline-offset:1px; }
 .ops-hub .ops-btn-red { background:#b3261f; color:#fff; border:1px solid rgba(255,255,255,.6); font-size:16px; }
 .ops-hub .ops-btn-red:hover { background:#8f1d17; }
@@ -439,16 +439,22 @@ span[data-pin-log], [data-pinterest-extension-installed] ~ span[style*="z-index"
 /* every admin page: the blue look. Tokens remapped so plain pages follow without edits */
 html .hw-main .ops.ops-hub {
   color-scheme: dark; min-height: 100dvh;
-  --br-bg: var(--hub-bg); --br-surface: rgba(10,40,95,.38); --br-surface2: rgba(10,40,95,.55);
+  --br-bg: var(--hub-bg); --br-surface: rgba(4,50,28,.4); --br-surface2: rgba(4,50,28,.58);
   --br-border: rgba(255,255,255,.28); --br-border2: rgba(255,255,255,.5);
-  --br-text:#fff; --br-sub:#e1ecfb; --br-muted:#c3d5ee; --br-accent:#fff;
-  --sk-field:#fff; --sk-btn-top:#173f80; --sk-btn-bot:#173f80; --sk-btn-edge:rgba(255,255,255,.5); --sk-btn-ink:#fff;
+  --br-text:#fff; --br-sub:#e1fbee; --br-muted:#c3eed8; --br-accent:#fff;
+  --sk-field:#fff; --sk-btn-top:#0f5233; --sk-btn-bot:#0f5233; --sk-btn-edge:rgba(255,255,255,.5); --sk-btn-ink:#fff;
   background: var(--hub-bg); color:#fff;
 }
 html .hw-main .ops.ops-hub input:not([type=checkbox]):not([type=radio]):not([type=range]), html .hw-main .ops.ops-hub select, html .hw-main .ops.ops-hub textarea {
   background:#fff; color:#10243f; border:1px solid #9db8dd; border-radius:0;
 }
-html .hw-main .ops.ops-hub input::placeholder, html .hw-main .ops.ops-hub textarea::placeholder { color:#4a5f7f; }
+html .hw-main .ops.ops-hub input::placeholder, html .hw-main .ops.ops-hub textarea::placeholder { color:#3f7258; }
 html .hw-main .ops.ops-hub a:not(.ops-tile):not(.ops-btn) { color:#fff; text-decoration:underline; text-underline-offset:3px; }
-html .hw-main .ops.ops-hub .sk-btn:hover:not(:disabled), html .hw-main .ops.ops-hub .sk-key:hover:not(:disabled) { background:#0f2f66; border-color:#fff; }
+html .hw-main .ops.ops-hub .sk-btn:hover:not(:disabled), html .hw-main .ops.ops-hub .sk-key:hover:not(:disabled) { background:#0a3f27; border-color:#fff; }
 html .hw-main .ops.ops-hub .sk-btn[aria-pressed="true"], html .hw-main .ops.ops-hub .sk-key[aria-pressed="true"] { outline:2px solid #fff; outline-offset:1px; }
+
+/* First-visit splash: a short fade, skipped for reduced motion */
+@media (prefers-reduced-motion: no-preference) {
+  .br-splash { animation: br-splash-in .35s ease-out both; }
+  @keyframes br-splash-in { from { opacity: 0; } to { opacity: 1; } }
+}

@@ -130,7 +130,7 @@ export default function AdminPage() {
                 {tiles.map(t => (
                   <Link key={t.href} href={t.href} className="ops-tile group flex gap-4 p-2 -m-2 items-start">
                     <span className="ops-tile-icon relative shrink-0"><OpsIcon name={t.icon} size={52} />
-                      {!!t.badge && <span className="absolute -top-2 -right-2 min-w-7 h-7 px-1.5 rounded-full bg-white text-[#1b4f9e] text-sm font-bold flex items-center justify-center">{t.badge}</span>}
+                      {!!t.badge && <span className="absolute -top-2 -right-2 min-w-7 h-7 px-1.5 rounded-full bg-white text-[#0f5233] text-sm font-bold flex items-center justify-center">{t.badge}</span>}
                     </span>
                     <span className="min-w-0 pt-1">
                       <span className="block text-2xl font-light leading-tight">{t.title}</span>

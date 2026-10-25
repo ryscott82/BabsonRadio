@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import Nav from '@/components/Nav'
+import Splash from '@/components/Splash'
 import Footer from '@/components/Footer'
 import AnnouncementBanner from '@/components/AnnouncementBanner'
 import VerifyBanner from '@/components/VerifyBanner'
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             chrome={
               <>
                 <GuestFence />
+                <Splash />
                 <Nav />
                 <VerifyBanner />
                 <main className="hw-stage hw-main relative z-[1] pt-16 pb-12 flex-1">

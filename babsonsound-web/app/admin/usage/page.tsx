@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
-import { plexMono } from '@/components/admin/opsFont'
 import CpuMeter from '@/components/admin/CpuMeter'
 
 interface Data {
@@ -44,7 +43,7 @@ export default function UsagePage() {
   const field = 'sk-field rounded-lg px-3 py-2 text-sm text-br-dk-text w-24'
 
   return (
-    <div className={`ops ${plexMono.className} min-h-screen`}>
+    <div className="min-h-screen">
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
         <div className="flex items-baseline gap-3 border-b border-br-dk-border pb-3">
           <Link href="/admin" className="text-br-dk-sub text-xs">radio-ops</Link>

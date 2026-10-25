@@ -133,6 +133,13 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {isAdmin && (
+          <section aria-label="Station controls" className="space-y-4">
+            <h2 className="text-3xl font-light">Station controls</h2>
+            <StationPanel />
+          </section>
+        )}
+
         {/* Menu */}
         {groups.map(g => {
           const tiles = g.tiles.filter(t => !t.admin || isAdmin)
@@ -156,28 +163,21 @@ export default function AdminPage() {
           )
         })}
 
-        {/* Queue and controls */}
-        <div className="grid lg:grid-cols-5 gap-6">
-          <section className="ops-card p-5 lg:col-span-3 h-fit">
-            <h2 className="text-2xl font-light mb-2">Next 24 hours</h2>
-            <ul className="text-base divide-y divide-white/25">
-              {(dash?.next ?? []).map((n, i) => (
-                <li key={i} className="py-2 flex gap-3">
-                  <span className="tabular-nums w-36 shrink-0 opacity-90">{clock(n.startAt)} – {clock(n.endAt)}</span>
-                  <span className="truncate">{n.title}</span>
-                  <span className="text-sm opacity-80 ml-auto shrink-0">{n.source === 'auto' ? 'auto' : 'show'}</span>
-                </li>
-              ))}
-              {dash && !dash.next.length && <li className="py-2">Nothing scheduled.</li>}
-            </ul>
-          </section>
-          {isAdmin && (
-            <section className="lg:col-span-2 sk-raised p-4 h-fit">
-              <h2 className="text-br-gold text-lg mb-3">Station controls</h2>
-              <StationPanel />
-            </section>
-          )}
-        </div>
+        {/* Next 24 hours */}
+        <section className="ops-card p-5">
+          <h2 className="text-2xl font-light mb-2">Next 24 hours</h2>
+          <ul className="text-base divide-y divide-white/25">
+            {(dash?.next ?? []).map((n, i) => (
+              <li key={i} className="py-2 flex gap-3">
+                <span className="tabular-nums w-36 shrink-0 opacity-90">{clock(n.startAt)} – {clock(n.endAt)}</span>
+                <span className="truncate">{n.title}</span>
+                <span className="text-sm opacity-80 ml-auto shrink-0">{n.source === 'auto' ? 'auto' : 'show'}</span>
+              </li>
+            ))}
+            {!dash && <li className="py-2">Loading…</li>}
+            {dash && !dash.next.length && <li className="py-2">Nothing scheduled.</li>}
+          </ul>
+        </section>
       </div>
     </div>
   )

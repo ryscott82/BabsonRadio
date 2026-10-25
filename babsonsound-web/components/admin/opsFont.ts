@@ -1,4 +1,4 @@
-import { IBM_Plex_Mono } from 'next/font/google'
+import { Open_Sans } from 'next/font/google'
 
-// The monospace face for the radio operations screen.
-export const plexMono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap' })
+// The clean sans for the radio operations screens, close to Windows' Segoe UI. Windows itself uses the real Segoe UI first (see .ops in globals.css).
+export const opsFont = Open_Sans({ subsets: ['latin'], weight: ['300', '400', '600', '700'], display: 'swap', variable: '--font-ops' })

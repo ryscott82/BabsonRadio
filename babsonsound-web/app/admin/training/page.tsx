@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
-import { plexMono } from '@/components/admin/opsFont'
 
 interface Row {
   uid: string; name: string; email: string; level: string; trained: boolean; certifiedAt: number | null; certifiedBy: string
@@ -47,7 +46,7 @@ export default function AdminTrainingPage() {
   const btn = 'rounded-md border border-br-dk-border px-2.5 py-1 text-xs text-br-dk-text hover:text-br-gold disabled:opacity-40'
 
   return (
-    <div className={`ops ${plexMono.className} min-h-screen`}>
+    <div className="min-h-screen">
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-4">
         <div className="flex items-baseline gap-3 border-b border-br-dk-border pb-3">
           <Link href="/admin" className="text-br-dk-sub text-xs">radio-ops</Link>

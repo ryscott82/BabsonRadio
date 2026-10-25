@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiGet } from '@/lib/auth'
-import { plexMono } from '@/components/admin/opsFont'
 
 const iso = (d: Date) => d.toISOString().slice(0, 10)
 
@@ -33,7 +32,7 @@ export default function PlayLogPage() {
 
   if (loading || !user || !isAdmin) return <div className="min-h-[60vh]" />
   return (
-    <div className={`ops ${plexMono.className} min-h-screen`}>
+    <div className="min-h-screen">
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         <div className="flex items-baseline gap-3 border-b border-br-dk-border pb-3">
           <Link href="/admin" className="text-br-dk-sub text-xs">radio-ops</Link>

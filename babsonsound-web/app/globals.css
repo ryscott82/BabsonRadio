@@ -268,7 +268,8 @@ body::before {
   --sk-field:#ffffff; --sk-btn-top:#e3ecf8; --sk-btn-bot:#e3ecf8; --sk-btn-edge:#aebcb4; --sk-btn-ink:#0f4a96;
   --sk-btn-text-shadow: none;
   background: var(--br-bg); color: var(--br-text);
-  font-size: 14px; letter-spacing: 0;
+  font-family: 'Segoe UI', var(--font-ops), system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 15px; letter-spacing: 0;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .ops {
@@ -424,3 +425,10 @@ span[data-pin-log], [data-pinterest-extension-installed] ~ span[style*="z-index"
 @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .ops-hub { --hub-bg:#2a5fb0; --hub-tile:#3f8fd2; } }
 .ops-hub .sk-raised { color: var(--br-text); }
 .ops { --br-accent-hub:#1d5db5; }
+.ops-hub .ops-field { background:#fff; color:#10243f; border:1px solid #9db8dd; padding:.55rem .75rem; font-size:16px; border-radius:0; }
+.ops-hub .ops-field::placeholder { color:#4a5f7f; }
+.ops-hub .ops-field:focus-visible { outline:3px solid #fff; outline-offset:1px; }
+.ops-hub .ops-btn-red { background:#b3261f; color:#fff; border:1px solid rgba(255,255,255,.6); font-size:16px; }
+.ops-hub .ops-btn-red:hover { background:#8f1d17; }
+.ops-hub .ops-btn:disabled, .ops-hub .ops-btn-red:disabled { cursor:not-allowed; }
+.ops-hub .ops-btn[aria-pressed="true"] { outline:2px solid #fff; outline-offset:2px; }

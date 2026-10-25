@@ -173,15 +173,21 @@ export async function sendPasswordReset(email: string) {
 }
 
 /** Permanently deletes the signed-in account and its data. Re-checks the password first. */
-export async function deleteMyAccount(password: string) {
+/** True when this account has a password (accounts made with an emailed link may not). */
+export const hasPassword = () => !!auth.currentUser?.providerData.some(p => p.providerId === 'password')
+
+export async function deleteMyAccount(password = '') {
   const u = auth.currentUser
   if (!u?.email) throw fail('Sign in first.', 'BR-AUTH-002')
-  try {
-    await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, password))
-  } catch (e) {
-    throw fbFail(e, 'Incorrect password.')
+  if (hasPassword()) {
+    try {
+      await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, password))
+    } catch (e) {
+      throw fbFail(e, 'Incorrect password.')
+    }
+    await u.getIdToken(true)
   }
-  await u.getIdToken(true)
+  // Link-only accounts have no password to check. The server still needs a sign-in from the last 5 minutes.
   await api('/api/me/delete', { confirm: 'DELETE' })
   await firebaseSignOut(auth).catch(() => {})
 }

@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import MyRatings from '@/components/MyRatings'
-import { api, apiGet, deleteMyAccount, signOut } from '@/lib/auth'
+import { api, apiGet, deleteMyAccount, hasPassword, signOut } from '@/lib/auth'
 import { Card, ErrorText, Field, GhostButton, PrimaryButton, formatPhone } from '@/components/AuthUI'
 import Avatar from '@/components/Avatar'
 import { AVATAR_COLORS, discStyle } from '@/lib/profile'
@@ -173,7 +173,7 @@ function Row({ title, hint, open, onToggle, children }: { title: string; hint?: 
 }
 
 export default function ProfilePage() {
-  const { user, userDoc, loading, isBabson, isGuest, isAdmin, isDirector } = useAuth()
+  const { user, userDoc, loading, isBabson, isAdmin, isDirector, reload } = useAuth()
   const router = useRouter()
   const member = isBabson
   const [me, setMe] = useState<{ invisible: boolean; avatarColor: string; joinedAt: number | null; answered: boolean } | null>(null)
@@ -183,6 +183,7 @@ export default function ProfilePage() {
   const [open, setOpen] = useState<'' | 'color' | 'about' | 'ratings' | 'report' | 'phone'>('')
   const [showDelete, setShowDelete] = useState(false)
   const [pw, setPw] = useState('')
+  const [setupName, setSetupName] = useState('')
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -193,14 +194,13 @@ export default function ProfilePage() {
   useEffect(() => {
     if (loading) return
     if (!user) router.replace('/auth')
-    else if (isGuest) router.replace('/')
-  }, [loading, user, isGuest, router])
+  }, [loading, user, router])
 
   const loadMe = () => apiGet<{ invisible: boolean; avatarColor: string; joinedAt: number | null; gradYear: string; concentrations: string[]; birthday?: unknown }>('/api/me')
     .then(r => setMe({ invisible: r.invisible, avatarColor: r.avatarColor, joinedAt: r.joinedAt, answered: !!(r.gradYear || r.concentrations?.length || r.birthday) })).catch(() => {})
-  useEffect(() => { if (user && !isGuest) queueMicrotask(loadMe) }, [user, isGuest])
+  useEffect(() => { if (user) queueMicrotask(loadMe) }, [user])
 
-  if (loading || !user || isGuest) return null
+  if (loading || !user) return null
 
   async function toggleInvisible() {
     if (!me) return
@@ -217,7 +217,16 @@ export default function ProfilePage() {
     setMe({ ...me, avatarColor: id }); setError('')
     try { await api('/api/me', { avatarColor: id }) } catch (e) { setMe(m => (m ? { ...m, avatarColor: prev } : m)); setError(e instanceof Error ? e.message : 'Could not save.') }
   }
-  const first = userDoc?.firstName ?? userDoc?.displayName ?? user.displayName ?? ''
+  const first = userDoc?.firstName || (userDoc ? '' : user.displayName ?? '')
+  const needsSetup = !!userDoc && !userDoc.firstName // signed up with just an email: ask for a name and a color now
+  async function saveName() {
+    const name = setupName.trim()
+    if (!name) return setError('Enter your first name.')
+    setSaving(true); setError('')
+    try { await api('/api/me', { firstName: name }); await reload() }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not save.') }
+    setSaving(false)
+  }
   const fullName = [first, userDoc?.lastName].filter(Boolean).join(' ')
   const since = me?.joinedAt ? new Date(me.joinedAt).toLocaleDateString([], { month: 'long', year: 'numeric' }) : ''
   const toggle = (k: typeof open) => setOpen(o => (o === k ? '' : k))
@@ -234,7 +243,7 @@ export default function ProfilePage() {
               <Avatar name={fullName || first} color={me?.avatarColor} size={64} />
             </button>
             <div className="min-w-0">
-              <p className="text-br-dk-text text-lg leading-tight truncate">{fullName}</p>
+              <p className="text-br-dk-text text-lg leading-tight truncate">{fullName || user.email}</p>
               {userDoc?.username && <p className="text-br-gold text-sm font-display tracking-widest">@{userDoc.username}</p>}
               {since && <p className="text-br-dk-sub text-sm">Member since {since}</p>}
             </div>
@@ -248,6 +257,23 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+
+        {needsSetup && (
+          <div className="sk-raised rounded-2xl p-5 space-y-4">
+            <div>
+              <p className="text-br-dk-text text-sm font-medium">Set up your avatar</p>
+              <p className="text-br-dk-sub text-xs mt-1">Add your first name and pick a color. You can change both later.</p>
+            </div>
+            <Field label="First name" value={setupName} onChange={e => setSetupName(e.target.value)} autoComplete="given-name" placeholder="First name" />
+            <div className="flex flex-wrap gap-3" role="radiogroup" aria-label="Profile color">
+              {AVATAR_COLORS.map(c => (
+                <button key={c.id} type="button" role="radio" aria-checked={me?.avatarColor === c.id} aria-label={c.id} onClick={() => pickColor(c.id)}
+                        className={`hw-disc h-8 w-8 ${me?.avatarColor === c.id ? 'outline outline-2 outline-offset-2 outline-br-gold' : ''}`} style={discStyle(c.hex)} />
+              ))}
+            </div>
+            <PrimaryButton type="button" busy={saving} onClick={saveName}>SAVE</PrimaryButton>
+          </div>
+        )}
 
         {member && (
           <Link href="/slots" className={rowLink}>
@@ -302,8 +328,10 @@ export default function ProfilePage() {
               try { await deleteMyAccount(pw) } catch (err) { setError(err instanceof Error ? err.message : 'Failed.') }
               setBusy(false)
             }}>
-              <Field label="Enter your password to permanently delete your account" type="password" value={pw}
-                     onChange={e => setPw(e.target.value)} autoComplete="current-password" />
+              {hasPassword()
+                ? <Field label="Enter your password to permanently delete your account" type="password" value={pw}
+                         onChange={e => setPw(e.target.value)} autoComplete="current-password" />
+                : <p className="text-xs text-br-dk-sub">This permanently deletes your account. If you signed in more than 5 minutes ago, sign in again first.</p>}
               <PrimaryButton type="submit" busy={busy}>Delete forever</PrimaryButton>
             </form>
           )}

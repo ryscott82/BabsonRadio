@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { deleteMyAccount } from '@/lib/auth'
+import { deleteMyAccount, hasPassword } from '@/lib/auth'
 import { Card, ErrorText, Field, GhostButton, PrimaryButton } from '@/components/AuthUI'
 
 export default function DeleteAccountPage() {
@@ -25,9 +25,9 @@ export default function DeleteAccountPage() {
   return (
     <Card title="Delete account" subtitle="This permanently deletes your account and cannot be undone.">
       <form onSubmit={remove} className="space-y-4">
-        <Field label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" autoFocus />
+        {hasPassword() && <Field label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" autoFocus />}
         <ErrorText>{error}</ErrorText>
-        <PrimaryButton type="submit" busy={busy} disabled={!password}>Delete account</PrimaryButton>
+        <PrimaryButton type="submit" busy={busy} disabled={hasPassword() && !password}>Delete account</PrimaryButton>
         <GhostButton type="button" onClick={() => router.back()} className="block mx-auto">Cancel</GhostButton>
       </form>
     </Card>

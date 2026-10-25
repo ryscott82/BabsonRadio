@@ -30,11 +30,11 @@ function Spinner() {
   )
 }
 
-// One screen for new and returning people. Default: type your email, get a link, tap it. No name, phone or password.
-// "Use a password instead" is there for anyone who does not want to open their inbox right now.
+// Email and password is the default: no name, phone or graduation year (asked later on the profile page).
+// "Email me a link instead" signs in without a password, for anyone who would rather not make one.
 function Forms() {
-  const [usePassword, setUsePassword] = useState(false)
-  const [create, setCreate] = useState(false) // password mode only: new account instead of sign in
+  const [usePassword, setUsePassword] = useState(true)
+  const [create, setCreate] = useState(false) // new account instead of sign in
   const [typed, setTyped] = useState('')
   const email = typed.trim().toLowerCase().replace(/\s/g, '')
   const [password, setPassword] = useState('')
@@ -51,7 +51,11 @@ function Forms() {
     return () => clearTimeout(t)
   }, [wait])
 
-  // The countdown page's Sign up button links here with ?mode=create. Nothing different to show: the link works for both.
+  // The countdown page's Sign up button links here with ?mode=create.
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('mode') === 'create') queueMicrotask(() => setCreate(true))
+  }, [])
+
   async function sendLink(e?: React.FormEvent) {
     e?.preventDefault()
     setError('')
@@ -112,15 +116,15 @@ function Forms() {
           {' '}We&apos;ll email you when we launch.
         </p>
         <div className="flex flex-col items-center gap-2 text-sm text-br-dk-sub">
-          <button type="button" className="hover:text-br-dk-text underline underline-offset-4"
-                  onClick={() => { setUsePassword(v => !v); setCreate(false); setError('') }}>
-            {usePassword ? 'Email me a link instead' : 'Use a password instead'}
-          </button>
           {usePassword && (
             <button type="button" className="hover:text-br-dk-text" onClick={() => { setCreate(v => !v); setError('') }}>
-              {create ? 'Already have a password? Sign in' : 'New here? Create an account with a password'}
+              {create ? 'Already have an account? Sign in' : 'New here? Create an account'}
             </button>
           )}
+          <button type="button" className="hover:text-br-dk-text underline underline-offset-4"
+                  onClick={() => { setUsePassword(v => !v); setError('') }}>
+            {usePassword ? 'Email me a link instead' : 'Use a password instead'}
+          </button>
           {usePassword && !create && (
             <button type="button" disabled={resetLeft > 0} className="hover:text-br-dk-text disabled:opacity-60"
               onClick={async () => {

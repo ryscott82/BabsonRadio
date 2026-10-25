@@ -2,6 +2,7 @@
 
 import EmojiGlyph from '@/components/EmojiGlyph'
 import { reactionTheme, type EggRule } from '@/lib/reactionThemes'
+import { useHeld } from '@/lib/settle'
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet, apiGetPublic } from '@/lib/auth'
@@ -172,11 +173,23 @@ function useX(): Extras { const v = useContext(Ctx); if (!v) throw new Error('Li
 /** The row of reaction keys (steel keys; tap one and a handful rain down on every screen). */
 export function ReactionKeys({ className = '' }: { className?: string }) {
   const x = useX()
-  if (!x.occId) return null
-  if (x.invisible) return <p className={`text-sm hw-sub text-center ${className}`}>Reactions are off in Invisible mode.</p>
+  const box = useRef<HTMLDivElement>(null)
+  const mode = useHeld(x.occId ? (x.invisible ? 'off' : 'on') : null, 600, 4000)
+  const [room, setRoom] = useState(99) // how many keys fit on one line (70px keys, 12px gaps)
+  useEffect(() => {
+    const el = box.current
+    if (!el) return
+    const fit = () => setRoom(Math.max(1, Math.floor((el.clientWidth + 12) / 82)))
+    fit()
+    const ro = new ResizeObserver(fit)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [mode])
+  // The row's space is always reserved, so keys arriving or leaving never move what is below.
+  if (mode === 'off') return <p className={`text-sm hw-sub text-center min-h-[42px] ${className}`}>Reactions are off in Invisible mode.</p>
   return (
-    <div className={`flex flex-wrap items-center justify-center gap-3 ${className}`} role="group" aria-label="Reactions">
-      {x.emojis.map(e => (
+    <div ref={box} className={`flex flex-nowrap items-center justify-center gap-3 min-h-[42px] ${className}`} role="group" aria-label="Reactions">
+      {mode === 'on' && x.emojis.slice(0, room).map(e => (
         <button key={e} type="button" onClick={() => x.react(e)} aria-label={`React ${e}`}
                 className="sk-key hw-react rounded-xl h-[42px] w-[70px] flex items-center justify-center active:scale-95 transition-transform">
           <EmojiGlyph e={e} size="1.45rem" />
@@ -219,22 +232,23 @@ export function RatingsBlock() {
 export function ExtrasStack({ compact = false }: { compact?: boolean }) {
   const x = useX()
   const card = compact ? 'hw-panel hw-snug' : 'hw-panel hw-tight'
-  const np = x.np
+  const note = useHeld(x.np?.note, 1500, 6000)
+  const setList = useHeld(x.sorted.length > 0 ? x.sorted : null, 1500, 6000)
   return (
     <div className="space-y-4 empty:hidden">
       <EmojiRain />
-      {np?.note && (
+      {note && (
         <div className={card}>
-          {np.note.headline && <p className="text-br-dk-text font-medium">{np.note.headline}</p>}
-          {np.note.message && <p className="text-sm text-br-dk-sub whitespace-pre-wrap">{np.note.message}</p>}
-          {np.note.by && <p className="text-sm text-br-dk-muted mt-1">from {np.note.by}</p>}
+          {note.headline && <p className="text-br-dk-text font-medium">{note.headline}</p>}
+          {note.message && <p className="text-sm text-br-dk-sub whitespace-pre-wrap">{note.message}</p>}
+          {note.by && <p className="text-sm text-br-dk-muted mt-1">from {note.by}</p>}
         </div>
       )}
-      {x.sorted.length > 0 && (
+      {setList && (
         <div className={`${card} space-y-2`}>
           <p className="font-display text-br-gold tracking-widest text-sm">SET LIST{x.listTitle ? ` · ${x.listTitle.toUpperCase()}` : ''}</p>
           <ul className="space-y-1">
-            {x.sorted.map(s => (
+            {setList.map(s => (
               <li key={s.id} className="flex items-center gap-3 text-sm">
                 <button type="button" onClick={() => x.vote(s.id)} aria-pressed={s.mine} aria-label={`Upvote ${s.text}`}
                         className="sk-key rounded-lg h-8 min-w-[3rem] px-2 text-sm flex items-center justify-center gap-1">

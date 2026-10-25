@@ -53,7 +53,7 @@ export default async function HomePage() {
               </ul>
             ) : (
               <>
-                <p className="text-sm hw-sub pt-5 pb-1">No live shows today. The auto DJ has you covered:</p>
+                <p className="text-sm hw-sub pt-5 pb-1">No live shows today. Music is on all day:</p>
                 <AutoUpcoming />
               </>
             )}

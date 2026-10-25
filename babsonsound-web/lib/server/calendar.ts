@@ -33,7 +33,7 @@ export async function buildCalendar(db: Firestore, now = Date.now(), kind: 'live
   events.sort((a, b) => a.start - b.start)
   const lines = [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Babson Radio//Schedule//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
-    kind === 'auto' ? 'X-WR-CALNAME:Babson Radio Auto DJ' : 'X-WR-CALNAME:Babson Radio',
+    kind === 'auto' ? 'X-WR-CALNAME:Babson Radio Music' : 'X-WR-CALNAME:Babson Radio',
     kind === 'auto' ? 'X-WR-CALDESC:Playlists on Babson Radio when no one is live' : 'X-WR-CALDESC:Live shows on Babson Radio',
     'REFRESH-INTERVAL;VALUE=DURATION:PT15M', 'X-PUBLISHED-TTL:PT15M',
     ...events.flatMap(e => [

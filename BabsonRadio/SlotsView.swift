@@ -701,7 +701,7 @@ struct ScheduleView: View {
                     Button { showAuto = true } label: {
                         HStack(spacing: 10) {
                             Image(systemName: "music.note.list")
-                            Text("Auto DJ schedule").font(BRFont.display(14)).kerning(2)
+                            Text("Music schedule").font(BRFont.display(14)).kerning(2)
                             Spacer()
                             Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
                         }
@@ -759,7 +759,7 @@ struct ScheduleView: View {
                 }
             }
             .hwPage()
-            .navigationTitle("Auto DJ schedule")
+            .navigationTitle("Music schedule")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showAuto = false } } }
         }

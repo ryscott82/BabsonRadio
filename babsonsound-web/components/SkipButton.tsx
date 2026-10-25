@@ -39,11 +39,10 @@ export default function SkipButton({ np }: { np: NowPlaying | null }) {
 
   // Guests and signed-out visitors see the button too; pressing it takes them to sign in.
   if (!user || isGuest) {
-    if (!autoPlay) return null
-    const go = () => { (isGuest ? signOut() : Promise.resolve()).finally(() => router.push('/auth')) }
+    const go = () => { (isGuest ? signOut() : Promise.resolve()).finally(() => router.push(isGuest ? '/auth' : '/auth?mode=create')) }
     return (
       <div className="flex flex-col items-center gap-2">
-        <button type="button" onClick={go} aria-label="Sign in to ask to skip this song"
+        <button type="button" onClick={go} aria-label={isGuest ? 'Sign in to ask to skip this song' : 'Sign up to ask to skip this song'}
                 className="hw-knob-sm hw-skip w-[58px] h-[58px] rounded-full flex items-center justify-center text-[#1a1710]">
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path d="M6 6l9 6-9 6V6zm10 0h2v12h-2V6z" /></svg>
         </button>
@@ -51,7 +50,16 @@ export default function SkipButton({ np }: { np: NowPlaying | null }) {
       </div>
     )
   }
-  if (!skip?.eligible) return null
+  // Signed-in members always see the button; it is greyed out when skipping is not available (live shows).
+  if (!skip?.eligible) return (
+    <div className="flex flex-col items-center gap-2">
+      <button type="button" disabled aria-label="Skipping is not available right now"
+              className="hw-knob-sm hw-skip w-[58px] h-[58px] rounded-full flex items-center justify-center text-[#1a1710] opacity-50 cursor-not-allowed">
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path d="M6 6l9 6-9 6V6zm10 0h2v12h-2V6z" /></svg>
+      </button>
+      <span className="text-sm font-semibold text-br-dk-text">Ask to skip</span>
+    </div>
+  )
   return (
     <div className="flex flex-col items-center gap-2">
       <button type="button" onClick={ask} disabled={skip.mine}

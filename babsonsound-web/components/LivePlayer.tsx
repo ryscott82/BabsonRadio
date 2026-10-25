@@ -15,6 +15,7 @@ import { ExtrasStack, ReactionKeys } from '@/components/LiveExtras'
 import { useArtColor, useArtPalette } from '@/lib/artColor'
 import { useArtMain } from '@/components/ArtTheme'
 import { useListenGuard } from '@/lib/listenGuard'
+import { useHeld } from '@/lib/settle'
 import { takeTryIt } from '@/lib/splash'
 import { applyVolume, elementVolumeWorks, attachSpectrum, probeCors, registerAudio, sharedAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
 
@@ -58,6 +59,10 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   const hasSong = !!np?.configured && !!np.title
   // Live shows get the ON AIR sign and "Show name with Host" where the artist goes. The auto DJ keeps the artist, no sign.
   const onAir = !!(np?.isLive || np?.isShow || np?.onAirManual)
+  // Lines that would change the amp's height wait a moment, in case the data is only reloading. Their space is reserved so nothing jumps.
+  const nextHeld = useHeld(hasSong ? np?.next : null, 1000, 5000)
+  const previewHeld = useHeld(!loading && !user ? true : null, 1000, 5000)
+  const showLineHeld = useHeld(!onAir && np?.showTitle ? np.showTitle : null, 1000, 5000)
   const subline = onAir && np?.showTitle && !np.showOnly
     ? `${np.showTitle}${np.streamer ? ` with ${np.streamer}` : ''}`
     : (np?.artist || 'Babson Radio')
@@ -257,15 +262,11 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
           <p className="hw-sub !text-br-dk-text text-lg font-medium line-clamp-2 mt-0.5">
             {hasSong ? subline : 'Babson College — Internet Radio'}
           </p>
-          {!onAir && np?.showTitle && <p className="hw-sub text-sm mt-1">On air: {np.showTitle}</p>}
-          {hasSong && np!.duration > 0
-            ? <div className="hw-prog mt-5" aria-hidden><i style={{ width: `${pct}%` }} /></div>
-            : <div className="mt-5" />}
-          {hasSong && np!.next && (
-            <p className="hw-sub text-sm mt-2 line-clamp-2">Next: {np!.next.title}{np!.next.artist ? ` · ${np!.next.artist}` : ''}</p>
-          )}
+          <p className="hw-sub text-sm mt-1 min-h-[1.25rem]">{showLineHeld ? `On air: ${showLineHeld}` : ''}</p>
+          <div className={`hw-prog mt-5 ${hasSong && np!.duration > 0 ? '' : 'invisible'}`} aria-hidden><i style={{ width: `${hasSong && np!.duration > 0 ? pct : 0}%` }} /></div>
+          <p className="hw-sub text-sm mt-2 line-clamp-2 min-h-[2.5rem]">{nextHeld ? `Next: ${nextHeld.title}${nextHeld.artist ? ` · ${nextHeld.artist}` : ''}` : ''}</p>
 
-          {previewing && (
+          {previewHeld && (
             <p className="hw-sub text-sm mt-3">
               You are previewing the live stream. <Link href="/auth" className="text-br-gold underline">Sign in</Link> or{' '}
               <Link href="/auth" className="text-br-gold underline">create a free account</Link> for reminders, friends and more.
@@ -327,7 +328,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
 
           {/* Song links and full screen on one row of keys */}
           <div className="flex items-center gap-3 mt-6">
-            {hasSong && !np!.showOnly && <SongLinks keys title={np!.title} artist={np!.artist} />}
+            {hasSong && !np!.showOnly && !np!.isLive && <SongLinks keys title={np!.title} artist={np!.artist} />}
             <button onClick={openBoard} className="hidden lg:inline-flex sk-key hw-pill items-center gap-2 h-8 px-4 rounded-lg text-sm font-bold tracking-[0.12em] ml-auto shrink-0">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
               FULL SCREEN

@@ -168,7 +168,7 @@ export default function ScheduleList() {
       </section>
       <button onClick={() => setShowAuto(v => !v)} aria-expanded={showAuto}
               className="sk-key rounded-xl w-full py-3 text-sm font-display tracking-[0.2em] text-br-dk-text">
-        {showAuto ? 'HIDE AUTO DJ SCHEDULE' : 'AUTO DJ SCHEDULE'}
+        {showAuto ? 'HIDE MUSIC SCHEDULE' : 'MUSIC SCHEDULE'}
       </button>
       {showAuto && (
       <>

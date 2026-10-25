@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '@/lib/auth'
 import StationPanel from '@/components/admin/StationPanel'
+import Notifications, { type Notice } from '@/components/admin/Notifications'
 import OpsIcon, { type OpsIcon as IconName } from '@/components/admin/OpsIcons'
 
 interface Alerts {
+  items: Notice[]; dismissedCount: number
   pendingRequests: number; newReports: number | null
   deadAir?: { active: boolean; since: number; detail: string; monitorAgeSec: number | null }
   cancellations: { id: string; title: string; requesterName: string; startAt: number; cancelledAt: number; reason: string; wasApproved: boolean }[]
@@ -45,14 +47,8 @@ export default function AdminPage() {
 
   if (loading || !user || !isDirector) return <div className="min-h-[60vh]" />
 
-  const monitorStale = !!alerts?.deadAir && (alerts.deadAir.monitorAgeSec == null || alerts.deadAir.monitorAgeSec > 300)
-  const deadAir = !!alerts?.deadAir?.active
   const pending = alerts?.pendingRequests ?? 0
   const reports = alerts?.newReports ?? 0
-  const cancels = alerts?.cancellations ?? []
-  const count = (deadAir ? 1 : 0) + (monitorStale && !deadAir ? 1 : 0) + (pending > 0 ? 1 : 0) + (reports > 0 ? 1 : 0) + cancels.length
-  const row = 'flex items-center gap-3 py-2 text-base'
-  const go = 'ml-auto shrink-0 ops-btn px-4 py-1.5'
 
   const groups: { title: string; tiles: Tile[] }[] = [
     { title: 'Programming', tiles: [
@@ -92,24 +88,7 @@ export default function AdminPage() {
           </div>
         </header>
 
-        {/* Notifications */}
-        <section className="ops-card p-5" aria-label="Notifications">
-          <h2 className="text-2xl font-light mb-1">Notifications{count > 0 ? ` (${count})` : ''}</h2>
-          {count === 0 && <p className="text-base py-1">Nothing needs attention.</p>}
-          <ul className="divide-y divide-white/25">
-            {deadAir && <li className={row}><span className="font-semibold">Dead air since {clock(alerts!.deadAir!.since)}. {alerts!.deadAir!.detail}</span></li>}
-            {monitorStale && !deadAir && (
-              <li className={row}><span>Dead-air monitor is silent{alerts?.deadAir?.monitorAgeSec != null ? ` (${Math.round(alerts.deadAir.monitorAgeSec / 60)} min)` : ''}. Check the streaming PC.</span></li>
-            )}
-            {pending > 0 && <li className={row}><span>{pending} show request{pending === 1 ? '' : 's'} to review</span><Link href="/admin/slots" className={go}>Review</Link></li>}
-            {reports > 0 && <li className={row}><span>{reports} new bug report{reports === 1 ? '' : 's'} or idea{reports === 1 ? '' : 's'}</span><Link href="/admin/feedback" className={go}>Open</Link></li>}
-            {cancels.map(c => (
-              <li key={c.id} className={row}>
-                <span>Cancelled: {c.title} ({c.requesterName || 'student'}), {new Date(c.startAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}{c.wasApproved ? ', was approved' : ''}{c.reason ? `, "${c.reason}"` : ''}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <Notifications items={alerts?.items ?? []} dismissedCount={alerts?.dismissedCount ?? 0} reload={load} />
 
         {/* Status */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

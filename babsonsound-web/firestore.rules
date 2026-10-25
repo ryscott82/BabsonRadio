@@ -130,5 +130,6 @@ service cloud.firestore {
     match /listenDays/{id}           { allow read, write: if false; }
     match /phoneChanges/{id}         { allow read, write: if false; }
     match /training/{id}             { allow read, write: if false; }
+    match /noticeLog/{id}            { allow read, write: if false; } // dismissed admin notifications (the log)
   }
 }

@@ -721,11 +721,7 @@ struct ScheduleView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    HStack(spacing: 0) {
-                        Text("Babson ").font(BRFont.display(18))
-                            .foregroundColor(scheme == .dark ? .brGold : .brGreen).kerning(3)
-                        Text("Radio").font(BRFont.display(18)).foregroundColor(textColor).kerning(3)
-                    }
+                    EtchedText(text: "babson radio", size: 24)
                 }
             }
         }

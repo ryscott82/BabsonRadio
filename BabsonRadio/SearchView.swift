@@ -49,16 +49,7 @@ struct SearchView: View {
             )
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    HStack(spacing: 0) {
-                        Text("Babson ")
-                            .font(BRFont.display(18))
-                            .foregroundColor(scheme == .dark ? .brGold : .brGreen)
-                            .kerning(3)
-                        Text("Radio")
-                            .font(BRFont.display(18))
-                            .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                            .kerning(3)
-                    }
+                    EtchedText(text: "babson radio", size: 24)
                 }
             }
         }

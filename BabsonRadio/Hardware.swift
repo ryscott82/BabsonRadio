@@ -690,3 +690,56 @@ struct HWInscribedText: TextRenderer {
         for line in layout { for run in line { c.draw(run) } }
     }
 }
+
+/// The song title on one line. It shrinks a little to fit (down to 80%); a longer title keeps its full size, rests at the start for
+/// two seconds so the beginning can be read, then scrolls sideways like other music apps (Reduce Motion: it just shrinks further).
+struct HWTitleLine: View {
+    let text: String
+    var size: CGFloat = 40
+    var height: CGFloat = 40
+    @Environment(\.hwMode) private var mode
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private static let gap: CGFloat = 100, speed: Double = 45, pause: Double = 2
+
+    private var textWidth: CGFloat {
+        let f = UIFont(name: "BarlowCondensed-Bold", size: size) ?? UIFont.systemFont(ofSize: size, weight: .bold)
+        return (text as NSString).size(withAttributes: [.font: f]).width
+    }
+    private var line: some View {
+        Text(text).font(BRFont.display(size)).foregroundStyle(mode.onPanelText)
+            .shadow(color: .black.opacity(0.45), radius: 0, x: 0, y: 1)
+    }
+
+    var body: some View {
+        GeometryReader { g in
+            let w = textWidth
+            if w <= g.size.width || reduceMotion || w * 0.8 <= g.size.width {
+                line.lineLimit(1).minimumScaleFactor(reduceMotion ? 0.3 : 0.8)
+                    .frame(width: g.size.width, height: g.size.height, alignment: .bottomLeading)
+            } else {
+                Scrolling(text: text, width: w, line: line, boxW: g.size.width, boxH: g.size.height)
+                    .id(text)   // a new song starts again from the beginning
+            }
+        }
+        .frame(height: height)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(text)
+    }
+
+    private struct Scrolling<L: View>: View {
+        let text: String, width: CGFloat, line: L, boxW: CGFloat, boxH: CGFloat
+        @State private var start = Date()
+        var body: some View {
+            TimelineView(.animation) { ctx in
+                let loop = width + HWTitleLine.gap
+                let cycle = Double(loop) / HWTitleLine.speed + HWTitleLine.pause
+                let p = ctx.date.timeIntervalSince(start).truncatingRemainder(dividingBy: cycle)
+                let x = p < HWTitleLine.pause ? 0 : -CGFloat((p - HWTitleLine.pause) * HWTitleLine.speed)
+                HStack(spacing: HWTitleLine.gap) { line.fixedSize(); line.fixedSize() }
+                    .offset(x: x)
+                    .frame(width: boxW, height: boxH, alignment: .bottomLeading)
+                    .clipped()
+            }
+        }
+    }
+}

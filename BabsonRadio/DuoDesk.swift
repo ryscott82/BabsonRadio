@@ -249,10 +249,7 @@ struct DuoLeftPage: View {
     private var amp: some View {
         DuoAmp {
             VStack(alignment: .leading, spacing: 10) {
-                Text(titleText)
-                    .font(BRFont.display(40)).foregroundStyle(hwm.onPanelText)
-                    .lineLimit(1).minimumScaleFactor(0.5)
-                    .shadow(color: .black.opacity(0.45), radius: 0, x: 0, y: 1)
+                HWTitleLine(text: titleText, size: 40, height: 46)
                 Text(subText)
                     .font(BRFont.body(18, .medium)).foregroundStyle(hwm.onPanelSub)
                     .lineLimit(1).minimumScaleFactor(0.7)
@@ -347,10 +344,7 @@ struct DuoNowAmp: View {
     private var amp: some View {
         DuoAmp {
             VStack(alignment: .leading, spacing: 10) {
-                Text(titleText)
-                    .font(BRFont.display(40)).foregroundStyle(hwm.onPanelText)
-                    .lineLimit(1).minimumScaleFactor(0.5)
-                    .shadow(color: .black.opacity(0.45), radius: 0, x: 0, y: 1)
+                HWTitleLine(text: titleText, size: 40, height: 46)
                 Text(subText)
                     .font(BRFont.body(18, .medium)).foregroundStyle(hwm.onPanelSub)
                     .lineLimit(1).minimumScaleFactor(0.7)

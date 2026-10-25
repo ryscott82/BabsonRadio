@@ -10,13 +10,11 @@ import { apiGet } from '@/lib/auth'
 import ThemeToggle from './ThemeToggle'
 import { LINKS } from '@/lib/links'
 
-// Six links in the bar. Everything else (profile, requesting a spot, host panel, admin) lives in the profile menu.
+// Four links in the bar (search lives on the Library page, suggesting music on the "What would you like to hear?" card). Everything else (profile, requesting a spot, host panel, admin) lives in the profile menu.
 const NAV_LINKS = [
   { href: '/', label: 'Live' },
   { href: '/schedule', label: 'Schedule' },
   { href: '/library', label: 'Library' },
-  { href: '/browse', label: 'Search' },
-  { href: '/submit', label: 'Suggest' },
   { href: '/about', label: 'About' },
 ]
 
@@ -56,8 +54,8 @@ export default function Nav() {
 
         {/* Wordmark */}
         <Link href="/" className="flex items-baseline gap-2.5 shrink-0" style={{ fontFamily: "'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif" }}>
-          <span className="uppercase text-br-gold text-sm font-semibold tracking-[0.34em]">Babson</span>
-          <span className="uppercase text-br-dk-text text-[1.6rem] font-bold tracking-[0.32em] leading-none">Radio</span>
+          <span className="text-br-gold text-base font-semibold tracking-[0.14em]">babson</span>
+          <span className="text-br-dk-text text-[1.7rem] font-bold tracking-[0.14em] leading-none">radio</span>
         </Link>
 
         {/* Desktop nav */}
@@ -76,6 +74,11 @@ export default function Nav() {
 
         {/* Right side */}
         <div className="ml-auto flex items-center gap-3">
+          {canRequest && !isGuest && (
+            <Link href="/slots"
+                  style={{ '--hw-key-tint': 'linear-gradient(rgba(14,143,97,.38), rgba(14,143,97,.38))' } as React.CSSProperties}
+                  className="hidden md:inline-flex sk-key hw-pill items-center justify-center leading-none h-9 px-4 rounded-full text-sm font-semibold">Host a show</Link>
+          )}
           <a href={LINKS.join} target="_blank" rel="noopener noreferrer"
              style={{ '--hw-key-tint': 'linear-gradient(rgba(14,143,97,.38), rgba(14,143,97,.38))' } as React.CSSProperties}
              className="hidden md:inline-flex sk-key hw-pill items-center justify-center leading-none h-9 px-4 rounded-full text-sm font-semibold">Join Babson Sound</a>
@@ -137,6 +140,9 @@ export default function Nav() {
               {link.label}
             </Link>
           ))}
+          {canRequest && !isGuest && (
+            <Link href="/slots" onClick={close} className="font-display tracking-widest text-sm text-br-dk-sub hover:text-br-dk-text py-2">Host a show</Link>
+          )}
         </div>
       )}
     </header>

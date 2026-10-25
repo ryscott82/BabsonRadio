@@ -26,6 +26,15 @@ const CHIP = ['#E8A9A0', '#EBCB8B', '#A8D0A2', '#9CC3DB', '#C9A9D8', '#E6B88A', 
 const EQ_BARS = Array.from({ length: 40 }, (_, i) => ({ h: 0.4 + ((i * 37) % 10) / 16, d: ((i * 13) % 10) / 10, t: 0.7 + ((i * 53) % 7) / 10 }))
 
 export default function LivePlayer({ pane = false }: { pane?: boolean }) {
+  // Phones get a one line title (it shrinks a little, then scrolls) to save space.
+  const [narrow, setNarrow] = useState(false)
+  useEffect(() => {
+    const q = window.matchMedia('(max-width: 639px)')
+    const on = () => setNarrow(q.matches)
+    on()
+    q.addEventListener('change', on)
+    return () => q.removeEventListener('change', on)
+  }, [])
   const [isPlaying, setIsPlaying]     = useState(false)
   const [isBuffering, setIsBuffering] = useState(false)
   const [listenerCount, setListenerCount] = useState(0)
@@ -258,7 +267,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
 
         {/* The amp */}
         <div className="hw-panel hw-big min-w-0 max-sm:-mx-4">
-          <FitTitle marquee text={hasSong ? np!.title : 'Live Stream'} className="hw-title hw-title-fit text-[2.75rem] lg:text-[3.1rem]" />
+          <FitTitle marquee lines={narrow ? 1 : 2} text={hasSong ? np!.title : 'Live Stream'} className="hw-title hw-title-fit text-[2.75rem] lg:text-[3.1rem]" />
           <p className="hw-sub !text-br-dk-text text-lg font-medium line-clamp-2 mt-0.5">
             {hasSong ? subline : 'Babson College — Internet Radio'}
           </p>

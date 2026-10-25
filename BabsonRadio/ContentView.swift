@@ -85,18 +85,7 @@ struct ContentView: View {
                     .tabItem { BRTabIcon(systemName: "mic.fill", label: "Host") }
             }
 
-            // Search is the right-most tab; Profile is the circle button in the top corner of every page.
-            if !isGuest {
-            SearchView()
-                .padding(.leading, sideW).padding(.top, sideW > 0 ? 64 : 0)
-                .environment(\.hwFlushBottom, sideW > 0)
-                .ignoresSafeArea(.container, edges: sideW > 0 ? .bottom : [])
-                .modifier(TabBarStyle(hidden: hideBar))
-                .tag(4)
-                .tabItem {
-                    BRTabIcon(systemName: "magnifyingglass", label: "Search")
-                }
-            }
+            // Search lives on the Library tab; Profile is the circle button in the top corner of every page.
         }
         // Measured on the full-size TabView (before the padding); the pane appears and disappears with no animation.
         // The floating tab bar sits on tan glass in light mode, so its selected item needs a darker green there (a brighter one is
@@ -114,7 +103,7 @@ struct ContentView: View {
         // The station name cut into the oak above the page, the same on every tab beside the player.
         .overlay(alignment: .topLeading) {
             if sideW > 0 {
-                EtchedText(text: "Babson Radio", size: 34)
+                EtchedText(text: "babson radio", size: 34)
                     .frame(width: max(0, paneSize.width - sideW - 96), height: 64, alignment: .center)
                     .offset(x: sideW)
                     .allowsHitTesting(false)
@@ -200,7 +189,8 @@ struct ContentView: View {
     @ViewBuilder private var statusBlur: some View {
         // Not on a wide, nearly square screen (the open Duo): its clock and icons sit in a strip down the side, where a frosted band
         // across the top only smears the oak and the amp behind them.
-        if hSize != .regular && tab != 0 && !Self.isWideScreen { StatusBarBlur() }
+        // No frosted band over the status bar: the oak runs to the top edge on every tab (StatusBarBlur is kept, unused).
+        EmptyView()
     }
 
     /// After the launch splash: the sign-in splash, or the step an Apple / unverified account is stuck on.

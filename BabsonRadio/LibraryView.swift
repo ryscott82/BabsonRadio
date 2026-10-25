@@ -83,6 +83,16 @@ struct LibraryView: View {
     @ObservedObject private var lib = LibraryManager.shared
     @ObservedObject private var auth = AuthManager.shared
     @Environment(\.colorScheme) private var scheme
+    @State private var query = ""
+    @State private var isSearching = false
+
+    /// Episodes whose title, show or category contains what was typed (search used to be its own tab).
+    private var results: [LibEpisode] {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !q.isEmpty else { return [] }
+        return lib.all.filter { $0.title.lowercased().contains(q) || $0.showName.lowercased().contains(q) || $0.category.lowercased().contains(q) }
+    }
+    private var searchingNow: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
     private var text: Color { scheme == .dark ? .brDkText : .brLtText }
     private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
@@ -99,6 +109,19 @@ struct LibraryView: View {
                             .font(BRFont.body(14, .regular)).foregroundColor(sub)
                     } else {
                         if let e = lib.error { Text(e).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
+
+                        if searchingNow {
+                            if results.isEmpty {
+                                Text("Nothing matches \"\(query)\". Try a show, episode or topic.").font(BRFont.body(14, .regular)).foregroundColor(sub)
+                            }
+                            ForEach(results) { EpisodeListRow(ep: $0) }
+                        } else {
+                        // Topics: one tap searches for it.
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                            ForEach(ShowCategory.allCases, id: \.self) { cat in
+                                CategoryTile(category: cat, onTap: { query = cat.rawValue })
+                            }
+                        }
 
                         VStack(alignment: .leading, spacing: 12) {
                             BRSectionHeader(title: "Saved")
@@ -117,18 +140,23 @@ struct LibraryView: View {
                                 ForEach(fresh) { EpisodeListRow(ep: $0) }
                             }
                         }
+                        }
                     }
                 }
                 .padding(20)
                 .animation(.easeInOut(duration: 0.25), value: lib.savedIds)
             }
             .hwPage()
-            .navigationTitle("Library")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .principal) { EtchedText(text: "babson radio", size: 24) } }
             .profileButton()
-            .refreshable { if canUse { await lib.loadLibrary() } }
+            .searchable(text: $query, isPresented: $isSearching, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search shows and episodes")
+            .onChange(of: isSearching) { _, now in SearchState.shared.active = now }
+            .onDisappear { SearchState.shared.active = false }
+            .refreshable { if canUse { await lib.loadLibrary(); await lib.loadAll() } }
         }
-        .task(id: canUse) { if canUse { await lib.loadLibrary() } }
+        .task(id: canUse) { if canUse { await lib.loadLibrary(); await lib.loadAll() } }
     }
 }
 

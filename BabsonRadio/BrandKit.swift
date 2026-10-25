@@ -13,7 +13,7 @@ import SwiftUI
 struct BRFont {
     /// Test switch: true sets titles and headings in Apple's own SF Pro, Black weight, Expanded width (the Apple Music look) instead of
     /// Barlow Condensed. It is wide, so sizes are scaled by `expandedScale`. Set to false to go back to Barlow Condensed.
-    static let expanded = true
+    static let expanded = false
     static let expandedScale: CGFloat = 0.68
     /// SF Pro Expanded Black. SF is a variable font on Apple platforms, so weight and width are just settings.
     static func sfExpanded(_ size: CGFloat, _ weight: Font.Weight = .black) -> Font {
@@ -302,7 +302,30 @@ extension EnvironmentValues {
 private struct ProfileButtonModifier: ViewModifier {
     @Environment(\.globalProfile) private var global
     func body(content: Content) -> some View {
-        if global { content } else { content.toolbar { ToolbarItem(placement: .topBarTrailing) { ProfileCircleButton() } } }
+        if global { content } else {
+            content.toolbar {
+                ToolbarItem(placement: .topBarLeading) { HostShowButton() }
+                ToolbarItem(placement: .topBarTrailing) { ProfileCircleButton() }
+            }
+        }
+    }
+}
+
+/// "Host a show" in the top bar: opens the same request form as the website's button. Students only.
+struct HostShowButton: View {
+    @ObservedObject private var auth = AuthManager.shared
+    @StateObject private var slots = SlotsManager()
+    @State private var showForm = false
+    var body: some View {
+        if auth.isSignedIn, auth.currentUser?.isGuest != true {
+            Button { showForm = true } label: {
+                Text("Host a show").font(BRFont.body(13, .semibold)).foregroundStyle(.white)
+                    .padding(.horizontal, 12).frame(height: 30)
+                    .background(HWKeyFace(corner: 15))
+            }
+            .buttonStyle(.plain)
+            .sheet(isPresented: $showForm) { RequestSlotForm(slots: slots) }
+        }
     }
 }
 
@@ -388,7 +411,7 @@ struct BRGlassGroup<Content: View>: View {
 struct DesignedByCredit: View {
     @Environment(\.colorScheme) private var scheme
     var body: some View {
-        Link("Ryan Edward Media Group", destination: URL(string: "https://ryanedwardmediagroup.com")!)
+        Link(destination: URL(string: "https://ryanedwardmediagroup.com")!) { Text("Ryan Edward Media Group").underline() }
             .font(BRFont.body(12, .medium))
             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             .frame(maxWidth: .infinity)

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
 import { RatingsBlock } from '@/components/LiveExtras'
+import Link from 'next/link'
 import FeedbackBox from '@/components/FeedbackBox'
 
 interface State {
@@ -78,6 +79,7 @@ export default function VoteCard() {
       )}
       {msg && <p className="text-sm hw-sub">{msg}</p>}
       <RatingsBlock />
+      {s.canVote && <Link href="/submit" className="sk-key rounded-xl h-11 w-full text-sm flex items-center justify-center">Suggest music</Link>}
       <FeedbackBox />
     </section>
   )

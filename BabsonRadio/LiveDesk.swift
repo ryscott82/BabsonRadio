@@ -506,16 +506,10 @@ struct PhoneLiveDesk<Drawer: View>: View {
         return np.title
     }
     /// A one-line title does not need the two-line slot: everything below moves up and the spare room ends up at the bottom.
-    private var panelUp: CGFloat {
-        let f = UIFont(name: "BarlowCondensed-Bold", size: 40) ?? UIFont.systemFont(ofSize: 40, weight: .bold)
-        // Same width as the title frame (310): if it fits on one line, close the empty second line.
-        // SF Expanded Black is about 1.45x as wide as the same size in a regular system font.
-        let w = BRFont.expanded
-            ? (titleText as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 40 * BRFont.expandedScale, weight: .black)]).width * 1.45
-            : (titleText as NSString).size(withAttributes: [.font: f]).width
-        return w <= 310 ? 33 : 0
-    }
-    private var panelBottom: CGFloat { 340 + 380 - panelUp }
+    private var panelUp: CGFloat { 33 }
+    /// Extra room under the reaction keys so they do not sit on the edge of the ivory face.
+    private let panelPad: CGFloat = 18
+    private var panelBottom: CGFloat { 340 + 380 - panelUp + panelPad }
     /// "Show name with Host" for live shows, else the artist.
     private var subText: String {
         guard let np, !np.title.isEmpty else { return "Live from campus" }
@@ -547,7 +541,7 @@ struct PhoneLiveDesk<Drawer: View>: View {
             let coverTop: CGFloat = 56, coverBottom: CGFloat = 331      // the tilted sleeve's extent on the 844 pt desk
             let shift: CGFloat = wide ? max(0, coverTop - G) : 0
             let panelDY: CGFloat = wide ? (coverBottom + G) - 340 : 0
-            let baseAmpBottom: CGFloat = 340 + panelDY + 380 - panelUp
+            let baseAmpBottom: CGFloat = 340 + panelDY + 380 - panelUp + panelPad
             let W: CGFloat = 390, full: CGFloat = 844
             let availW = geo.size.width - rightReserve(geo.size)
             let kW = availW / W
@@ -645,7 +639,7 @@ struct PhoneLiveDesk<Drawer: View>: View {
 
     private func panel(extra: CGFloat, dy: CGFloat = 0) -> some View {
         let up = panelUp
-        let ph = 380 - up + extra
+        let ph = 380 - up + extra + panelPad
         return ZStack(alignment: .topLeading) {
             HWLeather(tint: mode.leatherTint, corner: 18, stitch: true)
                 .frame(width: 366, height: ph)
@@ -653,15 +647,10 @@ struct PhoneLiveDesk<Drawer: View>: View {
                 HWScrew().offset(x: i % 2 == 0 ? 10 : 366 - 19, y: i < 2 ? 10 : ph - 19)
             }
 
-            // Title (two lines at most, shrinks to fit) and the line under it.
+            // Title (one line: shrinks a little, scrolls if still too long) and the line under it.
             VStack(alignment: .leading, spacing: 6) {
-                Text(titleText)
-                    .font(BRFont.display(40))
-                    .foregroundStyle(mode.onPanelText)
-                    .lineLimit(2).minimumScaleFactor(0.5)
-                    .lineSpacing(-2)
-                    .frame(maxWidth: .infinity, minHeight: 66 - up, maxHeight: 66 - up, alignment: .bottomLeading)
-                    .shadow(color: .black.opacity(0.45), radius: 0, x: 0, y: 1)
+                HWTitleLine(text: titleText, size: 40, height: 66 - up)
+                    .frame(maxWidth: .infinity, alignment: .bottomLeading)
                 Text(subText)
                     .font(BRFont.body(18, .medium))
                     .foregroundStyle(subColor)
@@ -777,14 +766,13 @@ struct HWDrawerSheet<Content: View>: View {
                 Capsule().fill(Color.hwCream).frame(width: 40, height: 4).padding(.top, 6)
                 Image(systemName: open ? "chevron.down" : "chevron.up")
                     .font(.system(size: 12, weight: .bold)).foregroundStyle(Color.hwCream.opacity(0.8)).padding(.top, 3)
-                // Content only exists once opened enough to read; it never takes touches while closed.
+                // The content is always there, so it rises with the drawer while you pull it; it only takes touches once open.
                 ScrollView {
                     content()
                         .modifier(HWDrawerContentStyle())
                         .padding(.horizontal, outerMode.isLight ? 30 : 14).padding(.top, outerMode.isLight ? 22 : 8).padding(.bottom, 120)
                 }
                 .scrollIndicators(.hidden)
-                .opacity(open ? 1 : 0)
                 .allowsHitTesting(open)
             }
             .foregroundStyle(outerMode.isLight ? Color(hex: "1A1710") : Color.hwCream)

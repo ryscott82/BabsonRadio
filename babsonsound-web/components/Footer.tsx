@@ -29,7 +29,7 @@ export default function Footer() {
             </svg>Instagram</a>}
         </nav>
         <p className="text-br-dk-sub shrink-0">
-          Designed by <a href="https://ryanedwardmediagroup.com" {...ext} className="underline underline-offset-4 hover:text-br-dk-text transition-colors">Ryan Edward Media Group</a>
+          <a href="https://ryanedwardmediagroup.com" {...ext} className="underline underline-offset-4 hover:text-br-dk-text transition-colors">Ryan Edward Media Group</a>
         </p>
       </div>
     </footer>

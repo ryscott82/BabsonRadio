@@ -232,11 +232,11 @@ class AuthManager: ObservableObject {
         needsEmailVerification = false
         verifyDeadline = (!isDev && !user.isEmailVerified && inGrace) ? Date(timeIntervalSince1970: graceMs / 1000) : nil
 
-        // Pre-launch: a beta tester (email on the station's list) gets the site pass from their own sign-in,
-        // so no shared password is needed in the app.
-        if !isDev && BackendConfig.previewKey.isEmpty,
-           let pass: GatePass = try? await BackendAPI.post("/api/prelaunch/session", [:]) {
-            BackendConfig.setPreviewKey(pass.gate)
+        // Pre-launch: admins, directors and radio-trained students trade their sign-in for a launch pass (good for 12 hours),
+        // so no shared password is needed in the app. After launch the server says "open" and the pass is dropped.
+        if let pass: GatePass = try? await BackendAPI.post("/api/launch/pass", [:]) {
+            if let gate = pass.gate, !gate.isEmpty { BackendConfig.setPreviewKey(gate) }
+            else if pass.open == true { BackendConfig.setPreviewKey(nil) }
         }
 
         let me: MeResponse? = try? await BackendAPI.get("/api/me")
@@ -252,7 +252,7 @@ class AuthManager: ObservableObject {
             phoneNumber: me?.phoneNumber ?? "",
             joinedDate: user.metadata.creationDate ?? Date(),
             isDeveloper: isDev,
-            role: me?.role ?? (isDev ? "developer" : "listener")
+            role: me?.effectiveRole ?? (isDev ? "developer" : "listener")
         )
         currentUser?.lastName = me?.lastName ?? ""
         guestStatus = nil
@@ -524,7 +524,7 @@ class AuthManager: ObservableObject {
 
     /// Developer password sign-in (same password as the website's "Developer access"): signs in as the shared
     /// Preview developer account. No separate Firebase account needed.
-    private struct GatePass: Decodable { let gate: String }
+    private struct GatePass: Decodable { let gate: String?; let open: Bool? }
     private struct UnlockResponse: Decodable { let gate: String; let customToken: String?; let warning: String? }
 
     func devPasswordSignIn(password: String) {

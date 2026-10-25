@@ -322,5 +322,5 @@ final class BoardState: ObservableObject {
 /// Lettering on a steel key: cream normally, dark ink on light aluminum keys inside the black drawer.
 struct HWKeyInk: ViewModifier {
     @Environment(\.hwLightKeys) private var lightKeys
-    func body(content: Content) -> some View { content.foregroundStyle(lightKeys ? Color(hex: "1A1710") : Color.hwCream) }
+    func body(content: Content) -> some View { content.foregroundStyle(Color.white).shadow(color: .black.opacity(0.55), radius: 0, x: 0, y: 1) }
 }

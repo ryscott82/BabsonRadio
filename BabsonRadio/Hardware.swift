@@ -156,7 +156,7 @@ struct HWLeather: View {
         let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)
         // The light amp: green leather rim, an ivory ceramic face set 15 pt in, and black glass caps on the corners.
         let face = mode.isLight && tint != nil
-        let ringColor: Color = { if case .albumLight(let c) = mode { return c }; return Color(hex: "1FA06B") }()
+        let ringColor: Color = { if case .albumLight(let c) = mode { return c }; return Color(hex: "006644") }()
         ZStack {
             shape.fill(Color(hex: "0C0C0A"))
             if let t = tint {
@@ -167,9 +167,10 @@ struct HWLeather: View {
                     Color.black.opacity(0.74)
                 } else {
                     // Same green as the website: the leather texture at full strength under a light shade (the cover's hue only in album light).
-                    // Never a green fill: black leather, with the color only as the outline (see below).
-                    HWTile(name: HWTex.leatherBlack)
-                    Color.black.opacity(0.5)
+                    // The green rim around the ivory face (the face covers everything but this thin edge).
+                    HWTile(name: HWTex.leatherGreen)
+                    if case .albumLight = mode { t.opacity(0.6).blendMode(.color) }
+                    LinearGradient(colors: [.black.opacity(0.16), .black.opacity(0.30)], startPoint: .top, endPoint: .bottom)
                 }
             } else {
                 HWTile(name: HWTex.leatherBlack)
@@ -178,7 +179,6 @@ struct HWLeather: View {
             LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.16)],
                            startPoint: .top, endPoint: .bottom)
             // Light scuffing over the leather, heaviest at the corners.
-            HWCornerWear()
             if stitch {
                 shape.inset(by: 7)
                     .stroke(Color(hex: face ? "F6F2E7" : "F6F2E7").opacity(face ? 0.6 : 0.32), style: StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
@@ -188,8 +188,6 @@ struct HWLeather: View {
                 ZStack {
                     Color(hex: "F2F4F2")
                     HWTile(name: HWTex.cface, opacity: 0.24, blend: .multiply)
-                    // A little wear on the front, much less than on the corners.
-                    HWTile(name: "hw_wear_face_soft")
                     // The leather stands proud: its edge throws a shadow onto the face, deepest along the top.
                     inner.strokeBorder(Color(hex: "1B201B").opacity(0.42), lineWidth: 6).blur(radius: 3.5).offset(y: 2)
                     inner.strokeBorder(Color(hex: "232823").opacity(0.20), lineWidth: 3).blur(radius: 2)
@@ -219,8 +217,7 @@ struct HWLeather: View {
         }
         .clipShape(shape)
         .overlay(shape.strokeBorder(Color.black.opacity(0.55), lineWidth: 1))
-        .overlay { if tint != nil && mode.isLight { shape.inset(by: 1.5).strokeBorder(ringColor.opacity(0.9), lineWidth: 2) } }
-        .overlay(shape.inset(by: 1).strokeBorder(Color.white.opacity(0.10), lineWidth: 1))
+                .overlay(shape.inset(by: 1).strokeBorder(Color.white.opacity(0.10), lineWidth: 1))
         .shadow(color: .black.opacity(0.45), radius: 10, x: 0, y: 8)
         .shadow(color: .black.opacity(0.5), radius: 0, x: 0, y: 3)
     }
@@ -254,6 +251,8 @@ struct HWKeyFace: View {
     var corner: CGFloat = 10
     var pressed: Bool = false
     var lit: Bool = false
+    /// Color wash over the steel, like the website's green-tinted keys. Green unless a key says otherwise.
+    var tint: Color? = nil
     @Environment(\.colorScheme) private var scheme
     @Environment(\.hwLightKeys) private var lightKeys
     var body: some View {
@@ -272,6 +271,7 @@ struct HWKeyFace: View {
                                        .init(color: .clear, location: 0.54)],
                                startPoint: .top, endPoint: .bottom)
             }
+            (tint ?? (dark ? Color(hex: "0A5F41") : Color(hex: "0A7850"))).opacity(pressed ? 0.35 : 0.55)
             if pressed {
                 shape.strokeBorder(Color.black.opacity(0.6), lineWidth: 4).blur(radius: 3)
             }
@@ -296,7 +296,7 @@ struct HWKeyStyle: ButtonStyle {
     @Environment(\.hwLightKeys) private var lightKeys
     func makeBody(configuration: Configuration) -> some View {
         let down = configuration.isPressed || lit
-        let ink = (scheme == .dark && !lightKeys) ? Color(hex: "EFE9D6") : Color(hex: "1A1710")
+        let ink = Color.white   // keys are green-tinted like the website, with white lettering
         configuration.label
             .font(BRFont.body(14, .semibold))
             .foregroundStyle(down ? Color.hwLED : ink)
@@ -325,7 +325,7 @@ struct HWKey<Content: View>: View {
     @Environment(\.hwLightKeys) private var lightKeys
     var body: some View {
         content()
-            .foregroundStyle(lightKeys ? Color(hex: "1A1710") : Color.hwCream)
+            .foregroundStyle(Color.white)
             .frame(maxWidth: .infinity, minHeight: height)
             .background(HWKeyFace(corner: corner, pressed: lit, lit: lit))
     }

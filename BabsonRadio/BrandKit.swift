@@ -124,14 +124,12 @@ struct HWCardSurface: View {
             } else {
                 // Green leather rim, then the ivory face.
                 Color(hex: "0C0C0A")
-                HWTile(name: HWTex.leatherBlack)
-                Color.black.opacity(0.5)
-                HWCornerWear(size: 70)
+                HWTile(name: HWTex.leatherGreen)
+                LinearGradient(colors: [.black.opacity(0.16), .black.opacity(0.30)], startPoint: .top, endPoint: .bottom)
                 let face = RoundedRectangle(cornerRadius: max(4, corner - rimW + 1), style: .continuous)
                 ZStack {
                     Color(hex: "F2F4F2")
                     HWTile(name: HWTex.cface, opacity: 0.24, blend: .multiply)
-                    HWTile(name: "hw_wear_face_soft")
                     LinearGradient(colors: [.white.opacity(0.45), .clear], startPoint: .top, endPoint: .center)
                 }
                 .clipShape(face)
@@ -143,7 +141,6 @@ struct HWCardSurface: View {
         }
         .clipShape(shape)
         .overlay(shape.strokeBorder(Color.black.opacity(dark ? 0.6 : 0.4), lineWidth: 1))
-        .overlay { if !dark { shape.inset(by: 1).strokeBorder(Color(hex: "1FA06B"), lineWidth: 2) } }
         .shadow(color: .black.opacity(dark ? 0.5 : 0.28), radius: dark ? 8 : 6, x: 0, y: dark ? 5 : 3)
     }
 }

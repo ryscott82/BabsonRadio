@@ -827,7 +827,7 @@ struct HWDrawerTabBack: View {
     var body: some View {
         ZStack {
             Color(hex: "0C0C0A")
-            HWTile(name: HWTex.leatherBlack); Color.black.opacity(0.6)
+            if mode.isLight { HWTile(name: HWTex.leatherGreen); Color.black.opacity(0.2) } else { HWTile(name: HWTex.leatherBlack); Color.black.opacity(0.6) }
             LinearGradient(colors: [.white.opacity(0.10), .clear, .black.opacity(0.2)], startPoint: .top, endPoint: .bottom)
         }
     }

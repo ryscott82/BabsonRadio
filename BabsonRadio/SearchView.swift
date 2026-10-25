@@ -178,10 +178,21 @@ struct CategoryTile: View {
             .modifier(HWKeyInk())
             .padding(.horizontal, 14)
             .frame(maxWidth: .infinity, minHeight: 52)
-            .background(HWKeyFace(corner: 12))
+            .background(HWKeyFace(corner: 12, tint: keyColor))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(category.rawValue)
+    }
+
+    /// Wash over the steel key, one color per topic (music keeps the site green).
+    private var keyColor: Color {
+        switch category {
+        case .music:     return Color(hex: "0A7850")
+        case .interview: return Color(hex: "2457A0")
+        case .podcast:   return Color(hex: "B0620F")
+        case .talk:      return Color(hex: "6B36A8")
+        case .news:      return Color(hex: "A82B26")
+        }
     }
 
     var iconName: String {

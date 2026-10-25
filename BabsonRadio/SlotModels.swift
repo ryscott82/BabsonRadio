@@ -85,7 +85,9 @@ nonisolated struct MySlotRequestsResponse: Decodable { let requests: [SlotReques
 nonisolated struct MeResponse: Decodable {
     let firstName: String
     let phoneNumber: String
-    let role: String
+    /// Old servers sent `role`; the current one sends `level` (guest, student, director, admin). Either may be missing.
+    let role: String?
+    let level: String?
     let invisible: Bool?
     let isTester: Bool?
     let lastName: String?
@@ -93,6 +95,19 @@ nonisolated struct MeResponse: Decodable {
     let concentrations: [String]?
     let birthday: Birthday?
     let onboarded: Bool?
+}
+
+extension MeResponse {
+    /// The role string the app uses (guest / listener / director / superAdmin), whichever field the server sent.
+    var effectiveRole: String {
+        switch level {
+        case "admin": return "superAdmin"
+        case "director": return "director"
+        case "guest": return "guest"
+        case "student": return "listener"
+        default: return role ?? "listener"
+        }
+    }
 }
 
 nonisolated struct Birthday: Decodable { let month: Int; let day: Int }

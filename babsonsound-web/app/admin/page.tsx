@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '@/lib/auth'
 import StationPanel from '@/components/admin/StationPanel'
+import OpsIcon, { type OpsIcon as IconName } from '@/components/admin/OpsIcons'
 
 interface Alerts {
   pendingRequests: number; newReports: number | null
@@ -50,110 +51,136 @@ export default function AdminPage() {
   const reports = alerts?.newReports ?? 0
   const cancels = alerts?.cancellations ?? []
   const count = (deadAir ? 1 : 0) + (monitorStale && !deadAir ? 1 : 0) + (pending > 0 ? 1 : 0) + (reports > 0 ? 1 : 0) + cancels.length
-  const tile = 'sk-raised px-3 py-2.5 min-w-0'
-  const row = 'flex items-center gap-3 py-2 text-sm'
-  const go = 'ml-auto shrink-0 sk-key px-3 py-1'
+  const row = 'flex items-center gap-3 py-2 text-base'
+  const go = 'ml-auto shrink-0 ops-btn px-4 py-1.5'
+
+  const groups: { title: string; tiles: Tile[] }[] = [
+    { title: 'Programming', tiles: [
+      { href: '/admin/schedule', icon: 'schedule', title: 'Schedule', text: 'See and edit what is on air' },
+      { href: '/admin/slots', icon: 'slots', title: 'Show requests', text: 'Approve or decline requests', badge: pending },
+      { href: '/admin/training', icon: 'training', title: 'Training', text: 'Check in and certify hosts' },
+      { href: '/admin/show-updates', icon: 'updates', title: 'Show changes', text: 'Review edits hosts made' },
+      { href: '/admin/library', icon: 'library', title: 'Library', text: 'Add and remove episodes' },
+      { href: '/admin/autoschedule', icon: 'auto', title: 'Auto DJ', text: 'Playlists, times and how often', admin: true },
+      { href: '/admin/setlists', icon: 'setlists', title: 'Set lists', text: 'Songs planned for shows', admin: true },
+      { href: '/admin/easter-eggs', icon: 'eggs', title: 'Easter eggs', text: 'Hidden surprises on the site', admin: true },
+      { href: '/admin/blocked-words', icon: 'blocked', title: 'Blocked words', text: 'Words that are filtered out', admin: true },
+    ] },
+    { title: 'People', tiles: [
+      { href: '/admin/users', icon: 'users', title: 'Users and roles', text: 'Find people and give access', admin: true },
+      { href: '/admin/feedback', icon: 'bug', title: 'Bugs and ideas', text: 'Reports from listeners', badge: reports },
+      { href: '/admin/requests', icon: 'requests', title: 'Song requests', text: 'What listeners asked to hear' },
+      { href: '/admin/notify', icon: 'bell', title: 'Send notification', text: 'Message everyone or a group', admin: true },
+      { href: '/admin/launch-email', icon: 'mail', title: 'Launch email', text: 'Preview and send', admin: true },
+      { href: '/admin/birthdays', icon: 'birthdays', title: 'Birthdays', text: 'Who is celebrating soon', admin: true },
+      { href: '/admin/phone-changes', icon: 'phone', title: 'Phone changes', text: 'Approve new numbers', admin: true },
+    ] },
+    { title: 'Data and tools', tiles: [
+      { href: '/admin/stats', icon: 'stats', title: 'Stats', text: 'Listeners, hours and logs' },
+      { href: '/admin/tests', icon: 'tests', title: 'Tests', text: 'Preview features safely', admin: true },
+    ] },
+  ]
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-4">
-      <div className="flex items-center gap-3 border-b border-br-dk-border pb-3">
-        <h1 className="text-br-dk-text text-base font-semibold">radio-ops</h1>
-        <span className="text-br-gold text-sm">{isAdmin ? 'admin' : 'director'}</span>
-        {dash && !dash.radioConnected && isAdmin && <span className="text-sm text-br-red ml-auto">Radio not connected</span>}
-      </div>
+    <div className="ops-hub">
+      <div className="max-w-6xl mx-auto px-5 py-8 space-y-8">
+        <header className="flex flex-wrap items-center gap-4">
+          <span className="ops-tile-icon !w-16 !h-16 shrink-0"><OpsIcon name="radio" size={40} /></span>
+          <div>
+            <h1 className="text-4xl font-light leading-tight">Radio operations</h1>
+            <p className="text-base opacity-90">{isAdmin ? 'Admin' : 'Director'}{dash && !dash.radioConnected && isAdmin ? ' · Radio not connected' : ''}</p>
+          </div>
+        </header>
 
-      {/* Notifications */}
-      <section className="sk-raised p-4" aria-label="Notifications">
-        <h2 className="text-br-gold text-sm mb-1">Notifications{count > 0 ? ` (${count})` : ''}</h2>
-        {count === 0 && <p className="text-sm text-br-dk-sub py-1">Nothing needs attention.</p>}
-        <ul className="divide-y divide-br-dk-border">
-          {deadAir && <li className={row}><span className="text-br-red">Dead air since {clock(alerts!.deadAir!.since)}. {alerts!.deadAir!.detail}</span></li>}
-          {monitorStale && !deadAir && (
-            <li className={row}><span>Dead-air monitor is silent{alerts?.deadAir?.monitorAgeSec != null ? ` (${Math.round(alerts.deadAir.monitorAgeSec / 60)} min)` : ''}. Check the streaming PC.</span></li>
-          )}
-          {pending > 0 && <li className={row}><span>{pending} show request{pending === 1 ? '' : 's'} to review</span><Link href="/admin/slots" className={go}>Review</Link></li>}
-          {reports > 0 && <li className={row}><span>{reports} new bug report{reports === 1 ? '' : 's'} or idea{reports === 1 ? '' : 's'}</span><Link href="/admin/feedback" className={go}>Open</Link></li>}
-          {cancels.map(c => (
-            <li key={c.id} className={row}>
-              <span>Cancelled: {c.title} ({c.requesterName || 'student'}), {new Date(c.startAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}{c.wasApproved ? ', was approved' : ''}{c.reason ? `, "${c.reason}"` : ''}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+        {/* Notifications */}
+        <section className="ops-card p-5" aria-label="Notifications">
+          <h2 className="text-2xl font-light mb-1">Notifications{count > 0 ? ` (${count})` : ''}</h2>
+          {count === 0 && <p className="text-base py-1">Nothing needs attention.</p>}
+          <ul className="divide-y divide-white/25">
+            {deadAir && <li className={row}><span className="font-semibold">Dead air since {clock(alerts!.deadAir!.since)}. {alerts!.deadAir!.detail}</span></li>}
+            {monitorStale && !deadAir && (
+              <li className={row}><span>Dead-air monitor is silent{alerts?.deadAir?.monitorAgeSec != null ? ` (${Math.round(alerts.deadAir.monitorAgeSec / 60)} min)` : ''}. Check the streaming PC.</span></li>
+            )}
+            {pending > 0 && <li className={row}><span>{pending} show request{pending === 1 ? '' : 's'} to review</span><Link href="/admin/slots" className={go}>Review</Link></li>}
+            {reports > 0 && <li className={row}><span>{reports} new bug report{reports === 1 ? '' : 's'} or idea{reports === 1 ? '' : 's'}</span><Link href="/admin/feedback" className={go}>Open</Link></li>}
+            {cancels.map(c => (
+              <li key={c.id} className={row}>
+                <span>Cancelled: {c.title} ({c.requesterName || 'student'}), {new Date(c.startAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}{c.wasApproved ? ', was approved' : ''}{c.reason ? `, "${c.reason}"` : ''}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
 
-      {/* Status */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className={tile}>
-          <p className="text-sm text-br-dk-sub">On air</p>
-          <p className="text-br-dk-text truncate">{dash?.onAir.title || 'Nothing scheduled'}</p>
-          <p className="text-sm text-br-dk-muted">{dash?.onAir.endAt ? `until ${clock(dash.onAir.endAt)}` : ''}</p>
+        {/* Status */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="ops-card p-4 min-w-0">
+            <p className="text-sm opacity-90">On air</p>
+            <p className="text-lg truncate">{dash?.onAir.title || 'Nothing scheduled'}</p>
+            <p className="text-sm opacity-80">{dash?.onAir.endAt ? `until ${clock(dash.onAir.endAt)}` : ''}</p>
+          </div>
+          <div className="ops-card p-4 min-w-0">
+            <p className="text-sm opacity-90">{dash?.nowPlaying.isLive ? `Live · ${dash.nowPlaying.streamer}` : dash?.nowPlaying.playlist ? `Playlist · ${dash.nowPlaying.playlist}` : 'Playing'}</p>
+            <p className="text-lg truncate">{dash?.nowPlaying.song || '–'}</p>
+          </div>
+          <div className="ops-card p-4 min-w-0">
+            <p className="text-sm opacity-90">Listeners now</p>
+            <p className="text-3xl tabular-nums">{dash?.nowPlaying.listeners ?? '–'}</p>
+          </div>
+          <div className="ops-card p-4 min-w-0">
+            <p className="text-sm opacity-90">Last 24 hours</p>
+            <p className="text-lg tabular-nums">{dash ? `${dash.last24h.sessions} sessions · ${dash.last24h.hours} h` : '–'}</p>
+            {dash?.announcement && <p className="text-sm">Announcement live</p>}
+          </div>
         </div>
-        <div className={tile}>
-          <p className="text-sm text-br-dk-sub">{dash?.nowPlaying.isLive ? `Live · ${dash.nowPlaying.streamer}` : dash?.nowPlaying.playlist ? `Playlist · ${dash.nowPlaying.playlist}` : 'Playing'}</p>
-          <p className="text-br-dk-text truncate">{dash?.nowPlaying.song || '–'}</p>
-        </div>
-        <div className={tile}>
-          <p className="text-sm text-br-dk-sub">Listeners now</p>
-          <p className="text-2xl text-br-dk-text tabular-nums">{dash?.nowPlaying.listeners ?? '–'}</p>
-        </div>
-        <div className={tile}>
-          <p className="text-sm text-br-dk-sub">Last 24 hours</p>
-          <p className="text-br-dk-text tabular-nums">{dash ? `${dash.last24h.sessions} sessions · ${dash.last24h.hours} h` : '–'}</p>
-          {dash?.announcement && <p className="text-sm text-br-gold truncate">Announcement live</p>}
-        </div>
-      </div>
 
-      <div className="grid lg:grid-cols-5 gap-5">
-        <div className="lg:col-span-3 space-y-5">
-          <section className="grid sm:grid-cols-2 gap-5 text-sm sk-raised p-4">
-            <ToolGroup title="Programming" links={[
-              ['/admin/schedule', 'Schedule'], ['/admin/slots', 'Slot requests'], ['/admin/training', 'Training'], ['/admin/show-updates', 'Show updates'], ['/admin/library', 'Library'],
-              ...(isAdmin ? [['/admin/autoschedule', 'Auto-scheduler'], ['/admin/setlists', 'Set lists'], ['/admin/easter-eggs', 'Easter eggs'], ['/admin/blocked-words', 'Blocked words']] : []),
-            ]} />
-            <ToolGroup title="People" links={[
-              ['/admin/feedback', 'Bugs and ideas'], ['/admin/requests', 'Listener requests'],
-              ...(isAdmin ? [['/admin/users', 'Users and roles'], ['/admin/launch-email', 'Launch email'], ['/admin/notify', 'Send notification'], ['/admin/birthdays', 'Birthdays'], ['/admin/phone-changes', 'Phone changes']] : []),
-            ]} />
-          </section>
+        {/* Menu */}
+        {groups.map(g => {
+          const tiles = g.tiles.filter(t => !t.admin || isAdmin)
+          return (
+            <section key={g.title} aria-label={g.title} className="space-y-4">
+              <h2 className="text-3xl font-light">{g.title}</h2>
+              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-5">
+                {tiles.map(t => (
+                  <Link key={t.href} href={t.href} className="ops-tile group flex gap-4 p-2 -m-2 items-start">
+                    <span className="ops-tile-icon relative shrink-0"><OpsIcon name={t.icon} size={52} />
+                      {!!t.badge && <span className="absolute -top-2 -right-2 min-w-7 h-7 px-1.5 rounded-full bg-white text-[#1b4f9e] text-sm font-bold flex items-center justify-center">{t.badge}</span>}
+                    </span>
+                    <span className="min-w-0 pt-1">
+                      <span className="block text-2xl font-light leading-tight">{t.title}</span>
+                      <span className="block text-base leading-snug mt-1 opacity-95">{t.text}</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )
+        })}
 
-          <section className="sk-raised p-4">
-            <h2 className="text-br-gold text-sm mb-2">Next 24 hours</h2>
-            <ul className="text-sm divide-y divide-br-dk-border">
+        {/* Queue and controls */}
+        <div className="grid lg:grid-cols-5 gap-6">
+          <section className="ops-card p-5 lg:col-span-3 h-fit">
+            <h2 className="text-2xl font-light mb-2">Next 24 hours</h2>
+            <ul className="text-base divide-y divide-white/25">
               {(dash?.next ?? []).map((n, i) => (
-                <li key={i} className="py-1.5 flex gap-3">
-                  <span className="text-br-dk-sub tabular-nums w-32 shrink-0">{clock(n.startAt)} – {clock(n.endAt)}</span>
-                  <span className="text-br-dk-text truncate">{n.title}</span>
-                  <span className="text-sm text-br-dk-muted ml-auto shrink-0">{n.source === 'auto' ? 'auto' : 'show'}</span>
+                <li key={i} className="py-2 flex gap-3">
+                  <span className="tabular-nums w-36 shrink-0 opacity-90">{clock(n.startAt)} – {clock(n.endAt)}</span>
+                  <span className="truncate">{n.title}</span>
+                  <span className="text-sm opacity-80 ml-auto shrink-0">{n.source === 'auto' ? 'auto' : 'show'}</span>
                 </li>
               ))}
-              {dash && !dash.next.length && <li className="py-1.5 text-br-dk-sub">Nothing scheduled.</li>}
+              {dash && !dash.next.length && <li className="py-2">Nothing scheduled.</li>}
             </ul>
           </section>
-
-          <section className="flex gap-3 text-sm">
-            <Link href="/admin/stats" className="sk-key px-4 py-2">Stats</Link>
-            <Link href="/admin/tests" className="sk-key px-4 py-2">Tests</Link>
-          </section>
+          {isAdmin && (
+            <section className="lg:col-span-2 sk-raised p-4 h-fit">
+              <h2 className="text-br-gold text-lg mb-3">Station controls</h2>
+              <StationPanel />
+            </section>
+          )}
         </div>
-
-        {isAdmin && (
-          <section className="lg:col-span-2 sk-raised p-4 h-fit">
-            <h2 className="text-br-gold text-sm mb-3">Station controls</h2>
-            <StationPanel />
-          </section>
-        )}
       </div>
     </div>
   )
 }
 
-function ToolGroup({ title, links }: { title: string; links: (string[])[] }) {
-  return (
-    <div>
-      <h2 className="text-br-dk-sub text-sm mb-2">{title}</h2>
-      <ul className="space-y-1.5">
-        {links.map(([href, label]) => <li key={href}><Link href={href} className="text-br-dk-text hover:text-br-gold">{label}</Link></li>)}
-      </ul>
-    </div>
-  )
-}
+interface Tile { href: string; icon: IconName; title: string; text: string; badge?: number; admin?: boolean }

@@ -264,8 +264,8 @@ body::before {
   --br-bg:#f5f7f6; --br-surface:#ffffff; --br-surface2:#eaf0ed;
   --br-border:#d2dcd6; --br-border2:#aebcb4;
   --br-text:#14211a; --br-sub:#46594f; --br-muted:#5f7368;
-  --br-accent:#00704a;
-  --sk-field:#ffffff; --sk-btn-top:#e3eee8; --sk-btn-bot:#e3eee8; --sk-btn-edge:#aebcb4; --sk-btn-ink:#00573a;
+  --br-accent:#1d5db5;
+  --sk-field:#ffffff; --sk-btn-top:#e3ecf8; --sk-btn-bot:#e3ecf8; --sk-btn-edge:#aebcb4; --sk-btn-ink:#0f4a96;
   --sk-btn-text-shadow: none;
   background: var(--br-bg); color: var(--br-text);
   font-size: 14px; letter-spacing: 0;
@@ -276,8 +276,8 @@ body::before {
     --br-bg:#060908; --br-surface:#0b110e; --br-surface2:#101a15;
     --br-border:#1c2a22; --br-border2:#2a3f33;
     --br-text:#c9e4d3; --br-sub:#8fa99a; --br-muted:#5c7566;
-    --br-accent:#3ddc97;
-    --sk-field:#050807; --sk-btn-top:#14281e; --sk-btn-bot:#14281e; --sk-btn-edge:#2a3f33; --sk-btn-ink:#3ddc97;
+    --br-accent:#6db3f2;
+    --sk-field:#050807; --sk-btn-top:#12263f; --sk-btn-bot:#12263f; --sk-btn-edge:#2a3f33; --sk-btn-ink:#6db3f2;
   }
 }
 :root[data-theme="dark"] .ops {
@@ -285,8 +285,8 @@ body::before {
   --br-bg:#060908; --br-surface:#0b110e; --br-surface2:#101a15;
   --br-border:#1c2a22; --br-border2:#2a3f33;
   --br-text:#c9e4d3; --br-sub:#8fa99a; --br-muted:#5c7566;
-  --br-accent:#3ddc97;
-  --sk-field:#050807; --sk-btn-top:#14281e; --sk-btn-bot:#14281e; --sk-btn-edge:#2a3f33; --sk-btn-ink:#3ddc97;
+  --br-accent:#6db3f2;
+  --sk-field:#050807; --sk-btn-top:#12263f; --sk-btn-bot:#12263f; --sk-btn-edge:#2a3f33; --sk-btn-ink:#6db3f2;
 }
 .hw-main .ops .font-display { font-family: inherit; letter-spacing: 0.04em; }
 .hw-main .ops .sk-raised, .hw-main .ops .sk-hero { background: var(--br-surface); border: 1px solid var(--br-border); border-radius: 3px; box-shadow: none; }
@@ -410,3 +410,17 @@ html[data-art-snap] .art-desk { transition: opacity 1s ease !important; }
 
 /* Pinterest extension overlays (a request from the page can't remove the extension, but this hides its hover button if it appears anyway). */
 span[data-pin-log], [data-pinterest-extension-installed] ~ span[style*="z-index"][data-pin-id], .PIN_BUTTON, [class^="PIN_"] { display: none !important; }
+
+/* ── Operations menu: big tiles on blue (home of /admin) ── */
+.ops-hub { --hub-bg:#2a5fb0; --hub-tile:#3f8fd2; --hub-card:rgba(10,40,95,.38);
+  background: var(--hub-bg); color:#fff; min-height: calc(100dvh - 4rem); font-size: 16px; }
+.ops-hub .ops-tile-icon { display:flex; align-items:center; justify-content:center; width:96px; height:96px; background: var(--hub-tile); color:#fff; }
+.ops-hub .ops-card { background: var(--hub-card); border:1px solid rgba(255,255,255,.28); color:#fff; }
+.ops-hub .ops-btn { background:#173f80; color:#fff; border:1px solid rgba(255,255,255,.5); font-size:16px; }
+.ops-hub .ops-btn:hover { background:#0f2f66; }
+.ops-hub .ops-tile { outline: 2px solid transparent; outline-offset: 4px; color:#fff; text-decoration:none; }
+.ops-hub .ops-tile:hover, .ops-hub .ops-tile:focus-visible { outline-color:#fff; }
+:root[data-theme="dark"] .ops-hub, :root:not([data-theme="light"]) .ops-hub { --hub-bg:#1d4a91; --hub-tile:#3478bd; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .ops-hub { --hub-bg:#2a5fb0; --hub-tile:#3f8fd2; } }
+.ops-hub .sk-raised { color: var(--br-text); }
+.ops { --br-accent-hub:#1d5db5; }

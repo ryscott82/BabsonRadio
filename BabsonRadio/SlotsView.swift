@@ -93,7 +93,7 @@ struct SlotsView: View {
             }
 
             VStack(alignment: .leading, spacing: 14) {
-                BRSectionHeader(title: "MY REQUESTS")
+                BRSectionHeader(title: "My requests")
                     .padding(.horizontal, 20)
                 if slots.myRequests.isEmpty {
                     emptyText(slots.isLoading ? "Loading…" : "You haven't requested a slot yet.")

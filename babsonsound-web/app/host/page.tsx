@@ -354,7 +354,7 @@ function ChangeRequest({ st, reload }: { st: Status; reload: () => void }) {
     e.preventDefault(); setBusy(true); setErr(''); setOk('')
     try {
       await api('/api/host/update-request', { scheduleId: sid, showName: name, description, imageUrl: image?.url ?? '', imagePath: image?.path ?? '' })
-      setName(''); setDescription(''); setImage(null); setOk('Sent. Staff will review it and the change goes live when approved.'); reload()
+      setName(''); setDescription(''); setImage(null); setOk('Sent for approval.'); reload()
     } catch (e2) { setErr(e2 instanceof Error ? e2.message : 'Could not send.') }
     setBusy(false)
   }

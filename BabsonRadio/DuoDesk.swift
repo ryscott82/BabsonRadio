@@ -84,6 +84,7 @@ private let hourFmt: DateFormatter = {
 }()
 
 struct DuoSchedulePanel: View {
+    var limit = 2
     @Environment(\.hwMode) private var hwm
     @StateObject private var model = TodayModel()
     var body: some View {
@@ -95,7 +96,7 @@ struct DuoSchedulePanel: View {
                     Text("See the week").font(BRFont.body(13, .semibold)).foregroundColor(hwm.isLight ? Color(hex: "006644") : Color(hex: "6FCF93"))
                 }.buttonStyle(.plain)
             }
-            ForEach(Array(model.items.prefix(2))) { e in
+            ForEach(Array(model.items.prefix(limit))) { e in
                 let live = e.startAt <= Date() && e.endAt > Date()
                 HStack(spacing: 8) {
                     Text(hourFmt.string(from: e.startAt)).font(BRFont.body(14, .bold)).frame(width: 50, alignment: .leading)
@@ -167,6 +168,8 @@ struct DuoLeftPage: View {
     var canPlay: Bool
     /// Beside another tab (landscape foldable). Looks exactly the same; only the full screen button acts differently.
     var sidePane = false
+    /// Open spread: laid out like the website. The record and sleeve with today's schedule under them; the amp is on the right page.
+    var desktop = false
     @ObservedObject private var vol = SystemVolume.shared
     @ObservedObject private var audio = AudioPlayerManager.shared
     @ObservedObject private var theme = ArtTheme.shared
@@ -185,6 +188,20 @@ struct DuoLeftPage: View {
 
     var body: some View {
         DuoCanvas { w, hc, _ in
+            if desktop {
+                let s = max(150, min((w - 24) / 1.27, 400, hc - 260))
+                VStack(spacing: 0) {
+                    artRow(s)
+                    Spacer(minLength: 14)
+                    DuoAmp {
+                        VStack(spacing: 10) {
+                            DuoSchedulePanel(limit: 4)
+                            TunedInRow().padding(.top, 4)
+                        }
+                    }
+                }
+                .padding(.leading, 16).padding(.trailing, 14).padding(.top, 24).padding(.bottom, 16)
+            } else {
             // The amp is about 350 pt tall; the sleeve takes what is left (and never more than the width allows).
             let s = max(150, min((w - 24) / 1.27, 330, hc - 350 - 56))
             VStack(spacing: 0) {
@@ -194,6 +211,7 @@ struct DuoLeftPage: View {
             }
             // Room to breathe: the amp stays a little clear of the left edge and the bottom of the screen.
             .padding(.leading, 16).padding(.trailing, 14).padding(.top, 24).padding(.bottom, 16)
+            }
         }
     }
 
@@ -302,11 +320,111 @@ struct DuoLeftPage: View {
     }
 }
 
+/// The now playing amp as its own card (title, progress, equalizer, volume, play, skip). Top of the right page in the open spread.
+struct DuoNowAmp: View {
+    var canPlay: Bool
+    @Environment(\.hwMode) private var hwm
+    @ObservedObject private var vol = SystemVolume.shared
+    @ObservedObject private var audio = AudioPlayerManager.shared
+    @ObservedObject private var theme = ArtTheme.shared
+
+    private var np: NowPlayingInfo? { audio.nowPlaying }
+    private var album: Bool { theme.albumOn }
+    private var led: Color { album ? theme.palette.first.map { $0.mixed(with: .init(r: 1, g: 1, b: 1), 0.15).color } ?? .hwLED : .hwLED }
+    private var titleText: String { (np?.title.isEmpty == false) ? np!.title : "Babson Radio" }
+    private var subText: String {
+        guard let np, !np.title.isEmpty else { return "Live from campus" }
+        if np.onAir, let show = np.showTitle, !show.isEmpty, np.showOnly != true {
+            return np.streamer.isEmpty ? show : "\(show) with \(np.streamer)"
+        }
+        return np.artist.isEmpty ? "Babson Radio" : np.artist
+    }
+
+    var body: some View { amp }
+
+    // MARK: The now playing amp
+
+    private var amp: some View {
+        DuoAmp {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(titleText)
+                    .font(BRFont.display(40)).foregroundStyle(hwm.onPanelText)
+                    .lineLimit(1).minimumScaleFactor(0.5)
+                    .shadow(color: .black.opacity(0.45), radius: 0, x: 0, y: 1)
+                Text(subText)
+                    .font(BRFont.body(18, .medium)).foregroundStyle(hwm.onPanelSub)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+
+                if let song = np, song.duration > 0 {
+                    TimelineView(.periodic(from: .now, by: 1)) { ctx in
+                        let t = song.elapsed + ctx.date.timeIntervalSince(audio.nowPlayingFetchedAt)
+                        HWSlot(progress: t / song.duration, fill: led, height: 10)
+                    }
+                    .padding(.top, 4)
+                }
+                if let next = np?.next {
+                    Text("Next: \(next.title)\(next.artist.isEmpty ? "" : " · \(next.artist)")")
+                        .font(BRFont.body(13)).foregroundStyle(hwm.onPanelSub).lineLimit(1)
+                }
+
+                HWEQWell(color: led, playing: audio.isPlaying, beat: audio.beatClock)
+                    .frame(height: 58)
+                    .padding(.top, 2)
+
+                controls
+            }
+        }
+    }
+
+    /// Volume knob, play key, skip knob.
+    private var controls: some View {
+        HStack(alignment: .top, spacing: 0) {
+            VStack(spacing: 12) {
+                HWDial(size: 52, value: Binding(get: { vol.level }, set: { vol.level = $0 }), onChange: { vol.set($0) })
+                    .frame(width: 52, height: 52)
+                knobLabel("Volume")
+            }
+            .padding(.top, 16)
+            Spacer(minLength: 0)
+            Button { if canPlay { audio.toggle() } } label: {
+                Group {
+                    if audio.isBuffering {
+                        ProgressView().progressViewStyle(.circular).tint(Color.hwCream).scaleEffect(1.3)
+                    } else {
+                        Image(systemName: audio.isPlaying ? "stop.fill" : "play.fill")
+                            .font(.system(size: 30, weight: .bold))
+                            .offset(x: audio.isPlaying ? 0 : 2)
+                    }
+                }
+            }
+            .buttonStyle(HWRoundKeyStyle(size: 84, lit: audio.isPlaying))
+            .opacity(canPlay ? 1 : 0.4)
+            .accessibilityLabel(audio.isPlaying ? "Stop" : "Play")
+            Spacer(minLength: 0)
+            VStack(spacing: 12) {
+                SkipControl().frame(width: 52, height: 52)
+                knobLabel("Skip")
+            }
+            .padding(.top, 16)
+        }
+        .padding(.horizontal, 6)
+    }
+
+    private func knobLabel(_ text: String) -> some View {
+        Text(text)
+            .font(BRFont.body(12, .semibold)).tracking(0.2)
+            .foregroundStyle(hwm.onPanelSub)
+            .frame(width: 64)
+    }
+}
+
 // MARK: Right page
 
 struct DuoRightPage: View {
     @Environment(\.hwMode) private var hwm
     var canPlay: Bool
+    /// Open spread, laid out like the website: the amp on top, reactions, vote and ratings in a card under it.
+    var desktop = false
     /// The strip along the right edge that the system keeps for its corner bar and clock.
     var trailingInset: CGFloat = 0
     @ObservedObject private var auth = AuthManager.shared
@@ -316,7 +434,7 @@ struct DuoRightPage: View {
     }
 
     var body: some View {
-        DuoCanvas(rightReserve: trailingInset) { _, h, k in
+        DuoCanvas(rightReserve: trailingInset, minH: desktop ? 860 : 680) { _, h, k in
             // A header band the height of the profile button's row, with the station name in it.
             let band = 76 / k
             VStack(spacing: 0) {
@@ -324,7 +442,12 @@ struct DuoRightPage: View {
                     .frame(maxWidth: .infinity, minHeight: band, maxHeight: band, alignment: .center)
                     .padding(.horizontal, 24)
 
-                DuoAmp(height: h - band - 16) {
+                if desktop {
+                    DuoNowAmp(canPlay: canPlay).padding(.horizontal, 14)
+                    Spacer(minLength: 14)
+                }
+
+                DuoAmp(height: desktop ? max(220, h - band - 16 - 364) : h - band - 16) {
                     VStack(spacing: 0) {
                         // Reaction keys (this one also keeps the live counts and star data loading).
                         LiveExtrasView(mode: .reactions).padding(.horizontal, -24)
@@ -337,10 +460,12 @@ struct DuoRightPage: View {
                         Spacer(minLength: 10); etch; Spacer(minLength: 10)
                         LiveExtrasView(mode: .ratings).padding(.horizontal, -24)
 
-                        Spacer(minLength: 10); etch; Spacer(minLength: 10)
-                        DuoSchedulePanel()
+                        if !desktop {
+                            Spacer(minLength: 10); etch; Spacer(minLength: 10)
+                            DuoSchedulePanel()
 
-                        TunedInRow().padding(.top, 8)
+                            TunedInRow().padding(.top, 8)
+                        }
                     }
                 }
                 .padding(.horizontal, 14)

@@ -349,7 +349,8 @@ struct LiveExtrasView: View {
                         Task { await model.rateShow(n, occId: r.occId, title: r.title) }
                     }
                 }
-                if let np, !np.title.isEmpty, np.showOnly != true {
+                // Hidden while someone is live: a live show has no song info to look up (same as the website).
+                if let np, !np.title.isEmpty, np.showOnly != true, np.isLive != true {
                     SongLinksRow(title: np.title, artist: np.artist)
                 }
     

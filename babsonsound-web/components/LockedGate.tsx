@@ -11,11 +11,11 @@ export default function LockedGate({ children }: { children: ReactNode }) {
   if (hasLibraryAccess) return <>{children}</>
 
   const message = !user
-    ? 'Sign in with your Babson, Olin or Wellesley email to listen.'
+    ? 'Sign in with your school email to listen.'
     : needsVerification
       ? 'Verify your email to unlock this.'
       : isGuest
-        ? 'The Library is for Students. Sign in with your Babson, Olin or Wellesley email.'
+        ? 'Students only. Sign in with your school email.'
         : 'This is for Students.'
 
   return (

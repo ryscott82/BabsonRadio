@@ -156,7 +156,7 @@ struct HWLeather: View {
         let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)
         // The light amp: green leather rim, an ivory ceramic face set 15 pt in, and black glass caps on the corners.
         let face = mode.isLight && tint != nil
-        let ringColor: Color = { if case .albumLight(let c) = mode { return c }; return Color(hex: "006644") }()
+        let ringColor: Color = { if case .albumLight(let c) = mode { return c }; return Color(hex: "1FA06B") }()
         ZStack {
             shape.fill(Color(hex: "0C0C0A"))
             if let t = tint {
@@ -167,9 +167,9 @@ struct HWLeather: View {
                     Color.black.opacity(0.74)
                 } else {
                     // Same green as the website: the leather texture at full strength under a light shade (the cover's hue only in album light).
-                    HWTile(name: HWTex.leatherGreen)
-                    if case .albumLight = mode { t.opacity(0.6).blendMode(.color) }
-                    LinearGradient(colors: [.black.opacity(0.16), .black.opacity(0.30)], startPoint: .top, endPoint: .bottom)
+                    // Never a green fill: black leather, with the color only as the outline (see below).
+                    HWTile(name: HWTex.leatherBlack)
+                    Color.black.opacity(0.5)
                 }
             } else {
                 HWTile(name: HWTex.leatherBlack)
@@ -219,6 +219,7 @@ struct HWLeather: View {
         }
         .clipShape(shape)
         .overlay(shape.strokeBorder(Color.black.opacity(0.55), lineWidth: 1))
+        .overlay { if tint != nil && mode.isLight { shape.inset(by: 1.5).strokeBorder(ringColor.opacity(0.9), lineWidth: 2) } }
         .overlay(shape.inset(by: 1).strokeBorder(Color.white.opacity(0.10), lineWidth: 1))
         .shadow(color: .black.opacity(0.45), radius: 10, x: 0, y: 8)
         .shadow(color: .black.opacity(0.5), radius: 0, x: 0, y: 3)

@@ -26,7 +26,7 @@ export default async function HomePage() {
         <LivePlayer pane />
 
         {/* Schedule and the music vote (with ratings) */}
-        <div className="grid lg:grid-cols-[1.1fr_1fr] gap-14 items-stretch lg:[&>*:last-child]:self-start">
+        <div className="grid lg:grid-cols-[1.1fr_1fr] gap-14 items-stretch">
           <section className="hw-panel hw-big">
             <div className="flex items-baseline justify-between gap-4 pb-3 border-b border-br-dk-border">
               <h2 className="hw-title !whitespace-normal text-[1.9rem]">On the air today</h2>

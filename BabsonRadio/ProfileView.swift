@@ -28,6 +28,7 @@ private struct SignedInProfileView: View {
     let user: BRUser
     @Environment(\.dismiss) private var dismiss
     @State private var showReport = false
+    @State private var showAdmin = false
     @StateObject private var auth = AuthManager.shared
     @ObservedObject private var contacts = ContactsManager.shared
     @ObservedObject private var store = ProfileStore.shared
@@ -294,16 +295,14 @@ private struct SignedInProfileView: View {
 
     /// Only admins (and developers) see this. The server checks the role again on every request.
     private var adminRow: some View {
-        NavigationLink {
-            AdminView()
-        } label: {
+        Button { showAdmin = true } label: {
             HStack(spacing: 14) {
                 Image(systemName: "gauge.with.dots.needle.67percent")
                     .font(.system(size: 18))
                     .foregroundColor(scheme == .dark ? .brGold : .brGreen)
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Admin")
+                    Text("Admin Panel")
                         .font(BRFont.body(16, .semibold))
                         .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                     Text("Station tools")
@@ -321,6 +320,7 @@ private struct SignedInProfileView: View {
             .brCard()
         }
         .buttonStyle(.plain)
+        .fullScreenCover(isPresented: $showAdmin) { AdminView(onClose: { showAdmin = false }) }
     }
 
     private var hostRow: some View {
@@ -443,7 +443,7 @@ private struct SignedInProfileView: View {
 
     private var inviteFriendsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            BRSectionHeader(title: "INVITE FRIENDS")
+            BRSectionHeader(title: "Invite friends")
                 .padding(.horizontal, 20)
 
             VStack(spacing: 0) {
@@ -1306,7 +1306,7 @@ struct HostPanelView: View {
 
     @ViewBuilder private func controls(_ s: HostStatus) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            BRSectionHeader(title: "ON AIR")
+            BRSectionHeader(title: "On air")
             if s.controlsOpen {
                 let np = s.nowPlaying
                 Text((np?.isLive ?? false) ? "LIVE" + ((np?.streamer ?? "").isEmpty ? "" : " · \(np!.streamer)") : "NOW PLAYING")
@@ -1354,7 +1354,7 @@ struct HostPanelView: View {
 
     @ViewBuilder private func messageCard(_ s: HostStatus) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            BRSectionHeader(title: "SEND A MESSAGE")
+            BRSectionHeader(title: "Send a message")
             Picker("To", selection: $target) {
                 Text("Listeners").tag(0)
                 Text("Station staff").tag(1)
@@ -1409,7 +1409,7 @@ struct HostPanelView: View {
     @ViewBuilder private func ratingsCard(_ s: HostStatus) -> some View {
         let i = insight(s)
         VStack(alignment: .leading, spacing: 10) {
-            BRSectionHeader(title: "LIVE RATINGS")
+            BRSectionHeader(title: "Live ratings")
             if i?.ratingsHidden == true {
                 Text("Ratings are off for you. Listeners can still rate, and the station still sees them. That was chosen when the show was booked and can't change during the show.")
                     .font(BRFont.body(13, .regular)).foregroundColor(sub)
@@ -1439,7 +1439,7 @@ struct HostPanelView: View {
         let total = (i?.reactions ?? [:]).sorted { $0.value > $1.value }
         let recent = i?.recentReactions ?? [:]
         VStack(alignment: .leading, spacing: 10) {
-            BRSectionHeader(title: "LIVE REACTIONS")
+            BRSectionHeader(title: "Live reactions")
             if total.isEmpty {
                 Text("No reactions yet.").font(BRFont.body(14, .regular)).foregroundColor(sub)
             } else {
@@ -1458,7 +1458,7 @@ struct HostPanelView: View {
 
     @ViewBuilder private func setList(_ s: HostStatus) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            BRSectionHeader(title: "SET LIST")
+            BRSectionHeader(title: "Set list")
             if let sel = selected {
                 if openShows.count > 1 {
                     Picker("Show", selection: Binding(get: { sel.id }, set: { pick = $0 })) {
@@ -1509,7 +1509,7 @@ struct HostPanelView: View {
     @ViewBuilder private func yourShows(_ s: HostStatus) -> some View {
         if !s.shows.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                BRSectionHeader(title: "YOUR SHOWS")
+                BRSectionHeader(title: "Your shows")
                 ForEach(s.shows) { show in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -1530,7 +1530,7 @@ struct HostPanelView: View {
     @ViewBuilder private var changeRequest: some View {
         if !weeklyShows.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                BRSectionHeader(title: "REQUEST A CHANGE TO YOUR SHOW")
+                BRSectionHeader(title: "Request a change to your show")
                 if weeklyShows.count > 1 {
                     Picker("Show", selection: $changeShow) {
                         ForEach(weeklyShows) { Text($0.title).tag($0.refId) }

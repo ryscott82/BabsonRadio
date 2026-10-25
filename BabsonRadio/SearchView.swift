@@ -71,7 +71,7 @@ struct SearchView: View {
 
             // ── Categories grid ──────────────────────────────────
             VStack(alignment: .leading, spacing: 14) {
-                BRSectionHeader(title: "BROWSE CATEGORIES")
+                BRSectionHeader(title: "Browse categories")
                     .padding(.horizontal, 20)
 
                 LazyVGrid(
@@ -87,7 +87,7 @@ struct SearchView: View {
 
             // ── Recent episodes ──────────────────────────────────
             VStack(alignment: .leading, spacing: 14) {
-                BRSectionHeader(title: "RECENT EPISODES")
+                BRSectionHeader(title: "Recent episodes")
                     .padding(.horizontal, 20)
 
                 if !canUse {
@@ -167,104 +167,21 @@ struct SearchView: View {
 struct CategoryTile: View {
     let category: ShowCategory
     var onTap: () -> Void = {}
-    @Environment(\.colorScheme) var scheme
-
-    private var dark: Bool { scheme == .dark }
 
     var body: some View {
         Button(action: onTap) {
-            ZStack {
-                // Leather cabinet in the category's color
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(LinearGradient(colors: [leather, leather.opacity(0.78)], startPoint: .top, endPoint: .bottom))
-                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.14), lineWidth: 1))
-                    .shadow(color: .black.opacity(0.35), radius: 4, y: 3)
-
-                // Face plate
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(LinearGradient(
-                        colors: dark ? [Color(hex: "262622"), Color(hex: "121210")] : [Color(hex: "F6F0E0"), Color(hex: "E2D8C0")],
-                        startPoint: .top, endPoint: .bottom))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.black.opacity(dark ? 0.6 : 0.28), lineWidth: 1))
-                    .padding(7)
-
-                HStack(spacing: 12) {
-                    // Brushed steel knob with a ring in the category color
-                    ZStack {
-                        Circle().fill(AngularGradient(
-                            colors: [Color(hex: "838281"), Color(hex: "D9D8D3"), Color(hex: "6B6A66"), Color(hex: "ECEBE6"), Color(hex: "7C7B77"), Color(hex: "D3D2CD"), Color(hex: "838281")],
-                            center: .center))
-                        Circle().stroke(led, lineWidth: 2.5).padding(-3)
-                        Image(systemName: iconName)
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(Color(hex: "1A1710"))
-                    }
-                    .frame(width: 38, height: 38)
-                    .shadow(color: .black.opacity(0.4), radius: 2, y: 2)
-
-                    VStack(alignment: .leading, spacing: 7) {
-                        Text(category.rawValue.uppercased())
-                            .font(BRFont.display(16))
-                            .kerning(1.5)
-                            .foregroundColor(dark ? Color(hex: "EFE9D6") : Color(hex: "1A1710"))
-                            .lineLimit(1).minimumScaleFactor(0.7)
-                        // Level lights
-                        HStack(spacing: 4) {
-                            ForEach(0..<6, id: \.self) { n in
-                                Capsule()
-                                    .fill(n < lit ? led : Color.black.opacity(dark ? 0.55 : 0.18))
-                                    .frame(width: 10, height: 5)
-                                    .shadow(color: n < lit ? led.opacity(0.7) : .clear, radius: 2)
-                            }
-                        }
-                    }
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 20)
+            HStack(spacing: 10) {
+                Image(systemName: iconName).font(.system(size: 17))
+                Text(category.rawValue).font(BRFont.body(16, .regular)).lineLimit(1).minimumScaleFactor(0.8)
+                Spacer(minLength: 0)
             }
-            .overlay(alignment: .topLeading) { screw }
-            .overlay(alignment: .topTrailing) { screw }
-            .overlay(alignment: .bottomLeading) { screw }
-            .overlay(alignment: .bottomTrailing) { screw }
-            .frame(height: 90)
+            .modifier(HWKeyInk())
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .background(HWKeyFace(corner: 12))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(category.rawValue)
-    }
-
-    private var screw: some View {
-        Circle().fill(Color(hex: "BDBBB3")).frame(width: 5, height: 5).padding(5)
-            .overlay(Circle().stroke(Color.black.opacity(0.4), lineWidth: 0.5).padding(5))
-    }
-
-    /// Cabinet color for each category.
-    private var leather: Color {
-        switch category {
-        case .music:     return Color(hex: "0B5B3C")
-        case .interview: return Color(hex: "24476F")
-        case .podcast:   return Color(hex: "7A4A18")
-        case .talk:      return Color(hex: "5A2B8C")
-        case .news:      return Color(hex: "8E2626")
-        }
-    }
-    /// Light color (knob ring and level lights).
-    private var led: Color {
-        switch category {
-        case .music:     return Color(hex: "2FD08A")
-        case .interview: return Color(hex: "4FA3FF")
-        case .podcast:   return Color(hex: "FFAE42")
-        case .talk:      return Color(hex: "B97CFF")
-        case .news:      return Color(hex: "FF5A4F")
-        }
-    }
-    private var lit: Int {
-        switch category {
-        case .music: return 5
-        case .interview: return 4
-        case .podcast: return 3
-        case .talk: return 4
-        case .news: return 2
-        }
     }
 
     var iconName: String {

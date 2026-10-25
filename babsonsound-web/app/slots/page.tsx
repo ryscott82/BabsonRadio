@@ -74,7 +74,7 @@ export default function SlotsPage() {
       setSharePublic(false); setSig(null)
       setTitle(''); setDescription(''); setLocation(''); setAudioURL(''); setImage(null)
       if (sent?.needsAgreement) setSigning(true)
-      else setNotice('Request sent. Staff review every request, and the answer shows up below.')
+      else setNotice('Request sent.')
       await load()
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not send the request.') }
     setBusy(false)
@@ -91,9 +91,8 @@ export default function SlotsPage() {
     return (
       <div className="max-w-md mx-auto px-4 py-16 text-center space-y-3">
         <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Go on air</h1>
-        <p className="text-sm text-br-dk-sub">
-          Requesting a spot on the radio is for verified Babson students.{' '}
-          <Link href="/auth" className="text-br-gold">Sign in</Link> with your Babson email.
+        <p className="text-lg text-br-dk-sub">
+          <Link href="/auth" className="text-br-gold underline underline-offset-4">Sign in</Link> with your Babson email.
         </p>
       </div>
     )
@@ -106,9 +105,7 @@ export default function SlotsPage() {
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-10">
       <div>
         <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Go on air</h1>
-        <p className="text-sm text-br-dk-sub mt-2">
-          Have a podcast, a mix or a show idea? Request a time on the radio. Ask at least {SLOT_RULES.minLeadHours} hours ahead.
-        </p>
+        <p className="text-lg text-br-dk-sub mt-2">Request a time. At least {SLOT_RULES.minLeadHours} hours ahead.</p>
       </div>
 
       {signing && (
@@ -117,7 +114,7 @@ export default function SlotsPage() {
           <p className="text-sm text-br-dk-text">Request sent. Sign the on-air agreements next.</p>
           <HostAgreements busy={busy} error={error} onSign={async sig => {
             setBusy(true); setError('')
-            try { await api('/api/host/readiness', sig); setSigning(false); setNotice('Signed. Staff review every request, and the answer shows up below.'); await load() }
+            try { await api('/api/host/readiness', sig); setSigning(false); setNotice('Signed.'); await load() }
             catch (err) { setError(err instanceof Error ? err.message : 'Could not sign.') }
             setBusy(false)
           }} />
@@ -129,7 +126,7 @@ export default function SlotsPage() {
         <Field label="Title" value={title} onChange={e => setTitle(e.target.value)} maxLength={80} required />
         <label className="block">
           <span className={label}>WHAT&apos;S IT ABOUT?</span>
-          <textarea className={box} rows={3} maxLength={500} required minLength={10} value={description} onChange={e => setDescription(e.target.value)} placeholder="A sentence or two so listeners and staff know what to expect." />
+          <textarea className={box} rows={3} maxLength={500} required minLength={10} value={description} onChange={e => setDescription(e.target.value)} placeholder="What listeners will hear" />
         </label>
         <Field label="Special requests or location (optional)" value={location} onChange={e => setLocation(e.target.value)} maxLength={120} placeholder="Recording from the Mod Quad, need a second mic…" />
         <div className="grid sm:grid-cols-2 gap-4">

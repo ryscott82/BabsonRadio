@@ -124,8 +124,8 @@ struct HWCardSurface: View {
             } else {
                 // Green leather rim, then the ivory face.
                 Color(hex: "0C0C0A")
-                HWTile(name: HWTex.leatherGreen)
-                LinearGradient(colors: [.black.opacity(0.16), .black.opacity(0.30)], startPoint: .top, endPoint: .bottom)
+                HWTile(name: HWTex.leatherBlack)
+                Color.black.opacity(0.5)
                 HWCornerWear(size: 70)
                 let face = RoundedRectangle(cornerRadius: max(4, corner - rimW + 1), style: .continuous)
                 ZStack {
@@ -143,6 +143,7 @@ struct HWCardSurface: View {
         }
         .clipShape(shape)
         .overlay(shape.strokeBorder(Color.black.opacity(dark ? 0.6 : 0.4), lineWidth: 1))
+        .overlay { if !dark { shape.inset(by: 1).strokeBorder(Color(hex: "1FA06B"), lineWidth: 2) } }
         .shadow(color: .black.opacity(dark ? 0.5 : 0.28), radius: dark ? 8 : 6, x: 0, y: dark ? 5 : 3)
     }
 }
@@ -164,26 +165,28 @@ extension View {
 /// Section header row: "TITLE ——— See All"
 struct BRSectionHeader: View {
     let title: String
-    var action: String = "See All"
+    var action: String = "See all"
     var onTap: (() -> Void)? = nil
     @Environment(\.colorScheme) var scheme
 
     var body: some View {
         HStack(spacing: 10) {
             Text(title)
-                .font(BRFont.display(20))
+                .font(BRFont.body(20, .regular))
                 .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                .kerning(1.5)
+                .lineLimit(1).fixedSize(horizontal: true, vertical: false)
 
             Rectangle()
                 .frame(height: 1)
                 .foregroundColor(scheme == .dark ? .brDkBorder : .brLtBorder)
 
-            Button(action: { onTap?() }) {
-                Text(action)
-                    .font(BRFont.display(12))
-                    .foregroundColor(scheme == .dark ? .brGold : .brGreen)
-                    .kerning(1.5)
+            // Only when there is somewhere to go.
+            if let onTap {
+                Button(action: onTap) {
+                    Text(action)
+                        .font(BRFont.body(14, .regular))
+                        .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                }
             }
         }
     }

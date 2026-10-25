@@ -9,13 +9,26 @@ private struct Sheet<Content: View>: View {
     let content: Content
     init(title: String, @ViewBuilder content: () -> Content) { self.title = title; self.content = content() }
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.dismiss) private var dismiss
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) { content }.padding(20)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 14) {
+                    Button { dismiss() } label: {
+                        HStack(spacing: 6) { Image(systemName: "chevron.left"); Text("Back") }
+                            .font(BRFont.body(16, .regular)).foregroundColor(.white)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(Color(hex: "0F5233")).overlay(Rectangle().stroke(Color.white.opacity(0.5), lineWidth: 1))
+                    }
+                    Text(title).font(BRFont.body(28, .light)).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.6)
+                    Spacer()
+                }
+                .padding(.bottom, 6)
+                content
+            }.padding(20)
         }
-        .hwPage()
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
+        .adminPage()
+        .toolbar(.hidden, for: .navigationBar)
     }
 }
 
@@ -25,25 +38,28 @@ private func when(_ ms: Double) -> String { Date(timeIntervalSince1970: ms / 100
 /// The list that sits in the admin screen.
 struct AdminToolLinks: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            BRSectionHeader(title: "TOOLS")
-            link("Show requests", "calendar.badge.clock") { ShowRequestsView() }
-            link("Training", "graduationcap") { TrainingAdminView() }
-            link("Announcement", "megaphone") { AnnounceView() }
-            link("People and roles", "person.2") { UsersAdminView() }
+        VStack(alignment: .leading, spacing: 14) {
+            AdminHeader("Tools")
+            link("Show requests", "Approve or decline requests to go on air", "calendar.badge.clock") { ShowRequestsView() }
+            link("Training", "Who is training and quiz results", "graduationcap") { TrainingAdminView() }
+            link("Announcement", "A message on every page of the site and app", "megaphone") { AnnounceView() }
+            link("People and roles", "Find people and change roles", "person.2") { UsersAdminView() }
         }
-        .padding(16).frame(maxWidth: .infinity, alignment: .leading).brCard()
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading).adminCard()
     }
 
-    private func link<D: View>(_ title: String, _ icon: String, @ViewBuilder _ dest: @escaping () -> D) -> some View {
+    private func link<D: View>(_ title: String, _ detail: String, _ icon: String, @ViewBuilder _ dest: @escaping () -> D) -> some View {
         NavigationLink { dest() } label: {
-            HStack(spacing: 12) {
-                Image(systemName: icon).frame(width: 24)
-                Text(title).font(BRFont.body(15, .medium))
+            HStack(spacing: 14) {
+                Image(systemName: icon).font(.system(size: 24)).foregroundColor(.white)
+                    .frame(width: 56, height: 56).background(AdminLook.tile)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(BRFont.body(19, .regular)).foregroundColor(.white)
+                    Text(detail).font(BRFont.body(14, .regular)).foregroundColor(Color.white.opacity(0.85))
+                }
                 Spacer()
-                Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).opacity(0.5)
+                Image(systemName: "chevron.right").font(.system(size: 14, weight: .regular)).foregroundColor(.white.opacity(0.7))
             }
-            .padding(.vertical, 8)
         }
         .buttonStyle(.plain)
     }
@@ -84,8 +100,8 @@ struct ShowRequestsView: View {
     @StateObject private var model = ShowRequestsModel()
     @Environment(\.colorScheme) private var scheme
     @State private var open: SlotReq?
-    private var text: Color { scheme == .dark ? .brDkText : .brLtText }
-    private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
+    private var text: Color { Color.white }
+    private var sub: Color { Color.white.opacity(0.85) }
 
     var body: some View {
         Sheet(title: "Show requests") {
@@ -94,12 +110,12 @@ struct ShowRequestsView: View {
             ForEach(model.items) { r in
                 Button { open = r } label: {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(r.title).font(BRFont.body(16, .semibold)).foregroundColor(text)
+                        Text(r.title).font(BRFont.body(16, .regular)).foregroundColor(text)
                         Text("\(r.requesterName) · \(when(r.startAt)) · \(r.durationMin) min · \(r.type == "live" ? "Live" : "Pre-recorded")")
                             .font(BRFont.body(12, .regular)).foregroundColor(sub)
-                        if r.cleanHours { Text("Clean hours").font(BRFont.body(11, .semibold)).foregroundColor(.brRed) }
+                        if r.cleanHours { Text("Clean hours").font(BRFont.body(11, .regular)).foregroundColor(.brRed) }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(14).brCard()
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(14).adminCard()
                 }
                 .buttonStyle(.plain)
             }
@@ -127,7 +143,7 @@ private struct DecideSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Text(req.title).font(BRFont.body(17, .semibold))
+                    Text(req.title).font(BRFont.body(17, .regular))
                     Text("\(req.requesterName) · \(req.requesterEmail)").font(BRFont.body(13, .regular))
                     Text("\(when(req.startAt)) · \(req.durationMin) min · \(req.category.capitalized)").font(BRFont.body(13, .regular))
                     Text(req.description)
@@ -147,7 +163,7 @@ private struct DecideSheet: View {
                 }
                 .listRowBackground(HWFieldFill())
             }
-            .hwPage()
+            .adminPage()
             .navigationTitle("Request")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
@@ -190,9 +206,9 @@ struct TrainingAdminView: View {
     @StateObject private var model = TrainingAdminModel()
     @Environment(\.colorScheme) private var scheme
     @State private var query = ""
-    private var text: Color { scheme == .dark ? .brDkText : .brLtText }
-    private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
-    private var accent: Color { scheme == .dark ? .brGold : .brGreen }
+    private var text: Color { Color.white }
+    private var sub: Color { Color.white.opacity(0.85) }
+    private var accent: Color { Color.white }
 
     private var checkIns: [TrainRow] { model.rows.filter { $0.checkInAt != nil && !$0.trained } }
     private var requests: [TrainRow] { model.rows.filter { $0.requestedAt != nil && $0.checkInAt == nil && !$0.trained } }
@@ -210,15 +226,15 @@ struct TrainingAdminView: View {
                 .padding(12).background(HWFieldFill())
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             if !checkIns.isEmpty {
-                BRSectionHeader(title: "AT TRAINING NOW")
+                AdminHeader("AT TRAINING NOW")
                 ForEach(checkIns) { row($0, primary: ("Let them take the quiz", "approveCheckin")) }
             }
             if !requests.isEmpty {
-                BRSectionHeader(title: "WANT TRAINING")
+                AdminHeader("WANT TRAINING")
                 ForEach(requests) { row($0, primary: ("Certify now", "certify"), secondary: ("Dismiss", "clearRequest")) }
             }
             if !found.isEmpty {
-                BRSectionHeader(title: "RESULTS")
+                AdminHeader("RESULTS")
                 ForEach(found) { r in
                     r.trained ? row(r, primary: ("Remove certification", "revoke"), destructive: true)
                               : row(r, primary: ("Certify", "certify"))
@@ -234,7 +250,7 @@ struct TrainingAdminView: View {
 
     private func row(_ r: TrainRow, primary: (String, String), secondary: (String, String)? = nil, destructive: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(r.name.isEmpty ? r.email : r.name).font(BRFont.body(16, .semibold)).foregroundColor(text)
+            Text(r.name.isEmpty ? r.email : r.name).font(BRFont.body(16, .regular)).foregroundColor(text)
             Text("\(r.email)\(r.trained ? " · certified" : "")\(r.conductSigned ? " · signed" : "")")
                 .font(BRFont.body(12, .regular)).foregroundColor(sub)
             HStack(spacing: 10) {
@@ -243,7 +259,7 @@ struct TrainingAdminView: View {
                 if let s = secondary { Button(s.0) { Task { await model.act(r, s.1) } }.buttonStyle(.bordered) }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading).padding(14).brCard()
+        .frame(maxWidth: .infinity, alignment: .leading).padding(14).adminCard()
     }
 }
 
@@ -261,8 +277,8 @@ struct AnnounceView: View {
     @State private var busy = false
     @State private var message: String?
     @State private var confirm = false
-    private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
-    private var accent: Color { scheme == .dark ? .brGold : .brGreen }
+    private var sub: Color { Color.white.opacity(0.85) }
+    private var accent: Color { Color.white }
     private var field: Color { Color.hwField(scheme) }
 
     var body: some View {
@@ -276,14 +292,14 @@ struct AnnounceView: View {
                 .buttonStyle(.borderedProminent).tint(accent)
                 .disabled(busy || title.trimmingCharacters(in: .whitespaces).isEmpty || body_.trimmingCharacters(in: .whitespaces).isEmpty)
             if let h = info?.history, !h.isEmpty {
-                BRSectionHeader(title: "RECENT")
+                AdminHeader("RECENT")
                 ForEach(h) { b in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(b.title).font(BRFont.body(14, .semibold))
+                        Text(b.title).font(BRFont.body(14, .regular))
                         Text(b.body).font(BRFont.body(13, .regular)).foregroundColor(sub)
                         Text("\(when(b.at)) · \(b.sent) sent").font(BRFont.body(11, .regular)).foregroundColor(sub)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(12).brCard()
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(12).adminCard()
                 }
             }
         }
@@ -323,8 +339,8 @@ struct UsersAdminView: View {
     @State private var query = ""
     @State private var message: String?
     @State private var loaded = false
-    private var text: Color { scheme == .dark ? .brDkText : .brLtText }
-    private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
+    private var text: Color { Color.white }
+    private var sub: Color { Color.white.opacity(0.85) }
 
     private static let labels: [(String, String)] = [("listener", "Listener"), ("showHost", "Host"), ("director", "Director"), ("superAdmin", "Admin")]
     private var roles: [(String, String)] { canAdmins ? Self.labels + [("developer", "Developer")] : Self.labels.filter { $0.0 != "superAdmin" } }
@@ -346,18 +362,18 @@ struct UsersAdminView: View {
             ForEach(found) { u in
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(u.name.isEmpty ? u.email : u.name).font(BRFont.body(15, .semibold)).foregroundColor(text)
+                        Text(u.name.isEmpty ? u.email : u.name).font(BRFont.body(15, .regular)).foregroundColor(text)
                         Text(u.email).font(BRFont.body(12, .regular)).foregroundColor(sub)
                     }
                     Spacer()
                     Menu {
                         ForEach(roles, id: \.0) { r in Button(r.1) { Task { await setRole(u, r.0) } } }
                     } label: {
-                        Text(Self.labels.first { $0.0 == u.role }?.1 ?? u.role.capitalized).font(BRFont.body(13, .semibold))
+                        Text(Self.labels.first { $0.0 == u.role }?.1 ?? u.role.capitalized).font(BRFont.body(13, .regular))
                             .padding(.horizontal, 12).padding(.vertical, 6).background(Capsule().fill(Color.brGreen.opacity(0.15)))
                     }
                 }
-                .padding(14).brCard()
+                .padding(14).adminCard()
             }
         }
         .task { await load() }

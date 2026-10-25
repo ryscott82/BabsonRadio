@@ -261,11 +261,11 @@ final class ArtTheme: ObservableObject {
 
         func cover(_ c: ArtRGB) -> ArtRGB {
             let h = c.hsl
-            return ArtRGB.hsl(h.h, min(max(h.s, 0.55), 0.9), min(max(h.l, 0.42), 0.58))
+            return ArtRGB.hsl(h.h, min(max(h.s * 0.72, 0.3), 0.6), min(max(h.l, 0.4), 0.6))
         }
         let main = cover(first.rgb)
         let h = main.hsl
-        let accent = ArtRGB.hsl(h.h, min(max(h.s, 0.45), 0.75), 0.31)
+        let accent = ArtRGB.hsl(h.h, min(max(h.s, 0.3), 0.55), 0.31)
         let sec = second.map { cover($0.rgb) } ?? ArtRGB.hsl((h.h + 35).truncatingRemainder(dividingBy: 360), h.s, h.l)
         // Up to five distinct colors, in score order.
         var picked: [Cand] = []

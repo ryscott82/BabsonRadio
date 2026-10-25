@@ -466,3 +466,11 @@ html .hw-main .ops .italic, html .hw-main .ops em, html .hw-main .ops i { font-s
 
 /* Red text on the green needs to be light to read */
 html .hw-main .ops.ops-hub .text-br-red, html .hw-main .ops.ops-hub .text-red-400 { color:#ffd9d5; }
+
+/* Type scale for the listener pages: clear steps from page title to small print (admin keeps its own look) */
+.hw-main h1.text-3xl:not(.ops *), .hw-main h1.text-4xl:not(.ops *) { font-size: clamp(2.25rem, 6vw, 3.5rem); line-height: 1.1; }
+.hw-main h2.text-2xl:not(.ops *), .hw-main h3.text-2xl:not(.ops *) { font-size: 1.875rem; line-height: 1.15; }
+.hw-main h2.text-xl:not(.ops *), .hw-main h3.text-xl:not(.ops *) { font-size: 1.5rem; line-height: 1.2; }
+.hw-main h2.text-sm:not(.ops *), .hw-main h3.text-sm:not(.ops *) { font-size: 1.125rem; line-height: 1.25; }
+.hw-main .text-sm:not(.ops *) { font-size: 0.9375rem; line-height: 1.4; }
+.hw-main .text-xs:not(.ops *) { font-size: 0.875rem; line-height: 1.35; }

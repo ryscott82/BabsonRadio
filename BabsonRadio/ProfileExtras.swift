@@ -129,7 +129,7 @@ struct HostOptionsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            BRSectionHeader(title: "YOUR SHOW OPTIONS").padding(.horizontal, inset)
+            BRSectionHeader(title: "Your show options").padding(.horizontal, inset)
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Look during your show").font(BRFont.body(15, .semibold)).foregroundColor(text)

@@ -16,11 +16,7 @@ export default function ErrorKey() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
       <h1 className="font-display text-3xl tracking-widest mb-2">Error codes</h1>
-      <p className="text-br-dk-sub text-sm mb-8">
-        If something goes wrong, you&apos;ll see a code like <span className="text-br-dk-text">Br-acc-003</span>. Find it
-        below for what it means and what to try. If it doesn&apos;t help, send the station the code (and the
-        &ldquo;ref&rdquo; number if there is one) plus what you were doing.
-      </p>
+      <p className="text-br-dk-sub text-lg mb-8">Find your code below, like <span className="text-br-dk-text">Br-acc-003</span>. Still stuck? Send us the code.</p>
       {groups.map(g => (
         <section key={g.key} className="mb-10">
           <h2 className="font-display tracking-widest text-br-gold text-sm mb-3">{g.title.toUpperCase()}</h2>

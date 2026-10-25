@@ -10,9 +10,9 @@ export const metadata: Metadata = {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-2">
-      <h2 className="font-display text-br-dk-text text-xl tracking-wide">{title}</h2>
-      <div className="text-sm text-br-dk-sub space-y-2 leading-relaxed">{children}</div>
+    <section className="space-y-3">
+      <h2 className="font-display text-br-dk-text text-3xl tracking-wide">{title}</h2>
+      <ul className="text-lg text-br-dk-text space-y-2">{children}</ul>
     </section>
   )
 }
@@ -20,38 +20,41 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function AboutPage() {
   const a = 'text-br-gold underline underline-offset-4'
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10 space-y-8">
+    <div className="max-w-2xl mx-auto px-4 py-10 space-y-10">
       <div>
-        <h1 className="font-display text-br-dk-text text-4xl tracking-[0.08em]">About us</h1>
-        <p className="text-sm text-br-dk-sub mt-2 leading-relaxed">
-          Babson Radio is the student-run internet radio station of Babson College, made by the students of Babson Sound.
-        </p>
+        <h1 className="font-display text-br-dk-text text-5xl sm:text-6xl tracking-[0.06em]">About us</h1>
+        <p className="text-xl text-br-dk-sub mt-3">The student-run radio station of Babson College.</p>
       </div>
 
       <Section title="What we do">
-        <p>We stream live from campus, with student-hosted shows and a rotation of music in between. Open the home page to listen, see what is playing and what is next, and rate songs with stars.</p>
-        <p>Everything on the air is chosen and made by students and volunteers. We are not professional broadcasters, and Babson College does not review or endorse what we play.</p>
+        <li>Live shows from campus</li>
+        <li>Music in between</li>
+        <li>Made by students and volunteers</li>
+        <li className="text-base text-br-dk-sub">Babson College does not review or endorse what we play.</li>
       </Section>
 
-      <Section title="Listen anywhere">
-        <p>Listen on this website or in the Babson Radio app for iPhone. Live radio is free for everyone. A Babson, Olin or Wellesley student can sign in with their school email to unlock the Library and the rest, and can invite friends to listen as guests.</p>
-        <p>See what is on and when in the <Link href="/schedule" className={a}>schedule</Link>, and browse the <Link href="/shows" className={a}>shows</Link>.</p>
+      <Section title="Listen">
+        <li>On this website or in the iPhone app</li>
+        <li>Live radio is free for everyone</li>
+        <li>Babson, Olin and Wellesley students sign in with their school email for the rest</li>
+        <li>Check the <Link href="/schedule" className={a}>schedule</Link> and browse the <Link href="/shows" className={a}>shows</Link></li>
       </Section>
 
       <Section title="Be on the air">
-        <p>Anyone at Babson can host a show, from a music hour to a talk show to a one-off special. We train new hosts and help with the equipment. Email us with what you would like to make.</p>
+        <li>Anyone at Babson can host a show</li>
+        <li>We train you and help with the equipment</li>
+        <li>Email us what you want to make</li>
       </Section>
 
       <Section title="Babson Sound">
-        <p>Babson Radio is run by Babson Sound, a student organization at Babson College. Learn more, see events, or join on our <a href={LINKS.about} target="_blank" rel="noopener noreferrer" className={a}>Babson Sound page</a>.</p>
+        <li>The student organization that runs Babson Radio</li>
+        <li><a href={LINKS.about} target="_blank" rel="noopener noreferrer" className={a}>See events and join</a></li>
       </Section>
 
-      <Section title="Get in touch">
-        <p>
-          Questions, song requests or ideas? Email <ContactEmail className={a} />
-          {INSTAGRAM_URL && <>, or find us on <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className={a}>Instagram</a></>}.
-        </p>
-        <p>Read our <Link href="/terms" className={a}>terms</Link> and <Link href="/privacy" className={a}>privacy policy</Link>.</p>
+      <Section title="Contact">
+        <li><ContactEmail className={a} /></li>
+        {INSTAGRAM_URL && <li><a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className={a}>Instagram</a></li>}
+        <li className="text-base"><Link href="/terms" className={a}>Terms</Link> · <Link href="/privacy" className={a}>Privacy</Link></li>
       </Section>
     </div>
   )

@@ -92,7 +92,7 @@ function Forms() {
     )
   }
 
-  const hint = !email ? '' : isBabsonEmail(email) ? "You'll join as a Student." : 'Not a Babson, Olin or Wellesley email: you can listen live as a Guest.'
+  const hint = !email ? '' : isBabsonEmail(email) ? "You'll join as a Student." : 'Guest account: live radio only.'
 
   return (
     <Card title="Babson Radio" subtitle="Student radio — Babson College">
@@ -129,7 +129,7 @@ function Forms() {
             <button type="button" disabled={resetLeft > 0} className="hover:text-br-dk-text disabled:opacity-60"
               onClick={async () => {
                 if (!email) return setError('Enter your email above first.')
-                try { await sendPasswordReset(email); setError('If that account exists, a reset link is on its way.') }
+                try { await sendPasswordReset(email); setError('Reset link sent if the account exists.') }
                 catch (e) { setError(e instanceof Error ? e.message : 'Try again in a moment.') }
                 setResetBump(n => n + 1)
               }}>{resetLeft > 0 ? `Resend in ${mmss(resetLeft)}` : 'Forgot password?'}</button>
@@ -160,7 +160,7 @@ function VerifyPanel({ email, onCheck }: { email: string; onCheck: () => Promise
   return (
     <Card title="Verify your email" subtitle={`We sent a link to ${email}. Open it, then come back here.`}>
       <div className="space-y-3">
-        <PrimaryButton busy={busy} onClick={() => run(onCheck, 'Still waiting — click the link in the email first.')}>
+        <PrimaryButton busy={busy} onClick={() => run(onCheck, 'Click the link in your email first.')}>
           I&apos;VE VERIFIED
         </PrimaryButton>
         <div className="flex justify-between">

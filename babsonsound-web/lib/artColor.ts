@@ -92,10 +92,11 @@ export function pairedGreen(h: number): string {
 export function paletteFromPixels(px: ArrayLike<number>, N: number): string[] {
   const BINS = 24
   const bins = Array.from({ length: BINS }, () => ({ w: 0, x: 0, y: 0, s: 0, l: 0, n: 0 }))
-  let count = 0
+  let count = 0, lum = 0
   for (let i = 0; i < px.length; i += 4) {
     const p = i / 4, col = p % N, row = Math.floor(p / N)
     const [h, s, l] = hslOf(px[i], px[i + 1], px[i + 2])
+    lum += l
     if (s < 0.16 || l < 0.1 || l > 0.92) continue
     let w = s * (1 - Math.abs(2 * l - 1)) + 0.01
     if (skinLike(h, s, l)) {
@@ -106,6 +107,11 @@ export function paletteFromPixels(px: ArrayLike<number>, N: number): string[] {
     const b = bins[Math.floor(h / (360 / BINS)) % BINS]
     b.n++; count++
     b.w += w; b.x += Math.cos((h * Math.PI) / 180) * w; b.y += Math.sin((h * Math.PI) / 180) * w; b.s += s * w; b.l += l * w
+  }
+  // Black and white, gray or nearly colorless covers get a quiet graphite palette (a faint cool tint), never a stock green and never a made-up color.
+  if (count / (N * N) < 0.06) {
+    const mid = Math.max(0.4, Math.min(0.58, lum / (N * N) + 0.05))
+    return [hexOf(215, 0.06, mid), hexOf(215, 0.06, Math.max(0.3, mid - 0.12)), hexOf(215, 0.05, Math.max(0.28, mid - 0.2)), hexOf(215, 0.05, Math.min(0.66, mid + 0.1)), hexOf(215, 0.04, Math.max(0.3, mid - 0.08)), hexOf(215, 0.04, Math.max(0.3, mid - 0.16))]
   }
   const ranked = bins.filter(b => b.w > 0).sort((a, b) => b.w - a.w)
     .map(b => ({ h: ((Math.atan2(b.y, b.x) * 180) / Math.PI + 360) % 360, s: b.s / b.w, l: b.l / b.w, w: b.w, n: b.n }))
@@ -122,10 +128,10 @@ export function paletteFromPixels(px: ArrayLike<number>, N: number): string[] {
   // Covers with a single real color get one close neighbour, so there is always a second shade.
   if (picked.length === 1) picked.push({ ...picked[0], h: (picked[0].h + 14) % 360 })
   // Side colors stay a bit quieter than the main one.
-  const covers = picked.map((p, i) => hexOf(p.h, Math.max(0.45, Math.min(i ? 0.75 : 1, p.s * (i ? 0.9 : 1))), Math.max(0.3, Math.min(0.7, p.l))))
+  const covers = picked.map((p, i) => hexOf(p.h, Math.max(0.28, Math.min(i ? 0.48 : 0.6, p.s * 0.72)), Math.max(0.34, Math.min(0.62, p.l))))
   // Accent: the cover's own green when it has a real amount of one, else a lighter shade of the main color (never an unrelated green).
   const own = ranked.find(r => r.h >= 75 && r.h <= 170 && r.w / total >= 0.1)
-  const green = own ? hexOf(own.h, Math.max(0.4, Math.min(0.75, own.s)), 0.31) : hexOf(picked[0].h, Math.max(0.45, Math.min(0.8, picked[0].s * 0.9)), 0.4)
+  const green = own ? hexOf(own.h, Math.max(0.3, Math.min(0.55, own.s * 0.75)), 0.31) : hexOf(picked[0].h, Math.max(0.3, Math.min(0.55, picked[0].s * 0.7)), 0.4)
   return [covers[0], green, covers[1], ...covers.slice(2)]
 }
 

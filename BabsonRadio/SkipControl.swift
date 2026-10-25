@@ -44,11 +44,10 @@ struct SkipControl: View {
         Group {
             if !auth.isSignedIn || auth.currentUser?.isGuest == true {
                 // Guests and signed-out listeners see the key too; pressing it opens the sign-in screen.
-                if autoPlay {
-                    Button { auth.goToSignIn() } label: { knobIcon() }
-                        .buttonStyle(HWRoundKeyStyle(size: size, lit: false))
-                        .accessibilityLabel("Sign in to ask to skip this song")
-                }
+                // Always there, like the website, so the key never comes and goes.
+                Button { auth.goToSignIn() } label: { knobIcon() }
+                    .buttonStyle(HWRoundKeyStyle(size: size, lit: false))
+                    .accessibilityLabel("Sign in to ask to skip this song")
             } else if let sk = model.skip, sk.eligible {
                 Button { Task { await model.ask() } } label: { knobIcon() }
                 .buttonStyle(HWRoundKeyStyle(size: size, lit: sk.mine))

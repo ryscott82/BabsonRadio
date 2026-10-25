@@ -101,7 +101,7 @@ struct LibraryView: View {
                         if let e = lib.error { Text(e).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
 
                         VStack(alignment: .leading, spacing: 12) {
-                            BRSectionHeader(title: "SAVED")
+                            BRSectionHeader(title: "Saved")
                             if lib.saved.isEmpty {
                                 Text(lib.loaded ? "Nothing saved yet." : "Loading…")
                                     .font(BRFont.body(14, .regular)).foregroundColor(sub)
@@ -113,7 +113,7 @@ struct LibraryView: View {
                         let fresh = lib.forYou.filter { !lib.savedIds.contains($0.id) }
                         if !fresh.isEmpty {
                             VStack(alignment: .leading, spacing: 12) {
-                                BRSectionHeader(title: lib.basedOnInterests ? "BASED ON YOUR INTERESTS" : "NEW EPISODES")
+                                BRSectionHeader(title: lib.basedOnInterests ? "Based on your interests" : "New episodes")
                                 ForEach(fresh) { EpisodeListRow(ep: $0) }
                             }
                         }

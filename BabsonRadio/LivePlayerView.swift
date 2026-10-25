@@ -132,14 +132,14 @@ struct LivePlayerView: View {
     @ViewBuilder private func duoContent(trailingInset: CGFloat) -> some View {
         if #available(iOS 27.1, *) {
             ArrangementView {
-                DuoLeftPage(showBoard: $showBoard, canPlay: canPlay)
+                DuoLeftPage(showBoard: $showBoard, canPlay: canPlay, desktop: true)
             } secondary: {
-                DuoRightPage(canPlay: canPlay, trailingInset: trailingInset)
+                DuoRightPage(canPlay: canPlay, desktop: true, trailingInset: trailingInset)
             }
         } else {
             HStack(spacing: 0) {
-                DuoLeftPage(showBoard: $showBoard, canPlay: canPlay)
-                DuoRightPage(canPlay: canPlay, trailingInset: trailingInset)
+                DuoLeftPage(showBoard: $showBoard, canPlay: canPlay, desktop: true)
+                DuoRightPage(canPlay: canPlay, desktop: true, trailingInset: trailingInset)
             }
         }
     }
@@ -184,21 +184,33 @@ struct LivePlayerView: View {
             LiveExtrasView(mode: .rest)
             TunedInRow()
             LiveExtrasView(mode: .emojis)
-            if !auth.isSignedIn { communityKeys }
+            if drawerIsQuiet {
+                Text("Polls, ratings and reactions show up here while a show is on.")
+                    .font(BRFont.body(14)).multilineTextAlignment(.center)
+                    .foregroundStyle(Color.hwCream.opacity(0.75))
+                    .padding(.horizontal, 14)
+            }
+            communityKeys
             DesignedByCredit()
         }
         .padding(.top, 4)
     }
 
+    /// True when none of the live extras have anything to show (nothing on air, or the station is not open yet).
+    private var drawerIsQuiet: Bool {
+        let hasNote = audio.nowPlaying?.note.map { !($0.headline.isEmpty && $0.message.isEmpty) } ?? false
+        return !(auth.isSignedIn && auth.canListenLive) && !hasNote
+    }
+
     /// Join and links, as steel keys.
     private var communityKeys: some View {
         VStack(spacing: 12) {
-            Link(destination: BabsonLinks.join) {
+            if !auth.isSignedIn { Link(destination: BabsonLinks.join) {
                 Label("Join Babson Sound", systemImage: "person.badge.plus")
                     .font(BRFont.body(15, .bold)).modifier(HWKeyInk())
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .background(HWKeyFace(corner: 12))
-            }
+            } }
             HStack(spacing: 22) {
                 Link("Privacy", destination: BabsonLinks.privacy)
                 if let ig = BabsonLinks.instagram {

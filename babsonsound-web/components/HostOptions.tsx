@@ -35,13 +35,13 @@ export default function HostOptions() {
           <div className="grid grid-cols-3 gap-2">
             {THEMES.map(t => (
               <button key={t.id} type="button" aria-pressed={p.theme === t.id} onClick={() => save({ ...p, theme: t.id })}
-                      className={`sk-key rounded-lg py-2 text-xs text-br-dk-text ${p.theme === t.id ? 'ring-2 ring-br-gold' : ''}`}>{t.label}</button>
+                      className={`sk-key rounded-lg py-2 text-sm text-br-dk-text ${p.theme === t.id ? 'ring-2 ring-br-gold' : ''}`}>{t.label}</button>
             ))}
           </div>
         </div>
         <div>
           <p className="text-sm text-br-dk-text">Reactions <span className="text-br-dk-sub">({p.emojis.length}/{MAX_HOST_EMOJIS})</span></p>
-          <p className="text-xs text-br-dk-sub mb-2">{p.emojis.length ? 'Listeners see these during your show.' : 'None picked: listeners see the usual ones.'}</p>
+          <p className="text-sm text-br-dk-sub mb-2">{p.emojis.length ? 'Listeners see these during your show.' : 'None picked: listeners see the usual ones.'}</p>
           <div className="flex flex-wrap gap-2">
             {EMOJI_CHOICES.map(e => (
               <button key={e} type="button" aria-pressed={p.emojis.includes(e)} onClick={() => toggleEmoji(e)}

@@ -6,9 +6,6 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '@/lib/auth'
 import StationPanel from '@/components/admin/StationPanel'
-import Telemetry from '@/components/admin/Telemetry'
-import ArtTest from '@/components/admin/ArtTest'
-import { plexMono } from '@/components/admin/opsFont'
 
 interface Alerts {
   pendingRequests: number; newReports: number | null
@@ -48,106 +45,104 @@ export default function AdminPage() {
   if (loading || !user || !isDirector) return <div className="min-h-[60vh]" />
 
   const monitorStale = !!alerts?.deadAir && (alerts.deadAir.monitorAgeSec == null || alerts.deadAir.monitorAgeSec > 300)
-  const needs = alerts && (alerts.deadAir?.active || monitorStale || alerts.pendingRequests > 0 || (alerts.newReports ?? 0) > 0 || alerts.cancellations.length > 0)
+  const deadAir = !!alerts?.deadAir?.active
+  const pending = alerts?.pendingRequests ?? 0
+  const reports = alerts?.newReports ?? 0
+  const cancels = alerts?.cancellations ?? []
+  const count = (deadAir ? 1 : 0) + (monitorStale && !deadAir ? 1 : 0) + (pending > 0 ? 1 : 0) + (reports > 0 ? 1 : 0) + cancels.length
   const tile = 'sk-raised px-3 py-2.5 min-w-0'
+  const row = 'flex items-center gap-3 py-2 text-sm'
+  const go = 'ml-auto shrink-0 sk-key px-3 py-1'
 
   return (
-    <div className={`ops ${plexMono.className} min-h-screen`}>
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-4">
       <div className="flex items-center gap-3 border-b border-br-dk-border pb-3">
         <h1 className="text-br-dk-text text-base font-semibold">radio-ops</h1>
-        <span className="text-br-gold text-xs">{isAdmin ? 'role=admin' : 'role=director'}</span>
-        {dash && !dash.radioConnected && isAdmin && <span className="text-xs text-br-dk-sub ml-auto">Radio not connected</span>}
+        <span className="text-br-gold text-sm">{isAdmin ? 'admin' : 'director'}</span>
+        {dash && !dash.radioConnected && isAdmin && <span className="text-sm text-br-red ml-auto">Radio not connected</span>}
       </div>
 
-      <Telemetry />
+      {/* Notifications */}
+      <section className="sk-raised p-4" aria-label="Notifications">
+        <h2 className="text-br-gold text-sm mb-1">Notifications{count > 0 ? ` (${count})` : ''}</h2>
+        {count === 0 && <p className="text-sm text-br-dk-sub py-1">Nothing needs attention.</p>}
+        <ul className="divide-y divide-br-dk-border">
+          {deadAir && <li className={row}><span className="text-br-red">Dead air since {clock(alerts!.deadAir!.since)}. {alerts!.deadAir!.detail}</span></li>}
+          {monitorStale && !deadAir && (
+            <li className={row}><span>Dead-air monitor is silent{alerts?.deadAir?.monitorAgeSec != null ? ` (${Math.round(alerts.deadAir.monitorAgeSec / 60)} min)` : ''}. Check the streaming PC.</span></li>
+          )}
+          {pending > 0 && <li className={row}><span>{pending} show request{pending === 1 ? '' : 's'} to review</span><Link href="/admin/slots" className={go}>Review</Link></li>}
+          {reports > 0 && <li className={row}><span>{reports} new bug report{reports === 1 ? '' : 's'} or idea{reports === 1 ? '' : 's'}</span><Link href="/admin/feedback" className={go}>Open</Link></li>}
+          {cancels.map(c => (
+            <li key={c.id} className={row}>
+              <span>Cancelled: {c.title} ({c.requesterName || 'student'}), {new Date(c.startAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}{c.wasApproved ? ', was approved' : ''}{c.reason ? `, "${c.reason}"` : ''}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
 
-      {/* Status strip */}
+      {/* Status */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className={tile}>
-          <p className="text-[14px] text-br-dk-sub">On air</p>
+          <p className="text-sm text-br-dk-sub">On air</p>
           <p className="text-br-dk-text truncate">{dash?.onAir.title || 'Nothing scheduled'}</p>
-          <p className="text-xs text-br-dk-muted">{dash?.onAir.title ? (dash.onAir.isShow ? 'show' : 'genre block') : ''}{dash?.onAir.endAt ? ` · until ${clock(dash.onAir.endAt)}` : ''}</p>
+          <p className="text-sm text-br-dk-muted">{dash?.onAir.endAt ? `until ${clock(dash.onAir.endAt)}` : ''}</p>
         </div>
         <div className={tile}>
-          <p className="text-[14px] text-br-dk-sub">{dash?.nowPlaying.isLive ? `Live · ${dash.nowPlaying.streamer}` : dash?.nowPlaying.playlist ? `Playlist · ${dash.nowPlaying.playlist}` : 'Playing'}</p>
+          <p className="text-sm text-br-dk-sub">{dash?.nowPlaying.isLive ? `Live · ${dash.nowPlaying.streamer}` : dash?.nowPlaying.playlist ? `Playlist · ${dash.nowPlaying.playlist}` : 'Playing'}</p>
           <p className="text-br-dk-text truncate">{dash?.nowPlaying.song || '–'}</p>
         </div>
         <div className={tile}>
-          <p className="text-[14px] text-br-dk-sub">Listening now</p>
+          <p className="text-sm text-br-dk-sub">Listeners now</p>
           <p className="text-2xl text-br-dk-text tabular-nums">{dash?.nowPlaying.listeners ?? '–'}</p>
         </div>
         <div className={tile}>
-          <p className="text-[14px] text-br-dk-sub">Last 24 hours</p>
+          <p className="text-sm text-br-dk-sub">Last 24 hours</p>
           <p className="text-br-dk-text tabular-nums">{dash ? `${dash.last24h.sessions} sessions · ${dash.last24h.hours} h` : '–'}</p>
-          {dash?.announcement && <p className="text-xs text-br-gold truncate">Message live</p>}
+          {dash?.announcement && <p className="text-sm text-br-gold truncate">Announcement live</p>}
         </div>
       </div>
 
       <div className="grid lg:grid-cols-5 gap-5">
         <div className="lg:col-span-3 space-y-5">
-          <section className="sk-raised p-4">
-            <h2 className="text-br-gold text-xs mb-3">attention</h2>
-            {!needs && <p className="text-sm text-br-dk-sub">Nothing waiting.</p>}
-            {alerts?.deadAir?.active && <p className="text-sm text-br-red">DEAD AIR since {clock(alerts.deadAir.since)}. {alerts.deadAir.detail}</p>}
-            {monitorStale && !alerts?.deadAir?.active && <p className="text-sm text-br-dk-text">The dead-air monitor has not checked in{alerts?.deadAir?.monitorAgeSec != null ? ` for ${Math.round(alerts.deadAir.monitorAgeSec / 60)} min` : ' yet'}. Make sure it is running on the streaming PC.</p>}
-            {alerts && alerts.pendingRequests > 0 && (
-              <p className="text-sm text-br-dk-text"><Link href="/admin/slots" className="underline">{alerts.pendingRequests} show request{alerts.pendingRequests === 1 ? '' : 's'}</Link> waiting for a decision.</p>
-            )}
-            {alerts && (alerts.newReports ?? 0) > 0 && (
-              <p className="text-sm text-br-dk-text"><Link href="/admin/feedback" className="underline">{alerts.newReports} new bug report{alerts.newReports === 1 ? '' : 's'} or idea{alerts.newReports === 1 ? '' : 's'}</Link>.</p>
-            )}
-            {alerts?.cancellations.map(c => (
-              <p key={c.id} className="text-sm text-br-dk-text">
-                Cancelled: {c.title} ({c.requesterName || 'student'}), {new Date(c.startAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                {c.wasApproved ? ' · was approved' : ''}{c.reason ? ` · "${c.reason}"` : ''}
-              </p>
-            ))}
+          <section className="grid sm:grid-cols-2 gap-5 text-sm sk-raised p-4">
+            <ToolGroup title="Programming" links={[
+              ['/admin/schedule', 'Schedule'], ['/admin/slots', 'Slot requests'], ['/admin/training', 'Training'], ['/admin/show-updates', 'Show updates'], ['/admin/library', 'Library'],
+              ...(isAdmin ? [['/admin/autoschedule', 'Auto-scheduler'], ['/admin/setlists', 'Set lists'], ['/admin/easter-eggs', 'Easter eggs'], ['/admin/blocked-words', 'Blocked words']] : []),
+            ]} />
+            <ToolGroup title="People" links={[
+              ['/admin/feedback', 'Bugs and ideas'], ['/admin/requests', 'Listener requests'],
+              ...(isAdmin ? [['/admin/users', 'Users and roles'], ['/admin/launch-email', 'Launch email'], ['/admin/notify', 'Send notification'], ['/admin/birthdays', 'Birthdays'], ['/admin/phone-changes', 'Phone changes']] : []),
+            ]} />
           </section>
 
-          <ArtTest />
-
           <section className="sk-raised p-4">
-            <h2 className="text-br-gold text-xs mb-3">queue (24h)</h2>
+            <h2 className="text-br-gold text-sm mb-2">Next 24 hours</h2>
             <ul className="text-sm divide-y divide-br-dk-border">
               {(dash?.next ?? []).map((n, i) => (
                 <li key={i} className="py-1.5 flex gap-3">
-                  <span className="text-br-dk-sub tabular-nums w-28 shrink-0">{clock(n.startAt)} – {clock(n.endAt)}</span>
+                  <span className="text-br-dk-sub tabular-nums w-32 shrink-0">{clock(n.startAt)} – {clock(n.endAt)}</span>
                   <span className="text-br-dk-text truncate">{n.title}</span>
-                  <span className="text-xs text-br-dk-muted ml-auto shrink-0">{n.source === 'auto' ? 'auto' : 'show'}</span>
+                  <span className="text-sm text-br-dk-muted ml-auto shrink-0">{n.source === 'auto' ? 'auto' : 'show'}</span>
                 </li>
               ))}
-              {dash && !dash.next.length && <li className="py-1.5 text-br-dk-sub">Nothing scheduled in the next 24 hours.</li>}
+              {dash && !dash.next.length && <li className="py-1.5 text-br-dk-sub">Nothing scheduled.</li>}
             </ul>
           </section>
 
-          <section className="grid sm:grid-cols-3 gap-5 text-sm">
-            <ToolGroup title="programming" links={[
-              ['/admin/schedule', 'Schedule'], ['/admin/slots', 'Slot requests'], ['/admin/training', 'Training'], ['/admin/show-updates', 'Show updates'], ['/admin/library', 'Library content'],
-              ...(isAdmin ? [['/admin/autoschedule', 'Auto-scheduler'], ['/admin/setlists', 'Set lists'], ['/admin/easter-eggs', 'Easter eggs'], ['/admin/blocked-words', 'Blocked words']] : []),
-            ]} />
-            <ToolGroup title="people" links={[
-              ['/admin/feedback', 'Bugs and ideas'], ['/admin/requests', 'Listener requests'],
-              ...(isAdmin ? [['/admin/usage', 'Listening hours']] : []),
-              ...(isAdmin ? [['/admin/phone-changes', 'Phone changes']] : []),
-              ...(isAdmin ? [['/admin/users', 'Users and roles'], ['/admin/launch-email', 'Launch email'], ['/admin/birthdays', 'Birthdays'], ['/admin/notify', 'Send a notification']] : []),
-            ]} />
-            <ToolGroup title="numbers" links={[
-              ['/admin/insights', 'What listeners like'],
-              ...(isAdmin ? [['/admin/playlog', 'Play log (export)']] : []),
-              ...(isAdmin ? [['/admin/listening', 'Listening log'], ['/admin/network', 'Friends web']] : []),
-            ]} />
+          <section className="flex gap-3 text-sm">
+            <Link href="/admin/stats" className="sk-key px-4 py-2">Stats</Link>
+            <Link href="/admin/tests" className="sk-key px-4 py-2">Tests</Link>
           </section>
         </div>
 
         {isAdmin && (
           <section className="lg:col-span-2 sk-raised p-4 h-fit">
-            <h2 className="text-br-gold text-xs mb-3">station controls</h2>
+            <h2 className="text-br-gold text-sm mb-3">Station controls</h2>
             <StationPanel />
           </section>
         )}
       </div>
-    </div>
     </div>
   )
 }
@@ -155,8 +150,8 @@ export default function AdminPage() {
 function ToolGroup({ title, links }: { title: string; links: (string[])[] }) {
   return (
     <div>
-      <h2 className="text-br-dk-sub text-xs mb-2">{title}</h2>
-      <ul className="space-y-1">
+      <h2 className="text-br-dk-sub text-sm mb-2">{title}</h2>
+      <ul className="space-y-1.5">
         {links.map(([href, label]) => <li key={href}><Link href={href} className="text-br-dk-text hover:text-br-gold">{label}</Link></li>)}
       </ul>
     </div>

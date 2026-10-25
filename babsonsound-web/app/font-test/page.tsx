@@ -14,7 +14,7 @@ const CASEY = '"casey-neistat", \'Barlow Condensed\', \'Barlow\', sans-serif'
 function Amp({ label, display, body, scale = 1 }: { label: string; display: string; body: string; scale?: number }) {
   return (
     <div className="space-y-3 min-w-0">
-      <p className="text-xs tracking-[0.2em] text-br-dk-muted">{label}</p>
+      <p className="text-sm tracking-[0.2em] text-br-dk-muted">{label}</p>
       <div className="hw-panel hw-big" style={{ ['--t-display' as string]: display, ['--t-body' as string]: body, ['--s' as string]: scale }}>
         <div style={{ fontFamily: 'var(--t-display)', fontWeight: 700, fontSize: 'calc(2.6rem * var(--s))', lineHeight: 1.05, letterSpacing: '.005em' }}>Everybody Talks</div>
         <p style={{ fontFamily: 'var(--t-body)', fontSize: 'calc(1.25rem * var(--s))', fontWeight: 600, marginTop: 6 }}>Neon Trees</p>

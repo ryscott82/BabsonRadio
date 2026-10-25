@@ -77,8 +77,9 @@ export async function rebuildAutoSchedule(db: Firestore, opts: { dryRun?: boolea
   const weekly = await loadWeekly(db)
 
   const fromMs = Math.max(now, kept.length ? kept[kept.length - 1].endMs : now)
+  const taste = cfg.learn ? await genreWeights(db, cfg.timezone) : { overall: {}, parts: {} }
   const blocks = planAutoBlocks({ cfg, fromMs, untilMs: horizonEnd, busy, weekly, lastLabel: kept[kept.length - 1]?.label,
-    weights: cfg.learn ? await genreWeights(db) : {} })
+    weights: taste.overall, partWeights: taste.parts })
 
   if (opts.dryRun) return { blocks, kept: kept.length, written: false }
 

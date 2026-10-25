@@ -1,5 +1,6 @@
 'use client'
 
+import FilterBar, { MoreButton, useFilter, usePaged, matchAll } from '@/components/admin/FilterBar'
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -8,6 +9,9 @@ import { ErrorText } from '@/components/AuthUI'
 
 interface Sub { id: string; kind: 'song' | 'playlist'; name: string; title: string; artist: string; url: string; note: string; at: number; done: boolean }
 interface Item { id: string; name: string; text: string; at: number; done: boolean; show: string }
+
+const subText = (i: Sub) => `${i.title} ${i.artist} ${i.name} ${i.note} ${i.url} ${i.kind}`
+const reqText = (i: Item) => `${i.text} ${i.name} ${i.show}`
 
 export default function AdminRequestsPage() {
   const { user, isAdmin, loading } = useAuth()
@@ -40,9 +44,13 @@ export default function AdminRequestsPage() {
     catch (e) { setError(e instanceof Error ? e.message : 'Could not save.') }
   }
 
+  const sf = useFilter([...subs, ...items] as (Sub | Item)[], x => ('title' in x ? subText(x) : reqText(x)))
+  const sfq = sf.q
+  const subsShown = subs.filter(i => (showDone || !i.done) && matchAll(subText(i), sfq))
+  const shown = items.filter(i => (showDone || !i.done) && matchAll(reqText(i), sfq))
+  const subsPaged = usePaged(subsShown)
+  const reqPaged = usePaged(shown)
   if (!user || !isAdmin) return null
-  const subsShown = subs.filter(i => showDone || !i.done)
-  const shown = items.filter(i => showDone || !i.done)
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
@@ -51,17 +59,17 @@ export default function AdminRequestsPage() {
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
       <p className="text-sm text-br-dk-sub">
-        Artists and songs listeners sent while a DJ had requests turned on for their show. There are no requests for the auto DJ, and nothing plays automatically.
+Songs listeners asked for during a show.
       </p>
-      <label className="flex items-center gap-2 text-xs text-br-dk-sub">
+      <FilterBar f={sf} total={subs.length + items.length} shown={subsShown.length + shown.length} placeholder="Search title, artist, name" />
+      <label className="flex items-center gap-2 text-sm text-br-dk-sub">
         <input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> Show ones marked done
       </label>
       <ErrorText>{error}</ErrorText>
 
       <div className="space-y-3">
         <h2 className="font-display text-br-dk-text text-xl tracking-[0.1em]">Suggestions</h2>
-        <p className="text-sm text-br-dk-sub">Songs and playlists listeners sent from the Suggest page.</p>
-        {subsShown.map(i => (
+        {subsPaged.items.map(i => (
           <div key={i.id} className="sk-raised rounded-xl px-4 py-3 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className={`text-sm ${i.done ? 'text-br-dk-sub line-through' : 'text-br-dk-text'}`}>
@@ -78,11 +86,12 @@ export default function AdminRequestsPage() {
           </div>
         ))}
         {!subsShown.length && <p className="text-sm text-br-dk-sub">Nothing yet.</p>}
+        <MoreButton p={subsPaged} />
       </div>
 
       <h2 className="font-display text-br-dk-text text-xl tracking-[0.1em]">Song requests</h2>
       <div className="space-y-2">
-        {shown.map(i => (
+        {reqPaged.items.map(i => (
           <div key={i.id} className="sk-raised rounded-xl px-4 py-3 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className={`text-sm ${i.done ? 'text-br-dk-sub line-through' : 'text-br-dk-text'}`}>{i.text}</p>
@@ -94,6 +103,7 @@ export default function AdminRequestsPage() {
             </span>
           </div>
         ))}
+        <MoreButton p={reqPaged} />
         {!shown.length && <p className="text-sm text-br-dk-sub">No requests yet.</p>}
       </div>
     </div>

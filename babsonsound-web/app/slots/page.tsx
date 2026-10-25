@@ -100,7 +100,7 @@ export default function SlotsPage() {
   }
 
   const box = 'sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none'
-  const label = 'block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest'
+  const label = 'block text-sm text-br-dk-sub mb-1.5 font-display tracking-widest'
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-10">
@@ -114,7 +114,7 @@ export default function SlotsPage() {
       {signing && (
         <section className="sk-raised rounded-2xl p-5 space-y-4">
           <h2 className="font-display text-br-gold tracking-widest text-sm">One last step</h2>
-          <p className="text-sm text-br-dk-text">Your request is in. Read and sign the on-air agreements so staff can approve it.</p>
+          <p className="text-sm text-br-dk-text">Request sent. Sign the on-air agreements next.</p>
           <HostAgreements busy={busy} error={error} onSign={async sig => {
             setBusy(true); setError('')
             try { await api('/api/host/readiness', sig); setSigning(false); setNotice('Signed. Staff review every request, and the answer shows up below.'); await load() }
@@ -155,7 +155,7 @@ export default function SlotsPage() {
         <label className="flex items-start gap-2 text-sm text-br-dk-text">
           <input type="checkbox" className="mt-0.5" checked={receiveRatings} onChange={e => setReceiveRatings(e.target.checked)} />
           <span>Receive ratings during my show
-            <span className="block text-xs text-br-dk-sub">Listeners can always rate. Off just hides the ratings from you.</span></span>
+            <span className="block text-sm text-br-dk-sub">Off hides ratings from you.</span></span>
         </label>
         <div className="space-y-2 border-t border-br-dk-border pt-4">
           <label className="flex items-center gap-2 text-sm text-br-dk-text">
@@ -164,9 +164,9 @@ export default function SlotsPage() {
           </label>
           {adult !== 'adult' && <PublicAgreement status={adult} onChange={() => {}} />}
           {sharePublic && adult === 'adult' && <PublicAgreement status={adult} onChange={setSig} />}
-          {!sharePublic && adult === 'adult' && <p className="text-xs text-br-dk-muted">Off: Babson students only.</p>}
+          {!sharePublic && adult === 'adult' && <p className="text-sm text-br-dk-muted">Off: Babson students only.</p>}
         </div>
-        <p className="text-xs text-br-dk-muted">Shown to listeners if approved.</p>
+        <p className="text-sm text-br-dk-muted">Shown to listeners if approved.</p>
         <ErrorText>{error}</ErrorText>
         {notice && <p className="text-sm text-br-gold">{notice}</p>}
         <PrimaryButton type="submit" busy={busy}>Request a slot</PrimaryButton>
@@ -179,24 +179,24 @@ export default function SlotsPage() {
           <div key={r.id} className="sk-raised rounded-xl p-4 space-y-2">
             <div className="flex justify-between gap-4">
               <p className="text-sm text-br-dk-text">{r.title}</p>
-              <span className={`font-display text-[11px] tracking-widest ${r.status === 'declined' ? 'text-br-red' : r.status === 'approved' ? 'text-br-green' : 'text-br-dk-sub'}`}>{STATUS[r.status]}</span>
+              <span className={`font-display text-sm tracking-widest ${r.status === 'declined' ? 'text-br-red' : r.status === 'approved' ? 'text-br-green' : 'text-br-dk-sub'}`}>{STATUS[r.status]}</span>
             </div>
-            <p className="text-xs text-br-dk-sub">{fmt(r.startAt)} · {r.durationMin} min · {SLOT_TYPES[r.type]}</p>
-            {r.staffNote && <p className="text-xs text-br-dk-text">Staff note: {r.staffNote}</p>}
+            <p className="text-sm text-br-dk-sub">{fmt(r.startAt)} · {r.durationMin} min · {SLOT_TYPES[r.type]}</p>
+            {r.staffNote && <p className="text-sm text-br-dk-text">Staff note: {r.staffNote}</p>}
             {r.status === 'approved' && r.connectionInfo && (
-              <pre className="sk-field rounded-lg p-3 text-xs text-br-dk-text whitespace-pre-wrap">{r.connectionInfo}</pre>
+              <pre className="sk-field rounded-lg p-3 text-sm text-br-dk-text whitespace-pre-wrap">{r.connectionInfo}</pre>
             )}
             {(r.status === 'pending' || r.status === 'approved') && r.startAt > now && (
               cancelling === r.id ? (
                 <div className="space-y-2">
                   <input className={box} value={reason} onChange={e => setReason(e.target.value)} maxLength={300} placeholder="Reason (optional), helps us plan" />
                   <div className="flex gap-3">
-                    <button onClick={() => cancel(r.id)} className="rounded-lg bg-br-red text-white text-xs font-semibold px-3 py-1.5">Confirm cancel</button>
-                    <button onClick={() => { setCancelling(null); setReason('') }} className="text-xs text-br-dk-sub">Keep my show</button>
+                    <button onClick={() => cancel(r.id)} className="rounded-lg bg-br-red text-white text-sm font-semibold px-3 py-1.5">Confirm cancel</button>
+                    <button onClick={() => { setCancelling(null); setReason('') }} className="text-sm text-br-dk-sub">Keep my show</button>
                   </div>
                 </div>
               ) : (
-                <button onClick={() => setCancelling(r.id)} className="rounded-lg border border-br-red text-br-red text-xs font-semibold px-3 py-1.5">
+                <button onClick={() => setCancelling(r.id)} className="rounded-lg border border-br-red text-br-red text-sm font-semibold px-3 py-1.5">
                   {r.status === 'approved' ? 'Cancel this show' : 'Withdraw request'}
                 </button>
               )

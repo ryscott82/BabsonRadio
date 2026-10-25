@@ -32,7 +32,7 @@ function ReportForm() {
       <div className="grid grid-cols-2 gap-2">
         {(['bug', 'feature'] as const).map(k => (
           <button key={k} type="button" aria-pressed={type === k} onClick={() => setType(k)}
-                  className="sk-key rounded-lg py-2 text-xs font-display tracking-widest text-br-dk-text">
+                  className="sk-key rounded-lg py-2 text-sm font-display tracking-widest text-br-dk-text">
             {k === 'bug' ? 'SOMETHING IS WRONG' : 'IDEA'}
           </button>
         ))}
@@ -72,13 +72,13 @@ function AboutYou({ onSaved }: { onSaved?: () => void }) {
     setBusy(false)
   }
   const box = 'sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none'
-  const lab = 'block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest'
+  const lab = 'block text-sm text-br-dk-sub mb-1.5 font-display tracking-widest'
 
   return (
     <form onSubmit={save} className="sk-raised rounded-2xl p-5 space-y-4">
       <div>
         <p className="text-br-dk-text text-sm font-medium">About you</p>
-        <p className="text-br-dk-sub text-xs mt-1">All optional.</p>
+        <p className="text-br-dk-sub text-sm mt-1">All optional.</p>
       </div>
       <label className="block"><span className={lab}>Graduation year</span>
         <select className={box} value={gradYear} onChange={e => setGradYear(e.target.value)}>
@@ -108,7 +108,7 @@ function AboutYou({ onSaved }: { onSaved?: () => void }) {
             {Array.from({ length: 31 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
           </select>
         </div>
-        <p className="text-xs text-br-dk-sub mt-1.5">Only used for a birthday notification and so the DJ knows. We never ask for the year.</p>
+        <p className="text-sm text-br-dk-sub mt-1.5">Used for birthday shout-outs. No year.</p>
       </div>
       {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}
       <PrimaryButton type="submit" busy={busy}>Save details</PrimaryButton>
@@ -139,7 +139,7 @@ function PhoneChange() {
 
   return (
     <div className="space-y-3">
-      <p className="text-br-dk-sub text-xs">{info?.current ? `Current number ends in ${info.current}.` : ''} An admin approves changes.</p>
+      <p className="text-br-dk-sub text-sm">{info?.current ? `Current number ends in ${info.current}.` : ''} An admin approves changes.</p>
       {info?.pending ? (
         <div className="space-y-2">
           <p className="text-sm text-br-dk-text">Waiting for approval: number ending in {info.pending.last4}.</p>
@@ -163,7 +163,7 @@ function Row({ title, hint, open, onToggle, children }: { title: string; hint?: 
       <button type="button" aria-expanded={open} onClick={onToggle} className="w-full flex items-center justify-between gap-4 p-5 text-left">
         <span>
           <span className="block text-br-dk-text text-sm font-medium">{title}</span>
-          {hint && <span className="block text-br-dk-sub text-xs mt-1">{hint}</span>}
+          {hint && <span className="block text-br-dk-sub text-sm mt-1">{hint}</span>}
         </span>
         <span className="text-br-dk-sub text-sm" aria-hidden>{open ? '–' : '+'}</span>
       </button>
@@ -262,7 +262,7 @@ export default function ProfilePage() {
           <div className="sk-raised rounded-2xl p-5 space-y-4">
             <div>
               <p className="text-br-dk-text text-sm font-medium">Set up your avatar</p>
-              <p className="text-br-dk-sub text-xs mt-1">Add your first name and pick a color. You can change both later.</p>
+              <p className="text-br-dk-sub text-sm mt-1">Add your first name and pick a color.</p>
             </div>
             <Field label="First name" value={setupName} onChange={e => setSetupName(e.target.value)} autoComplete="given-name" placeholder="First name" />
             <div className="flex flex-wrap gap-3" role="radiogroup" aria-label="Profile color">
@@ -278,14 +278,14 @@ export default function ProfilePage() {
         {member && (
           <Link href="/slots" className={rowLink}>
             <p className="text-br-dk-text text-sm font-medium">Go on air</p>
-            <p className="text-br-dk-sub text-xs mt-1">Request airtime.</p>
+            <p className="text-br-dk-sub text-sm mt-1">Request airtime.</p>
           </Link>
         )}
 
         {hosting && (
           <Link href="/host" className={rowLink}>
             <p className="text-br-dk-text text-sm font-medium">Host panel</p>
-            <p className="text-br-dk-sub text-xs mt-1">You&apos;re on air soon.</p>
+            <p className="text-br-dk-sub text-sm mt-1">You&apos;re on air soon.</p>
           </Link>
         )}
 
@@ -298,7 +298,7 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-br-dk-text text-sm font-medium">Invisible mode</p>
-                <p className="text-br-dk-sub text-xs mt-1">Friends can&apos;t see you tuned in. Reactions and contact suggestions are off.</p>
+                <p className="text-br-dk-sub text-sm mt-1">Friends can&apos;t see you tuned in.</p>
               </div>
               <button role="switch" aria-checked={me.invisible} disabled={saving} onClick={toggleInvisible} className="sk-switch shrink-0"><span className="sk-knob" /></button>
             </div>
@@ -321,7 +321,7 @@ export default function ProfilePage() {
         <div className="text-center space-y-4 pt-2">
           <GhostButton onClick={() => signOut()}>Sign out</GhostButton>
           {!showDelete ? (
-            <button className="block mx-auto text-xs text-br-dk-sub hover:text-br-red" onClick={() => setShowDelete(true)}>Delete my account</button>
+            <button className="block mx-auto text-sm text-br-dk-sub hover:text-br-red" onClick={() => setShowDelete(true)}>Delete my account</button>
           ) : (
             <form className="space-y-3 text-left" onSubmit={async e => {
               e.preventDefault(); setBusy(true); setError('')
@@ -331,7 +331,7 @@ export default function ProfilePage() {
               {hasPassword()
                 ? <Field label="Enter your password to permanently delete your account" type="password" value={pw}
                          onChange={e => setPw(e.target.value)} autoComplete="current-password" />
-                : <p className="text-xs text-br-dk-sub">This permanently deletes your account. If you signed in more than 5 minutes ago, sign in again first.</p>}
+                : <p className="text-sm text-br-dk-sub">This permanently deletes your account.</p>}
               <PrimaryButton type="submit" busy={busy}>Delete forever</PrimaryButton>
             </form>
           )}

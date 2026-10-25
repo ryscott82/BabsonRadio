@@ -5,7 +5,7 @@ export default function SongLinks({ title, artist, className = '', keys = false 
   if (!title) return null
   const q = encodeURIComponent([title, artist].filter(Boolean).join(' '))
   if (keys) {
-    const k = 'sk-key hw-pill inline-flex items-center justify-center h-8 px-5 rounded-full text-xs font-semibold'
+    const k = 'sk-key hw-pill inline-flex items-center justify-center h-8 px-5 rounded-full text-sm font-semibold'
     return (
       <div className={`flex gap-3 ${className}`}>
         <a className={k} href={`https://music.apple.com/us/search?term=${q}`} target="_blank" rel="noopener noreferrer">Apple Music</a>
@@ -15,7 +15,7 @@ export default function SongLinks({ title, artist, className = '', keys = false 
   }
   const a = 'underline underline-offset-2 hover:text-br-gold'
   return (
-    <p className={`text-xs text-br-dk-sub ${className}`}>
+    <p className={`text-sm text-br-dk-sub ${className}`}>
       Find it:{' '}
       <a className={a} href={`https://music.apple.com/us/search?term=${q}`} target="_blank" rel="noopener noreferrer">Apple Music</a>
       {' · '}

@@ -39,6 +39,8 @@ export interface AutoConfig {
   learn: boolean
   /** Night-time color-changing background (album colors) while the auto DJ is on air. */
   colorChanging: boolean
+  /** Manual frequency per playlist (lowercase name → multiplier, 1 = average, 0 = avoid). A playlist not listed here uses the learned value. */
+  weightOverrides: Record<string, number>
   rules: AutoRule[]
 }
 
@@ -57,6 +59,7 @@ export const DEFAULT_CONFIG: AutoConfig = {
   learn: true,
   colorChanging: false,
   playlistMap: {},
+  weightOverrides: {},
   defaultFillers: ['Indie & Alt', 'Throwback Hits', 'Pop Hits', 'Hip-Hop & R&B'],
   rules: [
     // Nights run to 4am: study music Sun–Wed nights, party music Thu–Sat nights, then a gentle wake-up until 7.
@@ -73,6 +76,17 @@ export const DEFAULT_CONFIG: AutoConfig = {
 }
 
 // ── Time helpers ────────────────────────────────────────────────
+
+/** Times of day used to learn what listeners like when. */
+export type Daypart = 'morning' | 'afternoon' | 'evening' | 'night'
+export const DAYPARTS: { id: Daypart; label: string }[] = [
+  { id: 'morning', label: 'Morning' }, { id: 'afternoon', label: 'Afternoon' }, { id: 'evening', label: 'Evening' }, { id: 'night', label: 'Night' },
+]
+/** Morning 5–12, afternoon 12–17, evening 17–22, night 22–5 (station time). */
+export function daypartOf(ms: number, timeZone: string): Daypart {
+  const h = Math.floor(localParts(ms, timeZone).minutes / 60)
+  return h >= 5 && h < 12 ? 'morning' : h >= 12 && h < 17 ? 'afternoon' : h >= 17 && h < 22 ? 'evening' : 'night'
+}
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -178,14 +192,15 @@ export function clipInterval(a: Interval, busy: Interval[], minMs = 5 * 60_000):
 }
 
 /** Pick the night's genre. Without learned weights this rotates; with them, liked genres come up more often (never below 40% of average). */
-function pickGenre(pool: string[], dayKey: number, ruleId: string, W: Record<string, number>, exclude = -1): number {
+function pickGenre(pool: string[], dayKey: number, ruleId: string, wf: ((f: string) => number) | null, exclude = -1): number {
   const seed = dayKey + ruleId.length * 3
-  if (!Object.keys(W).length) {
+  if (!wf) {
     const idx = ((seed % pool.length) + pool.length) % pool.length
     return idx === exclude ? (idx + 1) % pool.length : idx
   }
-  const w = pool.map((f, i) => (i === exclude ? 0 : Math.max(0.4, W[f.toLowerCase()] ?? 1)))
+  const w = pool.map((f, i) => (i === exclude ? 0 : Math.max(0, wf(f))))
   const total = w.reduce((a, b) => a + b, 0)
+  if (total <= 0) return exclude === 0 && pool.length > 1 ? 1 : 0
   let r = (hash(seed * 7919 + ruleId.length) / 4294967296) * total
   for (let i = 0; i < w.length; i++) { r -= w[i]; if (r < 0) return i }
   return 0
@@ -199,6 +214,7 @@ export function planAutoBlocks(opts: {
   weekly: WeeklyEntry[]     // recurring weekly shows, evaluated in station time
   lastLabel?: string        // filler of the block just before fromMs, to avoid repeating it
   weights?: Record<string, number> // learned taste per genre (lowercase name → 1 = average); empty = no preference
+  partWeights?: Record<string, Partial<Record<Daypart, number>>> // learned taste per genre and time of day
 }): PlannedBlock[] {
   const { cfg, busy, weekly } = opts
   const step = cfg.stepMinutes * 60_000
@@ -251,22 +267,36 @@ export function planAutoBlocks(opts: {
   // 5: choose fillers — least recently used first, never the same as the block before it
   const lastUsed = new Map<string, number>()
   const W = opts.weights ?? {}
+  const PW = opts.partWeights ?? {}
+  const OV = cfg.weightOverrides ?? {}
+  // The weight of a playlist at a time: the manual value if there is one, else what listeners like at that time of day.
+  const weightAt = (f: string, ms: number): number => {
+    const k = f.toLowerCase()
+    if (OV[k] !== undefined) return OV[k]
+    if (!cfg.learn) return 1
+    return PW[k]?.[daypartOf(ms, cfg.timezone)] ?? W[k] ?? 1
+  }
+  const useWeights = Object.keys(OV).length > 0 || (cfg.learn && Object.keys(W).length > 0)
   let prev = opts.lastLabel
   return raw.map((b, i) => {
     if (b.oneGenre && b.dayKey !== undefined && b.pool.length) {
       // Same genre all window long (also after a show interrupts it); a different one tomorrow.
-      const idx = pickGenre(b.pool, b.dayKey, b.ruleId, W)
-      const prevIdx = b.pool.length > 1 ? pickGenre(b.pool, b.dayKey - 1, b.ruleId, W) : -1
+      const wf = useWeights ? (f: string) => weightAt(f, b.startMs) : null
+      const idx = pickGenre(b.pool, b.dayKey, b.ruleId, wf)
+      const prevIdx = b.pool.length > 1 ? pickGenre(b.pool, b.dayKey - 1, b.ruleId, wf) : -1
       // Never the same genre two nights running, unless it is the only one.
-      const use = idx === prevIdx ? pickGenre(b.pool, b.dayKey, b.ruleId, W, idx) : idx
+      const use = idx === prevIdx ? pickGenre(b.pool, b.dayKey, b.ruleId, wf, idx) : idx
       prev = b.pool[use]
       return { startMs: b.startMs, endMs: b.endMs, label: b.pool[use], ruleId: b.ruleId }
     }
-    const options = b.pool.length > 1 ? b.pool.filter(f => f !== prev) : b.pool
+    let options = b.pool.length > 1 ? b.pool.filter(f => f !== prev) : b.pool
+    // A playlist set to 0 is skipped whenever something else can play.
+    const wanted = options.filter(f => weightAt(f, b.startMs) > 0)
+    if (wanted.length) options = wanted
     // Favor what listeners like, but still rotate: the longer ago a genre played, the more it counts.
     const score = (f: string) => {
       const gap = lastUsed.has(f) ? Math.min(i - (lastUsed.get(f) ?? 0), 4) : 4
-      return (W[f.toLowerCase()] ?? 1) * (0.4 + gap * 0.15) + (hash(b.startMs / step + f.length) % 1000) / 1e6
+      return weightAt(f, b.startMs) * (0.4 + gap * 0.15) + (hash(b.startMs / step + f.length) % 1000) / 1e6
     }
     const ranked = [...options].sort((x, y) => score(y) - score(x))
     const label = ranked[0] ?? 'Indie & Alt'
@@ -319,6 +349,9 @@ export function sanitizeConfig(input: unknown): AutoConfig {
     syncToAzuraCast: o.syncToAzuraCast === true,
     learn: o.learn !== false,
     colorChanging: o.colorChanging === true,
+    weightOverrides: Object.fromEntries(Object.entries((o.weightOverrides ?? {}) as Record<string, unknown>).slice(0, 60)
+      .map(([k, v]) => [text(k, 40).toLowerCase(), Math.round(Math.min(3, Math.max(0, Number(v))) * 100) / 100] as const)
+      .filter(([k, v]) => k && Number.isFinite(v))),
     playlistMap: Object.fromEntries(Object.entries((o.playlistMap ?? {}) as Record<string, unknown>).slice(0, 60)
       .map(([k, v]) => [text(k, 40), text(v, 80)]).filter(([k, v]) => k && v)),
     defaultFillers: list(o.defaultFillers).length ? list(o.defaultFillers) : d.defaultFillers,

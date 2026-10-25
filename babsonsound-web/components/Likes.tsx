@@ -46,7 +46,7 @@ export function LikeBar({ episodeId }: { episodeId: string }) {
   const friendText = names.length === 1 ? `${names[0]} liked this`
     : names.length > 1 ? `${names[0]} and ${names.length - 1} other${names.length > 2 ? 's' : ''} you know liked this` : ''
   return (
-    <div className="flex items-center gap-2 mt-1.5 text-xs">
+    <div className="flex items-center gap-2 mt-1.5 text-sm">
       <button onClick={() => toggle(episodeId)} aria-pressed={isLiked}
               className={isLiked ? 'text-br-gold' : 'text-br-dk-muted hover:text-br-dk-text'}>
         {isLiked ? '♥ Liked' : '♡ Like'}

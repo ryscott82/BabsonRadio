@@ -47,14 +47,12 @@ export default function VoteCard() {
   }
 
   const top = Math.max(1, ...s.options.map(o => o.count))
-  const total = s.options.reduce((n, o) => n + o.count, 0)
   return (
     <section className="hw-panel hw-big space-y-4">
       <div>
         <h2 className="hw-title !whitespace-normal text-[1.9rem]">What would you like to hear?</h2>
-        <div className="flex items-baseline justify-between gap-4 mt-1 text-xs">
+        <div className="flex items-baseline justify-between gap-4 mt-1 text-sm">
           <span className="text-br-gold font-medium">{s.upNext?.label ? `${s.upNext.label} won ${clock(s.upNext.blockStart)}.` : ''}</span>
-          <span className="hw-sub">{total} vote{total === 1 ? '' : 's'} · one vote per hour</span>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -69,15 +67,15 @@ export default function VoteCard() {
           </button>
         ))}
       </div>
-      {!s.canVote && <p className="text-xs hw-sub">Voting opens once a Babson student sponsors you.</p>}
+      {!s.canVote && <p className="text-sm hw-sub">Voting opens once a Babson student sponsors you.</p>}
       {s.canVote && s.requestsOpen && (
         <form onSubmit={sendRequest} className="flex gap-2">
           <input value={text} onChange={e => setText(e.target.value)} maxLength={140} placeholder={`Request a song${s.requestsShow ? ` for ${s.requestsShow}` : ''}`}
                  className="sk-field flex-1 rounded-lg px-3 py-2 text-sm text-br-dk-text" />
-          <button type="submit" disabled={busy || text.trim().length < 2} className="sk-btn font-display tracking-widest text-xs px-4 rounded-lg">Send</button>
+          <button type="submit" disabled={busy || text.trim().length < 2} className="sk-btn font-display tracking-widest text-sm px-4 rounded-lg">Send</button>
         </form>
       )}
-      {msg && <p className="text-xs hw-sub">{msg}</p>}
+      {msg && <p className="text-sm hw-sub">{msg}</p>}
       <RatingsBlock />
     </section>
   )

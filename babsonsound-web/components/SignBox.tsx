@@ -17,12 +17,12 @@ export default function SignBox({ title, intro, clauses, version, onChange }: {
   }
   return (
     <div className="sk-field rounded-xl p-4 space-y-3">
-      <p className="font-display text-br-gold tracking-widest text-xs">{title}</p>
-      {intro && <p className="text-xs text-br-dk-sub">{intro}</p>}
+      <p className="font-display text-br-gold tracking-widest text-sm">{title}</p>
+      {intro && <p className="text-sm text-br-dk-sub">{intro}</p>}
       <ul className="space-y-2">
         {clauses.map((c, i) => (
           <li key={i}>
-            <label className="flex items-start gap-2 text-xs text-br-dk-text">
+            <label className="flex items-start gap-2 text-sm text-br-dk-text">
               <input type="checkbox" className="mt-0.5" checked={ticks[i]} onChange={e => update(ticks.map((t, j) => (j === i ? e.target.checked : t)), name)} />
               <span>{c}</span>
             </label>
@@ -30,7 +30,7 @@ export default function SignBox({ title, intro, clauses, version, onChange }: {
         ))}
       </ul>
       <label className="block">
-        <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">Sign by typing your full name</span>
+        <span className="block text-sm text-br-dk-sub mb-1.5 font-display tracking-widest">Sign by typing your full name</span>
         <input value={name} onChange={e => update(ticks, e.target.value)} maxLength={100} autoComplete="off" placeholder="First Last"
                className="sk-field w-full rounded-lg px-3 py-2 text-sm text-br-dk-text border border-br-dk-border" />
       </label>

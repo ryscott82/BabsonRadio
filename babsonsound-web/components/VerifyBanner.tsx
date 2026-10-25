@@ -12,7 +12,7 @@ export default function VerifyBanner() {
   const when = new Date(verifyDeadline).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })
 
   return (
-    <div role="status" className="fixed top-16 inset-x-0 z-30 bg-br-gold/15 border-b border-br-gold/40 px-4 py-2 text-center text-xs text-br-dk-text">
+    <div role="status" className="fixed top-16 inset-x-0 z-30 bg-br-gold/15 border-b border-br-gold/40 px-4 py-2 text-center text-sm text-br-dk-text">
       Verify your email by {when} to keep your access. Check your inbox and spam for the link.{' '}
       <button className="underline text-br-gold" onClick={async () => {
         try { await resendVerification(); setMsg('Sent again.') } catch (e) { setMsg(e instanceof Error ? e.message : 'Try again in a minute.') }

@@ -137,13 +137,13 @@ export default function ScheduleList() {
       <section className="space-y-5">
         {lineupDays.length === 0 && (
           <div className="space-y-2">
-            <p className="text-sm text-br-dk-sub">No live shows coming up. The auto DJ has you covered:</p>
+            <p className="text-sm text-br-dk-sub">No live shows coming up.</p>
             <AutoUpcoming items={items} limit={8} />
           </div>
         )}
         {lineupDays.map(([d, list]) => (
           <div key={d} className="space-y-2">
-            <p className="font-display text-xs tracking-widest text-br-gold">
+            <p className="font-display text-sm tracking-widest text-br-gold">
               {d === today ? 'Today' : new Date(d).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
             </p>
             <div className="sk-raised rounded-xl divide-y divide-br-dk-border">
@@ -153,9 +153,9 @@ export default function ScheduleList() {
                      className="flex items-center gap-3 px-4 py-3 cursor-pointer">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-br-dk-text truncate">{it.title}</p>
-                    <p className="text-xs text-br-dk-sub truncate">{time(it.startAt)} – {time(it.endAt)}{it.hosts.length ? ` · ${it.hosts[0]}` : ''}</p>
+                    <p className="text-sm text-br-dk-sub truncate">{time(it.startAt)} – {time(it.endAt)}{it.hosts.length ? ` · ${it.hosts[0]}` : ''}</p>
                   </div>
-                  {it.startAt <= now && it.endAt > now && <span className="text-[10px] font-display tracking-widest text-br-red">Live</span>}
+                  {it.startAt <= now && it.endAt > now && <span className="text-sm font-display tracking-widest text-br-red">Live</span>}
                   {it.endAt > now && (
                     <Bell on={bells.has(it.reminderKey)} label={`Remind me before ${it.title}`}
                           onClick={e => { e.stopPropagation(); toggleBell(it) }} />
@@ -180,21 +180,21 @@ export default function ScheduleList() {
           <button onClick={() => setFirst(f => f + DAY)} disabled={!canFwd} aria-label="Next day"
                   className="sk-key rounded-lg w-9 h-9 text-br-dk-text disabled:opacity-40">›</button>
           <button onClick={() => setFirst(f => Math.max(minDay, f - 7 * DAY))} disabled={!canBack} aria-label="Previous week"
-                  className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-40">‹ Week</button>
+                  className="sk-key rounded-lg px-3 h-9 text-sm font-display tracking-widest text-br-dk-text disabled:opacity-40">‹ Week</button>
           <button onClick={() => setFirst(f => Math.min(today + (DAYS_LOADED - DAYS_SHOWN) * DAY, f + 7 * DAY))} disabled={!canFwd} aria-label="Next week"
-                  className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-40">Week ›</button>
+                  className="sk-key rounded-lg px-3 h-9 text-sm font-display tracking-widest text-br-dk-text disabled:opacity-40">Week ›</button>
           <button onClick={() => setFirst(today)} disabled={first === today}
-                  className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-40">Today</button>
+                  className="sk-key rounded-lg px-3 h-9 text-sm font-display tracking-widest text-br-dk-text disabled:opacity-40">Today</button>
         </div>
         <p className="font-display text-br-gold text-sm tracking-widest">{range}</p>
       </div>
 
       <div className="sk-raised rounded-xl overflow-hidden">
-        <div className="grid grid-cols-[2.75rem_repeat(3,minmax(0,1fr))] border-b border-br-dk-border">
+        <div className="grid grid-cols-[3.25rem_repeat(3,minmax(0,1fr))] border-b border-br-dk-border">
           <div />
           {shown.map(d => (
             <div key={d} className="py-2 text-center border-l border-br-dk-border">
-              <p className={`font-display text-xs tracking-widest ${d === today ? 'text-br-gold' : 'text-br-dk-sub'}`}>
+              <p className={`font-display text-sm tracking-widest ${d === today ? 'text-br-gold' : 'text-br-dk-sub'}`}>
                 {d === today ? 'Today' : new Date(d).toLocaleDateString([], { weekday: 'short' })}
               </p>
               <p className="text-sm text-br-dk-text">{new Date(d).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
@@ -203,10 +203,10 @@ export default function ScheduleList() {
         </div>
 
         <div ref={scroller} className="overflow-y-auto max-h-[68vh] lg:max-h-[calc(100dvh-17rem)]">
-          <div className="grid grid-cols-[2.75rem_repeat(3,minmax(0,1fr))]" style={{ height: 24 * HOUR_PX }}>
+          <div className="grid grid-cols-[3.25rem_repeat(3,minmax(0,1fr))]" style={{ height: 24 * HOUR_PX }}>
             <div className="relative">
               {hours.map(h => (
-                <span key={h} className="absolute right-1 text-[10px] text-br-dk-sub -translate-y-1/2"
+                <span key={h} className="absolute right-1 text-sm text-br-dk-sub -translate-y-1/2"
                       style={{ top: h * HOUR_PX, display: h === 0 ? 'none' : undefined }}>{hourLabel(h)}</span>
               ))}
             </div>
@@ -235,8 +235,8 @@ export default function ScheduleList() {
                              top: top + 1, height,
                              
                            }}>
-                        <p className="text-xs leading-tight text-br-dk-text pr-6 line-clamp-2">{it.title}</p>
-                        {tall && <p className="text-[10px] text-br-dk-sub truncate">{time(it.startAt)}{it.hosts.length ? ` · ${it.hosts[0]}` : ''}</p>}
+                        <p className="text-sm leading-tight text-br-dk-text pr-6 line-clamp-2">{it.title}</p>
+                        {tall && <p className="text-sm text-br-dk-sub truncate">{time(it.startAt)}{it.hosts.length ? ` · ${it.hosts[0]}` : ''}</p>}
                         {height >= 34 && it.endAt > now && (
                           <span className="absolute top-1 right-1">
                             <Bell small on={bells.has(it.reminderKey)} label={`Remind me before ${it.title}`}
@@ -261,7 +261,7 @@ export default function ScheduleList() {
                className="sk-raised rounded-2xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto">
             <Art item={open} className="w-full h-56" />
             <div className="p-5 space-y-3">
-              <p className="font-display text-br-gold text-xs tracking-widest">
+              <p className="font-display text-br-gold text-sm tracking-widest">
                 {FORMAT[open.format]}{open.category ? ` · ${open.category.toUpperCase()}` : ''}
               </p>
               <h3 className="font-display text-br-dk-text text-3xl tracking-wide">{open.title}</h3>
@@ -276,7 +276,7 @@ export default function ScheduleList() {
                       className="sk-key rounded-xl w-full py-3 text-sm font-display tracking-[0.2em] text-br-dk-text">
                 {bells.has(open.reminderKey) ? 'REMINDER ON' : 'REMIND ME 5 MINUTES BEFORE'}
               </button>
-              <p className="text-[11px] text-br-dk-muted text-center -mt-2">Sent to the Babson Radio iPhone app, not this browser.</p>
+              <p className="text-sm text-br-dk-muted text-center -mt-2">Opens in the iPhone app.</p>
               <button onClick={() => setOpen(null)} className="sk-key rounded-xl w-full py-3 text-sm font-display tracking-[0.2em] text-br-dk-text">Close</button>
             </div>
           </div>

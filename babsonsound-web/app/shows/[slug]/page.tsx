@@ -42,7 +42,7 @@ export default async function ShowPage({ params }: Props) {
 
         {/* Meta */}
         <div className="flex-1">
-          <p className="font-display text-br-gold text-xs tracking-widest mb-2">{show.category}</p>
+          <p className="font-display text-br-gold text-sm tracking-widest mb-2">{show.category}</p>
           <h1 className="font-display text-br-dk-text text-4xl md:text-5xl tracking-wide mb-3">{show.name}</h1>
           {show.hostNames?.length > 0 && (
             <p className="text-br-dk-sub text-sm mb-3">{show.hostNames.join(' · ')}</p>
@@ -50,12 +50,12 @@ export default async function ShowPage({ params }: Props) {
           <p className="text-br-dk-sub text-sm max-w-xl mb-4">{show.longDescription || show.description}</p>
 
           <div className="flex items-center gap-4 flex-wrap">
-            <span className="text-br-dk-muted text-xs">{episodes.length} episodes</span>
+            <span className="text-br-dk-muted text-sm">{episodes.length} episodes</span>
 
             {/* RSS link */}
             <a
               href={`/api/rss/${show.slug}`}
-              className="flex items-center gap-1.5 text-br-gold text-xs font-display tracking-widest hover:text-br-gold/80"
+              className="flex items-center gap-1.5 text-br-gold text-sm font-display tracking-widest hover:text-br-gold/80"
               target="_blank"
             >
               <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">

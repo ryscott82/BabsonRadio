@@ -11,7 +11,7 @@ export default async function ShowsPage() {
       <div className="flex items-center gap-4 mb-4 shrink-0">
         <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">All shows</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
-        <span className="font-display text-br-dk-muted text-xs tracking-widest">{shows.length} SHOWS</span>
+        <span className="font-display text-br-dk-muted text-sm tracking-widest">{shows.length} SHOWS</span>
       </div>
 
       {shows.length === 0 ? (
@@ -37,7 +37,7 @@ export default async function ShowsPage() {
                   </div>
                 )}
                 {show.isFeatured && (
-                  <div className="absolute top-3 left-3 font-display text-[9px] tracking-widest bg-br-red text-white px-2 py-0.5 rounded">
+                  <div className="absolute top-3 left-3 font-display text-sm tracking-widest bg-br-red text-white px-2 py-0.5 rounded">
                     Featured
                   </div>
                 )}
@@ -45,17 +45,17 @@ export default async function ShowsPage() {
 
               {/* Info */}
               <div className="p-4">
-                <p className="font-display text-br-dk-sub text-[10px] tracking-widest mb-1">
+                <p className="font-display text-br-dk-sub text-sm tracking-widest mb-1">
                   {show.category}
                 </p>
                 <h3 className="text-br-dk-text font-semibold text-base group-hover:text-br-gold transition-colors mb-1">
                   {show.name}
                 </h3>
-                <p className="text-br-dk-sub text-xs line-clamp-2 mb-3">{show.description}</p>
+                <p className="text-br-dk-sub text-sm line-clamp-2 mb-3">{show.description}</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-br-dk-muted text-xs">{show.totalEpisodes ?? 0} episodes</span>
+                  <span className="text-br-dk-muted text-sm">{show.totalEpisodes ?? 0} episodes</span>
                   {show.hostNames?.length > 0 && (
-                    <span className="text-br-dk-muted text-xs truncate ml-4">
+                    <span className="text-br-dk-muted text-sm truncate ml-4">
                       {show.hostNames.join(', ')}
                     </span>
                   )}

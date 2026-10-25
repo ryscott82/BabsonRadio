@@ -18,7 +18,7 @@ export default function CountdownHome() {
       <p className="text-br-dk-sub text-base sm:text-lg mt-8 sm:mt-10 mb-8">October 30 at 10am Eastern</p>
 
       <Link href="/auth?mode=create" className="sk-btn font-display uppercase tracking-[0.2em] text-sm px-12 py-3.5 rounded-xl">Sign up</Link>
-      <p className="text-xs text-br-dk-sub mt-3">
+      <p className="text-sm text-br-dk-sub mt-3">
         <Link href="/privacy" className="underline underline-offset-4">We&apos;ll email you when we launch.</Link>
       </p>
       <Link href="/auth" className="text-sm text-br-dk-sub hover:text-br-dk-text underline underline-offset-4 mt-6">Sign in</Link>

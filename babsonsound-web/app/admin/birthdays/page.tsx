@@ -1,5 +1,6 @@
 'use client'
 
+import FilterBar, { MoreButton, useFilter, usePaged } from '@/components/admin/FilterBar'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -8,6 +9,8 @@ import { ErrorText } from '@/components/AuthUI'
 
 interface P { uid: string; name: string; month: number; day: number; role?: string; daysAway: number }
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+const textOf = (p: P) => `${p.name} ${p.role ?? ''} ${MONTHS[p.month - 1]} ${p.day}`
 
 export default function AdminBirthdaysPage() {
   const { user, isAdmin, loading } = useAuth()
@@ -21,6 +24,8 @@ export default function AdminBirthdaysPage() {
     apiGet<{ people: P[] }>('/api/admin/birthdays').then(r => setPeople(r.people)).catch(e => setError(e instanceof Error ? e.message : 'Could not load.'))
   }, [user, isAdmin])
 
+  const f = useFilter(people, textOf)
+  const paged = usePaged(f.items)
   if (!user || !isAdmin) return null
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
@@ -29,11 +34,12 @@ export default function AdminBirthdaysPage() {
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
       <p className="text-sm text-br-dk-sub">
-        Everyone who chose to share a birthday (month and day only), soonest first. Hosts see today&apos;s birthdays in their panel. Please keep this list to station use.
+        Month and day only, soonest first. Station use only.
       </p>
       <ErrorText>{error}</ErrorText>
+      <FilterBar f={f} total={people.length} placeholder="Search name or month" />
       <div className="sk-raised rounded-xl divide-y divide-br-dk-border">
-        {people.map(p => (
+        {paged.items.map(p => (
           <div key={p.uid} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
             <span className="text-br-dk-text truncate">{p.name}</span>
             <span className="text-br-dk-sub shrink-0 tabular-nums">
@@ -43,6 +49,7 @@ export default function AdminBirthdaysPage() {
         ))}
         {!people.length && !error && <p className="px-4 py-3 text-sm text-br-dk-sub">Nobody has shared a birthday yet.</p>}
       </div>
+      <MoreButton p={paged} />
     </div>
   )
 }

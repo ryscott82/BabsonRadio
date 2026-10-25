@@ -1,5 +1,6 @@
 'use client'
 
+import FilterBar, { Pick, MoreButton, useFilter, usePaged } from '@/components/admin/FilterBar'
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -10,6 +11,8 @@ interface Item {
   id: string; type: 'bug' | 'feature'; message: string; name: string; email: string
   platform: 'web' | 'ios'; appVersion: string; page: string; status: 'new' | 'done'; createdAt: number
 }
+
+const textOf = (i: Item) => `${i.message} ${i.name} ${i.email} ${i.page} ${i.platform} ${i.type}`
 
 export default function AdminFeedbackPage() {
   const { user, isAdmin, loading } = useAuth()
@@ -26,8 +29,13 @@ export default function AdminFeedbackPage() {
   useEffect(() => { if (!loading && (!user || !isAdmin)) router.replace('/') }, [loading, user, isAdmin, router])
   useEffect(() => { if (user && isAdmin) queueMicrotask(load) }, [user, isAdmin, load])
 
+  const [kind, setKind] = useState('')
+  const [plat, setPlat] = useState('')
+  const f = useFilter(items, textOf)
+  const listAll = f.items.filter(i => (tab === 'archive') === (i.status === 'done') && (!kind || i.type === kind) && (!plat || i.platform === plat))
+  const paged = usePaged(listAll)
+  const shown = paged.items
   if (!user || !isAdmin) return null
-  const shown = items.filter(i => (tab === 'archive') === (i.status === 'done'))
   const openCount = items.filter(i => i.status === 'new').length
 
   return (
@@ -41,8 +49,12 @@ export default function AdminFeedbackPage() {
           ))}
         </div>
       </div>
+      <FilterBar f={f} total={items.length} shown={listAll.length} placeholder="Search reports, names, emails">
+        <Pick value={kind} onChange={setKind} label="Type" options={[['', 'All types'], ['bug', 'Bugs'], ['feature', 'Ideas']]} />
+        <Pick value={plat} onChange={setPlat} label="Platform" options={[['', 'Web + iOS'], ['web', 'Web'], ['ios', 'iOS']]} />
+      </FilterBar>
       <ErrorText>{error}</ErrorText>
-      {shown.length === 0 && <p className="text-sm text-br-dk-sub">{tab === 'open' ? 'Nothing new.' : 'Nothing archived yet. Reports you mark done land here.'}</p>}
+      {shown.length === 0 && <p className="text-sm text-br-dk-sub">{tab === 'open' ? 'Nothing new.' : 'Nothing archived.'}</p>}
       {shown.map(i => (
         <div key={i.id} className={`sk-raised rounded-xl p-4 space-y-2 ${i.status === 'done' ? 'opacity-60' : ''}`}>
           <div className="flex items-center justify-between gap-4">
@@ -61,6 +73,7 @@ export default function AdminFeedbackPage() {
           </div>
         </div>
       ))}
+      <MoreButton p={paged} />
     </div>
   )
 }

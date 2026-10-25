@@ -29,7 +29,7 @@ export default function VolumeKnob({ value, onChange, max = 1, unity = 1, boostD
           }}
         />
       </div>
-      <span className="text-xs font-semibold text-br-dk-text">Volume{boostDb > 0.5 ? <span className="ml-1.5 text-[#E0412A]">+{Math.round(boostDb)} dB</span> : null}</span>
+      <span className="text-sm font-semibold text-br-dk-text">Volume{boostDb > 0.5 ? <span className="ml-1.5 text-[#E0412A]">+{Math.round(boostDb)} dB</span> : null}</span>
     </div>
   )
 }

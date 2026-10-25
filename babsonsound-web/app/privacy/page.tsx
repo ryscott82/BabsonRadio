@@ -20,7 +20,7 @@ export default function PrivacyPage() {
     <div className="max-w-2xl mx-auto px-4 py-10 space-y-8">
       <div>
         <h1 className="font-display text-br-dk-text text-4xl tracking-[0.08em]">Privacy</h1>
-        <p className="text-xs text-br-dk-muted mt-1">Last updated {UPDATED}</p>
+        <p className="text-sm text-br-dk-muted mt-1">Last updated {UPDATED}</p>
       </div>
 
       <p className="text-sm text-br-dk-sub leading-relaxed">

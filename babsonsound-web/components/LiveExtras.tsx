@@ -173,7 +173,7 @@ function useX(): Extras { const v = useContext(Ctx); if (!v) throw new Error('Li
 export function ReactionKeys({ className = '' }: { className?: string }) {
   const x = useX()
   if (!x.occId) return null
-  if (x.invisible) return <p className={`text-xs hw-sub text-center ${className}`}>Reactions are off in Invisible mode.</p>
+  if (x.invisible) return <p className={`text-sm hw-sub text-center ${className}`}>Reactions are off in Invisible mode.</p>
   return (
     <div className={`flex flex-wrap items-center justify-center gap-3 ${className}`} role="group" aria-label="Reactions">
       {x.emojis.map(e => (
@@ -204,14 +204,13 @@ export function RatingsBlock() {
   return (
     <div className="grid grid-cols-2 gap-6 pt-4 border-t border-br-dk-border">
       {song ? (
-        <div><p className="text-xs hw-sub mb-1 truncate">Rate this song{x.np?.title ? `, ${x.np.title}` : ''}</p>
+        <div><p className="text-sm hw-sub mb-1 truncate">Rate this song{x.np?.title ? `, ${x.np.title}` : ''}</p>
           <Stars n={x.mineSong} onPick={x.rateSong} label="Song rating" /></div>
       ) : <span />}
       {show && x.rateable ? (
-        <div><p className="text-xs hw-sub mb-1 truncate">Rate this show</p>
+        <div><p className="text-sm hw-sub mb-1 truncate">Rate this show</p>
           <Stars n={x.rating.mine} onPick={x.rate} label="Show rating" /></div>
       ) : <span />}
-      <p className="col-span-2 text-xs hw-sub">Ratings are saved on your profile.</p>
     </div>
   )
 }
@@ -228,7 +227,7 @@ export function ExtrasStack({ compact = false }: { compact?: boolean }) {
         <div className={card}>
           {np.note.headline && <p className="text-br-dk-text font-medium">{np.note.headline}</p>}
           {np.note.message && <p className="text-sm text-br-dk-sub whitespace-pre-wrap">{np.note.message}</p>}
-          {np.note.by && <p className="text-xs text-br-dk-muted mt-1">from {np.note.by}</p>}
+          {np.note.by && <p className="text-sm text-br-dk-muted mt-1">from {np.note.by}</p>}
         </div>
       )}
       {x.sorted.length > 0 && (
@@ -238,7 +237,7 @@ export function ExtrasStack({ compact = false }: { compact?: boolean }) {
             {x.sorted.map(s => (
               <li key={s.id} className="flex items-center gap-3 text-sm">
                 <button type="button" onClick={() => x.vote(s.id)} aria-pressed={s.mine} aria-label={`Upvote ${s.text}`}
-                        className="sk-key rounded-lg h-8 min-w-[3rem] px-2 text-xs flex items-center justify-center gap-1">
+                        className="sk-key rounded-lg h-8 min-w-[3rem] px-2 text-sm flex items-center justify-center gap-1">
                   ▲ <span className="tabular-nums">{s.votes}</span>
                 </button>
                 <span className="text-br-dk-text truncate">{s.text}</span>

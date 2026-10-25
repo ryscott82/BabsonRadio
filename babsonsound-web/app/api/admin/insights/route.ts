@@ -1,6 +1,7 @@
 import { adminDb } from '@/lib/server/admin'
 import { handle, requireDirector } from '@/lib/server/http'
 import { tasteStats } from '@/lib/server/taste'
+import { loadConfig } from '@/lib/server/autoschedule'
 
 export const runtime = 'nodejs'
 
@@ -8,6 +9,7 @@ export const runtime = 'nodejs'
 export async function GET(req: Request) {
   return handle(async () => {
     await requireDirector(req)
-    return { stats: await tasteStats(adminDb()) }
+    const tz = (await loadConfig(adminDb())).timezone
+    return { stats: await tasteStats(adminDb(), Date.now(), tz) }
   })
 }

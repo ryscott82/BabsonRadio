@@ -1,5 +1,6 @@
 'use client'
 
+import FilterBar, { MoreButton, useFilter, usePaged, matchAll } from '@/components/admin/FilterBar'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { collection, onSnapshot, query, where } from 'firebase/firestore'
@@ -58,6 +59,11 @@ export default function AdminSlotsPage() {
     return () => { u1(); u2(); u3() }
   }, [user, isDirector, now])
 
+  const sf = useFilter<unknown>([], () => '')
+  const pendingS = pending.filter(r => matchAll(`${r.title} ${r.requesterName} ${r.requesterEmail} ${r.category}`, sf.q))
+  const upcomingS = upcoming.filter(s => matchAll(`${s.title} ${s.hostName}`, sf.q))
+  const archiveS = archive.filter(a => matchAll(`${a.title} ${a.requesterName} ${a.status} ${a.note}`, sf.q))
+  const archiveP = usePaged(archiveS)
   if (!user || !isDirector) return null
 
   return (
@@ -66,6 +72,7 @@ export default function AdminSlotsPage() {
         <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Slot requests</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
+      <FilterBar f={sf} total={pending.length + upcoming.length + archive.length} shown={pendingS.length + upcomingS.length + archiveS.length} placeholder="Search title, host, name" />
       <ErrorText>{error}</ErrorText>
 
       <div className="flex gap-1 border-b border-br-dk-border" role="tablist">
@@ -78,14 +85,14 @@ export default function AdminSlotsPage() {
       {tab === 'pending' && (
         <section className="space-y-3">
           {pending.length === 0 && <p className="text-sm text-br-dk-sub">Nothing waiting. New requests land here.</p>}
-          {pending.map(r => <PendingCard key={r.id} r={r} onError={setError} />)}
+          {pendingS.map(r => <PendingCard key={r.id} r={r} onError={setError} />)}
         </section>
       )}
 
       {tab === 'booked' && (
         <section className="space-y-3">
           {upcoming.length === 0 && <p className="text-sm text-br-dk-sub">Nothing booked yet.</p>}
-          {upcoming.map(s => (
+          {upcomingS.map(s => (
             <div key={s.id} className="sk-raised rounded-xl px-4 py-3 flex justify-between gap-4">
               <div>
                 <p className="text-sm text-br-dk-text">{s.title} <span className="text-br-dk-sub">· {s.hostName}</span></p>
@@ -99,9 +106,8 @@ export default function AdminSlotsPage() {
 
       {tab === 'archive' && (
         <section className="space-y-2">
-          <p className="text-xs text-br-dk-sub">Declined and cancelled requests, newest first. Kept here for reference; they never show on the schedule.</p>
           {archive.length === 0 && <p className="text-sm text-br-dk-sub">Nothing archived.</p>}
-          {archive.map(a => (
+          {archiveP.items.map(a => (
             <div key={a.id} className="sk-raised rounded-xl px-4 py-2.5 flex justify-between gap-4 opacity-80">
               <div className="min-w-0">
                 <p className="text-sm text-br-dk-text truncate">{a.title} <span className="text-br-dk-sub">· {a.requesterName}</span></p>
@@ -110,6 +116,7 @@ export default function AdminSlotsPage() {
               <p className="text-xs text-br-dk-sub text-right shrink-0"><span className="uppercase tracking-widest">{a.status}</span><br />{fmt(a.startAt)}</p>
             </div>
           ))}
+          <MoreButton p={archiveP} />
         </section>
       )}
     </div>

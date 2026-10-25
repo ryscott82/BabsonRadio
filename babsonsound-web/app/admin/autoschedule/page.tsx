@@ -4,15 +4,15 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
-import { DEFAULT_CONFIG, type AutoConfig, type AutoRule } from '@/lib/autoschedule'
+import { DEFAULT_CONFIG, type AutoConfig } from '@/lib/autoschedule'
 import { ErrorText, PrimaryButton } from '@/components/AuthUI'
+import AutoPlanner from '@/components/admin/AutoPlanner'
 
 interface Block { startMs: number; endMs: number; label: string; ruleId: string }
 interface Sync { updated: { playlist: string; blocks: number }[]; missing: string[]; error?: string }
 interface RunResult { blocks: Block[]; kept: number; written: boolean; azuracast?: Sync }
 interface Status { configured: boolean; ok: boolean; error?: string; playlists: { name: string; enabled: boolean }[]; genres: { genre: string; playlist: string; found: boolean }[] }
 
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const when = (ms: number) =>
   new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
 
@@ -62,6 +62,7 @@ export default function AutoSchedulePage() {
   const [busy, setBusy] = useState('')
   const [status, setStatus] = useState<Status | null>(null)
   const [sync, setSync] = useState<Sync | null>(null)
+  const [extraGenres, setExtraGenres] = useState<string[]>([])
 
   useEffect(() => { if (!loading && (!user || !isAdmin)) router.replace('/') }, [loading, user, isAdmin, router])
   useEffect(() => {
@@ -74,12 +75,8 @@ export default function AutoSchedulePage() {
   if (!user || !isAdmin || !cfg) return null
 
   const update = (patch: Partial<AutoConfig>) => setCfg({ ...cfg, ...patch })
-  const setRule = (i: number, patch: Partial<AutoRule>) =>
-    update({ rules: cfg.rules.map((r, j) => (j === i ? { ...r, ...patch } : r)) })
-  const toggleDay = (i: number, d: number) => {
-    const days = cfg.rules[i].days
-    setRule(i, { days: days.includes(d) ? days.filter(x => x !== d) : [...days, d].sort() })
-  }
+  const genres = Array.from(new Set([...extraGenres, ...cfg.defaultFillers, ...cfg.rules.flatMap(r => r.fillers)]))
+  const setGenres = (g: string[]) => setExtraGenres(g)
   const lines = (s: string) => s.split(',').map(x => x.trim()).filter(Boolean)
 
   async function run(label: string, fn: () => Promise<void>) {
@@ -113,11 +110,6 @@ export default function AutoSchedulePage() {
   const lab = 'block text-xs text-br-dk-sub mb-1 font-display tracking-widest'
   const btn = 'sk-key rounded-lg px-4 py-2 text-xs font-display tracking-widest text-br-dk-text disabled:opacity-50'
   // Every genre that appears in any rule, so each rule can switch them on and off with one tap.
-  const allGenres = Array.from(new Set([...cfg.defaultFillers, ...cfg.rules.flatMap(r => r.fillers)]))
-  const toggleGenre = (i: number, g: string) => {
-    const f = cfg.rules[i].fillers
-    setRule(i, { fillers: f.includes(g) ? f.filter(x => x !== g) : [...f, g] })
-  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
@@ -142,77 +134,7 @@ export default function AutoSchedulePage() {
         </label>
       </section>
 
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-br-gold tracking-widest text-sm">When and what</h2>
-          <button className={btn}
-                  onClick={() => update({ rules: [...cfg.rules, {
-                    id: `rule-${Date.now().toString(36)}`, name: 'New block', days: [1, 2, 3, 4, 5],
-                    start: '12:00', end: '14:00', fillers: allGenres.slice(0, 2), priority: 10 }] })}>
-            ADD
-          </button>
-        </div>
-        {cfg.rules.map((r, i) => (
-          <div key={r.id} className="sk-raised rounded-xl p-4 space-y-3">
-            <div className="flex flex-wrap gap-3 items-end">
-              <label className="flex-1 min-w-40"><span className={lab}>Name</span>
-                <input className={`${box} w-full`} value={r.name} onChange={e => setRule(i, { name: e.target.value })} /></label>
-              <label><span className={lab}>From</span>
-                <input type="time" className={box} value={r.start} onChange={e => setRule(i, { start: e.target.value })} /></label>
-              <label><span className={lab}>TO</span>
-                <input className={`${box} w-20`} value={r.end} onChange={e => setRule(i, { end: e.target.value })} placeholder="24:00" /></label>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {DAYS.map((d, n) => (
-                <button key={d} type="button" aria-pressed={r.days.includes(n)} onClick={() => toggleDay(i, n)}
-                        className="sk-key rounded-md px-2.5 py-1 text-xs font-display tracking-widest text-br-dk-text">{d}</button>
-              ))}
-            </div>
-            {!r.quiet && (
-              <div className="flex flex-wrap gap-1.5 items-center">
-                {allGenres.map(g => (
-                  <button key={g} type="button" aria-pressed={r.fillers.includes(g)} onClick={() => toggleGenre(i, g)}
-                          className="sk-key rounded-full px-3 py-1 text-xs text-br-dk-text">{g}</button>
-                ))}
-                <input className={`${box} w-32 !py-1 text-xs`} placeholder="+ genre"
-                       onKeyDown={e => {
-                         if (e.key !== 'Enter') return
-                         e.preventDefault()
-                         const v = e.currentTarget.value.trim()
-                         if (v && !r.fillers.includes(v)) setRule(i, { fillers: [...r.fillers, v] })
-                         e.currentTarget.value = ''
-                       }} />
-              </div>
-            )}
-            <details className="text-xs text-br-dk-sub">
-              <summary className="cursor-pointer select-none">More</summary>
-              <div className="pt-3 space-y-3">
-                <label className="flex items-center gap-3 text-sm text-br-dk-text">
-                  <input type="checkbox" checked={r.quiet === true} onChange={e => setRule(i, { quiet: e.target.checked })} />
-                  Nothing scheduled (AzuraCast&apos;s default playlist plays)
-                </label>
-                {!r.quiet && (
-                  <label className="flex items-center gap-3 text-sm text-br-dk-text">
-                    <input type="checkbox" checked={r.oneGenre === true} onChange={e => setRule(i, { oneGenre: e.target.checked })} />
-                    One genre per night
-                  </label>
-                )}
-                <div className="flex flex-wrap gap-3 items-end">
-                  <label><span className={lab}>Priority</span>
-                    <input type="number" min={0} max={100} className={`${box} w-20`} value={r.priority}
-                           onChange={e => setRule(i, { priority: Number(e.target.value) })} /></label>
-                  <label><span className={lab}>Longest block (min)</span>
-                    <input type="number" min={30} max={720} step={30} className={`${box} w-28`} value={r.blockMinutes ?? ''}
-                           placeholder={String(cfg.maxBlockMinutes)}
-                           onChange={e => setRule(i, { blockMinutes: e.target.value ? Number(e.target.value) : undefined })} /></label>
-                  <button className="text-xs text-br-dk-sub hover:text-br-red pb-2"
-                          onClick={() => update({ rules: cfg.rules.filter((_, j) => j !== i) })}>Delete block</button>
-                </div>
-              </div>
-            </details>
-          </div>
-        ))}
-      </section>
+      <AutoPlanner cfg={cfg} update={update} genres={genres} setGenres={setGenres} />
 
       <ErrorText>{error}</ErrorText>
       {notice && <p className="text-sm text-br-gold">{notice}</p>}

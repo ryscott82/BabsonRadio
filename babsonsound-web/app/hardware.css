@@ -22,8 +22,8 @@
   --hw-face-ring: 0 0 0 1.5px rgba(0,102,68,.75);
   --hw-rim: 30px; /* thickness of the leather around the ivory face (dark mode has no face and keeps 15px) */
   --hw-stitch: rgba(246,236,200,.6);
-  --hw-key-tint: linear-gradient(rgba(236,236,230,.30), rgba(236,236,230,.30));
-  --hw-key-ink: #1A1710;
+  --hw-key-tint: linear-gradient(rgba(10,120,80,.50), rgba(10,120,80,.50));
+  --hw-key-ink: #FFFFFF; --hw-star-ink: #1A1710;
   --hw-key-edge: #6f6d65;
   --hw-field: rgba(110,88,40,.16);
   --hw-eq: #1fbf7f;
@@ -43,8 +43,8 @@
     --hw-face-ring: none;
     --hw-rim: 15px;
     --hw-stitch: rgba(232,212,160,.38);
-    --hw-key-tint: linear-gradient(rgba(30,30,28,.55), rgba(30,30,28,.55));
-    --hw-key-ink: #EFE9D6;
+    --hw-key-tint: linear-gradient(rgba(10,95,65,.55), rgba(10,95,65,.55));
+    --hw-key-ink: #FFFFFF; --hw-star-ink: #EFE9D6;
     --hw-key-edge: #0F0F0D;
     --hw-field: rgba(0,0,0,.38);
     --hw-eq: #6FCF93;
@@ -64,8 +64,8 @@
   --hw-face-ring: none;
   --hw-rim: 15px;
   --hw-stitch: rgba(232,212,160,.38);
-  --hw-key-tint: linear-gradient(rgba(30,30,28,.55), rgba(30,30,28,.55));
-  --hw-key-ink: #EFE9D6;
+  --hw-key-tint: linear-gradient(rgba(10,95,65,.55), rgba(10,95,65,.55));
+  --hw-key-ink: #FFFFFF; --hw-star-ink: #EFE9D6;
   --hw-key-edge: #0F0F0D;
   --hw-field: rgba(0,0,0,.38);
   --hw-eq: #6FCF93;
@@ -139,7 +139,7 @@ body:has(.hw-stage) { transition: background-color .4s; }
 
 /* ── Steel keys (every .sk-key inside a panel) ───────────────── */
 .hw-panel .sk-key, .hw-main .sk-key, .hw-board .sk-key, .hw-bar .sk-key, .hw-banner .sk-key, .hw-key, .hw-pill {
-  color: var(--hw-key-ink); border: 0;
+  color: var(--hw-key-ink); border: 0; text-shadow: 0 1px 1px rgba(0,0,0,.55);
   background:
     linear-gradient(rgba(250,246,236,.13) 0, rgba(250,246,236,.03) 46%, rgba(250,246,236,0) 54%),
     var(--hw-key-tint),
@@ -150,7 +150,7 @@ body:has(.hw-stage) { transition: background-color .4s; }
 }
 .hw-panel .sk-key:active:not(:disabled), .hw-main .sk-key:active:not(:disabled), .hw-board .sk-key:active:not(:disabled), .hw-bar .sk-key:active:not(:disabled), .hw-key:active:not(:disabled), .hw-pill:active:not(:disabled),
 .hw-panel .sk-key[aria-pressed="true"], .hw-main .sk-key[aria-pressed="true"], .hw-board .sk-key[aria-pressed="true"], .hw-key[aria-pressed="true"], .hw-bar a[aria-current="page"] {
-  transform: translateY(3px);
+  transform: translateY(var(--hw-press, 3px));
   background:
     linear-gradient(rgba(0,0,0,.38), rgba(0,0,0,.08)),
     linear-gradient(rgba(30,30,28,.78), rgba(30,30,28,.78)),
@@ -176,7 +176,8 @@ body:has(.hw-stage) { transition: background-color .4s; }
   filter: none;
 }
 /* Icons look engraved into the metal: dark cut, thin lit lip along the lower edge. */
-.sk-btn.hw-knob svg, .hw-panel .sk-key svg, .hw-key svg, .hw-pill svg { color: #0d0e0b; filter: drop-shadow(0 1px 0 rgba(255,255,255,.6)) drop-shadow(0 -.5px 0 rgba(0,0,0,.28)); }
+.hw-panel .sk-key svg, .hw-key svg, .hw-pill svg { color: #fff; filter: drop-shadow(0 1px 1px rgba(0,0,0,.55)); }
+.sk-btn.hw-knob svg { color: #0d0e0b; filter: drop-shadow(0 1px 0 rgba(255,255,255,.6)) drop-shadow(0 -.5px 0 rgba(0,0,0,.28)); }
 .sk-btn.hw-knob:hover:not(:disabled) { filter: brightness(1.05); }
 .sk-btn.hw-knob:active:not(:disabled), .sk-btn.hw-knob[aria-pressed="true"] {
   transform: translateY(2px); filter: brightness(.93);
@@ -226,7 +227,7 @@ body:has(.hw-stage) { transition: background-color .4s; }
 
 /* ── Amp internals ───────────────────────────────────────────── */
 .hw-title {
-  font-family: 'Barlow Semi Condensed', 'Arial Narrow', sans-serif; font-weight: 700; letter-spacing: .01em; line-height: 1.05;
+  font-family: 'Barlow Semi Condensed', 'Arial Narrow', sans-serif; font-weight: 700; letter-spacing: .01em; line-height: 1.22;
 }
 .hw-sub { font-family: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif; color: var(--hw-sub); }
 .hw-prog { height: 10px; border-radius: 6px; background: #0d0f0c; box-shadow: inset 0 2px 4px rgba(0,0,0,.8), 0 1px 0 rgba(255,255,255,.2); padding: 2px; }
@@ -328,7 +329,7 @@ html.hw-lite .hw-eq.hw-led > i { filter: none; }
 .hw-vote[aria-pressed="true"] { transform: none; outline: 2px solid var(--hw-eq); outline-offset: -2px; box-shadow: 0 4px 0 var(--hw-key-edge), 0 8px 10px rgba(24,26,18,.38); color: var(--hw-key-ink); }
 
 /* Stars: worn steel, lit ones darker (light) or brighter (dark) */
-.hw-star { color: color-mix(in srgb, var(--hw-key-ink) 24%, transparent); text-shadow: 0 1px 0 rgba(255,255,255,.55), 0 2px 2px rgba(0,0,0,.35); cursor: pointer; }
+.hw-star { color: color-mix(in srgb, var(--hw-star-ink) 24%, transparent); text-shadow: 0 1px 0 rgba(255,255,255,.55), 0 2px 2px rgba(0,0,0,.35); cursor: pointer; }
 .hw-star.on { color: var(--hw-eq); text-shadow: 0 1px 0 rgba(255,255,255,.35), 0 2px 2px rgba(0,0,0,.4); }
 .hw-star:hover { transform: translateY(-1px); }
 
@@ -419,7 +420,7 @@ html.hw-lite .hw-eq.hw-led > i { filter: none; }
 .hw-glass-ampm { position: relative; z-index: 1; font-size: 39px; font-weight: 700; color: #7FD39C; opacity: .85; align-self: flex-end; margin-bottom: 24px; }
 .hw-glass-sm .hw-glass-time { font-size: 70px; } .hw-glass-sm .hw-glass-ampm { font-size: 20px; margin-bottom: 14px; } .hw-glass-sm .hw-glass-screen { gap: 10px; } .hw-glass-sm .hw-glass-date { font-size: 10px; top: 7px; right: 14px; }
 .hw-glass-date { position: absolute; z-index: 1; right: 18px; top: 10px; font-size: 14px; letter-spacing: .2em; font-weight: 600; color: #7FD39C; opacity: .6; }
-.hw-board-title { font-weight: 700; font-size: 92px; letter-spacing: -.03em; line-height: 1.02; padding-bottom: 3px; }
+.hw-board-title { font-weight: 700; font-size: 92px; letter-spacing: -.03em; line-height: 1.2; padding-bottom: 3px; }
 .hw-board-sub { font-size: 31px; font-weight: 500; color: var(--hw-sub); margin-top: 10px; line-height: 1.15; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .hw-board-qr { position: absolute; left: 38px; right: 38px; bottom: 34px; display: flex; align-items: center; gap: 22px; }
 .hw-board-qr img { border-radius: 8px; box-shadow: 0 3px 8px rgba(0,0,0,.45); flex: none; }
@@ -519,3 +520,6 @@ html.hw-lite .hw-eq.hw-led > i { filter: none; }
     conic-gradient(from -25deg, rgba(255,255,255,0), rgba(255,255,255,.30), rgba(255,255,255,0), rgba(0,0,0,.16),
                    rgba(255,255,255,0), rgba(255,255,255,.24), rgba(255,255,255,0), rgba(0,0,0,.14), rgba(255,255,255,0)),
     linear-gradient(color-mix(in srgb, var(--tint, transparent) 32%, transparent), color-mix(in srgb, var(--tint, transparent) 32%, transparent)); }
+
+/* Nav labels stay level with their neighbours when pressed in: the key sinks with shadow only. */
+.hw-bar a[aria-current="page"] { --hw-press: 0px; }

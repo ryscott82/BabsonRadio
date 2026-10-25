@@ -18,7 +18,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 /** Disclaimers, liability limits and the arbitration clause are set apart so they stand out. */
 function Loud({ children }: { children: React.ReactNode }) {
-  return <p className="uppercase text-xs leading-relaxed text-br-dk-text border-l-2 border-br-gold pl-3">{children}</p>
+  return <p className="uppercase text-sm leading-relaxed text-br-dk-text border-l-2 border-br-gold pl-3">{children}</p>
 }
 
 export default function TermsPage() {
@@ -28,7 +28,7 @@ export default function TermsPage() {
     <div className="max-w-2xl mx-auto px-4 py-10 space-y-8">
       <div>
         <h1 className="font-display text-br-dk-text text-4xl tracking-[0.08em]">Terms of use</h1>
-        <p className="text-xs text-br-dk-muted mt-1">Last updated {UPDATED}</p>
+        <p className="text-sm text-br-dk-muted mt-1">Last updated {UPDATED}</p>
       </div>
 
       <p className="text-sm text-br-dk-sub leading-relaxed">
@@ -40,6 +40,7 @@ export default function TermsPage() {
 
       <Section title="1. About Babson Radio">
         <p>Babson Radio is a free, student-run internet radio station. It is run by students and volunteers, not by professional broadcasters. It is not an official publication or statement of Babson College. Shows, hosts and listeners express their own views, and Babson College does not review or endorse them.</p>
+        <p>Your listening hours are logged on belong.babson.edu as if you attended a physical or virtual Babson College event. Using Babson Radio counts the same as attending a Babson College event.</p>
         <p>Babson College&apos;s <a className={a} href={LINKS.babsonPrivacy} target="_blank" rel="noopener noreferrer">privacy policy</a> and its student conduct rules also apply to Babson students using Babson Radio.</p>
       </Section>
 

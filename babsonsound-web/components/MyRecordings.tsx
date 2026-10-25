@@ -29,7 +29,7 @@ export default function MyRecordings() {
   return (
     <section className="sk-raised rounded-2xl p-5 space-y-3">
       <h2 className="font-display text-br-gold tracking-widest text-sm">My recordings</h2>
-      <p className="text-xs text-br-dk-sub">For Babson students unless shared publicly.</p>
+      <p className="text-sm text-br-dk-sub">For Babson students unless shared publicly.</p>
       <ErrorText>{err}</ErrorText>
       <ul className="space-y-3">
         {data.items.map(ep => (
@@ -37,18 +37,18 @@ export default function MyRecordings() {
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-br-dk-text truncate">{ep.title}</p>
-                <p className="text-xs text-br-dk-sub">{ep.showName} · {ep.visibility === 'public' ? 'Public' : 'Students only'}</p>
+                <p className="text-sm text-br-dk-sub">{ep.showName} · {ep.visibility === 'public' ? 'Public' : 'Students only'}</p>
               </div>
               {ep.visibility === 'public'
-                ? <button disabled={busy} onClick={() => set(ep, false)} className="text-xs text-br-gold">Make private</button>
-                : <button onClick={() => { setOpen(open === ep.id ? '' : ep.id); setSig(null) }} className="text-xs text-br-dk-sub underline">Share publicly…</button>}
+                ? <button disabled={busy} onClick={() => set(ep, false)} className="text-sm text-br-gold">Make private</button>
+                : <button onClick={() => { setOpen(open === ep.id ? '' : ep.id); setSig(null) }} className="text-sm text-br-dk-sub underline">Share publicly…</button>}
             </div>
             {open === ep.id && ep.visibility !== 'public' && (
               <div className="space-y-2">
                 <PublicAgreement status={data.status} onChange={setSig} />
                 {data.status === 'adult' && (
                   <button disabled={busy || !sig} onClick={() => set(ep, true)}
-                          className="sk-key rounded-lg px-4 h-9 text-xs font-display tracking-widest text-br-gold disabled:opacity-40">Sign and make public</button>
+                          className="sk-key rounded-lg px-4 h-9 text-sm font-display tracking-widest text-br-gold disabled:opacity-40">Sign and make public</button>
                 )}
               </div>
             )}

@@ -1,5 +1,6 @@
 'use client'
 
+import FilterBar, { MoreButton, useFilter, usePaged } from '@/components/admin/FilterBar'
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -8,6 +9,8 @@ import { ErrorText } from '@/components/AuthUI'
 
 interface Side { showName: string; description: string; imageUrl: string }
 interface Item { id: string; requesterName: string; createdAt: number; current: Side; requested: Side }
+
+const textOf = (i: Item) => `${i.requesterName} ${i.current.showName ?? ''} ${i.requested.showName ?? ''} ${i.requested.description ?? ''}`
 
 export default function AdminShowUpdatesPage() {
   const { user, isAdmin, loading } = useAuth()
@@ -28,6 +31,8 @@ export default function AdminShowUpdatesPage() {
     catch (e) { setError(e instanceof Error ? e.message : 'Could not save.') }
   }
 
+  const f = useFilter(items, textOf)
+  const paged = usePaged(f.items)
   if (!user || !isAdmin) return null
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
@@ -35,10 +40,11 @@ export default function AdminShowUpdatesPage() {
         <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Show updates</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
-      <p className="text-sm text-br-dk-sub">Changes hosts asked for on their weekly shows. Approving puts them live on the schedule right away.</p>
+      <p className="text-sm text-br-dk-sub">Approving puts a change live right away.</p>
+      <FilterBar f={f} total={items.length} placeholder="Search host or show" />
       <ErrorText>{error}</ErrorText>
       {items.length === 0 && !error && <p className="text-sm text-br-dk-sub">Nothing waiting.</p>}
-      {items.map(i => (
+      {paged.items.map(i => (
         <div key={i.id} className="sk-raised rounded-xl p-4 space-y-3">
           <p className="text-xs text-br-dk-sub">{i.requesterName || 'A host'} · {new Date(i.createdAt).toLocaleString()}</p>
           {(['showName', 'description'] as const).filter(k => i.requested[k]).map(k => (
@@ -62,6 +68,7 @@ export default function AdminShowUpdatesPage() {
           </div>
         </div>
       ))}
+      <MoreButton p={paged} />
     </div>
   )
 }

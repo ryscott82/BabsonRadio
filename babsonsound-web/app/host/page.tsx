@@ -111,19 +111,19 @@ function Controls({ st }: { st: Status }) {
         <>
           {upcoming && (onNow || soon) && (
             <div className="text-center py-2" role="timer" aria-live="off">
-              <p className="text-xs text-br-dk-sub">{upcoming.title} · {onNow ? 'time left' : 'starts in'}</p>
+              <p className="text-sm text-br-dk-sub">{upcoming.title} · {onNow ? 'time left' : 'starts in'}</p>
               <p className={`font-display text-6xl tabular-nums tracking-wider ${urgent ? 'text-br-red' : 'text-br-dk-text'}`}>{mmss(remaining)}</p>
-              <p className="text-xs text-br-dk-sub mt-1">
+              <p className="text-sm text-br-dk-sub mt-1">
                 {onNow ? (remaining < 5 * 60_000 ? 'Time to wrap up.' : `Ends at ${clock(upcoming.endAt)}`) : `On at ${clock(upcoming.startAt)}`}
               </p>
             </div>
           )}
           <div className="space-y-2">
-            <p className="text-xs text-br-dk-sub">{np?.isLive ? `LIVE${np.streamer ? ` · ${np.streamer}` : ''}` : 'NOW PLAYING'}{np ? ` · ${np.listeners} listening` : ''}</p>
+            <p className="text-sm text-br-dk-sub">{np?.isLive ? `LIVE${np.streamer ? ` · ${np.streamer}` : ''}` : 'NOW PLAYING'}{np ? ` · ${np.listeners} listening` : ''}</p>
             <p className="text-lg text-br-dk-text">{np?.song || 'Nothing reported right now'}</p>
             {np && np.duration > 0 && <div className="h-1.5 rounded-full bg-br-dk-border overflow-hidden"><div className="h-full bg-br-gold" style={{ width: `${pct}%` }} /></div>}
           </div>
-          <p className="text-xs text-br-dk-sub">Open from {st.windowHours} hours before your show until {st.windowHours} hours after. Station controls are with the admins.</p>
+          <p className="text-sm text-br-dk-sub">Open from {st.windowHours} hours before your show until {st.windowHours} hours after. Station controls are with the admins.</p>
         </>
       ) : (
         <p className="text-sm text-br-dk-sub">
@@ -180,7 +180,7 @@ function LiveNote({ st, reload }: { st: Status; reload: () => void }) {
       )}
       <Field label="Headline" value={headline} onChange={e => setHeadline(e.target.value)} maxLength={80} placeholder="Guest in studio: Prof. Lee" />
       <label className="block">
-        <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">Details</span>
+        <span className="block text-sm text-br-dk-sub mb-1.5 font-display tracking-widest">Details</span>
         <textarea value={message} onChange={e => setMessage(e.target.value)} rows={3} maxLength={400}
                   className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none" />
       </label>
@@ -192,7 +192,7 @@ function LiveNote({ st, reload }: { st: Status; reload: () => void }) {
       </div>
       <label className="flex items-center gap-3 text-sm text-br-dk-text pt-2 border-t border-br-dk-border">
         <input type="checkbox" checked={colorOn} disabled={busy} onChange={e => toggleColor(e.target.checked)} />
-        Color-changing background for this set (night only, 7pm to 6am)
+        Color-changing background (7pm to 6am)
       </label>
     </section>
   )
@@ -216,12 +216,12 @@ function SongRequests({ st, reload }: { st: Status; reload: () => void }) {
   return (
     <section className="sk-raised rounded-2xl p-5 space-y-3">
       <h2 className="font-display text-br-gold tracking-widest text-sm">SONG REQUESTS · {sel.title.toUpperCase()}</h2>
-      <p className="text-xs text-br-dk-sub">Let listeners type in a song or artist.</p>
+      <p className="text-sm text-br-dk-sub">Let listeners type in a song or artist.</p>
       <ErrorText>{err}</ErrorText>
       <PrimaryButton type="button" busy={busy} onClick={toggle}>{open ? 'STOP TAKING REQUESTS' : 'TAKE REQUESTS'}</PrimaryButton>
       {open && (i.requests?.length
-        ? <ul className="text-sm text-br-dk-text divide-y divide-br-dk-border">{i.requests.map(r => <li key={r.id} className="py-1.5">{r.text} <span className="text-xs text-br-dk-sub">· {r.name}</span></li>)}</ul>
-        : <p className="text-xs text-br-dk-sub">No requests yet.</p>)}
+        ? <ul className="text-sm text-br-dk-text divide-y divide-br-dk-border">{i.requests.map(r => <li key={r.id} className="py-1.5">{r.text} <span className="text-sm text-br-dk-sub">· {r.name}</span></li>)}</ul>
+        : <p className="text-sm text-br-dk-sub">No requests yet.</p>)}
     </section>
   )
 }
@@ -251,7 +251,7 @@ function Insights({ st }: { st: Status }) {
       )}
       {!!i.comments?.length && (
         <div className="space-y-1">
-          <p className="text-xs text-br-dk-sub font-display tracking-widest">Feedback</p>
+          <p className="text-sm text-br-dk-sub font-display tracking-widest">Feedback</p>
           <ul className="text-sm space-y-1">
             {i.comments.map((c, n) => <li key={n} className="text-br-dk-text">{c.stars} ★ · {c.text}</li>)}
           </ul>
@@ -304,16 +304,16 @@ function SetList({ st }: { st: Status }) {
               {choices.map(s => <option key={s.id} value={s.id}>{s.title} · {when(s.startAt)}</option>)}
             </select>
           )}
-          <p className="text-xs text-br-dk-sub">{sel.title} · {when(sel.startAt)} – {clock(sel.endAt)}</p>
+          <p className="text-sm text-br-dk-sub">{sel.title} · {when(sel.startAt)} – {clock(sel.endAt)}</p>
           <textarea value={songs} onChange={e => setSongs(e.target.value)} rows={10} maxLength={10000}
                     placeholder={'One song per line, like:\nArtist – Song title\nArtist – Song title'}
                     className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none" />
           <ErrorText>{err}</ErrorText>
           <div className="flex items-center gap-4">
             <PrimaryButton type="button" busy={busy} onClick={save}>Save set list</PrimaryButton>
-            {saved && <span role="status" className="text-xs text-br-dk-sub">Saved {clock(saved)}</span>}
+            {saved && <span role="status" className="text-sm text-br-dk-sub">Saved {clock(saved)}</span>}
           </div>
-          <p className="text-xs text-br-dk-sub">Type as you go or paste the list at the end.</p>
+          <p className="text-sm text-br-dk-sub">Type as you go or paste the list at the end.</p>
         </>
       )}
     </section>
@@ -329,9 +329,9 @@ function Shows({ st }: { st: Status }) {
         <div key={s.id} className="sk-field rounded-xl px-4 py-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm text-br-dk-text truncate">{s.title}</p>
-            <p className="text-xs text-br-dk-sub">{when(s.startAt)} – {clock(s.endAt)}</p>
+            <p className="text-sm text-br-dk-sub">{when(s.startAt)} – {clock(s.endAt)}</p>
           </div>
-          <span className={`text-[10px] font-display tracking-widest shrink-0 ${s.open ? 'text-br-gold' : 'text-br-dk-sub'}`}>{s.open ? 'Panel open' : 'Upcoming'}</span>
+          <span className={`text-sm font-display tracking-widest shrink-0 ${s.open ? 'text-br-gold' : 'text-br-dk-sub'}`}>{s.open ? 'Panel open' : 'Upcoming'}</span>
         </div>
       ))}
     </section>
@@ -369,14 +369,14 @@ function ChangeRequest({ st, reload }: { st: Status; reload: () => void }) {
       )}
       <Field label="New name (optional)" value={name} onChange={e => setName(e.target.value)} maxLength={80} />
       <label className="block">
-        <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">New description (optional)</span>
+        <span className="block text-sm text-br-dk-sub mb-1.5 font-display tracking-widest">New description (optional)</span>
         <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} maxLength={600}
                   className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none" />
       </label>
       <ImagePicker scope="slot" value={image} onChange={setImage} />
       <ErrorText>{err}</ErrorText>
       {ok && <p role="status" className="text-sm text-br-gold">{ok}</p>}
-      {st.pending.length > 0 && <p className="text-xs text-br-dk-sub">{st.pending.length} request{st.pending.length > 1 ? 's' : ''} waiting for review.</p>}
+      {st.pending.length > 0 && <p className="text-sm text-br-dk-sub">{st.pending.length} request{st.pending.length > 1 ? 's' : ''} waiting for review.</p>}
       <PrimaryButton type="submit" busy={busy}>Send request</PrimaryButton>
     </form>
   )
@@ -418,20 +418,20 @@ function Stats() {
         </select>
       )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className={tile}><p className="font-display text-3xl text-br-dk-text tabular-nums">{s.ratingCount ? `${s.ratingAvg} ★` : '–'}</p><p className="text-xs text-br-dk-sub">{s.ratingCount} rating{s.ratingCount === 1 ? '' : 's'}</p></div>
-        <div className={tile}><p className="font-display text-3xl text-br-dk-text tabular-nums">{s.rank ? `#${s.rank}` : '–'}</p><p className="text-xs text-br-dk-sub">{s.rank ? `of ${s.rankOf} shows` : 'needs ratings'}</p></div>
-        <div className={tile}><p className="font-display text-3xl text-br-dk-text tabular-nums">{s.avgListeners || '–'}</p><p className="text-xs text-br-dk-sub">avg listeners</p></div>
-        <div className={tile}><p className="font-display text-3xl text-br-dk-text tabular-nums">{s.peakListeners || '–'}</p><p className="text-xs text-br-dk-sub">peak listeners</p></div>
+        <div className={tile}><p className="font-display text-3xl text-br-dk-text tabular-nums">{s.ratingCount ? `${s.ratingAvg} ★` : '–'}</p><p className="text-sm text-br-dk-sub">{s.ratingCount} rating{s.ratingCount === 1 ? '' : 's'}</p></div>
+        <div className={tile}><p className="font-display text-3xl text-br-dk-text tabular-nums">{s.rank ? `#${s.rank}` : '–'}</p><p className="text-sm text-br-dk-sub">{s.rank ? `of ${s.rankOf} shows` : 'needs ratings'}</p></div>
+        <div className={tile}><p className="font-display text-3xl text-br-dk-text tabular-nums">{s.avgListeners || '–'}</p><p className="text-sm text-br-dk-sub">avg listeners</p></div>
+        <div className={tile}><p className="font-display text-3xl text-br-dk-text tabular-nums">{s.peakListeners || '–'}</p><p className="text-sm text-br-dk-sub">peak listeners</p></div>
       </div>
-      {s.ratingCount > 0 && <p className="text-xs text-br-dk-sub">Station average rating is {s.stationAvg} ★. Rank uses the last 60 days and gives little weight to shows with only a few ratings.</p>}
+      {s.ratingCount > 0 && <p className="text-sm text-br-dk-sub">Station average rating is {s.stationAvg} ★. Rank uses the last 60 days and gives little weight to shows with only a few ratings.</p>}
       <div className="sk-raised rounded-2xl p-4 flex flex-wrap gap-5 text-lg text-br-dk-text">
         {Object.entries(s.reactions).map(([e, n]) => <span key={e}>{e} <span className="tabular-nums text-base">{n}</span></span>)}
-        <span className="text-xs text-br-dk-sub self-center">reactions, all time</span>
+        <span className="text-sm text-br-dk-sub self-center">reactions, all time</span>
       </div>
       {empty ? <p className="text-sm text-br-dk-sub">Nothing recorded for this show yet.</p> : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-br-dk-text">
-            <thead className="text-xs text-br-dk-sub text-left"><tr><th className="py-2 pr-3">Aired</th><th className="pr-3">Avg</th><th className="pr-3">Peak</th><th className="pr-3">Tuned in</th><th className="pr-3">Reactions</th><th>Rating</th></tr></thead>
+            <thead className="text-sm text-br-dk-sub text-left"><tr><th className="py-2 pr-3">Aired</th><th className="pr-3">Avg</th><th className="pr-3">Peak</th><th className="pr-3">Tuned in</th><th className="pr-3">Reactions</th><th>Rating</th></tr></thead>
             <tbody>
               {s.airings.map(a => (
                 <tr key={a.occId} className="border-t border-br-dk-border tabular-nums">
@@ -446,9 +446,9 @@ function Stats() {
       )}
       {s.bestSongs.length > 0 && (
         <div className="grid sm:grid-cols-2 gap-5">
-          <div className="sk-raised rounded-2xl p-4"><p className="font-display text-br-gold tracking-widest text-xs mb-2">Top rated songs</p>
+          <div className="sk-raised rounded-2xl p-4"><p className="font-display text-br-gold tracking-widest text-sm mb-2">Top rated songs</p>
             <ul className="text-sm space-y-1">{s.bestSongs.map((x, i) => <li key={i} className="flex justify-between gap-3"><span className="truncate">{x.artist ? `${x.artist} – ` : ''}{x.title}</span><span className="text-br-gold shrink-0">{x.avg} ★ ({x.count})</span></li>)}</ul></div>
-          {s.lowSongs.length > 0 && <div className="sk-raised rounded-2xl p-4"><p className="font-display text-br-dk-sub tracking-widest text-xs mb-2">Lowest rated</p>
+          {s.lowSongs.length > 0 && <div className="sk-raised rounded-2xl p-4"><p className="font-display text-br-dk-sub tracking-widest text-sm mb-2">Lowest rated</p>
             <ul className="text-sm space-y-1">{s.lowSongs.map((x, i) => <li key={i} className="flex justify-between gap-3"><span className="truncate">{x.artist ? `${x.artist} – ` : ''}{x.title}</span><span className="text-br-dk-sub shrink-0">{x.avg} ★ ({x.count})</span></li>)}</ul></div>}
         </div>
       )}

@@ -56,7 +56,7 @@ export default function Nav() {
 
         {/* Wordmark */}
         <Link href="/" className="flex items-baseline gap-2.5 shrink-0" style={{ fontFamily: "'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif" }}>
-          <span className="uppercase text-br-gold text-[11px] font-semibold tracking-[0.34em]">Babson</span>
+          <span className="uppercase text-br-gold text-sm font-semibold tracking-[0.34em]">Babson</span>
           <span className="uppercase text-br-dk-text text-[1.6rem] font-bold tracking-[0.32em] leading-none">Radio</span>
         </Link>
 
@@ -67,7 +67,7 @@ export default function Nav() {
               key={link.href}
               href={link.href}
               aria-current={active(link.href) ? 'page' : undefined}
-              className={`${active(link.href) ? 'sk-key hw-pill text-br-gold' : 'text-br-dk-text hover:text-br-gold'} text-[15px] font-semibold px-4 py-1.5 rounded-xl transition-colors`}
+              className={`${active(link.href) ? 'sk-key hw-pill text-br-gold' : 'text-br-dk-text hover:text-br-gold'} text-[17px] font-semibold px-4 h-10 inline-flex items-center justify-center leading-none rounded-xl transition-colors`}
             >
               {link.label}
             </Link>
@@ -77,7 +77,8 @@ export default function Nav() {
         {/* Right side */}
         <div className="ml-auto flex items-center gap-3">
           <a href={LINKS.join} target="_blank" rel="noopener noreferrer"
-             className="hidden md:inline-flex sk-btn items-center h-9 px-4 rounded-full text-sm font-semibold">Join Babson Sound</a>
+             style={{ '--hw-key-tint': 'linear-gradient(rgba(14,143,97,.38), rgba(14,143,97,.38))' } as React.CSSProperties}
+             className="hidden md:inline-flex sk-key hw-pill items-center justify-center leading-none h-9 px-4 rounded-full text-sm font-semibold">Join Babson Sound</a>
           <ThemeToggle />
 
           {user ? (

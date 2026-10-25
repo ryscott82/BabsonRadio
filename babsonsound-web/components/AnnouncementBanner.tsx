@@ -22,7 +22,7 @@ export default function AnnouncementBanner() {
     <div role="status" className="hw-banner relative z-[2] text-br-dk-text text-sm">
       <div className="max-w-[1500px] mx-auto px-4 lg:px-10 py-2.5 flex items-center justify-center gap-3 relative">
         <span className="font-bold shrink-0">Station message</span><span className="min-w-0">{a.text}</span>
-        <button type="button" aria-label="Dismiss message" className="sk-key hw-pill absolute right-4 lg:right-10 w-7 h-7 rounded-full text-xs"
+        <button type="button" aria-label="Dismiss message" className="sk-key hw-pill absolute right-4 lg:right-10 w-7 h-7 rounded-full text-sm"
                 onClick={() => { setClosed(a.updatedAt); try { sessionStorage.setItem('br_ann_closed', String(a.updatedAt)) } catch { /* ignore */ } }}>✕</button>
       </div>
     </div>

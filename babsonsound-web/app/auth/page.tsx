@@ -81,7 +81,7 @@ function Forms() {
     return (
       <Card title="Check your email" subtitle={`We sent a sign-in link to ${sentTo}. Tap it and you're in.`}>
         <div className="space-y-3">
-          <p className="text-center text-xs text-br-dk-sub">Nothing yet? Check your spam folder.</p>
+          <p className="text-center text-sm text-br-dk-sub">Nothing yet? Check your spam folder.</p>
           <ErrorText>{error}</ErrorText>
           <div className="flex justify-between">
             <GhostButton disabled={wait > 0 || busy} onClick={() => sendLink()}>{wait > 0 ? `Resend in ${wait}s` : 'Resend link'}</GhostButton>
@@ -99,7 +99,7 @@ function Forms() {
       <form onSubmit={usePassword ? submitPassword : sendLink} className="space-y-4">
         <Field label="Email" value={typed} onChange={e => setTyped(e.target.value)} type="email"
                autoComplete="username" autoCapitalize="none" placeholder="you@babson.edu" />
-        {hint && <p className="text-xs text-br-dk-sub -mt-2">{hint}</p>}
+        {hint && <p className="text-sm text-br-dk-sub -mt-2">{hint}</p>}
         {usePassword && (
           <Field label="Password" value={password} onChange={e => setPassword(e.target.value)}
                  type="password" autoComplete={create ? 'new-password' : 'current-password'}
@@ -109,7 +109,7 @@ function Forms() {
         <PrimaryButton type="submit" busy={busy}>
           {!usePassword ? 'EMAIL ME A LINK' : create ? 'CREATE ACCOUNT' : 'SIGN IN'}
         </PrimaryButton>
-        <p className="text-center text-xs text-br-dk-sub">
+        <p className="text-center text-sm text-br-dk-sub">
           By continuing you agree to the{' '}
           <Link href="/terms" target="_blank" className="underline underline-offset-4">Terms of Use</Link> and{' '}
           <Link href="/privacy" target="_blank" className="underline underline-offset-4">Privacy Policy</Link>.
@@ -168,7 +168,7 @@ function VerifyPanel({ email, onCheck }: { email: string; onCheck: () => Promise
           <GhostButton onClick={() => signOut()}>Sign out</GhostButton>
         </div>
         {msg && <p className="text-center text-sm text-br-dk-sub">{msg}</p>}
-        <p className="text-center text-xs text-br-dk-sub">Check your spam folder.</p>
+        <p className="text-center text-sm text-br-dk-sub">Check your spam folder.</p>
       </div>
     </Card>
   )

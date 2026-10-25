@@ -22,7 +22,7 @@ function Tile({ value, label }: { value: string; label: string }) {
       <div className="sk-field rounded-xl w-[3rem] sm:w-24 lg:w-28 py-3 sm:py-4 text-center">
         <span className="font-display text-3xl sm:text-6xl lg:text-7xl text-br-dk-text tabular-nums leading-none">{value}</span>
       </div>
-      <span className="font-display tracking-[0.2em] text-[0.65rem] sm:text-xs text-br-dk-sub uppercase">{label}</span>
+      <span className="font-display tracking-[0.2em] text-[0.65rem] sm:text-sm text-br-dk-sub uppercase">{label}</span>
     </div>
   )
 }

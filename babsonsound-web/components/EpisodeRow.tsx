@@ -16,14 +16,16 @@ export const ago = (ms: number) => {
 export function EpisodeRow({ ep, saved, onSave, onPlay }: { ep: Ep; saved: boolean; onSave: (ep: Ep) => void; onPlay: (ep: Ep) => void }) {
   return (
     <div className="sk-raised rounded-xl p-3 flex gap-3 items-center">
-      <button onClick={() => onPlay(ep)} aria-label={`Play ${ep.title}`} className="relative shrink-0 w-28 h-16 rounded-lg overflow-hidden bg-br-green">
+      <button onClick={() => onPlay(ep)} aria-label={`Play ${ep.title}`} className="relative shrink-0 w-28 h-16 rounded-lg overflow-hidden bg-[#1B1B18] bg-[url(/hw/leather-black.jpg)] bg-[length:240px_auto] shadow-[inset_0_0_0_1px_rgba(232,212,160,.35),inset_0_2px_6px_rgba(0,0,0,.6)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {ep.thumbnailURL && <img src={ep.thumbnailURL} alt="" className="absolute inset-0 w-full h-full object-cover" />}
-        <span className="absolute inset-0 flex items-center justify-center bg-black/25 text-white text-xl">▶</span>
+        <span className="absolute inset-0 flex items-center justify-center">
+          <span className="w-8 h-8 rounded-full flex items-center justify-center text-[#1a1710] text-[13px] pl-0.5 bg-[url(/hw/steel.jpg)] bg-[length:90px_auto] shadow-[0_2px_0_#6f6d65,0_4px_6px_rgba(0,0,0,.5),inset_0_1px_0_rgba(255,255,255,.55)]">▶</span>
+        </span>
       </button>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-br-dk-text line-clamp-2">{ep.title}</p>
-        <p className="text-xs text-br-dk-sub truncate">{ep.showName}{ep.category ? ` · ${ep.category}` : ''}{ep.publishedAt ? ` · ${ago(ep.publishedAt)}` : ''}</p>
+        <p className="text-sm text-br-dk-sub truncate">{ep.showName}{ep.category ? ` · ${ep.category}` : ''}{ep.publishedAt ? ` · ${ago(ep.publishedAt)}` : ''}</p>
       </div>
       <button onClick={() => onSave(ep)} aria-pressed={saved} aria-label={saved ? 'Remove from library' : 'Save to library'}
               className={`sk-key rounded-lg w-9 h-9 shrink-0 ${saved ? 'text-br-gold' : 'text-br-dk-sub hover:text-br-dk-text'}`}>
@@ -56,10 +58,10 @@ export function PlayerDialog({ ep, onClose }: { ep: Ep | null; onClose: () => vo
         <div className="p-4 flex items-start justify-between gap-4">
           <div>
             <p className="text-br-dk-text">{ep.title}</p>
-            <p className="text-xs text-br-dk-sub mt-1">{ep.showName}{ep.category ? ` · ${ep.category}` : ''}</p>
+            <p className="text-sm text-br-dk-sub mt-1">{ep.showName}{ep.category ? ` · ${ep.category}` : ''}</p>
             {ep.description && <p className="text-sm text-br-dk-sub mt-2">{ep.description}</p>}
           </div>
-          <button onClick={onClose} className="sk-key rounded-lg px-3 h-9 text-xs font-display tracking-widest text-br-dk-text shrink-0">Close</button>
+          <button onClick={onClose} className="sk-key rounded-lg px-3 h-9 text-sm font-display tracking-widest text-br-dk-text shrink-0">Close</button>
         </div>
       </div>
     </div>

@@ -20,7 +20,7 @@ export default function MyRatings() {
     <div className="sk-raised rounded-2xl p-5 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-br-dk-text text-sm font-medium">Your ratings</p>
-        <div className="flex gap-2 text-xs">
+        <div className="flex gap-2 text-sm">
           {(['shows', 'songs'] as const).map(t => (
             <button key={t} type="button" onClick={() => setTab(t)} aria-pressed={tab === t}
                     className={`rounded-full px-3 py-1 ${tab === t ? 'bg-br-gold/20 text-br-gold' : 'text-br-dk-sub'}`}>
@@ -32,7 +32,7 @@ export default function MyRatings() {
       <ul className="max-h-64 overflow-y-auto space-y-1.5">
         {rows.map(x => (
           <li key={x.k} className="flex items-center justify-between gap-3 text-sm">
-            <span className="min-w-0"><span className="text-br-dk-text block truncate">{x.a}</span><span className="text-xs text-br-dk-sub block truncate">{x.b}</span></span>
+            <span className="min-w-0"><span className="text-br-dk-text block truncate">{x.a}</span><span className="text-sm text-br-dk-sub block truncate">{x.b}</span></span>
             <span className="text-br-gold shrink-0" aria-label={`${x.s} stars`}>{stars(x.s)}</span>
           </li>
         ))}

@@ -1,5 +1,6 @@
 'use client'
 
+import { Pick, MoreButton, usePaged, matchAll } from '@/components/admin/FilterBar'
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -61,9 +62,12 @@ export default function AdminUsersPage() {
     catch (e) { setError(e instanceof Error ? e.message : 'Could not remove.') }
   }
 
+  const [lv, setLv] = useState('')
+  const [badge, setBadge] = useState('')
+  const filtered = rows.filter(r => matchAll(`${r.name} ${r.email} ${r.username}`, q) && (!lv || r.level === lv) &&
+    (!badge || (badge === 'radio' ? r.radioTrained : badge === 'studio' ? r.studioTrained : !r.radioTrained && !r.studioTrained)))
+  const paged = usePaged(filtered)
   if (!user || !isAdmin) return null
-  const needle = q.trim().toLowerCase()
-  const shown = rows.filter(r => !needle || `${r.name} ${r.email} ${r.username}`.toLowerCase().includes(needle))
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
@@ -106,13 +110,18 @@ export default function AdminUsersPage() {
           </ul>
         )}
       </div>
-      <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search name, email or username"
-             className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text" />
+      <div className="flex flex-wrap items-center gap-2" role="search">
+        <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search name, email or username" aria-label="Search users"
+               className="sk-field flex-1 min-w-[12rem] px-3 py-2 text-sm text-br-dk-text" />
+        <Pick value={lv} onChange={setLv} label="Role" options={[['', 'All roles'], ...LEVELS.map(l => [l, LEVEL_LABEL[l]] as [string, string])]} />
+        <Pick value={badge} onChange={setBadge} label="Training" options={[['', 'Any training'], ['radio', 'Radio trained'], ['studio', 'Studio trained'], ['none', 'Not trained']]} />
+        <span className="text-sm text-br-dk-sub tabular-nums" role="status">{filtered.length === rows.length ? rows.length : `${filtered.length} of ${rows.length}`}</span>
+      </div>
       <ErrorText>{error}</ErrorText>
       {note && <p role="status" className="text-sm text-br-green">{note}</p>}
       <div className="space-y-2">
-        {shown.length === 0 && <p className="text-sm text-br-dk-sub">No accounts found.</p>}
-        {shown.map(r => {
+        {filtered.length === 0 && <p className="text-sm text-br-dk-sub">No accounts found.</p>}
+        {paged.items.map(r => {
           const school = SCHOOL.test(r.email)
           const fixed = r.you || r.owner
           const high = r.level === 'director' || r.level === 'admin'
@@ -145,6 +154,7 @@ export default function AdminUsersPage() {
             </div>
           )
         })}
+        <MoreButton p={paged} />
       </div>
     </div>
   )

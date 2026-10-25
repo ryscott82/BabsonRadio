@@ -62,7 +62,7 @@ export default function HostGate({ children }: { children: ReactNode }) {
                 <span>{o}</span>
               </label>
             ))}
-            {result && wrong.has(q.id) && <p className="text-xs text-br-red">{result.wrong.find(w => w.id === q.id)?.why}</p>}
+            {result && wrong.has(q.id) && <p className="text-sm text-br-red">{result.wrong.find(w => w.id === q.id)?.why}</p>}
           </fieldset>
         ))}
         <ErrorText>{error}</ErrorText>
@@ -76,11 +76,11 @@ export default function HostGate({ children }: { children: ReactNode }) {
       <h2 className="font-display text-br-gold tracking-widest text-sm">Host training</h2>
       {info.checkIn === 'pending' ? (
         <>
-          <p className="text-sm text-br-dk-text">Waiting for a director to confirm you are at training. This page updates on its own.</p>
+          <p className="text-sm text-br-dk-text">Waiting for a director to confirm training.</p>
         </>
       ) : (
         <>
-          <p className="text-sm text-br-dk-text">Training happens in person. Then you take a short quiz and sign the host agreements.</p>
+          <p className="text-sm text-br-dk-text">Training is in person, then a short quiz and the host agreements.</p>
           <div className="flex flex-wrap gap-3 items-center">
             {info.requested
               ? <span className="text-sm text-br-dk-sub">Requested. A director will reach out.</span>

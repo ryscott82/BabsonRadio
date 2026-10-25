@@ -1,5 +1,6 @@
 'use client'
 
+import FilterBar, { MoreButton, useFilter, usePaged } from '@/components/admin/FilterBar'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
@@ -10,6 +11,8 @@ import { plexMono } from '@/components/admin/opsFont'
 
 interface Req { uid: string; name: string; email: string; oldPhone: string; newPhone: string; at: number }
 const show = (p: string) => (p.startsWith('+1') ? formatPhone(p.slice(2)) : p) || 'none'
+
+const textOf = (r: Req) => `${r.name} ${r.email} ${r.oldPhone} ${r.newPhone}`
 
 // People ask to change their phone number from their profile; an admin confirms it here.
 export default function PhoneChangesPage() {
@@ -33,6 +36,8 @@ export default function PhoneChangesPage() {
     setBusy('')
   }
 
+  const f = useFilter(rows, textOf)
+  const paged = usePaged(f.items)
   if (loading || !user || !isAdmin) return <div className="min-h-[60vh]" />
   const btn = 'rounded-md border border-br-dk-border px-2.5 py-1 text-xs text-br-dk-text hover:text-br-gold disabled:opacity-40'
 
@@ -44,9 +49,10 @@ export default function PhoneChangesPage() {
           <h1 className="text-br-dk-text text-base font-semibold">phone changes</h1>
           <span className="text-xs text-br-dk-sub ml-auto">{rows.length} waiting</span>
         </div>
+        <FilterBar f={f} total={rows.length} placeholder="Search name, email or number" />
         {error && <p className="text-sm text-br-red">{error}</p>}
         <ul className="divide-y divide-br-dk-border sk-raised">
-          {rows.map(r => (
+          {paged.items.map(r => (
             <li key={r.uid} className="p-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-br-dk-text truncate">{r.name} <span className="text-xs text-br-dk-sub">{r.email}</span></p>
@@ -60,6 +66,7 @@ export default function PhoneChangesPage() {
           ))}
           {!rows.length && <li className="p-4 text-sm text-br-dk-sub">No requests.</li>}
         </ul>
+        <MoreButton p={paged} />
         <div className="sk-raised p-3 space-y-2">
           <p className="text-sm text-br-dk-text">Set a number directly</p>
           <p className="text-xs text-br-dk-sub">Needs the account&apos;s ID (from Users and roles).</p>

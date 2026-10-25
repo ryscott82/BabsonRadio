@@ -246,7 +246,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
           <p className="hw-sub !text-br-dk-text text-lg font-medium line-clamp-2 mt-0.5">
             {hasSong ? subline : 'Babson College — Internet Radio'}
           </p>
-          {!onAir && np?.showTitle && <p className="hw-sub text-xs mt-1">On air: {np.showTitle}</p>}
+          {!onAir && np?.showTitle && <p className="hw-sub text-sm mt-1">On air: {np.showTitle}</p>}
           {hasSong && np!.duration > 0
             ? <div className="hw-prog mt-5" aria-hidden><i style={{ width: `${pct}%` }} /></div>
             : <div className="mt-5" />}
@@ -255,7 +255,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
           )}
 
           {previewing && (
-            <p className="hw-sub text-xs mt-3">
+            <p className="hw-sub text-sm mt-3">
               You are previewing the live stream. <Link href="/auth" className="text-br-gold underline">Sign in</Link> or{' '}
               <Link href="/auth" className="text-br-gold underline">create a free account</Link> for reminders, friends and more.
             </p>
@@ -265,7 +265,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
               {!user
                 ? <>Sign in or <Link href="/auth?mode=create" className="text-br-gold underline">create an account</Link> to listen.</>
                 : isGuest
-                  ? <>Listening isn&apos;t available right now. Try again in a moment.</>
+                  ? <>Listening is unavailable. Try again.</>
                   : <>Verify your email to listen. <Link href="/auth" className="text-br-gold underline">Continue</Link>.</>}
             </p>
           )}
@@ -317,7 +317,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
           {/* Song links and full screen on one row of keys */}
           <div className="flex items-center gap-3 mt-6">
             {hasSong && !np!.showOnly && <SongLinks keys title={np!.title} artist={np!.artist} />}
-            <button onClick={openBoard} className="hidden lg:inline-flex sk-key hw-pill items-center gap-2 h-8 px-4 rounded-lg text-[11px] font-bold tracking-[0.12em] ml-auto shrink-0">
+            <button onClick={openBoard} className="hidden lg:inline-flex sk-key hw-pill items-center gap-2 h-8 px-4 rounded-lg text-sm font-bold tracking-[0.12em] ml-auto shrink-0">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
               FULL SCREEN
             </button>
@@ -338,7 +338,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
             </div>
           )}
           {groups.length > 0 && (
-            <ul className="mt-2 space-y-0.5 text-xs text-br-gold">
+            <ul className="mt-2 space-y-0.5 text-sm text-br-gold">
               {groups.slice(0, 3).map(g => <li key={g.text}>{g.text}</li>)}
             </ul>
           )}
@@ -358,7 +358,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
         <div className="fixed inset-0 z-[70] bg-black/60 flex items-end sm:items-center justify-center p-4">
           <div role="alertdialog" aria-modal="true" aria-label="Still listening?" className="sk-raised rounded-2xl p-6 w-full max-w-sm space-y-4 text-center">
             <h3 className="font-display text-br-dk-text text-2xl tracking-wide">Still listening?</h3>
-            <p className="text-sm text-br-dk-sub">The music stops in a couple of minutes unless you tap below.</p>
+            <p className="text-sm text-br-dk-sub">Tap below to keep listening.</p>
             <button onClick={guard.stillHere} className="sk-btn block w-full rounded-xl py-3 text-sm font-display tracking-[0.2em]">Keep listening</button>
           </div>
         </div>

@@ -260,22 +260,40 @@ body::before {
 
 /* ── Radio operations: flat, dark, monospace "terminal" skin. Same tokens, remapped inside .ops. ── */
 .ops {
+  color-scheme: light;
+  --br-bg:#f5f7f6; --br-surface:#ffffff; --br-surface2:#eaf0ed;
+  --br-border:#d2dcd6; --br-border2:#aebcb4;
+  --br-text:#14211a; --br-sub:#46594f; --br-muted:#5f7368;
+  --br-accent:#00704a;
+  --sk-field:#ffffff; --sk-btn-top:#e3eee8; --sk-btn-bot:#e3eee8; --sk-btn-edge:#aebcb4; --sk-btn-ink:#00573a;
+  --sk-btn-text-shadow: none;
+  background: var(--br-bg); color: var(--br-text);
+  font-size: 14px; letter-spacing: 0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ops {
+    color-scheme: dark;
+    --br-bg:#060908; --br-surface:#0b110e; --br-surface2:#101a15;
+    --br-border:#1c2a22; --br-border2:#2a3f33;
+    --br-text:#c9e4d3; --br-sub:#8fa99a; --br-muted:#5c7566;
+    --br-accent:#3ddc97;
+    --sk-field:#050807; --sk-btn-top:#14281e; --sk-btn-bot:#14281e; --sk-btn-edge:#2a3f33; --sk-btn-ink:#3ddc97;
+  }
+}
+:root[data-theme="dark"] .ops {
   color-scheme: dark;
   --br-bg:#060908; --br-surface:#0b110e; --br-surface2:#101a15;
   --br-border:#1c2a22; --br-border2:#2a3f33;
-  --br-text:#c9e4d3; --br-sub:#7f9a8b; --br-muted:#4c6556;
+  --br-text:#c9e4d3; --br-sub:#8fa99a; --br-muted:#5c7566;
   --br-accent:#3ddc97;
   --sk-field:#050807; --sk-btn-top:#14281e; --sk-btn-bot:#14281e; --sk-btn-edge:#2a3f33; --sk-btn-ink:#3ddc97;
-  --sk-btn-text-shadow: none;
-  background: var(--br-bg); color: var(--br-text);
-  font-size: 13px; letter-spacing: 0;
 }
-.ops .font-display { font-family: inherit; letter-spacing: 0.04em; }
-.ops .sk-raised, .ops .sk-hero { background: var(--br-surface); border: 1px solid var(--br-border); border-radius: 3px; box-shadow: none; }
-.ops .sk-field { background: var(--sk-field); border: 1px solid var(--br-border); border-radius: 3px; box-shadow: none; }
-.ops .sk-btn, .ops .sk-key { background: var(--sk-btn-top); border: 1px solid var(--br-border2); border-radius: 3px; box-shadow: none; color: var(--sk-btn-ink); text-shadow: none; }
-.ops .sk-btn:hover:not(:disabled), .ops .sk-key:hover:not(:disabled) { border-color: var(--br-accent); }
-.ops .rounded-xl, .ops .rounded-2xl, .ops .rounded-lg { border-radius: 3px; }
+.hw-main .ops .font-display { font-family: inherit; letter-spacing: 0.04em; }
+.hw-main .ops .sk-raised, .hw-main .ops .sk-hero { background: var(--br-surface); border: 1px solid var(--br-border); border-radius: 3px; box-shadow: none; }
+.hw-main .ops .sk-field { background: var(--sk-field); border: 1px solid var(--br-border); border-radius: 3px; box-shadow: none; }
+.hw-main .ops .sk-btn, .hw-main .ops .sk-key { background: var(--sk-btn-top); border: 1px solid var(--br-border2); border-radius: 3px; box-shadow: none; color: var(--sk-btn-ink); text-shadow: none; }
+.hw-main .ops .sk-btn:hover:not(:disabled), .hw-main .ops .sk-key:hover:not(:disabled) { border-color: var(--br-accent); }
+.hw-main .ops .rounded-xl, .hw-main .ops .rounded-2xl, .hw-main .ops .rounded-lg { border-radius: 3px; }
 
 /* ── Album-color theme (components/ArtTheme.tsx) ─────────────────────────────────────────────
    --art-1/2/3 start at Babson Green and fade to the cover's colors.

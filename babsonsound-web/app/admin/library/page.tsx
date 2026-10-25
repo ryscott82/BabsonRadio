@@ -1,5 +1,6 @@
 'use client'
 
+import FilterBar, { Pick, MoreButton, useFilter, usePaged } from '@/components/admin/FilterBar'
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -18,6 +19,10 @@ export default function AdminLibrary() {
   const load = useCallback(() => apiGet<{ items: Ep[]; categories: string[] }>('/api/admin/episodes').then(r => { setItems(r.items); setCats(r.categories) }).catch(e => setErr(e.message)), [])
   useEffect(() => { if (user && ok) load() }, [user, ok, load])
 
+  const f = useFilter(items, (e: Ep) => `${e.title} ${e.showName} ${e.category}`)
+  const [catF, setCatF] = useState('')
+  const list = f.items.filter(e => !catF || e.category === catF)
+  const paged = usePaged(list)
   async function add(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setErr(''); setMsg('')
     try { await api('/api/admin/episodes', { url, showName: show, category: cat, title, hostEmails: hosts, visibility: pub ? 'public' : 'private' }); setMsg('Added to the library.'); setUrl(''); setTitle(''); await load() }
@@ -32,7 +37,7 @@ export default function AdminLibrary() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Library content</h1>
-      <p className="text-sm text-br-dk-sub">Paste a YouTube link to add an episode. Students find it under Search and can save it to their Library. The video must allow embedding.</p>
+      <p className="text-sm text-br-dk-sub">Paste a YouTube link. The video must allow embedding.</p>
       <form onSubmit={add} className="sk-raised rounded-2xl p-4 space-y-3">
         <input value={url} onChange={e => setUrl(e.target.value)} placeholder="YouTube link" required className="sk-field rounded-lg px-3 py-2 text-sm text-br-dk-text w-full" />
         <div className="grid sm:grid-cols-2 gap-3">
@@ -49,8 +54,11 @@ export default function AdminLibrary() {
         {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}
         {err && <p className="text-sm text-red-400">{err}</p>}
       </form>
+      <FilterBar f={f} total={items.length} shown={list.length} placeholder="Search title, show, category">
+        <Pick value={catF} onChange={setCatF} label="Category" options={[['', 'All categories'], ...cats.map(c => [c, c] as [string, string])]} />
+      </FilterBar>
       <ul className="space-y-2">
-        {items.map(e => (
+        {paged.items.map(e => (
           <li key={e.id} className="sk-raised rounded-xl p-3 flex items-center gap-3">
             <div className="min-w-0 flex-1"><p className="text-sm text-br-dk-text truncate">{e.title}</p><p className="text-xs text-br-dk-sub">{e.showName} · {e.category} · {(e as { visibility?: string }).visibility === 'public' ? 'Public' : 'Students only'}</p></div>
             <button onClick={() => remove(e.id)} className="text-xs text-red-400">Remove</button>
@@ -58,6 +66,7 @@ export default function AdminLibrary() {
         ))}
         {items.length === 0 && <li className="text-sm text-br-dk-sub">No episodes yet.</li>}
       </ul>
+      <MoreButton p={paged} />
     </div>
   )
 }

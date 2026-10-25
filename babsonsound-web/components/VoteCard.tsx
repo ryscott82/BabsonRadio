@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
 import { RatingsBlock } from '@/components/LiveExtras'
+import FeedbackBox from '@/components/FeedbackBox'
 
 interface State {
   blockStart: number; blockEnd: number; threshold: number
@@ -77,6 +78,7 @@ export default function VoteCard() {
       )}
       {msg && <p className="text-sm hw-sub">{msg}</p>}
       <RatingsBlock />
+      <FeedbackBox />
     </section>
   )
 }

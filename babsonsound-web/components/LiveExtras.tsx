@@ -32,13 +32,24 @@ function useLiveExtrasState(np: NowPlaying | null) {
   const can = !!user && hasMemberAccess
   // The reaction row: the usual ones plus any this person has earned (the server decides which).
   const [emojis, setEmojis] = useState<string[]>(EMOJIS)
+  // Every reaction this person has unlocked (what a held key can be swapped for).
+  const [unlocked, setUnlocked] = useState<string[]>(EMOJIS)
   useEffect(() => {
-    if (!can) { queueMicrotask(() => setEmojis(EMOJIS)); return }
-    const load = () => apiGet<{ emojis: string[]; top?: string[] }>('/api/live/emojis').then(r => setEmojis((r.top ?? r.emojis).slice(0, 5))).catch(() => {})
+    if (!can) { queueMicrotask(() => { setEmojis(EMOJIS); setUnlocked(EMOJIS) }); return }
+    const load = () => apiGet<{ emojis: string[]; top?: string[] }>('/api/live/emojis').then(r => { setEmojis((r.top ?? r.emojis).slice(0, 5)); setUnlocked(r.emojis) }).catch(() => {})
     load()
     const t = setInterval(() => { if (!document.hidden) load() }, 60_000)
     return () => clearInterval(t)
   }, [can, user?.uid, np?.occId, np?.hostEmojis?.join('')])
+  // Hold a key, pick another unlocked reaction: it takes that key's place (and is remembered on the account).
+  const swapKey = useCallback(async (index: number, to: string) => {
+    const row = [...emojis]
+    const at = row.indexOf(to)
+    if (at >= 0) row[at] = row[index]
+    row[index] = to
+    setEmojis(row)
+    try { await api('/api/live/emojis', { slots: row }) } catch { /* the next refresh puts back what the server has */ }
+  }, [emojis])
   const [eggs, setEggs] = useState<EggRule[]>([])
   useEffect(() => {
     apiGet<{ eggs: EggRule[] }>('/api/live/easter-eggs').then(r => setEggs(r.eggs)).catch(() => {})
@@ -154,7 +165,7 @@ function useLiveExtrasState(np: NowPlaying | null) {
   const accent = art.full ? (np?.color || undefined) : undefined
 
   return {
-    np, can, user, emojis: reactionTheme(eggs, np) ?? emojis, invisible, occId, react, msg,
+    np, can, user, emojis: reactionTheme(eggs, np) ?? emojis, unlocked, swapKey, swappable: !reactionTheme(eggs, np), invisible, occId, react, msg,
     songKey, ratingsOn, mineSong, rateSong,
     rateable, rating, rate, closing, endsAt, now,
     sorted, listTitle, vote, accent,
@@ -185,16 +196,51 @@ export function ReactionKeys({ className = '' }: { className?: string }) {
     ro.observe(el)
     return () => ro.disconnect()
   }, [mode])
+  // Hold a key for half a second to swap it for another reaction you have unlocked.
+  const [swapAt, setSwapAt] = useState<number | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const heldOpen = useRef(false)
+  const cancel = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null } }
+  useEffect(() => cancel, [])
+  const begin = (i: number) => {
+    if (!x.swappable) return
+    cancel()
+    timer.current = setTimeout(() => { heldOpen.current = true; setSwapAt(i) }, 500)
+  }
+  const shown = mode === 'on' ? x.emojis.slice(0, room) : []
+  const choices = swapAt === null ? [] : x.unlocked.filter(e => !shown.includes(e))
   // The row's space is always reserved, so keys arriving or leaving never move what is below.
   if (mode === 'off') return <p className={`text-sm hw-sub text-center min-h-[42px] ${className}`}>Reactions are off in Invisible mode.</p>
   return (
-    <div ref={box} className={`flex flex-nowrap items-center justify-center gap-3 min-h-[42px] ${className}`} role="group" aria-label="Reactions">
-      {mode === 'on' && x.emojis.slice(0, room).map(e => (
-        <button key={e} type="button" onClick={() => x.react(e)} aria-label={`React ${e}`}
-                className="sk-key hw-react rounded-xl h-[42px] w-[70px] flex items-center justify-center active:scale-95 transition-transform">
+    <div ref={box} className={`relative flex flex-nowrap items-center justify-center gap-3 min-h-[42px] ${className}`} role="group" aria-label="Reactions">
+      {shown.map((e, i) => (
+        <button key={e} type="button"
+                onClick={() => { if (heldOpen.current) { heldOpen.current = false; return } x.react(e) }}
+                onPointerDown={() => begin(i)} onPointerUp={cancel} onPointerLeave={cancel} onPointerCancel={cancel}
+                onContextMenu={ev => ev.preventDefault()}
+                aria-label={`React ${e}. Hold to swap.`}
+                className={`sk-key hw-react rounded-xl h-[42px] w-[70px] flex items-center justify-center active:scale-95 transition-transform select-none touch-manipulation ${swapAt === i ? 'ring-2 ring-white' : ''}`}>
           <EmojiGlyph e={e} size="1.45rem" />
         </button>
       ))}
+      {swapAt !== null && (
+        <>
+          <button type="button" aria-label="Close" className="fixed inset-0 z-40 cursor-default" onClick={() => setSwapAt(null)} />
+          <div role="dialog" aria-label="Swap reaction" className="hw-panel hw-snug absolute z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 max-w-full">
+            <p className="text-sm hw-sub text-center mb-2">Swap for</p>
+            {choices.length === 0
+              ? <p className="text-sm hw-sub text-center">No other reactions unlocked yet.</p>
+              : <div className="flex flex-wrap justify-center gap-2">
+                  {choices.map(c => (
+                    <button key={c} type="button" onClick={() => { void x.swapKey(swapAt, c); setSwapAt(null) }} aria-label={`Use ${c}`}
+                            className="sk-key rounded-xl h-[42px] w-[56px] flex items-center justify-center">
+                      <EmojiGlyph e={c} size="1.3rem" />
+                    </button>
+                  ))}
+                </div>}
+          </div>
+        </>
+      )}
     </div>
   )
 }

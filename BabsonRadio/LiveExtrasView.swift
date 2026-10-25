@@ -110,6 +110,16 @@ final class LiveExtrasModel: ObservableObject {
         if let r: EggList = try? await BackendAPI.get("/api/live/easter-eggs") { eggs = r.eggs }
     }
 
+    /// Hold a key, pick another unlocked reaction: it takes that key's place and the server remembers the row.
+    func swapKey(at index: Int, to emoji: String) async {
+        var row = Array(topEmojis.prefix(5))
+        guard index < row.count else { return }
+        if let at = row.firstIndex(of: emoji) { row[at] = row[index] }
+        row[index] = emoji
+        topEmojis = row
+        let _: EmptyResponse? = try? await BackendAPI.post("/api/live/emojis", ["slots": row])
+    }
+
     func loadEmojis() async {
         guard AuthManager.shared.isSignedIn, let r: EmojiList = try? await BackendAPI.get("/api/live/emojis") else { return }
         emojis = r.emojis
@@ -246,6 +256,7 @@ struct LiveExtrasView: View {
         return mode == .reactions ? Array(model.topEmojis.prefix(5)) : model.emojis
     }
 
+    @State private var swapIndex: Int? = nil
     // End-of-show feedback state
     @State private var curShow: (occId: String, title: String)? = nil
     @State private var prevShow: (occId: String, title: String, at: Date)? = nil
@@ -307,6 +318,32 @@ struct LiveExtrasView: View {
         .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.black.opacity(0.35)))
     }
 
+    /// The pick list for a held key: every reaction you have unlocked that is not already on the row.
+    private var swapSheet: some View {
+        let shown = Set(reactionRow.prefix(4))
+        let choices = model.emojis.filter { !shown.contains($0) }
+        return VStack(spacing: 14) {
+            Text("Swap for").font(BRFont.body(17, .regular)).foregroundColor(.white)
+            if choices.isEmpty {
+                Text("No other reactions unlocked yet.").font(BRFont.body(14, .regular)).foregroundColor(.white.opacity(0.8))
+            } else {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5), spacing: 12) {
+                    ForEach(choices, id: \.self) { c in
+                        Button {
+                            let i = swapIndex; swapIndex = nil
+                            if let i { Task { await model.swapKey(at: i, to: c) } }
+                        } label: { ReactionGlyph(emoji: c, size: 23).frame(maxWidth: .infinity) }
+                        .buttonStyle(HWKeyStyle(corner: 10, lit: false, height: 44))
+                    }
+                }
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(HWDesk())
+        .presentationDetents([.height(240), .medium])
+    }
+
     var body: some View {
         VStack(spacing: 14) {
             if mode != .rest, mode != .ratings, let occ = np?.occId, !occ.isEmpty, auth.isInvisible {
@@ -329,7 +366,11 @@ struct LiveExtrasView: View {
                                 }
                                 .buttonStyle(HWKeyStyle(corner: panel ? 12 : 10, lit: false, height: panel ? 44 : 38))
                                 .frame(width: panel ? 60 : nil)
-                                .accessibilityLabel(e.hasPrefix(":pgh-") ? "React" : "React with \(e)")
+                                // Hold a key to swap it for another reaction you have unlocked.
+                                .highPriorityGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in
+                                    if panel, !lab.pittsburgh, Array(reactionRow.prefix(4)) == Array(model.topEmojis.prefix(4)), let i = reactionRow.prefix(4).firstIndex(of: e) { swapIndex = i }
+                                })
+                                .accessibilityLabel(e.hasPrefix(":pgh-") ? "React" : "React with \(e). Hold to swap.")
                                 if panel { Spacer(minLength: 0) }
                             }
                         }
@@ -364,6 +405,7 @@ struct LiveExtrasView: View {
             }
         }
         .padding(.horizontal, 24)
+        .sheet(isPresented: Binding(get: { swapIndex != nil }, set: { if !$0 { swapIndex = nil } })) { swapSheet }
         // The data loading rides on an always-present empty view (tasks on an empty container never run).
         .background(
             Color.clear.frame(width: 1, height: 1)

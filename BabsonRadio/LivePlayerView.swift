@@ -21,6 +21,7 @@ struct LivePlayerView: View {
     @State private var showProfileSheet = false
     @State private var showVote = false
     @State private var drawerOpen = false
+    @State private var showFeedback = false
     /// True while the foldable is propped half open. The big clock only shows then, on the outer screen, sideways.
     @State private var halfFolded = false
     /// The full screen board, opened by the corner button on a fully open foldable (same as the website's full screen).
@@ -103,6 +104,7 @@ struct LivePlayerView: View {
         .onChange(of: landscapePhone) { _, up in BoardState.shared.phoneBoard = up }
         .onChange(of: showBoard) { _, up in BoardState.shared.duoBoard = up }
 #endif
+        .sheet(isPresented: $showFeedback) { FeedbackView() }
         .alert("Enjoying Babson Radio?", isPresented: $audio.showSignInPrompt) {
             Button("Create account or sign in") { showProfileSheet = true }
             Button("Keep listening", role: .cancel) {}
@@ -191,6 +193,16 @@ struct LivePlayerView: View {
                     .padding(.horizontal, 14)
             }
             communityKeys
+            if auth.isSignedIn {
+                Button { showFeedback = true } label: {
+                    Text("Submit feedback")
+                        .font(BRFont.body(15, .regular)).modifier(HWKeyInk())
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(HWKeyFace(corner: 12))
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 14)
+            }
             DesignedByCredit()
         }
         .padding(.top, 4)

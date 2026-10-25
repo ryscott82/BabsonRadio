@@ -44,7 +44,7 @@ export default function UsagePage() {
 
   return (
     <div className="min-h-screen">
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
+      <div className="max-w-[1800px] mx-auto px-5 lg:px-10 py-6 space-y-5">
         <div className="flex items-baseline gap-3 border-b border-br-dk-border pb-3">
           <Link href="/admin" className="text-br-dk-sub text-xs">radio-ops</Link>
           <h1 className="text-br-dk-text text-base font-semibold">listening hours</h1>

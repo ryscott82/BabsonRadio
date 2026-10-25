@@ -30,7 +30,7 @@ export default function InsightsPage() {
   const totalAvg = solid.length ? solid.reduce((n, r) => n + r.listeners, 0) / solid.length : 0
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-4">
+    <div className="max-w-[1800px] mx-auto px-5 lg:px-10 py-8 space-y-4">
       <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Listener insights</h1>
       <p className="text-sm text-br-dk-sub">The last 60 days. It needs a few days of data before the numbers mean much.</p>
       <div className="flex gap-1 border-b border-br-dk-border" role="tablist">

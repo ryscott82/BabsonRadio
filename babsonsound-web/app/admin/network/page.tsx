@@ -56,7 +56,7 @@ export default function Network() {
   const picked = pick ? names.get(pick) : null
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-[1800px] mx-auto px-5 lg:px-10 py-8 space-y-6">
       <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Friends web</h1>
       <p className="text-sm text-br-dk-sub">Members linked when each has the other&apos;s number saved. Members in Invisible mode are left out. Staff only.</p>
       {err && <p className="text-sm text-red-400">{err}</p>}

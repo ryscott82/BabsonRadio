@@ -40,7 +40,7 @@ export default function ListeningLog() {
   const max = Math.max(1, ...local)
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-[1800px] mx-auto px-5 lg:px-10 py-8 space-y-6">
       <div className="flex items-center gap-4">
         <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Listening log</h1>
         <select value={days} onChange={e => setDays(Number(e.target.value))} className="sk-field rounded-lg px-3 py-2 text-sm text-br-dk-text">

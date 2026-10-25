@@ -35,7 +35,7 @@ export default function AdminLibrary() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-[1800px] mx-auto px-5 lg:px-10 py-8 space-y-6">
       <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Library content</h1>
       <p className="text-sm text-br-dk-sub">Paste a YouTube link. The video must allow embedding.</p>
       <form onSubmit={add} className="sk-raised rounded-2xl p-4 space-y-3">

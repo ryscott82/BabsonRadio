@@ -435,3 +435,20 @@ span[data-pin-log], [data-pinterest-extension-installed] ~ span[style*="z-index"
 
 /* admin pages are full screen: no nav bar, so no top gap */
 .hw-main:has(> .ops), .hw-main:has(> * > .ops) { padding-top: 0; padding-bottom: 0; }
+
+/* every admin page: the blue look. Tokens remapped so plain pages follow without edits */
+html .hw-main .ops.ops-hub {
+  color-scheme: dark; min-height: 100dvh;
+  --br-bg: var(--hub-bg); --br-surface: rgba(10,40,95,.38); --br-surface2: rgba(10,40,95,.55);
+  --br-border: rgba(255,255,255,.28); --br-border2: rgba(255,255,255,.5);
+  --br-text:#fff; --br-sub:#e1ecfb; --br-muted:#c3d5ee; --br-accent:#fff;
+  --sk-field:#fff; --sk-btn-top:#173f80; --sk-btn-bot:#173f80; --sk-btn-edge:rgba(255,255,255,.5); --sk-btn-ink:#fff;
+  background: var(--hub-bg); color:#fff;
+}
+html .hw-main .ops.ops-hub input:not([type=checkbox]):not([type=radio]):not([type=range]), html .hw-main .ops.ops-hub select, html .hw-main .ops.ops-hub textarea {
+  background:#fff; color:#10243f; border:1px solid #9db8dd; border-radius:0;
+}
+html .hw-main .ops.ops-hub input::placeholder, html .hw-main .ops.ops-hub textarea::placeholder { color:#4a5f7f; }
+html .hw-main .ops.ops-hub a:not(.ops-tile):not(.ops-btn) { color:#fff; text-decoration:underline; text-underline-offset:3px; }
+html .hw-main .ops.ops-hub .sk-btn:hover:not(:disabled), html .hw-main .ops.ops-hub .sk-key:hover:not(:disabled) { background:#0f2f66; border-color:#fff; }
+html .hw-main .ops.ops-hub .sk-btn[aria-pressed="true"], html .hw-main .ops.ops-hub .sk-key[aria-pressed="true"] { outline:2px solid #fff; outline-offset:1px; }

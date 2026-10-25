@@ -79,7 +79,7 @@ export default function AdminPage() {
 
   return (
     <div className="ops-hub">
-      <div className="max-w-6xl mx-auto px-5 py-8 space-y-8">
+      <div className="max-w-[1800px] mx-auto px-5 lg:px-10 py-8 space-y-8">
         <header className="flex flex-wrap items-center gap-4">
           <span className="ops-tile-icon !w-16 !h-16 shrink-0"><OpsIcon name="radio" size={40} /></span>
           <div>

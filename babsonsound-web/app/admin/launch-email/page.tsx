@@ -70,7 +70,7 @@ export default function LaunchEmailPage() {
   )
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-[1800px] mx-auto px-5 lg:px-10 py-8 space-y-6">
       <div className="flex items-center gap-4">
         <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Launch email</h1>
         <div className="flex-1 h-px bg-br-dk-border" />

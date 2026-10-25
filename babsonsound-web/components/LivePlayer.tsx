@@ -12,7 +12,7 @@ import FullBoard from '@/components/FullBoard'
 import SkipButton from '@/components/SkipButton'
 import VolumeKnob from '@/components/VolumeKnob'
 import { ExtrasStack, ReactionKeys } from '@/components/LiveExtras'
-import { useArtColor } from '@/lib/artColor'
+import { useArtColor, useArtPalette } from '@/lib/artColor'
 import { useArtMain } from '@/components/ArtTheme'
 import { useListenGuard } from '@/lib/listenGuard'
 import { attachSpectrum, probeCors, registerAudio, sharedAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
@@ -83,13 +83,13 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
     setBoostDb(boostDb)
     try { localStorage.setItem('br-vol2', String(volume)) } catch { /* ignore */ }
   }, [volume, level, boostDb])
-  // Color of the glow: the on-air event's color, else the cover's main color, else the station green.
+  // Color of the record's center label: always the album picture's dominant color (the station green until a cover loads).
   const artColor = useArtColor(np?.art || undefined)
+  const palette = useArtPalette(np?.art || undefined)
+  const glow = palette[0] || artColor || ''
+  // The cover's own backdrop and filter still follow the page's color mode and the on-air show's color.
   const art = useArtMain()
-  // With the album-color theme on, the glow follows the page's fade (green first, then the cover's main color).
-  // Only dark mode at night uses the cover/show colors; otherwise it's the station green.
   const showColor = art.full ? (np?.color || '') : ''
-  const glow = art.full ? (showColor || (art.on ? art.main : artColor) || '') : ''
 
   // Full screen board (for a screen on the wall): just the music, big, over the visualizer.
   const [board, setBoard] = useState(false)

@@ -65,17 +65,17 @@ export async function POST(req: Request) {
     // 2. Contact details.
     const firstName = str(b.firstName, 40), lastName = str(b.lastName, 60)
     if (!firstName) throw new HttpError(400, 'Enter your first name.')
-    if (!lastName) throw new HttpError(400, 'Enter your last name.')
     const update: Record<string, unknown> = { firstName, lastName, displayName: firstName }
 
     if (!guest) {
-      const phone = normalizeUS(str(b.phone, 30))
-      if (!phone) throw new HttpError(400, 'Enter a valid 10-digit US phone number.')
+      // Phone and graduation year are optional. A phone number lets friends find you; skipping it is fine.
+      const rawPhone = str(b.phone, 30), phone = normalizeUS(rawPhone)
+      if (rawPhone && !phone) throw new HttpError(400, 'Enter a valid 10-digit US phone number, or leave it blank.')
       const gradYear = str(b.gradYear, 10)
-      if (!validGradYear(gradYear)) throw new HttpError(400, 'Pick your graduation year.', 'BR-ACC-018')
-      update.gradYear = gradYear
+      if (gradYear && !validGradYear(gradYear)) throw new HttpError(400, 'Pick a valid graduation year.', 'BR-ACC-018')
+      if (gradYear) update.gradYear = gradYear
       const old = u.get('phoneNumber') as string | undefined
-      if (old !== phone) {
+      if (phone && old !== phone) {
         const newRef = db.collection('phoneIndex').doc(await indexKeyFromE164(phone))
         await db.runTransaction(async tx => {
           const hit = await tx.get(newRef)

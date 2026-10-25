@@ -6,6 +6,9 @@ import {
   sendPasswordResetEmail,
   verifyBeforeUpdateEmail,
   reauthenticateWithCredential,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
+  updatePassword,
   EmailAuthProvider,
   type User,
 } from 'firebase/auth'
@@ -59,8 +62,45 @@ export const apiDelete = <T = Record<string, unknown>>(path: string, body: unkno
 
 // ── Babson students ───────────────────────────────────────────
 
-/** Account creation happens server-side (enforces babson.edu); then we sign in and send the verify email. */
-export async function signUp(email: string, password: string, firstName: string, lastName: string, phone: string, gradYear: string) {
+// ── Passwordless (the default way in) ─────────────────────────
+
+/** Step 1: "Email me a link". Works for new and returning people; the account is made when they tap the link. */
+export async function requestEmailLink(email: string) {
+  const e = email.trim().toLowerCase()
+  if (!/^\S+@\S+\.\S+$/.test(e)) throw fail('Enter a valid email address.', 'BR-ACC-009')
+  await api('/api/auth/link', { email: e })
+}
+
+/** True when the current page address is a sign-in link from that email (use on /auth/link). */
+export const isEmailLink = (href = typeof window === 'undefined' ? '' : window.location.href) => isSignInWithEmailLink(auth, href)
+
+/**
+ * Step 2, on /auth/link: signs in with the link in the address bar, then makes the profile on the first visit.
+ * The address is read from ?e= in the link, so it works even when the link is opened on another device.
+ */
+export async function completeEmailLink(opts: { launchNotice?: boolean } = {}) {
+  const url = new URL(window.location.href)
+  const email = (url.searchParams.get('e') ?? '').toLowerCase()
+  if (!email || !isSignInWithEmailLink(auth, url.href)) throw fail('That sign-in link did not work. Ask for a new one.', 'BR-AUTH-002')
+  try {
+    const { user } = await signInWithEmailLink(auth, email, url.href)
+    await api('/api/auth/init', { agreed: true, launchNotice: opts.launchNotice !== false })
+    return user
+  } catch (e) {
+    throw fbFail(e, 'That link has expired or was already used. Ask for a new one.')
+  }
+}
+
+/** Optional: lets someone who signed in with a link also sign in with a password (needs a recent sign-in). */
+export async function setMyPassword(password: string) {
+  if (!auth.currentUser) throw fail('Sign in first.', 'BR-AUTH-002')
+  if (password.length < 8 || password.length > 128) throw fail('Password must be 8–128 characters.', 'BR-ACC-009')
+  try { await updatePassword(auth.currentUser, password) }
+  catch (e) { throw fbFail(e, 'Could not set the password. Sign in again with a new link and retry.') }
+}
+
+/** Password sign-up (the "use a password instead" option). Account creation happens server-side; then we sign in and send the verify email. */
+export async function signUp(email: string, password: string, firstName = '', lastName = '', phone = '', gradYear = '') {
   if (!/^\S+@\S+\.\S+$/.test(email.trim())) throw fail('Enter a valid email address.', 'BR-ACC-009')
   await api('/api/auth/signup', { email, password, firstName, lastName, phone, gradYear, agreed: true })
   try {

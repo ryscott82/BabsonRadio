@@ -1,6 +1,7 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { removeContactGraph } from '@/lib/server/contactGraph'
+import { ensureProfile } from '@/lib/server/profile'
 import { finishSchoolUpgrade } from '@/lib/server/upgrade'
 import { cleanBirthday } from '@/lib/server/birthdays'
 import { PUBLIC_AGREEMENT_VERSION, PUBLIC_CLAUSES } from '@/lib/publicContent'
@@ -17,7 +18,9 @@ export async function GET(req: Request) {
     // A guest who just signed in with their confirmed school email becomes a student here.
     if (t.email_verified === true && await finishSchoolUpgrade(adminDb(), t).catch(() => false)) forgetAccess(t.uid)
     const a = await accessOf(t)
-    const u = await adminDb().collection('users').doc(t.uid).get()
+    // Passwordless sign-in may arrive before /api/auth/init ran: make the profile now.
+    let u = await adminDb().collection('users').doc(t.uid).get()
+    if (!u.exists && await ensureProfile(t)) u = await adminDb().collection('users').doc(t.uid).get()
     if (!u.exists) throw new HttpError(404, 'Profile not found.')
     return {
       uid: t.uid,

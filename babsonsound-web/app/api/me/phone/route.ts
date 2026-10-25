@@ -5,7 +5,7 @@ import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/ht
 import { notifyAdmins } from '@/lib/server/push'
 import { normalizeUS } from '@/lib/phone'
 import { indexKeyFromE164 } from '@/lib/server/phone'
-import { last4 } from '@/lib/server/phoneChange'
+import { applyPhone, last4 } from '@/lib/server/phoneChange'
 
 export const runtime = 'nodejs'
 
@@ -34,6 +34,11 @@ export async function POST(req: Request) {
     if (u.get('phoneNumber') === phone) throw new HttpError(400, 'That is already your number.')
     const hit = await db.collection('phoneIndex').doc(await indexKeyFromE164(phone)).get()
     if (hit.exists && hit.get('uid') !== t.uid) throw new HttpError(409, 'That phone number is already registered.')
+    // No number on file yet (they skipped it at sign-up): add it straight away. Only a change needs an admin.
+    if (!u.get('phoneNumber')) {
+      await applyPhone(db, t.uid, phone)
+      return { ok: true, applied: true, current: last4(phone) }
+    }
     const name = [u.get('firstName') ?? '', u.get('lastName') ?? ''].join(' ').trim() || 'A student'
     await db.collection('phoneChanges').doc(t.uid).set({
       uid: t.uid, name, email: t.email ?? '', oldPhone: u.get('phoneNumber') ?? '', newPhone: phone, requestedAt: Timestamp.now(),

@@ -22,14 +22,12 @@ export async function POST(req: Request) {
     const gradYear = str(b.gradYear, 10)
 
     if (b.agreed !== true) throw new HttpError(400, 'Agree to the Terms of Use and Privacy Policy to create an account.')
-    if (!firstName) throw new HttpError(400, 'Enter your first name.')
-    if (!lastName) throw new HttpError(400, 'Enter your last name.')
     if (!ANY_EMAIL.test(email)) throw new HttpError(400, 'Enter a valid email address.')
     const school = BABSON_EMAIL.test(email)
-    // Graduation year is for students only; guests are not asked.
-    if (school && !validGradYear(gradYear)) throw new HttpError(400, 'Pick your graduation year.')
+    if (gradYear && !validGradYear(gradYear)) throw new HttpError(400, 'Pick a valid graduation year.')
     // Anyone can sign up. A verified school email makes them a student; any other email is a guest (live radio only).
-    if (!phone) throw new HttpError(400, 'Enter a valid 10-digit US phone number.')
+    // Name, phone and graduation year are optional here; "About you" asks for them later.
+    if (str(b.phone, 30) && !phone) throw new HttpError(400, 'Enter a valid 10-digit US phone number, or leave it blank.')
     if (password.length < 8 || password.length > 128) throw new HttpError(400, 'Password must be 8–128 characters.')
 
     // The Babson username (part before @babson.edu) is the account's username. Email is unique, so it is too.
@@ -38,12 +36,12 @@ export async function POST(req: Request) {
     const domainName = email.slice(at + 1, email.indexOf('.', at))
     const username = domainName === 'babson' ? email.slice(0, at) : `${email.slice(0, at)}-${domainName}`
     const db = adminDb()
-    const phoneRef = db.collection('phoneIndex').doc(await indexKeyFromE164(phone))
-    if ((await phoneRef.get()).exists) throw new HttpError(409, 'That phone number is already registered.')
+    const phoneRef = phone ? db.collection('phoneIndex').doc(await indexKeyFromE164(phone)) : null
+    if (phoneRef && (await phoneRef.get()).exists) throw new HttpError(409, 'That phone number is already registered.')
 
     let uid: string
     try {
-      uid = (await adminAuth().createUser({ email, password, displayName: firstName, emailVerified: false })).uid
+      uid = (await adminAuth().createUser({ email, password, displayName: firstName || undefined, emailVerified: false })).uid
       // 7 days of full use before the email link is required (rules and the server check this claim).
       await adminAuth().setCustomUserClaims(uid, { graceUntil: Date.now() + VERIFY_GRACE_MS })
     } catch (e) {
@@ -55,10 +53,12 @@ export async function POST(req: Request) {
 
     try {
       await db.runTransaction(async tx => {
-        if ((await tx.get(phoneRef)).exists) throw new HttpError(409, 'That phone number is already registered.')
-        tx.set(phoneRef, { uid })
+        if (phoneRef) {
+          if ((await tx.get(phoneRef)).exists) throw new HttpError(409, 'That phone number is already registered.')
+          tx.set(phoneRef, { uid })
+        }
         tx.set(db.collection('users').doc(uid), {
-          firstName, lastName, username, displayName: firstName, email, phoneNumber: phone, gradYear: school ? gradYear : '',
+          firstName, lastName, username, displayName: firstName || email.split('@')[0], email, phoneNumber: phone ?? '', gradYear: school ? gradYear : '',
           termsAcceptedAt: Timestamp.now(), termsVersion: TERMS_VERSION,
           // The sign-up form says "We'll email you when we launch." The launch email only goes to accounts with this.
           ...(b.launchNotice === false ? {} : { launchNoticeConsentAt: Timestamp.now() }),

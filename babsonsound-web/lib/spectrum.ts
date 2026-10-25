@@ -20,7 +20,7 @@ export function probeCors(url: string): Promise<boolean> {
   return corsProbe
 }
 
-interface Tap { ctx: AudioContext; an: AnalyserNode; data: Uint8Array<ArrayBuffer>; direct: GainNode; dry: GainNode; drive: GainNode; wet: GainNode; ex: GainNode; low: BiquadFilterNode; air: BiquadFilterNode; comp: DynamicsCompressorNode }
+interface Tap { ctx: AudioContext; an: AnalyserNode; data: Uint8Array<ArrayBuffer>; master: GainNode; direct: GainNode; dry: GainNode; drive: GainNode; wet: GainNode; ex: GainNode; low: BiquadFilterNode; air: BiquadFilterNode; comp: DynamicsCompressorNode }
 /** The sound is held back this long before the speakers while the analyser hears it right away, so the lights line up with what you hear. */
 export const AUDIO_DELAY_MS = 216
 
@@ -39,7 +39,9 @@ export function attachSpectrum(el: HTMLAudioElement): boolean {
     const src = ctx.createMediaElementSource(el)
     const out = ctx.createDelay(1)
     out.delayTime.value = AUDIO_DELAY_MS / 1000
-    out.connect(ctx.destination)
+    const master = ctx.createGain()
+    master.gain.value = masterLevel
+    out.connect(master); master.connect(ctx.destination)
     src.connect(an) // analyser is a side branch; the sound itself goes src -> gain -> speakers
     // Sound path: src -> direct -> speakers while the knob is at or below 100% (untouched). Past 100% the sound goes through
     // dry + a saturated copy (drive -> tube-style shaper -> wet), summed and rounded off by a soft clipper.
@@ -62,7 +64,7 @@ export function attachSpectrum(el: HTMLAudioElement): boolean {
     comp.threshold.value = 0; comp.ratio.value = 1; comp.knee.value = 18; comp.attack.value = 0.012; comp.release.value = 0.16
     lim.threshold.value = -1.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.08
     bus.connect(low); low.connect(air); air.connect(comp); comp.connect(clip); clip.connect(lim); lim.connect(out)
-    const tap: Tap = { ctx, an, data: new Uint8Array(new ArrayBuffer(an.frequencyBinCount)), direct, dry, drive, wet, ex, low, air, comp }
+    const tap: Tap = { ctx, an, data: new Uint8Array(new ArrayBuffer(an.frequencyBinCount)), master, direct, dry, drive, wet, ex, low, air, comp }
     taps.set(el, tap); current = tap
     setBoostDb(boostDb)
     return true
@@ -71,6 +73,21 @@ export function attachSpectrum(el: HTMLAudioElement): boolean {
 // Past 100% the knob adds drive: louder, and increasingly saturated (warm, tube-like crunch, some even harmonics), with a
 // soft clipper at the end so peaks round off instead of cracking. Below 100% nothing is in the signal path but the element.
 let boostDb = 0
+// Phones (iPhone Safari) ignore the audio element's volume. When the stream is routed through Web Audio, the knob turns this gain instead.
+let masterLevel = 1
+let volumeWorks: boolean | null = null
+/** False on browsers that ignore element.volume (iPhone). */
+export function elementVolumeWorks(): boolean {
+  if (volumeWorks === null) { try { const a = new Audio(); a.volume = 0.5; volumeWorks = a.volume === 0.5 } catch { volumeWorks = true } }
+  return volumeWorks
+}
+/** Sets the output level (0 to 1) the way this browser allows: the element volume, or the Web Audio master gain once the stream is routed through it. */
+export function applyVolume(el: HTMLAudioElement, v: number) {
+  masterLevel = Math.min(1, Math.max(0, v))
+  const t = taps.get(el)
+  if (t) { el.volume = 1; t.master.gain.setTargetAtTime(masterLevel, t.ctx.currentTime, 0.02) }
+  else el.volume = masterLevel
+}
 const MAX_BOOST_DB = 6
 function tubeCurve(): Float32Array<ArrayBuffer> {
   const n = 4096, c = new Float32Array(new ArrayBuffer(n * 4)), bias = 0.18, k = 1.3

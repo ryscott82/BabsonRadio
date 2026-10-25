@@ -16,7 +16,7 @@ import { useArtColor, useArtPalette } from '@/lib/artColor'
 import { useArtMain } from '@/components/ArtTheme'
 import { useListenGuard } from '@/lib/listenGuard'
 import { takeTryIt } from '@/lib/splash'
-import { attachSpectrum, probeCors, registerAudio, sharedAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
+import { applyVolume, elementVolumeWorks, attachSpectrum, probeCors, registerAudio, sharedAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 
@@ -80,7 +80,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   const level = canBoost && fxOn ? volume : Math.min(volume, UNITY)
   const boostDb = level > UNITY ? ((level - UNITY) / (1 - UNITY)) * MAX_DB : 0
   useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = Math.min(1, level / UNITY)
+    if (audioRef.current) applyVolume(audioRef.current, level / UNITY)
     setBoostDb(boostDb)
     try { localStorage.setItem('br-vol2', String(volume)) } catch { /* ignore */ }
   }, [volume, level, boostDb])
@@ -182,10 +182,10 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
     if (!audioRef.current) {
       const el = new Audio()
       // Real equalizer needs a cross-origin-readable stream. Only opt in when the server allows it, so playback never breaks.
-      if (fxRef.current && await probeCors(STREAM_URL)) { el.crossOrigin = 'anonymous'; if (!attachSpectrum(el)) el.removeAttribute('crossorigin') }
+      if ((fxRef.current || !elementVolumeWorks()) && await probeCors(STREAM_URL)) { el.crossOrigin = 'anonymous'; if (!attachSpectrum(el)) el.removeAttribute('crossorigin') }
       audioRef.current = el
       registerAudio(el)
-      audioRef.current.volume = Math.min(1, level / UNITY); setBoostDb(boostDb)
+      applyVolume(audioRef.current, level / UNITY); setBoostDb(boostDb)
       el.addEventListener('waiting', () => setIsBuffering(true))
       el.addEventListener('playing', () => setIsBuffering(false))
       el.addEventListener('pause', () => { setIsBuffering(false); setIsPlaying(false) })
@@ -252,7 +252,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
         </div>
 
         {/* The amp */}
-        <div className="hw-panel hw-big min-w-0">
+        <div className="hw-panel hw-big min-w-0 max-sm:-mx-4">
           <FitTitle marquee text={hasSong ? np!.title : 'Live Stream'} className="hw-title hw-title-fit text-[2.75rem] lg:text-[3.1rem]" />
           <p className="hw-sub !text-br-dk-text text-lg font-medium line-clamp-2 mt-0.5">
             {hasSong ? subline : 'Babson College — Internet Radio'}

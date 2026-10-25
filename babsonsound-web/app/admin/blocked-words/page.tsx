@@ -41,8 +41,8 @@ export default function BlockedWordsPage() {
   async function check() {
     setResult('')
     try {
-      const r = await apiGet<{ tier: string; blocked: boolean }>(`/api/admin/blocked-words?check=${encodeURIComponent(phrase)}`)
-      setResult(r.tier === 'clean' ? 'Clean. This would go through.' : `${r.tier[0].toUpperCase()}${r.tier.slice(1)} word found. ${r.blocked ? 'This would be blocked.' : 'This would go through at the current level.'}`)
+      const r = await apiGet<{ tier: string; starred: boolean; blocked: boolean }>(`/api/admin/blocked-words?check=${encodeURIComponent(phrase)}`)
+      setResult(r.tier === 'clean' ? 'Clean. This would go through.' : `${r.tier[0].toUpperCase()}${r.tier.slice(1)} word found${r.starred ? ', starred out' : ''}. ${r.blocked ? 'This would be blocked.' : 'This would go through at the current setting.'}`)
     } catch (e) { setResult(e instanceof Error ? e.message : 'Could not check.') }
   }
 
@@ -61,13 +61,13 @@ export default function BlockedWordsPage() {
         <legend className="text-br-dk-text text-lg mb-1">How strict</legend>
         <label className={opt}>
           <input type="radio" name="level" checked={level === 'explicit'} onChange={() => setLevel('explicit')} className="mt-1" />
-          <span><strong>Block explicit and banned words</strong> (default). Crude words like hell and damn go through.</span>
+          <span><strong>Block explicit and banned words</strong> (default). Crude words like hell and damn go through, and so do starred-out swear words like f**k.</span>
         </label>
         <label className={opt}>
           <input type="radio" name="level" checked={level === 'crude'} onChange={() => setLevel('crude')} className="mt-1" />
-          <span><strong>Keep it clean.</strong> Also blocks crude words like hell, damn, pussy and retarded.</span>
+          <span><strong>Keep it clean.</strong> Also blocks crude words like hell, damn, pussy and retarded, and every starred-out word.</span>
         </label>
-        <p className="text-sm text-br-dk-sub">Banned words (racial, ethnic and homophobic slurs) are always blocked, whatever you pick.</p>
+        <p className="text-sm text-br-dk-sub">Banned words (racial, ethnic and homophobic slurs) are always blocked, starred out or not, whatever you pick.</p>
         {counts && (
           <p className="text-sm text-br-dk-sub">Built in: {counts.crude} crude, {counts.explicit} explicit, {counts.banned} banned words and spellings.</p>
         )}

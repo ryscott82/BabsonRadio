@@ -162,9 +162,9 @@ struct HWLeather: View {
             if let t = tint {
                 if case .album = mode {
                     // Album mode: still black leather, with only a hint of the cover's hue.
-                    HWTile(name: HWTex.leatherGreen, opacity: 0.55)
-                    t.opacity(0.78).blendMode(.color)
-                    Color.black.opacity(0.74)
+                    HWTile(name: HWTex.leatherBlack)
+                    Color.black.opacity(0.5)
+                    t.opacity(0.10).blendMode(.color)
                 } else {
                     // Same green as the website: the leather texture at full strength under a light shade (the cover's hue only in album light).
                     // The green rim around the ivory face (the face covers everything but this thin edge).
@@ -602,6 +602,7 @@ struct HWPageModifier: ViewModifier {
         ZStack {
             if !(deskProvided || (globalDesk && !isPresented)) { HWDesk(album: theme.albumOn ? theme.main.color : nil) }
             HWLeather(tint: m.leatherTint, corner: 22, stitch: true)
+                .environment(\.hwMode, m)   // the leather must see this page's mode, not the one outside it
                 .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, flushBottom ? 16 : 8)
             content
                 .scrollContentBackground(.hidden)
@@ -613,7 +614,7 @@ struct HWPageModifier: ViewModifier {
                 .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, flushBottom ? 16 : 8)
         }
         .toolbarBackground(.hidden, for: .navigationBar)
-        .modifier(HWNoTopEdgeBlur(active: flushBottom))
+        .modifier(HWNoTopEdgeBlur(active: true))
     }
 }
 

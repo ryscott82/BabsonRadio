@@ -1,7 +1,7 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from '@/lib/server/admin'
 import { ANY_EMAIL, HttpError, handle, readJson, requireAdmin, str } from '@/lib/server/http'
-import { LEVELS, forgetAccess, inviteKey, isOwnerEmail, isSchoolEmail, type Level } from '@/lib/server/access'
+import { LEVELS, forgetAccess, inviteKey, isOwnerEmail, type Level } from '@/lib/server/access'
 
 export const runtime = 'nodejs'
 
@@ -52,7 +52,6 @@ export async function POST(req: Request) {
       const found = await adminDb().collection('users').where('email', '==', email).limit(1).get()
       if (found.empty) {
         // No account yet: keep the role as an invite.
-        if (!isSchoolEmail(email)) throw new HttpError(400, 'Roles can only be saved for babson.edu, olin.edu or wellesley.edu emails.')
         const iref = adminDb().collection('roleInvites').doc(inviteKey(email))
         const prev = await iref.get()
         await iref.set({
@@ -72,8 +71,6 @@ export async function POST(req: Request) {
     const targetEmail = String(u.get('email') ?? '').toLowerCase()
     if (email && email !== targetEmail && !b.uid) throw new HttpError(404, 'User not found.')
     if (isOwnerEmail(targetEmail)) throw new HttpError(403, 'Owner accounts cannot be changed.')
-    // Students and above need a school email.
-    if (level && level !== 'guest' && !isSchoolEmail(targetEmail)) throw new HttpError(400, 'Only people with a school email can be students, directors or admins.')
 
     const update: Record<string, unknown> = {}
     if (level) {

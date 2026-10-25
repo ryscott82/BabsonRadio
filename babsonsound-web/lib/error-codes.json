@@ -375,14 +375,14 @@
     "title": "Site isn't open yet",
     "meaning": "Babson Radio is not open yet and this request had no launch pass.",
     "userFix": "Babson Radio opens on October 30 at 10 am Eastern. Check back then.",
-    "staffCheck": "Developers, admins, directors, hosts and beta testers get a pass automatically after signing in (POST /api/launch/pass). Developer sign-in is at /auth/dev. To open the site for everyone now, set LAUNCH_OPEN=1 in Vercel and redeploy."
+    "staffCheck": "Admins, Directors and Radio trained students get a pass automatically after signing in (POST /api/launch/pass). To open the site for everyone now, set LAUNCH_OPEN=1 in Vercel and redeploy."
   },
   {
     "code": "BR-PRE-003",
     "title": "Account is waiting for launch",
-    "meaning": "The account is ready, but Babson Radio is not open to it yet. Before the launch time only staff, hosts, beta testers and early-access accounts get in.",
+    "meaning": "The account is ready, but Babson Radio is not open to it yet. Before the launch time only Admins, Directors and Radio trained students get in.",
     "userFix": "Come back when Babson Radio opens on October 30 at 10 am Eastern.",
-    "staffCheck": "The site opens by itself at LAUNCH_AT (default 2026-10-30T14:00:00Z). To let one person in early: Admin → Beta testers, or POST /api/admin/early-access. To open everyone now: set LAUNCH_OPEN=1 in Vercel and redeploy."
+    "staffCheck": "The site opens by itself at LAUNCH_AT (default 2026-10-30T14:00:00Z). To let one person in early, give them the Radio trained badge in People and roles. To open everyone now: set LAUNCH_OPEN=1 in Vercel and redeploy (Preview builds only for rehearsals)."
   },
   {
     "code": "BR-PRE-004",
@@ -397,6 +397,13 @@
     "meaning": "Radio controls and the set list are open from 4 hours before a host's show until 4 hours after it.",
     "userFix": "Come back closer to your show time.",
     "staffCheck": "Check the show's day and times in Admin → Schedule, and the time zone in Auto-Scheduler. Developers and admins are never blocked."
+  },
+  {
+    "code": "BR-HST-004",
+    "title": "Message blocked by the word filter",
+    "meaning": "A show note or title matched the word filter at or above the allowed level.",
+    "userFix": "Reword the text and send it again.",
+    "staffCheck": "Levels and words are in lib/server/wordFilter.ts and lib/server/wordLists.ts; the strictness setting is in Admin > Blocked words."
   },
   {
     "code": "BR-HST-002",
@@ -417,14 +424,14 @@
     "title": "Last name missing",
     "meaning": "Sign-up needs both a first and last name.",
     "userFix": "Enter your last name.",
-    "staffCheck": "Client validation or /api/auth/signup rejected an empty lastName."
+    "staffCheck": "No longer used: sign-up does not ask for a last name."
   },
   {
     "code": "BR-ACC-018",
     "title": "Graduation year missing",
     "meaning": "Sign-up needs a graduation year (or Alumni / Faculty or staff).",
     "userFix": "Pick your graduation year from the list and try again.",
-    "staffCheck": "None needed. The form blocks this before the server is called."
+    "staffCheck": "No longer used at sign-up. Graduation year is optional and asked later in About you."
   },
   {
     "code": "BR-ACC-019",

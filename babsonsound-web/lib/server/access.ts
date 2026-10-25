@@ -45,7 +45,7 @@ async function claimInvite(email: string, doc: FirebaseFirestore.DocumentSnapsho
   const ref = db.collection('roleInvites').doc(inviteKey(email))
   const inv = await ref.get()
   const patch: Record<string, unknown> = { inviteChecked: true }
-  if (inv.exists && isSchoolEmail(email)) {
+  if (inv.exists) {
     patch.level = LEVELS.includes(inv.get('level')) ? inv.get('level') : 'student'
     if (typeof inv.get('studioTrained') === 'boolean') patch.studioTrained = inv.get('studioTrained')
     if (typeof inv.get('radioTrained') === 'boolean') patch.radioTrained = inv.get('radioTrained')
@@ -75,10 +75,10 @@ export async function accessOf(t: DecodedIdToken): Promise<Access> {
 
   let level: Level = LEVELS.includes(field('level') as Level) ? (field('level') as Level) : levelFromLegacy(doc.get('role'), email)
   if (owner) level = 'admin'
-  // Elevated levels only count for a verified school email, the demo account, or an owner.
-  if ((level === 'admin' || level === 'director') && !(schoolVerified || demo || owner)) level = 'guest'
-  // Students must have a verified school email; the demo account counts as verified.
-  if (level === 'student' && !(schoolVerified || demo)) level = 'guest'
+  // A level above guest counts for a verified school email (7-day grace allowed), or any other email once it is verified
+  // (an admin granted it by hand: sign-up makes every non-school address a guest), or the demo account, or an owner.
+  const trusted = schoolVerified || t.email_verified === true || demo || owner
+  if (level !== 'guest' && !trusted) level = 'guest'
 
   const high = level === 'admin' || level === 'director'
   const a: Access = {

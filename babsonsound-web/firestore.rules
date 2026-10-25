@@ -27,7 +27,7 @@ service cloud.firestore {
     // not in Firestore, and guests never read stored content such as the episode backlog.
     function isStudent() {
       return signedIn() && level() in ['student', 'director', 'admin']
-        && (schoolVerified() || me().get('demo', false) == true);
+        && (schoolVerified() || request.auth.token.email_verified == true || me().get('demo', false) == true);
     }
     function isMember() { return isStudent(); }
     function isAdmin() { return isStudent() && level() == 'admin'; }
@@ -131,5 +131,6 @@ service cloud.firestore {
     match /phoneChanges/{id}         { allow read, write: if false; }
     match /training/{id}             { allow read, write: if false; }
     match /noticeLog/{id}            { allow read, write: if false; } // dismissed admin notifications (the log)
+    match /accountDeletions/{id}     { allow read, write: if false; } // who deleted which account, and why
   }
 }

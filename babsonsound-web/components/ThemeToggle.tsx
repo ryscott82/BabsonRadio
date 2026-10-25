@@ -17,6 +17,7 @@ export default function ThemeToggle() {
   function flip() {
     const next: Theme = current() === 'dark' ? 'light' : 'dark'
     document.documentElement.setAttribute('data-theme', next)
+    document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.removeAttribute('media'); m.setAttribute('content', next === 'dark' ? '#0a0a09' : '#FBF8F0') })
     try { localStorage.setItem('br-theme', next) } catch {}
     setTheme(next)
   }

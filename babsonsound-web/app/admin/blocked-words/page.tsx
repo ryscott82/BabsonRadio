@@ -7,7 +7,7 @@ import { api, apiGet } from '@/lib/auth'
 import { ErrorText, PrimaryButton } from '@/components/AuthUI'
 
 type Level = 'crude' | 'explicit'
-interface Cfg { words: string[]; level: Level; counts: { crude: number; explicit: number; banned: number } }
+interface Cfg { words: string[]; level: Level; counts: { crude: number; explicit: number; banned: number; phrases: number } }
 
 export default function BlockedWordsPage() {
   const { user, isAdmin, loading } = useAuth()
@@ -41,7 +41,7 @@ export default function BlockedWordsPage() {
   async function check() {
     setResult('')
     try {
-      const r = await apiGet<{ tier: string; starred: boolean; blocked: boolean }>(`/api/admin/blocked-words?check=${encodeURIComponent(phrase)}`)
+      const r = await apiGet<{ tier: string; starred: boolean; blocked: boolean }>(`/api/admin/blocked-words?check=${encodeURIComponent(phrase)}&level=${level}`)
       setResult(r.tier === 'clean' ? 'Clean. This would go through.' : `${r.tier[0].toUpperCase()}${r.tier.slice(1)} word found${r.starred ? ', starred out' : ''}. ${r.blocked ? 'This would be blocked.' : 'This would go through at the current setting.'}`)
     } catch (e) { setResult(e instanceof Error ? e.message : 'Could not check.') }
   }
@@ -61,15 +61,15 @@ export default function BlockedWordsPage() {
         <legend className="text-br-dk-text text-lg mb-1">How strict</legend>
         <label className={opt}>
           <input type="radio" name="level" checked={level === 'explicit'} onChange={() => setLevel('explicit')} className="mt-1" />
-          <span><strong>Block explicit and banned words</strong> (default). Crude words like hell and damn go through, and so do starred-out swear words like f**k.</span>
+          <span><strong>TV-MA (default).</strong> Blocks explicit and banned words. Crude words like hell and damn go through, and so do starred-out swear words like f**k.</span>
         </label>
         <label className={opt}>
           <input type="radio" name="level" checked={level === 'crude'} onChange={() => setLevel('crude')} className="mt-1" />
-          <span><strong>Keep it clean.</strong> Also blocks crude words like hell, damn, pussy and retarded, and every starred-out word.</span>
+          <span><strong>TV-PG (keep it clean).</strong> Also blocks crude words like hell, damn, pussy and retarded, and every starred-out word.</span>
         </label>
         <p className="text-sm text-br-dk-sub">Banned words (racial, ethnic and homophobic slurs) are always blocked, starred out or not, whatever you pick.</p>
         {counts && (
-          <p className="text-sm text-br-dk-sub">Built in: {counts.crude} crude, {counts.explicit} explicit, {counts.banned} banned words and spellings.</p>
+          <p className="text-sm text-br-dk-sub">Built in: {counts.crude} crude, {counts.explicit} explicit, {counts.banned} banned words and spellings, plus {counts.phrases} phrases.</p>
         )}
       </fieldset>
 
@@ -85,7 +85,7 @@ export default function BlockedWordsPage() {
 
       <div className="space-y-2 pt-4 border-t border-white/15">
         <label htmlFor="try" className="text-br-dk-text text-lg block">Try a phrase</label>
-        <p className="text-sm text-br-dk-sub">Checks it against the saved settings. Nothing is sent anywhere.</p>
+        <p className="text-sm text-br-dk-sub">Checks it with the strictness picked above, even before you save. Nothing is sent anywhere.</p>
         <input id="try" value={phrase} onChange={e => { setPhrase(e.target.value); setResult('') }} onKeyDown={e => { if (e.key === 'Enter') check() }}
           className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none" />
         <button type="button" onClick={check} className="text-sm text-br-gold underline">Check</button>

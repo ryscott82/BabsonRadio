@@ -65,6 +65,8 @@ const ALLOW = new Set(['snigger', 'sniggers', 'sniggered', 'sniggering', 'niggar
   'rapping', 'rapped', 'rappe', 'rappee', 'rappees', 'rappes', 'pollack', 'pollacks', 'collie', 'collies', 'conns', 'woops', 'skeeter', 'skeeters',
   'shitakes', 'shittah', 'shittahs', 'shittim', 'shittims', 'shittimwood', 'shittimwoods', 'shitzu', 'shitzus',
   'fagotto', 'fagotti', 'contrafagotto', 'contrafagottos', 'fagottist', 'fagottists'])
+/** Ordinary words that can start a pair like "who re-elected" and must not be read as a split rude word. */
+const SPLIT_SKIP = new Set(['who', 'bit', 'to', 'the', 'for', 'you', 'and', 'are', 'was', 'bum', 'eye', 'jew', 'woo', 'ped', 'a', 'i'])
 /** Long phrases looked for in the whole message with the spaces taken out (only ones long enough to be safe). */
 const RUN: [string, Tier][] = [['killyourself', 'explicit'], ['goandkillyourself', 'explicit'], ['neckyourself', 'explicit'], ['hangyourself', 'explicit'], ['whitepower', 'banned'], ['heilhitler', 'banned'], ['siegheil', 'banned'], ['gasthejews', 'banned']]
 /** Starts of words that are always rude, so "shitposting" and "fuckwad" are caught even if the exact word is not listed. */
@@ -136,8 +138,22 @@ export function findAll(text: string, custom: readonly string[] = []): Hit[] {
     i = j
   }
 
+  // A rude word split into pieces: "ni gga", "nig ger", "fu ck". Two or three pieces in a row, checked with the spaces taken out.
+    const pieces = raw.map(norm).filter(Boolean)
+  for (let i = 0; i < pieces.length - 1; i++) {
+    for (let n = 2; n <= 3 && i + n <= pieces.length; n++) {
+      const part = pieces.slice(i, i + n)
+      if (part.every(x => x.length > 4) || part.some(x => ALLOW.has(x))) continue // whole words next to each other are not a split word
+      const h = lookup(part.join(''))
+      if (!h) continue
+      const w = h.word.length
+      // Slurs match however they are split. Other words only as two short pieces (3 letters or fewer each): "fu ck", "sh it", "bi tch".
+      if (h.tier === 'banned' || (h.tier === 'explicit' && n === 2 && part.every(x => x.length <= 3) && (w >= 5 || part.every(x => x.length >= 2)) && !SPLIT_SKIP.has(part[0])) || (h.tier === 'explicit' && n === 2 && w >= 5 && part[0].length === 1 && !SPLIT_SKIP.has(part[0]))) push(h)
+    }
+  }
+
   // Phrases: the words in a row.
-  const seq = raw.map(norm).filter(Boolean)
+  const seq = pieces
   for (const p of PHR) {
     for (let i = 0; i + p.toks.length <= seq.length; i++) if (p.toks.every((t, k) => seq[i + k] === t)) { hits.push({ tier: p.tier, word: p.toks.join(' '), starred: false }); break }
   }

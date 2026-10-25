@@ -83,7 +83,7 @@ export default function AdminPage() {
         <header className="flex flex-wrap items-center gap-4">
           <span className="ops-tile-icon !w-16 !h-16 shrink-0"><OpsIcon name="radio" size={40} /></span>
           <div>
-            <h1 className="text-4xl font-light leading-tight">Radio operations</h1>
+            <h1 className="text-4xl font-light leading-tight">Admin Panel</h1>
             <p className="text-base opacity-90">{isAdmin ? 'Admin' : 'Director'}{dash && !dash.radioConnected && isAdmin ? ' · Radio not connected' : ''}</p>
           </div>
           <Link href="/" className="ops-btn ml-auto">Back to site</Link>

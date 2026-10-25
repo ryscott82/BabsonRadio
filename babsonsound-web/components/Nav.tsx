@@ -93,7 +93,7 @@ export default function Nav() {
               </button>
               {menuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-52 sk-raised rounded-xl overflow-hidden">
-                  {!isGuest && <Link href="/profile" onClick={close} className={item}>Profile</Link>}
+                  <Link href="/profile" onClick={close} className={item}>Profile</Link>
                   {canRequest && <Link href="/slots" onClick={close} className={`${item} border-t border-br-dk-border`}>Request a spot</Link>}
                   {showAdmin && <Link href="/admin" onClick={close} className={`${item} border-t border-br-dk-border`}>Radio operations</Link>}
                   {isGuest && <Link href="/delete-account" onClick={close} className={item}>Delete account</Link>}

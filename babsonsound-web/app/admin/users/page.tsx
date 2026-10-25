@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { api, apiGet } from '@/lib/auth'
+import { api, apiDelete, apiGet } from '@/lib/auth'
 import { ErrorText } from '@/components/AuthUI'
 
 type Level = 'guest' | 'student' | 'director' | 'admin'
 interface Row { id: string; name: string; username: string; email: string; level: Level; studioTrained: boolean; radioTrained: boolean; owner: boolean; you: boolean }
+
+interface Invite { email: string; level: Level; studioTrained: boolean; radioTrained: boolean }
 
 const LEVEL_LABEL: Record<Level, string> = { guest: 'Guest', student: 'Student', director: 'Director', admin: 'Admin' }
 const LEVELS = Object.keys(LEVEL_LABEL) as Level[]
@@ -17,12 +19,17 @@ export default function AdminUsersPage() {
   const { user, isAdmin, loading } = useAuth()
   const router = useRouter()
   const [rows, setRows] = useState<Row[]>([])
+  const [invites, setInvites] = useState<Invite[]>([])
+  const [newEmail, setNewEmail] = useState('')
+  const [newLevel, setNewLevel] = useState<Level>('student')
+  const [newRadio, setNewRadio] = useState(false)
+  const [newStudio, setNewStudio] = useState(false)
   const [q, setQ] = useState('')
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
 
   const load = useCallback(async () => {
-    try { setRows((await apiGet<{ users: Row[] }>('/api/admin/users')).users) }
+    try { const d = await apiGet<{ users: Row[]; invites: Invite[] }>('/api/admin/users'); setRows(d.users); setInvites(d.invites ?? []) }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load users.') }
   }, [])
 
@@ -36,6 +43,22 @@ export default function AdminUsersPage() {
       setRows(prev => prev.map(x => (x.id === r.id ? { ...x, ...change, ...(change.level === 'guest' ? { studioTrained: false, radioTrained: false } : {}) } : x)))
       setNote(`Saved ${r.name || r.email}.`)
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save.') }
+  }
+
+  async function addByEmail() {
+    setError(''); setNote('')
+    const email = newEmail.trim().toLowerCase()
+    try {
+      const res = await api<{ invited?: boolean }>('/api/admin/users', { email, level: newLevel, studioTrained: newStudio, radioTrained: newRadio })
+      setNewEmail(''); setNewRadio(false); setNewStudio(false)
+      setNote(res.invited ? `Saved. ${email} gets this when they first sign in with that email.` : `${email} already has an account, so it was updated now.`)
+      await load()
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not save.') }
+  }
+  async function removeInvite(email: string) {
+    setError(''); setNote('')
+    try { await apiDelete('/api/admin/users', { email }); setInvites(prev => prev.filter(i => i.email !== email)) }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not remove.') }
   }
 
   if (!user || !isAdmin) return null
@@ -54,6 +77,35 @@ export default function AdminUsersPage() {
         Radio trained lets a student request live shows and go on air. Studio trained is for the studio. Directors and admins count as both. Owner accounts cannot be changed.
         Only people with a school email can be students, directors or admins.
       </p>
+      <div className="sk-raised rounded-xl px-4 py-3 space-y-3">
+        <p className="text-sm text-br-dk-text">Give a role to someone who has no account yet</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <input value={newEmail} onChange={e => setNewEmail(e.target.value)} type="email" placeholder="name@babson.edu" aria-label="Email address"
+                 className="sk-field flex-1 min-w-[14rem] rounded-lg px-3 py-2 text-sm text-br-dk-text" />
+          <select value={newLevel} onChange={e => setNewLevel(e.target.value as Level)} aria-label="Level" className="sk-field rounded-lg px-2 py-2 text-sm text-br-dk-text">
+            {LEVELS.filter(l => l !== 'guest').map(l => <option key={l} value={l}>{LEVEL_LABEL[l]}</option>)}
+          </select>
+          {newLevel === 'student' && (
+            <>
+              <label className="text-xs text-br-dk-sub flex items-center gap-1"><input type="checkbox" checked={newRadio} onChange={e => setNewRadio(e.target.checked)} /> Radio</label>
+              <label className="text-xs text-br-dk-sub flex items-center gap-1"><input type="checkbox" checked={newStudio} onChange={e => setNewStudio(e.target.checked)} /> Studio</label>
+            </>
+          )}
+          <button onClick={addByEmail} disabled={!newEmail.trim()} className="sk-raised rounded-lg px-4 py-2 text-sm text-br-dk-text disabled:opacity-50">Add</button>
+        </div>
+        <p className="text-xs text-br-dk-sub">School emails only (babson.edu, olin.edu, wellesley.edu). The role applies the first time that email signs in and is verified. If the person already has an account, it changes right away.</p>
+        {invites.length > 0 && (
+          <ul className="divide-y divide-br-dk-border">
+            {invites.map(i => (
+              <li key={i.email} className="py-2 flex items-center justify-between gap-3 text-sm">
+                <span className="min-w-0 truncate text-br-dk-text">{i.email}</span>
+                <span className="text-xs text-br-dk-sub shrink-0">{LEVEL_LABEL[i.level]}{i.radioTrained ? ' · radio' : ''}{i.studioTrained ? ' · studio' : ''}</span>
+                <button onClick={() => removeInvite(i.email)} className="text-xs text-br-dk-sub underline shrink-0">Remove</button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search name, email or username"
              className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text" />
       <ErrorText>{error}</ErrorText>

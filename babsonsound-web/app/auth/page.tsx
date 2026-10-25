@@ -4,11 +4,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { gradYearOptions } from '@/lib/terms'
-import { isBabsonEmail, signIn, signUp, signOut, resendVerification, sendPasswordReset } from '@/lib/auth'
+import { isBabsonEmail, requestEmailLink, signIn, signUp, signOut, resendVerification, sendPasswordReset } from '@/lib/auth'
 import { useResetCooldown, mmss } from '@/lib/useResetCooldown'
-import { normalizeUS } from '@/lib/phone'
-import { AgreeBox, Card, ErrorText, Field, GhostButton, PrimaryButton, formatPhone } from '@/components/AuthUI'
+import { Card, ErrorText, Field, GhostButton, PrimaryButton } from '@/components/AuthUI'
 
 export default function AuthPage() {
   const { user, loading, needsVerification, reload } = useAuth()
@@ -32,116 +30,108 @@ function Spinner() {
   )
 }
 
+// One screen for new and returning people. Default: type your email, get a link, tap it. No name, phone or password.
+// "Use a password instead" is there for anyone who does not want to open their inbox right now.
 function Forms() {
-  const [mode, setMode] = useState<'signin' | 'create'>('signin')
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  // The full address, exactly as typed or autofilled (Babson, Olin or Wellesley).
+  const [usePassword, setUsePassword] = useState(false)
+  const [create, setCreate] = useState(false) // password mode only: new account instead of sign in
   const [typed, setTyped] = useState('')
   const email = typed.trim().toLowerCase().replace(/\s/g, '')
-  const [phone, setPhone] = useState('')
-  const [gradYear, setGradYear] = useState('')
-  const [agreed, setAgreed] = useState(false)
   const [password, setPassword] = useState('')
+  const [sentTo, setSentTo] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [wait, setWait] = useState(0) // seconds until another link can be requested
   const [resetBump, setResetBump] = useState(0)
   const resetLeft = useResetCooldown(email, resetBump)
 
-  // The countdown page's Sign up button links here with ?mode=create.
   useEffect(() => {
-    if (new URLSearchParams(location.search).get('mode') === 'create') queueMicrotask(() => setMode('create'))
-  }, [])
+    if (wait <= 0) return
+    const t = setTimeout(() => setWait(w => w - 1), 1000)
+    return () => clearTimeout(t)
+  }, [wait])
 
-  async function submit(e: React.FormEvent) {
+  // The countdown page's Sign up button links here with ?mode=create. Nothing different to show: the link works for both.
+  async function sendLink(e?: React.FormEvent) {
+    e?.preventDefault()
+    setError('')
+    if (!/^\S+@\S+\.\S+$/.test(email)) return setError('Enter a valid email address.')
+    setBusy(true)
+    try { await requestEmailLink(email); setSentTo(email); setWait(45) }
+    catch (err) { setError(err instanceof Error ? err.message : 'Something went wrong.') }
+    finally { setBusy(false) }
+  }
+
+  async function submitPassword(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (mode === 'create') {
-      if (!firstName.trim()) return setError('Enter your first name.')
-      if (!lastName.trim()) return setError('Enter your last name.')
-      if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setError('Enter a valid email address.')
-      if (!normalizeUS(phone)) return setError('Enter a valid 10-digit US phone number.')
-      if (isBabsonEmail(email) && !gradYear) return setError('Pick your graduation year.')
-      if (!agreed) return setError('Agree to the Terms of Use and Privacy Policy to create an account.')
-      if (password.length < 8) return setError('Password must be at least 8 characters.')
-    }
+    if (!/^\S+@\S+\.\S+$/.test(email)) return setError('Enter a valid email address.')
+    if (password.length < 8) return setError('Password must be at least 8 characters.')
     setBusy(true)
-    try {
-      if (mode === 'create') await signUp(email, password, firstName.trim(), lastName.trim(), phone, isBabsonEmail(email) ? gradYear : '')
-      else await signIn(email, password)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.')
-    } finally {
-      setBusy(false)
-    }
+    try { if (create) await signUp(email, password); else await signIn(email, password) }
+    catch (err) { setError(err instanceof Error ? err.message : 'Something went wrong.') }
+    finally { setBusy(false) }
   }
+
+  if (sentTo) {
+    return (
+      <Card title="Check your email" subtitle={`We sent a sign-in link to ${sentTo}. Tap it and you're in.`}>
+        <div className="space-y-3">
+          <p className="text-center text-xs text-br-dk-sub">Nothing yet? Check your spam folder.</p>
+          <ErrorText>{error}</ErrorText>
+          <div className="flex justify-between">
+            <GhostButton disabled={wait > 0 || busy} onClick={() => sendLink()}>{wait > 0 ? `Resend in ${wait}s` : 'Resend link'}</GhostButton>
+            <GhostButton onClick={() => { setSentTo(''); setError('') }}>Use a different email</GhostButton>
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
+  const hint = !email ? '' : isBabsonEmail(email) ? "You'll join as a Student." : 'Not a Babson, Olin or Wellesley email: you can listen live as a Guest.'
 
   return (
     <Card title="Babson Radio" subtitle="Student radio — Babson College">
-      <div className="grid grid-cols-2 sk-field rounded-xl p-1 mb-6">
-        {(['signin', 'create'] as const).map(m => (
-          <button
-            key={m}
-            onClick={() => { setMode(m); setError('') }}
-            className={`font-display tracking-widest text-sm py-2 rounded-lg transition-colors ${
-              mode === m ? 'bg-br-gold text-br-dk-bg' : 'text-br-dk-sub hover:text-br-dk-text'
-            }`}
-          >
-            {m === 'signin' ? 'SIGN IN' : 'CREATE ACCOUNT'}
-          </button>
-        ))}
-      </div>
-
-      <form onSubmit={submit} className="space-y-4">
-        {mode === 'create' && (
-          <>
-            <Field label="First name" value={firstName} onChange={e => setFirstName(e.target.value)}
-                   autoComplete="given-name" placeholder="First name" />
-            <Field label="Last name" value={lastName} onChange={e => setLastName(e.target.value)}
-                   autoComplete="family-name" placeholder="Last name" />
-            <Field label="Phone number" value={phone} onChange={e => setPhone(formatPhone(e.target.value))}
-                   type="tel" autoComplete="tel-national" inputMode="tel" placeholder="(555) 555-5555" />
-          </>
-        )}
+      <form onSubmit={usePassword ? submitPassword : sendLink} className="space-y-4">
         <Field label="Email" value={typed} onChange={e => setTyped(e.target.value)} type="email"
                autoComplete="username" autoCapitalize="none" placeholder="you@babson.edu" />
-        {mode === 'create' && (
-          <p className="text-xs text-br-dk-sub -mt-2">
-            {isBabsonEmail(email) ? 'You will join as a Student.' : 'Babson, Olin or Wellesley email: Student. Any other email: Guest.'}
-          </p>
+        {hint && <p className="text-xs text-br-dk-sub -mt-2">{hint}</p>}
+        {usePassword && (
+          <Field label="Password" value={password} onChange={e => setPassword(e.target.value)}
+                 type="password" autoComplete={create ? 'new-password' : 'current-password'}
+                 placeholder={create ? 'At least 8 characters' : 'Password'} />
         )}
-        {mode === 'create' && isBabsonEmail(email) && (
-          <label className="block">
-              <span className="block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest">Graduation year</span>
-              <select value={gradYear} onChange={e => setGradYear(e.target.value)}
-                      className="sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none">
-                <option value="">Select</option>
-                {gradYearOptions().map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </label>
-        )}
-        <Field label="Password" value={password} onChange={e => setPassword(e.target.value)}
-               type="password" autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
-               placeholder={mode === 'create' ? 'At least 8 characters' : 'Password'} />
-        {mode === 'create' && <AgreeBox checked={agreed} onChange={setAgreed} />}
         <ErrorText>{error}</ErrorText>
-        <PrimaryButton type="submit" busy={busy}>{mode === 'create' ? 'CREATE ACCOUNT' : 'SIGN IN'}</PrimaryButton>
-        {mode === 'create' && (
-          <p className="text-center text-xs text-br-dk-sub">
-            <Link href="/privacy" target="_blank" className="underline underline-offset-4">We&apos;ll email you when we launch.</Link>
-          </p>
-        )}
-        {mode === 'signin' && (
-          <button type="button" disabled={resetLeft > 0} className="block mx-auto text-sm text-br-dk-sub hover:text-br-dk-text disabled:opacity-60 disabled:hover:text-br-dk-sub"
-            onClick={async () => {
-              if (!email) return setError('Enter your email above first.')
-              try { await sendPasswordReset(email); setError('If that account exists, a reset link is on its way.') }
-              catch (e) { setError(e instanceof Error ? e.message : 'Try again in a moment.') }
-              setResetBump(n => n + 1)
-            }}>{resetLeft > 0 ? `Resend in ${mmss(resetLeft)}` : 'Forgot password?'}</button>
-        )}
+        <PrimaryButton type="submit" busy={busy}>
+          {!usePassword ? 'EMAIL ME A LINK' : create ? 'CREATE ACCOUNT' : 'SIGN IN'}
+        </PrimaryButton>
+        <p className="text-center text-xs text-br-dk-sub">
+          By continuing you agree to the{' '}
+          <Link href="/terms" target="_blank" className="underline underline-offset-4">Terms of Use</Link> and{' '}
+          <Link href="/privacy" target="_blank" className="underline underline-offset-4">Privacy Policy</Link>.
+          {' '}We&apos;ll email you when we launch.
+        </p>
+        <div className="flex flex-col items-center gap-2 text-sm text-br-dk-sub">
+          <button type="button" className="hover:text-br-dk-text underline underline-offset-4"
+                  onClick={() => { setUsePassword(v => !v); setCreate(false); setError('') }}>
+            {usePassword ? 'Email me a link instead' : 'Use a password instead'}
+          </button>
+          {usePassword && (
+            <button type="button" className="hover:text-br-dk-text" onClick={() => { setCreate(v => !v); setError('') }}>
+              {create ? 'Already have a password? Sign in' : 'New here? Create an account with a password'}
+            </button>
+          )}
+          {usePassword && !create && (
+            <button type="button" disabled={resetLeft > 0} className="hover:text-br-dk-text disabled:opacity-60"
+              onClick={async () => {
+                if (!email) return setError('Enter your email above first.')
+                try { await sendPasswordReset(email); setError('If that account exists, a reset link is on its way.') }
+                catch (e) { setError(e instanceof Error ? e.message : 'Try again in a moment.') }
+                setResetBump(n => n + 1)
+              }}>{resetLeft > 0 ? `Resend in ${mmss(resetLeft)}` : 'Forgot password?'}</button>
+          )}
+        </div>
       </form>
-
     </Card>
   )
 }

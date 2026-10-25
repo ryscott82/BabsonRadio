@@ -1,5 +1,6 @@
 import 'server-only'
 import type { DecodedIdToken } from 'firebase-admin/auth'
+import { createHash } from 'node:crypto'
 import { adminDb } from './admin'
 
 /** One access level per person. */
@@ -32,6 +33,28 @@ export type Access = {
   schoolVerified: boolean
 }
 
+/** Roles given to an email before it has an account: roleInvites/{sha256(email)}. */
+export const inviteKey = (email: string) => createHash('sha256').update(email.trim().toLowerCase()).digest('hex')
+
+/**
+ * The first time a person is seen with a VERIFIED email, any invite for that email is moved onto their profile.
+ * (Unverified sign-ups never get one, so nobody can claim an invited address before its owner.) Runs once per account.
+ */
+async function claimInvite(email: string, doc: FirebaseFirestore.DocumentSnapshot): Promise<Record<string, unknown>> {
+  const db = adminDb()
+  const ref = db.collection('roleInvites').doc(inviteKey(email))
+  const inv = await ref.get()
+  const patch: Record<string, unknown> = { inviteChecked: true }
+  if (inv.exists && isSchoolEmail(email)) {
+    patch.level = LEVELS.includes(inv.get('level')) ? inv.get('level') : 'student'
+    if (typeof inv.get('studioTrained') === 'boolean') patch.studioTrained = inv.get('studioTrained')
+    if (typeof inv.get('radioTrained') === 'boolean') patch.radioTrained = inv.get('radioTrained')
+    await ref.delete()
+  }
+  await doc.ref.update(patch)
+  return patch
+}
+
 const cache = new Map<string, { at: number; a: Access }>()
 const TTL = 45_000
 export const forgetAccess = (uid?: string) => { if (uid) cache.delete(uid); else cache.clear() }
@@ -43,12 +66,14 @@ export async function accessOf(t: DecodedIdToken): Promise<Access> {
   if (hit && now - hit.at < TTL) return hit.a
   const doc = await adminDb().collection('users').doc(t.uid).get()
   const email = (t.email ?? doc.get('email') ?? '').toLowerCase()
+  const claimed = doc.exists && t.email_verified === true && email && doc.get('inviteChecked') !== true ? await claimInvite(email, doc) : {}
+  const field = (k: string) => (k in claimed ? claimed[k] : doc.get(k))
   const owner = isOwnerEmail(email)
   const demo = doc.get('demo') === true
   const graceOk = typeof t.graceUntil === 'number' && now < t.graceUntil
   const schoolVerified = isSchoolEmail(email) && (t.email_verified === true || graceOk)
 
-  let level: Level = LEVELS.includes(doc.get('level')) ? doc.get('level') : levelFromLegacy(doc.get('role'), email)
+  let level: Level = LEVELS.includes(field('level') as Level) ? (field('level') as Level) : levelFromLegacy(doc.get('role'), email)
   if (owner) level = 'admin'
   // Elevated levels only count for a verified school email, the demo account, or an owner.
   if ((level === 'admin' || level === 'director') && !(schoolVerified || demo || owner)) level = 'guest'
@@ -58,8 +83,8 @@ export async function accessOf(t: DecodedIdToken): Promise<Access> {
   const high = level === 'admin' || level === 'director'
   const a: Access = {
     uid: t.uid, level, owner, demo, schoolVerified: schoolVerified || demo,
-    studio: high || (level === 'student' && doc.get('studioTrained') === true),
-    radio: high || (level === 'student' && doc.get('radioTrained') === true),
+    studio: high || (level === 'student' && field('studioTrained') === true),
+    radio: high || (level === 'student' && field('radioTrained') === true),
   }
   if (cache.size > 2000) cache.clear()
   cache.set(t.uid, { at: now, a })

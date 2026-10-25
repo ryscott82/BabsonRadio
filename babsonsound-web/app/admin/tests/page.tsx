@@ -3,18 +3,21 @@
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import ArtTest from '@/components/admin/ArtTest'
+import StationPanel from '@/components/admin/StationPanel'
 
 export default function TestsPage() {
   const { isAdmin, loading } = useAuth()
   if (loading || !isAdmin) return <div className="min-h-[60vh]" />
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-4">
-      <div className="flex items-center gap-3 border-b border-br-dk-border pb-3">
-        <Link href="/admin" className="text-br-dk-sub text-sm">radio-ops</Link>
-        <span className="text-br-dk-muted">/</span>
-        <h1 className="text-br-dk-text text-base font-semibold">tests</h1>
+    <div className="ops-hub">
+      <div className="max-w-6xl mx-auto px-5 py-8 space-y-6">
+        <header>
+          <Link href="/admin" className="text-base underline underline-offset-4">Radio operations</Link>
+          <h1 className="text-4xl font-light leading-tight mt-1">Tests</h1>
+        </header>
+        <StationPanel only="tests" />
+        <ArtTest />
       </div>
-      <ArtTest />
     </div>
   )
 }

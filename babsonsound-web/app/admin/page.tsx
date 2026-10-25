@@ -86,6 +86,7 @@ export default function AdminPage() {
             <h1 className="text-4xl font-light leading-tight">Radio operations</h1>
             <p className="text-base opacity-90">{isAdmin ? 'Admin' : 'Director'}{dash && !dash.radioConnected && isAdmin ? ' · Radio not connected' : ''}</p>
           </div>
+          <Link href="/" className="ops-btn ml-auto">Back to site</Link>
         </header>
 
         <Notifications items={alerts?.items ?? []} dismissedCount={alerts?.dismissedCount ?? 0} reload={load} />

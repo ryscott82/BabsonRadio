@@ -432,3 +432,6 @@ span[data-pin-log], [data-pinterest-extension-installed] ~ span[style*="z-index"
 .ops-hub .ops-btn-red:hover { background:#8f1d17; }
 .ops-hub .ops-btn:disabled, .ops-hub .ops-btn-red:disabled { cursor:not-allowed; }
 .ops-hub .ops-btn[aria-pressed="true"] { outline:2px solid #fff; outline-offset:2px; }
+
+/* admin pages are full screen: no nav bar, so no top gap */
+.hw-main:has(> .ops), .hw-main:has(> * > .ops) { padding-top: 0; padding-bottom: 0; }

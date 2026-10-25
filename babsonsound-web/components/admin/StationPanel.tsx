@@ -16,7 +16,7 @@ interface Data {
 const when = (ms: number) => new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
 
 // The station controls: skip, a message for the whole audience, a message on one show, and the emergency stop.
-export default function StationPanel() {
+export default function StationPanel({ only = 'controls' }: { only?: 'controls' | 'tests' }) {
   const [d, setD] = useState<Data | null>(null)
   const [err, setErr] = useState('')
   const [msg, setMsg] = useState('')
@@ -75,6 +75,7 @@ export default function StationPanel() {
       {msg && <p role="status" className="text-base font-semibold">{msg}</p>}
 
       <div className="grid md:grid-cols-2 gap-5">
+        {only === 'controls' && (<>
         <section className={card}>
           <h3 className={h}>Playback</h3>
           <div className="flex flex-wrap gap-2 items-center">
@@ -114,24 +115,6 @@ export default function StationPanel() {
         </section>
 
         <section className={card}>
-          <h3 className={h}>ON AIR sign</h3>
-          <p className="text-base opacity-90">Automatic during live shows. Switch on by hand for other events.</p>
-          <button type="button" disabled={!!busy} aria-pressed={d.onAirSign === true}
-                  onClick={() => run('sign', { action: 'on-air-sign', on: d.onAirSign !== true }, d.onAirSign === true ? 'ON AIR sign is off.' : 'ON AIR sign is on.')} className={btn}>
-            {d.onAirSign === true ? 'On: turn off' : 'Off: turn on'}
-          </button>
-        </section>
-
-        <section className={card}>
-          <h3 className={h}>Audio processing</h3>
-          <p className="text-base opacity-90">Website equalizer and volume boost. Off plays the raw stream.</p>
-          <button type="button" disabled={!!busy} aria-pressed={d.audioFx !== false}
-                  onClick={() => run('fx', { action: 'audio-fx', on: d.audioFx === false }, d.audioFx === false ? 'Audio processing is on.' : 'Audio processing is off.')} className={btn}>
-            {d.audioFx === false ? 'Off: turn on' : 'On: turn off'}
-          </button>
-        </section>
-
-        <section className={card}>
           <h3 className={h}>Message to everyone</h3>
           {d.announcement && <p className="text-base font-semibold">Live now: {d.announcement.text} <span className="font-normal opacity-80">(until {when(d.announcement.until)})</span></p>}
           <textarea value={text} onChange={e => setText(e.target.value)} rows={2} maxLength={240} aria-label="Message to everyone"
@@ -158,6 +141,27 @@ export default function StationPanel() {
             <button type="button" disabled={!!busy} onClick={() => pin(true)} className={btn}>Clear</button>
           </div>
         </section>
+        </>)}
+        {only === 'tests' && (<>
+        <section className={card}>
+          <h3 className={h}>ON AIR sign</h3>
+          <p className="text-base opacity-90">Automatic during live shows. Switch on by hand for other events.</p>
+          <button type="button" disabled={!!busy} aria-pressed={d.onAirSign === true}
+                  onClick={() => run('sign', { action: 'on-air-sign', on: d.onAirSign !== true }, d.onAirSign === true ? 'ON AIR sign is off.' : 'ON AIR sign is on.')} className={btn}>
+            {d.onAirSign === true ? 'On: turn off' : 'Off: turn on'}
+          </button>
+        </section>
+
+        <section className={card}>
+          <h3 className={h}>Audio processing</h3>
+          <p className="text-base opacity-90">Website equalizer and volume boost. Off plays the raw stream.</p>
+          <button type="button" disabled={!!busy} aria-pressed={d.audioFx !== false}
+                  onClick={() => run('fx', { action: 'audio-fx', on: d.audioFx === false }, d.audioFx === false ? 'Audio processing is on.' : 'Audio processing is off.')} className={btn}>
+            {d.audioFx === false ? 'Off: turn on' : 'On: turn off'}
+          </button>
+        </section>
+
+        </>)}
       </div>
     </div>
   )

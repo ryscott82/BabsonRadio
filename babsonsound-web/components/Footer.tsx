@@ -7,7 +7,8 @@ import ContactEmail from './ContactEmail'
 const ext = { target: '_blank', rel: 'noopener noreferrer' } as const
 
 export default function Footer() {
-  if (usePathname() === '/coming-soon') return null
+  const path = usePathname()
+  if (path === '/coming-soon' || path.startsWith('/admin')) return null
   const link = 'text-br-dk-sub hover:text-br-dk-text transition-colors'
   return (
     <footer className="hw-foot relative z-[1]">

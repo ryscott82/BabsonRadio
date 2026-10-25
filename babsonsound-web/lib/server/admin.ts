@@ -10,6 +10,10 @@ function app(): App {
   const existing = getApps()[0]
   if (existing) return existing
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+  // Local emulator run (npm run emulators): no key needed, and nothing here can touch the real project.
+  if (!raw && process.env.FIRESTORE_EMULATOR_HOST && process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    return initializeApp({ projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'demo-babsonradio' })
+  }
   if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON is not set')
   return initializeApp({ credential: cert(JSON.parse(raw)) })
 }

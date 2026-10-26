@@ -377,7 +377,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
           <div role="alertdialog" aria-modal="true" aria-label="Already listening on another device" className="sk-raised rounded-2xl p-6 w-full max-w-sm space-y-4 text-center">
             <h3 className="font-display text-br-dk-text text-2xl tracking-wide">Already listening</h3>
             <p className="text-sm text-br-dk-sub">{guard.notice || 'You are listening on another device.'}</p>
-            <button onClick={playHere} className="sk-btn block w-full rounded-xl py-3 text-sm font-display tracking-[0.2em]">PLAY HERE</button>
+            <button onClick={playHere} className="sk-btn block w-full rounded-xl py-3 text-sm font-display tracking-[0.2em]">Play here</button>
             <button onClick={guard.dismissElsewhere} className="text-sm text-br-dk-sub">Keep listening there</button>
           </div>
         </div>

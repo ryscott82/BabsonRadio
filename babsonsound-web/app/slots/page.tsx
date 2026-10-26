@@ -90,7 +90,7 @@ export default function SlotsPage() {
   if (!member) {
     return (
       <div className="max-w-md mx-auto px-4 py-16 text-center space-y-3">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Go on air</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Host a show</h1>
         <p className="text-lg text-br-dk-sub">
           <Link href="/auth" className="text-br-gold underline underline-offset-4">Sign in</Link> with your Babson email.
         </p>
@@ -104,7 +104,7 @@ export default function SlotsPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-10">
       <div>
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Go on air</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Host a show</h1>
         <p className="text-lg text-br-dk-sub mt-2">Request a time. At least {SLOT_RULES.minLeadHours} hours ahead.</p>
       </div>
 
@@ -125,7 +125,7 @@ export default function SlotsPage() {
       <form onSubmit={submit} className="sk-raised rounded-2xl p-5 space-y-4">
         <Field label="Title" value={title} onChange={e => setTitle(e.target.value)} maxLength={80} required />
         <label className="block">
-          <span className={label}>WHAT&apos;S IT ABOUT?</span>
+          <span className={label}>What&apos;s it about?</span>
           <textarea className={box} rows={3} maxLength={500} required minLength={10} value={description} onChange={e => setDescription(e.target.value)} placeholder="What listeners will hear" />
         </label>
         <Field label="Special requests or location (optional)" value={location} onChange={e => setLocation(e.target.value)} maxLength={120} placeholder="Recording from the Mod Quad, need a second mic…" />

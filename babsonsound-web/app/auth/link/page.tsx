@@ -36,7 +36,7 @@ export default function EmailLinkPage() {
     <Card title="Sign-in link" subtitle="We couldn't use that link.">
       <div className="space-y-4">
         <ErrorText>{error}</ErrorText>
-        <Link href="/auth"><PrimaryButton type="button">GET A NEW LINK</PrimaryButton></Link>
+        <Link href="/auth"><PrimaryButton type="button">Get a new link</PrimaryButton></Link>
       </div>
     </Card>
   )

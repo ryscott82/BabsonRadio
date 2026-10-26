@@ -691,7 +691,7 @@ struct HWInscribedText: TextRenderer {
     }
 }
 
-/// The song title on one line. It shrinks a little to fit (down to 80%); a longer title keeps its full size, rests at the start for
+/// The song title on one line. It shrinks to fit (down to 50% of its size, so long titles stay readable); a longer title keeps its full size, rests at the start for
 /// two seconds so the beginning can be read, then scrolls sideways like other music apps (Reduce Motion: it just shrinks further).
 struct HWTitleLine: View {
     let text: String
@@ -713,8 +713,8 @@ struct HWTitleLine: View {
     var body: some View {
         GeometryReader { g in
             let w = textWidth
-            if w <= g.size.width || reduceMotion || w * 0.8 <= g.size.width {
-                line.lineLimit(1).minimumScaleFactor(reduceMotion ? 0.3 : 0.8)
+            if w <= g.size.width || reduceMotion || w * 0.5 <= g.size.width {
+                line.lineLimit(1).minimumScaleFactor(0.45)
                     .frame(width: g.size.width, height: g.size.height, alignment: .bottomLeading)
             } else {
                 Scrolling(text: text, width: w, line: line, boxW: g.size.width, boxH: g.size.height)

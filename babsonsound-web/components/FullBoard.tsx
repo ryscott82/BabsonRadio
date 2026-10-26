@@ -55,7 +55,7 @@ export default function FullBoard({ boardRef, eqRef, np, hasSong, onAir, glow, a
          style={artStyle} className={`hw-board ${colors ? 'art-ui art-board ' : ''}fixed inset-0 z-[100] overflow-hidden flex items-center justify-center ${awake ? '' : 'cursor-none'}`}>
       {colors && <ArtDesk inline on colors={colors as [string, string, string, string, string, string]} />}
       <div className="relative shrink-0" style={{ width: W, height: H, transform: `scale(${scale})`, transformOrigin: 'center center' }}>
-        <p className="absolute font-semibold" style={{ left: 80, top: 42, fontSize: 13, letterSpacing: '0.34em', color: 'var(--br-text)', opacity: 0.7 }}>BABSON RADIO</p>
+        <p className="absolute font-semibold" style={{ left: 80, top: 42, fontSize: 13, letterSpacing: '0.34em', color: 'var(--br-text)', opacity: 0.7 }}>Babson Radio</p>
 
         <GlassClock />
 
@@ -66,7 +66,7 @@ export default function FullBoard({ boardRef, eqRef, np, hasSong, onAir, glow, a
             {np?.art
               // eslint-disable-next-line @next/next/no-img-element
               ? <img src={np.art} alt="" className="absolute inset-0 w-full h-full object-cover" />
-              : <div className="text-center"><p className="font-display text-br-brass/80 tracking-[0.4em]">BABSON</p><p className="font-display text-white text-6xl tracking-[0.2em]">RADIO</p></div>}
+              : <div className="text-center"><p className="font-display text-br-brass/80 tracking-[0.2em]">Babson</p><p className="font-display text-white text-6xl tracking-[0.1em]">Radio</p></div>}
           </div>
           {onAirNow && <OnAirSign />}
         </div>
@@ -98,7 +98,7 @@ export default function FullBoard({ boardRef, eqRef, np, hasSong, onAir, glow, a
         {/* Pause and exit */}
         <div className={`absolute flex gap-3 transition-opacity duration-500 ${awake ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} style={{ right: 70, top: 24 }}>
           <button onClick={togglePlay} disabled={!canPlay} className="sk-key hw-pill hw-board-key">{isPlaying ? 'PAUSE' : 'PLAY'}</button>
-          <button onClick={close} className="sk-key hw-pill hw-board-key">EXIT</button>
+          <button onClick={close} className="sk-key hw-pill hw-board-key">Exit</button>
         </div>
       </div>
     </div>,

@@ -149,7 +149,7 @@ struct LibraryView: View {
             .hwPage()
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .principal) { EtchedText(text: "babson radio", size: 24) } }
+            .toolbar { ToolbarItem(placement: .principal) { EtchedText(text: "Babson Radio", size: 24) } }
             .profileButton()
             .searchable(text: $query, isPresented: $isSearching, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search shows and episodes")
             .onChange(of: isSearching) { _, now in SearchState.shared.active = now }

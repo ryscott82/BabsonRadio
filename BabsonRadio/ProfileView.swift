@@ -389,7 +389,7 @@ private struct SignedInProfileView: View {
                     .foregroundColor(scheme == .dark ? .brGold : .brGreen)
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Go on air")
+                    Text("Host a show")
                         .font(BRFont.body(16, .semibold))
                         .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
                     Text("Request airtime")

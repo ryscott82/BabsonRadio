@@ -174,7 +174,7 @@ struct LiveBoardView: View {
     private var stackedCanvas: some View {
         ZStack(alignment: .topLeading) {
             Color.clear
-            Text("BABSON RADIO").font(BRFont.body(13, .semibold)).tracking(5).foregroundStyle(Color.hwCream.opacity(0.55))
+            Text("Babson Radio").font(BRFont.body(13, .semibold)).tracking(5).foregroundStyle(Color.hwCream.opacity(0.55))
                 .frame(width: 624).offset(x: 0, y: 40)
             if np?.onAir == true {
                 HWOnAirLamp(playing: audio.isPlaying, beat: audio.beatClock).scaleEffect(1.2, anchor: .topLeading).offset(x: 28, y: 125)

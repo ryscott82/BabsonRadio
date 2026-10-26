@@ -271,7 +271,7 @@ export default function ProfilePage() {
                         className={`hw-disc h-8 w-8 ${me?.avatarColor === c.id ? 'outline outline-2 outline-offset-2 outline-br-gold' : ''}`} style={discStyle(c.hex)} />
               ))}
             </div>
-            <PrimaryButton type="button" busy={saving} onClick={saveName}>SAVE</PrimaryButton>
+            <PrimaryButton type="button" busy={saving} onClick={saveName}>Save</PrimaryButton>
           </div>
         )}
 

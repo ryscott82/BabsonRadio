@@ -648,8 +648,8 @@ struct PhoneLiveDesk<Drawer: View>: View {
             }
 
             // Title (one line: shrinks a little, scrolls if still too long) and the line under it.
-            VStack(alignment: .leading, spacing: 6) {
-                HWTitleLine(text: titleText, size: 40, height: 66 - up)
+            VStack(alignment: .leading, spacing: 4) {
+                HWTitleLine(text: titleText, size: 40, height: 42)
                     .frame(maxWidth: .infinity, alignment: .bottomLeading)
                 Text(subText)
                     .font(BRFont.body(18, .medium))
@@ -736,7 +736,11 @@ struct HWScrew: View {
         Circle()
             .fill(RadialGradient(colors: [Color(hex: "55554C"), Color(hex: "1E1F1A")], center: UnitPoint(x: 0.35, y: 0.3), startRadius: 0, endRadius: 8))
             .frame(width: 9, height: 9)
-            .overlay(Rectangle().fill(Color.black.opacity(0.55)).frame(width: 6, height: 1).rotationEffect(.degrees(35)))
+            // Phillips head: a small plus cut into the dome.
+            .overlay(ZStack {
+                Rectangle().fill(Color.black.opacity(0.6)).frame(width: 5.5, height: 1.1)
+                Rectangle().fill(Color.black.opacity(0.6)).frame(width: 1.1, height: 5.5)
+            })
             .shadow(color: .black.opacity(0.4), radius: 0.5, x: 0, y: 1)
         }
     }

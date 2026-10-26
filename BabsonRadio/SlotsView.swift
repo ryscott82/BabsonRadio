@@ -22,7 +22,7 @@ struct SlotsView: View {
         Group {
             if embedded {
                 scroll
-                    .navigationTitle("Go on air")
+                    .navigationTitle("Host a show")
                     .navigationBarTitleDisplayMode(.inline)
             } else {
                 NavigationStack { scroll }
@@ -494,7 +494,7 @@ struct RequestSlotForm: View {
                 Task { await upload(item) }
             }
             .task { pubInfo = try? await BackendAPI.get("/api/me") }
-            .navigationTitle("Request a slot")
+            .navigationTitle("Host a show")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -721,7 +721,7 @@ struct ScheduleView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    EtchedText(text: "babson radio", size: 24)
+                    EtchedText(text: "Babson Radio", size: 24)
                 }
             }
         }

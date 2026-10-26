@@ -49,7 +49,7 @@ struct SearchView: View {
             )
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    EtchedText(text: "babson radio", size: 24)
+                    EtchedText(text: "Babson Radio", size: 24)
                 }
             }
         }

@@ -103,7 +103,7 @@ struct ContentView: View {
         // The station name cut into the oak above the page, the same on every tab beside the player.
         .overlay(alignment: .topLeading) {
             if sideW > 0 {
-                EtchedText(text: "babson radio", size: 34)
+                EtchedText(text: "Babson Radio", size: 34)
                     .frame(width: max(0, paneSize.width - sideW - 96), height: 64, alignment: .center)
                     .offset(x: sideW)
                     .allowsHitTesting(false)

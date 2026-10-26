@@ -108,7 +108,7 @@ body:has(.hw-stage) { transition: background-color .4s; }
   box-shadow: var(--hw-face-ring), 0 0 0 3.5px rgba(0,0,0,.45), 0 0 0 5px rgba(255,235,200,.13),
               inset 0 5px 9px rgba(24,28,24,.34), inset 4px 0 7px rgba(24,28,24,.14), inset 0 2px 4px rgba(24,28,24,.18);
 }
-/* Corners: black glass caps on the light amps, small steel screws on the dark ones. */
+/* Corners: black glass caps on the light amps, small Phillips-head steel screws on the dark ones. */
 .hw-panel::after, .hw-main > div[class*="max-w-"]:not(.hw-stage)::after {
   content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit;
   /* Black plastic with a fine speckled grain: the texture, cut to four corner circles by a mask. */
@@ -120,6 +120,14 @@ body:has(.hw-stage) { transition: background-color .4s; }
   :root:not([data-theme="light"]) .hw-panel::after, :root:not([data-theme="light"]) .hw-main > div[class*="max-w-"]:not(.hw-stage)::after {
     -webkit-mask: none; mask: none;
     background:
+      linear-gradient(#1E1F1A,#1E1F1A) calc(12px - 2.5px) calc(12px - 0.5px) / 5px 1px no-repeat,
+      linear-gradient(#1E1F1A,#1E1F1A) calc(12px - 0.5px) calc(12px - 2.5px) / 1px 5px no-repeat,
+      linear-gradient(#1E1F1A,#1E1F1A) calc(calc(100% - 12px) - 2.5px) calc(12px - 0.5px) / 5px 1px no-repeat,
+      linear-gradient(#1E1F1A,#1E1F1A) calc(calc(100% - 12px) - 0.5px) calc(12px - 2.5px) / 1px 5px no-repeat,
+      linear-gradient(#1E1F1A,#1E1F1A) calc(12px - 2.5px) calc(calc(100% - 12px) - 0.5px) / 5px 1px no-repeat,
+      linear-gradient(#1E1F1A,#1E1F1A) calc(12px - 0.5px) calc(calc(100% - 12px) - 2.5px) / 1px 5px no-repeat,
+      linear-gradient(#1E1F1A,#1E1F1A) calc(calc(100% - 12px) - 2.5px) calc(calc(100% - 12px) - 0.5px) / 5px 1px no-repeat,
+      linear-gradient(#1E1F1A,#1E1F1A) calc(calc(100% - 12px) - 0.5px) calc(calc(100% - 12px) - 2.5px) / 1px 5px no-repeat,
       radial-gradient(circle at 12px 12px, #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),
       radial-gradient(circle at calc(100% - 12px) 12px, #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),
       radial-gradient(circle at 12px calc(100% - 12px), #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),
@@ -129,6 +137,14 @@ body:has(.hw-stage) { transition: background-color .4s; }
 :root[data-theme="dark"] .hw-panel::after, :root[data-theme="dark"] .hw-main > div[class*="max-w-"]:not(.hw-stage)::after {
   -webkit-mask: none; mask: none;
   background:
+    linear-gradient(#1E1F1A,#1E1F1A) calc(12px - 2.5px) calc(12px - 0.5px) / 5px 1px no-repeat,
+    linear-gradient(#1E1F1A,#1E1F1A) calc(12px - 0.5px) calc(12px - 2.5px) / 1px 5px no-repeat,
+    linear-gradient(#1E1F1A,#1E1F1A) calc(calc(100% - 12px) - 2.5px) calc(12px - 0.5px) / 5px 1px no-repeat,
+    linear-gradient(#1E1F1A,#1E1F1A) calc(calc(100% - 12px) - 0.5px) calc(12px - 2.5px) / 1px 5px no-repeat,
+    linear-gradient(#1E1F1A,#1E1F1A) calc(12px - 2.5px) calc(calc(100% - 12px) - 0.5px) / 5px 1px no-repeat,
+    linear-gradient(#1E1F1A,#1E1F1A) calc(12px - 0.5px) calc(calc(100% - 12px) - 2.5px) / 1px 5px no-repeat,
+    linear-gradient(#1E1F1A,#1E1F1A) calc(calc(100% - 12px) - 2.5px) calc(calc(100% - 12px) - 0.5px) / 5px 1px no-repeat,
+    linear-gradient(#1E1F1A,#1E1F1A) calc(calc(100% - 12px) - 0.5px) calc(calc(100% - 12px) - 2.5px) / 1px 5px no-repeat,
     radial-gradient(circle at 12px 12px, #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),
     radial-gradient(circle at calc(100% - 12px) 12px, #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),
     radial-gradient(circle at 12px calc(100% - 12px), #55554C 0 3.5px, #1E1F1A 4px 4.6px, transparent 5px),

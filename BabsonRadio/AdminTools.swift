@@ -4,7 +4,7 @@ import Combine
 // MARK: - Admin tools for when you are away from a computer
 // Show requests, training, announcements and roles. All go through the website's API, which checks the role again.
 
-private struct Sheet<Content: View>: View {
+struct AdminSheet<Content: View>: View {
     let title: String
     let content: Content
     init(title: String, @ViewBuilder content: () -> Content) { self.title = title; self.content = content() }
@@ -32,7 +32,7 @@ private struct Sheet<Content: View>: View {
     }
 }
 
-private func errText(_ e: Error) -> String { (e as? BackendError)?.message ?? e.localizedDescription }
+func adminErrText(_ e: Error) -> String { (e as? BackendError)?.message ?? e.localizedDescription }
 private func when(_ ms: Double) -> String { Date(timeIntervalSince1970: ms / 1000).formatted(.dateTime.weekday(.abbreviated).month().day().hour().minute()) }
 
 /// The list that sits in the admin screen.
@@ -43,7 +43,10 @@ struct AdminToolLinks: View {
             link("Show requests", "Approve or decline requests to go on air", "calendar.badge.clock") { ShowRequestsView() }
             link("Training", "Who is training and quiz results", "graduationcap") { TrainingAdminView() }
             link("Announcement", "A message on every page of the site and app", "megaphone") { AnnounceView() }
-            link("People and roles", "Find people and change roles", "person.2") { UsersAdminView() }
+            link("People and roles", "Find people, set access levels and badges", "person.2") { UsersAdminView() }
+            link("Page text", "Edit the words on About and other pages", "text.alignleft") { PageTextAdminView() }
+            link("Blocked words", "How strict the word filter is, plus your own words", "nosign") { BlockedWordsAdminView() }
+            link("Song requests", "What listeners asked to hear", "music.note.list") { SongRequestsAdminView() }
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading).adminCard()
     }
@@ -83,7 +86,7 @@ nonisolated private struct SlotReqList: Decodable { let requests: [SlotReq] }
     @Published var error: String?
     func load() async {
         do { let r: SlotReqList = try await BackendAPI.get("/api/admin/slot-requests"); items = r.requests; error = nil }
-        catch { self.error = errText(error) }
+        catch { self.error = adminErrText(error) }
         loaded = true
     }
     func decide(_ r: SlotReq, approve: Bool, note: String, info: String) async {
@@ -91,7 +94,7 @@ nonisolated private struct SlotReqList: Decodable { let requests: [SlotReq] }
             let _: EmptyResponse = try await BackendAPI.post("/api/slots/decision",
                 ["requestId": r.id, "action": approve ? "approve" : "decline", "note": note, "connectionInfo": info])
             error = nil
-        } catch { self.error = errText(error) }
+        } catch { self.error = adminErrText(error) }
         await load()
     }
 }
@@ -104,7 +107,7 @@ struct ShowRequestsView: View {
     private var sub: Color { Color.white.opacity(0.85) }
 
     var body: some View {
-        Sheet(title: "Show requests") {
+        AdminSheet(title: "Show requests") {
             if let e = model.error { Text(e).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
             if model.loaded && model.items.isEmpty { Text("Nothing waiting.").font(BRFont.body(14, .regular)).foregroundColor(sub) }
             ForEach(model.items) { r in
@@ -192,12 +195,12 @@ nonisolated private struct TrainList: Decodable { let users: [TrainRow] }
     @Published var error: String?
     func load() async {
         do { let r: TrainList = try await BackendAPI.get("/api/admin/training"); rows = r.users; error = nil }
-        catch { self.error = errText(error) }
+        catch { self.error = adminErrText(error) }
         loaded = true
     }
     func act(_ r: TrainRow, _ action: String) async {
         do { let _: EmptyResponse = try await BackendAPI.post("/api/admin/training", ["uid": r.uid, "action": action]); error = nil }
-        catch { self.error = errText(error) }
+        catch { self.error = adminErrText(error) }
         await load()
     }
 }
@@ -219,7 +222,7 @@ struct TrainingAdminView: View {
     }
 
     var body: some View {
-        Sheet(title: "Training") {
+        AdminSheet(title: "Training") {
             if let e = model.error { Text(e).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
             TextField("", text: $query, prompt: Text("Find a student").foregroundColor(.brPlaceholder))
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -282,7 +285,7 @@ struct AnnounceView: View {
     private var field: Color { Color.hwField(scheme) }
 
     var body: some View {
-        Sheet(title: "Announcement") {
+        AdminSheet(title: "Announcement") {
             if let i = info { Text("\(i.phones) phone\(i.phones == 1 ? "" : "s") will get it.").font(BRFont.body(13, .regular)).foregroundColor(sub) }
             TextField("", text: $title, prompt: Text("Title").foregroundColor(.brPlaceholder)).padding(12).background(field).clipShape(RoundedRectangle(cornerRadius: 10))
             TextField("", text: $body_, prompt: Text("Message").foregroundColor(.brPlaceholder), axis: .vertical).lineLimit(2...4)
@@ -318,77 +321,8 @@ struct AnnounceView: View {
                     ["title": title.trimmingCharacters(in: .whitespaces), "body": body_.trimmingCharacters(in: .whitespaces)])
                 message = "Sent to \(r.sent)."; title = ""; body_ = ""
                 info = try? await BackendAPI.get("/api/admin/broadcast")
-            } catch { message = errText(error) }
+            } catch { message = adminErrText(error) }
             busy = false
         }
-    }
-}
-
-// MARK: People and roles
-
-nonisolated private struct AdminUser: Decodable, Identifiable {
-    let id: String; let name: String; let username: String; let email: String; let role: String
-}
-nonisolated private struct AdminUserList: Decodable { let users: [AdminUser]; let canManageAdmins: Bool }
-nonisolated private struct NoteReply: Decodable { let note: String? }
-
-struct UsersAdminView: View {
-    @Environment(\.colorScheme) private var scheme
-    @State private var users: [AdminUser] = []
-    @State private var canAdmins = false
-    @State private var query = ""
-    @State private var message: String?
-    @State private var loaded = false
-    private var text: Color { Color.white }
-    private var sub: Color { Color.white.opacity(0.85) }
-
-    private static let labels: [(String, String)] = [("listener", "Listener"), ("showHost", "Host"), ("director", "Director"), ("superAdmin", "Admin")]
-    private var roles: [(String, String)] { canAdmins ? Self.labels + [("developer", "Developer")] : Self.labels.filter { $0.0 != "superAdmin" } }
-
-    private var found: [AdminUser] {
-        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
-        guard q.count >= 2 else { return users.filter { $0.role != "listener" } }
-        return users.filter { $0.name.lowercased().contains(q) || $0.email.lowercased().contains(q) || $0.username.lowercased().contains(q) }.prefix(25).map { $0 }
-    }
-
-    var body: some View {
-        Sheet(title: "People and roles") {
-            TextField("", text: $query, prompt: Text("Find someone").foregroundColor(.brPlaceholder))
-                .textInputAutocapitalization(.never).autocorrectionDisabled()
-                .padding(12).background(HWFieldFill())
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-            if let m = message { Text(m).font(BRFont.body(13, .regular)).foregroundColor(.brAccentText) }
-            if query.trimmingCharacters(in: .whitespaces).count < 2 { Text("Hosts and staff. Search to find anyone else.").font(BRFont.body(12, .regular)).foregroundColor(sub) }
-            ForEach(found) { u in
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(u.name.isEmpty ? u.email : u.name).font(BRFont.body(15, .regular)).foregroundColor(text)
-                        Text(u.email).font(BRFont.body(12, .regular)).foregroundColor(sub)
-                    }
-                    Spacer()
-                    Menu {
-                        ForEach(roles, id: \.0) { r in Button(r.1) { Task { await setRole(u, r.0) } } }
-                    } label: {
-                        Text(Self.labels.first { $0.0 == u.role }?.1 ?? u.role.capitalized).font(BRFont.body(13, .regular))
-                            .padding(.horizontal, 12).padding(.vertical, 6).background(Capsule().fill(Color.brGreen.opacity(0.15)))
-                    }
-                }
-                .padding(14).adminCard()
-            }
-        }
-        .task { await load() }
-    }
-
-    private func load() async {
-        if let r: AdminUserList = try? await BackendAPI.get("/api/admin/users") { users = r.users; canAdmins = r.canManageAdmins }
-        loaded = true
-    }
-
-    private func setRole(_ u: AdminUser, _ role: String) async {
-        do {
-            let r: NoteReply = try await BackendAPI.post("/api/admin/users", ["uid": u.id, "role": role])
-            message = r.note ?? "\(u.name.isEmpty ? u.email : u.name) is now \(role)."
-        } catch { message = errText(error) }
-        await load()
     }
 }

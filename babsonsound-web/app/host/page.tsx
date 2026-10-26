@@ -44,7 +44,7 @@ export default function HostPage() {
   useEffect(() => {
     if (!user || !isBabson) return
     queueMicrotask(load)
-    const t = setInterval(load, 20_000)
+    const t = setInterval(() => { if (!document.hidden) load() }, 20_000)
     return () => clearInterval(t)
   }, [user, isBabson, load])
 

@@ -38,12 +38,16 @@ const PASS_TTL_MS = 12 * 3_600_000
 
 const secret = () => process.env.LAUNCH_SECRET || process.env.CRON_SECRET || ''
 const hex = (b: ArrayBuffer) => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('')
+// The imported signing key is kept per label (importing it again on every request was wasted work).
+const keys = new Map<string, Promise<CryptoKey>>()
 async function hmac(label: string, message: string): Promise<string | null> {
   const s = secret()
   if (s.length < 8) return null // no secret: fails closed (no passes, no unsubscribe links)
   const enc = new TextEncoder()
-  const key = await crypto.subtle.importKey('raw', enc.encode(`${s}|${label}`), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
-  return hex(await crypto.subtle.sign('HMAC', key, enc.encode(message)))
+  const id = `${s}|${label}`
+  let key = keys.get(id)
+  if (!key) { key = crypto.subtle.importKey('raw', enc.encode(id), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']); keys.set(id, key) }
+  return hex(await crypto.subtle.sign('HMAC', await key, enc.encode(message)))
 }
 
 export function safeEqual(a: string, b: string): boolean {
@@ -59,15 +63,23 @@ export async function makePass(uid: string, now = Date.now()): Promise<{ token: 
   const sig = await hmac('pass', `${uid}.${expiresAt}`)
   return sig ? { token: `${uid}.${expiresAt}.${sig}`, expiresAt } : null
 }
+// Passes already proven good, so the same person's next requests skip the signature check. A pass still stops working at its own expiry time.
+// Only passes that passed are stored (a forged one is never cached), and the table is capped so it cannot grow without limit.
+const goodPasses = new Map<string, { uid: string; exp: number }>()
 /** The uid the pass belongs to, or null if it is missing, forged or expired. */
 export async function passUid(token: string | null | undefined, now = Date.now()): Promise<string | null> {
   if (!token) return null
+  const seen = goodPasses.get(token)
+  if (seen) { if (seen.exp > now) return seen.uid; goodPasses.delete(token) }
   const parts = token.split('.')
   if (parts.length !== 3) return null
   const [uid, exp, sig] = parts
   if (!uid || !(Number(exp) > now)) return null
   const want = await hmac('pass', `${uid}.${exp}`)
-  return want && safeEqual(sig, want) ? uid : null
+  if (!want || !safeEqual(sig, want)) return null
+  if (goodPasses.size >= 500) goodPasses.delete(goodPasses.keys().next().value as string)
+  goodPasses.set(token, { uid, exp: Number(exp) })
+  return uid
 }
 
 // ── unsubscribe links: no login needed, never expire ──

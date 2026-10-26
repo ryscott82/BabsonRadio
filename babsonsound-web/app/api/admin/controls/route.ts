@@ -12,10 +12,13 @@ import { after } from 'next/server'
 
 export const runtime = 'nodejs'
 
+let answer: { at: number; v: unknown } | null = null // shared for a few seconds; cleared by any button below
+
 // Admin controls: what is on, the shows we can pin a message to, and the big buttons.
 export async function GET(req: Request) {
   return handle(async () => {
     await requireStaff(req)
+    if (answer && Date.now() - answer.at < 8_000) return answer.v
     const db = adminDb()
     const now = Date.now()
     const items = (await buildScheduleFeed(db, { days: 2, showStudentHosts: false, now })).filter(i => i.source !== 'auto')
@@ -23,7 +26,9 @@ export async function GET(req: Request) {
       occId: occIdOf(i), title: i.title, startAt: i.startAt, endAt: i.endAt, onAir: i.startAt <= now && i.endAt > now,
       note: await getNote(db, occIdOf(i), now),
     })))
-    return { configured: azuraConfigured(), nowPlaying: await azNowPlaying().catch(() => null), shows, announcement: await getAnnouncement(db, now), audioFx: await getAudioFx(db, now), onAirSign: await getOnAirSign(db, now) }
+    const out = { configured: azuraConfigured(), nowPlaying: await azNowPlaying().catch(() => null), shows, announcement: await getAnnouncement(db, now), audioFx: await getAudioFx(db, now), onAirSign: await getOnAirSign(db, now) }
+    answer = { at: Date.now(), v: out }
+    return out
   })
 }
 
@@ -31,6 +36,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   return handle(async () => {
     const t = await requireStaff(req)
+    answer = null
     const body = await readJson(req)
     const action = body.action
     if (action === 'on-air-sign') {

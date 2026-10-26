@@ -66,8 +66,11 @@ function seeded(n: number) { // small deterministic PRNG so everyone sees the sa
 }
 
 /** The five genres on offer for this hour: the same for every listener, different from hour to hour. */
+// The genre list changes only when staff edit it, so it is looked up at most once every 30 s per server instance.
+let genresCache: { at: number; saved: unknown } | null = null
 export async function voteOptions(db: Firestore, blockMs: number): Promise<string[]> {
-  const saved = (await db.collection('config').doc('voteGenres').get()).get('list')
+  if (!genresCache || Date.now() - genresCache.at > 30_000) genresCache = { at: Date.now(), saved: (await db.collection('config').doc('voteGenres').get()).get('list') }
+  const saved = genresCache.saved
   const pool = (Array.isArray(saved) && saved.length ? saved.map(String) : DEFAULT_VOTE_GENRES).filter((v, i, a) => v && a.indexOf(v) === i && !/ [-–—] /.test(v)) // genres only: never "Artist - Song" (listeners must not pick specific recordings, see the DMCA note in FEATURES.md)
   if (pool.length <= OPTIONS_PER_HOUR) return pool
   const rnd = seeded(blockMs / HOUR)
@@ -87,21 +90,31 @@ export interface VoteState {
   upNext: { blockStart: number; label: string } | null
 }
 
+// Everyone polling the vote card reads the same hour's votes, so they are fetched at most once every 5 s per server instance
+// (and again right away after someone votes on this instance).
+let rowsCache: { blockMs: number; at: number; rows: { genre: string; uid: string }[] } | null = null
+async function voteRows(db: Firestore, blockMs: number) {
+  if (rowsCache && rowsCache.blockMs === blockMs && Date.now() - rowsCache.at < 5_000) return rowsCache.rows
+  const snap = await db.collection('songVotes').where('blockMs', '==', blockMs).get()
+  const rows = snap.docs.map(d => ({ genre: String(d.get('genre')), uid: String(d.get('uid')) }))
+  rowsCache = { blockMs, at: Date.now(), rows }
+  return rows
+}
+
 export async function voteState(db: Firestore, uid: string | null, now = Date.now()): Promise<VoteState> {
   await finalizeDue(db, now).catch(e => console.error('[vote finalize]', e))
   const blockStart = targetBlock(now)
   const closed = blockStart - HOUR // the hour whose voting just closed (still in the future when now is inside the lock window)
-  const [opts, snap, res] = await Promise.all([
+  const [opts, rows, res] = await Promise.all([
     voteOptions(db, blockStart),
-    db.collection('songVotes').where('blockMs', '==', blockStart).get(),
+    voteRows(db, blockStart),
     closed > now ? db.collection('voteResults').doc(String(closed)).get() : Promise.resolve(null),
   ])
   const counts = new Map<string, number>()
   let mine: string | null = null
-  for (const d of snap.docs) {
-    const g = String(d.get('genre'))
-    counts.set(g, (counts.get(g) ?? 0) + 1)
-    if (uid && d.get('uid') === uid) mine = g
+  for (const d of rows) {
+    counts.set(d.genre, (counts.get(d.genre) ?? 0) + 1)
+    if (uid && d.uid === uid) mine = d.genre
   }
   return {
     blockStart, blockEnd: blockStart + HOUR, threshold: MIN_VOTES,
@@ -118,6 +131,7 @@ export async function castVote(db: Firestore, uid: string, genre: string, now = 
   const opts = await voteOptions(db, blockMs)
   if (!opts.includes(genre)) throw Object.assign(new Error('Pick one of the options.'), { status: 400 })
   await db.collection('songVotes').doc(`${blockMs}_${uid}`).set({ blockMs, uid, genre, at: Timestamp.fromMillis(now) })
+  rowsCache = null
   return voteState(db, uid, now)
 }
 

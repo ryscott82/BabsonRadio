@@ -17,5 +17,5 @@ export async function GET(req: Request) {
       items: (await buildScheduleFeed(db, { days, showStudentHosts: member, back })).map(({ hostUids: _h, ...i }) => i),
       timezone: (await loadConfig(db)).timezone, // station time zone (the app uses it for weekly reminders)
     }
-  })
+  }, { 'Cache-Control': req.headers.get('authorization') ? 'private, no-store' : 'public, s-maxage=15, stale-while-revalidate=45' }) // signed-out copy has no student names, so it is the same for everyone
 }

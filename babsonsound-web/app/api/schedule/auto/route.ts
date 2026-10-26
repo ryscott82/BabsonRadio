@@ -15,5 +15,5 @@ export async function GET() {
         startAt: d.get('startAt').toMillis(), endAt: d.get('endAt').toMillis(),
       })).sort((a, b) => a.startAt - b.startAt),
     }
-  })
+  }, { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' })
 }

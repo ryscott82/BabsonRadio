@@ -10,7 +10,8 @@ export const SKIP_SHARE = 0.9
 const FRESH_MS = 240_000 // same freshness as the presence heartbeat
 
 let listenCache: { at: number; ids: Set<string> } | null = null
-async function listeningIds(db: Firestore, now: number): Promise<Set<string>> {
+/** Who is tuned in right now (shared by the skip vote and the listener count; looked up at most once every 15 s per server instance). */
+export async function listeningIds(db: Firestore, now: number): Promise<Set<string>> {
   if (listenCache && now - listenCache.at < 15_000) return listenCache.ids
   const snap = await db.collection('presence').where('updatedAt', '>', Timestamp.fromMillis(now - FRESH_MS)).get()
   const ids = new Set(snap.docs.filter(d => d.get('isListening') === true).map(d => d.id))

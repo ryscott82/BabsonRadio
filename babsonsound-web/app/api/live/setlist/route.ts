@@ -21,7 +21,7 @@ export async function GET(req: Request) {
       ...s, votes: v[s.id]?.length ?? 0, mine: !!uid && (v[s.id] ?? []).includes(uid),
     }))
     return { occId: cur.occId, title: cur.item.title, songs }
-  })
+  }, { 'Cache-Control': req.headers.get('authorization') ? 'private, no-store' : 'public, s-maxage=5, stale-while-revalidate=10' }) // signed-out copy has no "mine" marks
 }
 
 // Toggle your upvote on a song: { songId }

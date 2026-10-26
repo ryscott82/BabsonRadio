@@ -41,7 +41,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (!user || !isDirector) return
     queueMicrotask(load)
-    const t = setInterval(load, 30_000)
+    const t = setInterval(() => { if (!document.hidden) load() }, 60_000)
     return () => clearInterval(t)
   }, [user, isDirector, load])
 

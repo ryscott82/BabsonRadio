@@ -157,13 +157,20 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
     }
   }, [loading, canListenLive])
 
+  const playingRef = useRef(false)
+  useEffect(() => { playingRef.current = isPlaying }, [isPlaying])
   // Listener count + connected friends (names only for verified students, never invisible people).
   useEffect(() => {
     let alive = true
     const load = () => fetchPresence().then(p => { if (alive) { setListenerCount(p.count); setFriends(p.friends); setGroups(p.groups ?? []) } })
     load()
-    const t = setInterval(load, 30_000)
-    return () => { alive = false; clearInterval(t) }
+    // Every 30 s while playing, every 90 s otherwise, and not at all while the tab is hidden (it refreshes when you come back).
+    let timer: ReturnType<typeof setTimeout>
+    const next = () => { timer = setTimeout(() => { if (!document.hidden) load(); next() }, playingRef.current ? 30_000 : 90_000) }
+    const back = () => { if (!document.hidden) load() }
+    next()
+    document.addEventListener('visibilitychange', back)
+    return () => { alive = false; clearTimeout(timer); document.removeEventListener('visibilitychange', back) }
   }, [user?.uid])
 
   // Every 5 minutes of listening while signed out, invite them to make an account (the audio keeps playing).

@@ -31,7 +31,7 @@ export default function StationPanel({ only = 'controls' }: { only?: 'controls' 
   const [confirm, setConfirm] = useState<'emergency-stop' | 'resume' | null>(null)
 
   const load = useCallback(() => { apiGet<Data>('/api/admin/controls').then(setD).catch(e => setErr(e.message)) }, [])
-  useEffect(() => { queueMicrotask(load); const t = setInterval(load, 15_000); return () => clearInterval(t) }, [load])
+  useEffect(() => { queueMicrotask(load); const t = setInterval(() => { if (!document.hidden) load() }, 30_000); return () => clearInterval(t) }, [load])
 
   async function run(key: string, body: Record<string, unknown>, ok: string) {
     setBusy(key); setErr(''); setMsg('')

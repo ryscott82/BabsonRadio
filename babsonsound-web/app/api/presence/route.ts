@@ -5,6 +5,7 @@ import { accessOf } from '@/lib/server/access'
 import { visibleFriends } from '@/lib/server/friends'
 import { getNowPlaying } from '@/lib/server/nowplaying'
 import { listeningGroups, type ListeningGroup } from '@/lib/server/groups'
+import { listeningIds } from '@/lib/server/skipVotes'
 
 export const runtime = 'nodejs'
 
@@ -67,11 +68,12 @@ export async function POST(req: Request) {
 // Verified students additionally see the first names of connected contacts who are tuned in
 // and not invisible.
 export async function GET(req: Request) {
+  // Signed-out callers get the same answer as everyone else (just the count), so it can be cached at the edge for a few seconds.
+  // Signed-in answers include friends and groups, so they are never shared.
+  const anon = !req.headers.get('authorization')
   return handle(async () => {
     const db = adminDb()
-    const cutoff = Timestamp.fromMillis(Date.now() - FRESH_MS)
-    const live = await db.collection('presence').where('updatedAt', '>', cutoff).get()
-    const listening = new Set(live.docs.filter(d => d.get('isListening') === true).map(d => d.id))
+    const listening = await listeningIds(db, Date.now())
 
     let friends: { uid: string; firstName: string }[] = []
     let groups: ListeningGroup[] = []
@@ -84,5 +86,5 @@ export async function GET(req: Request) {
       }
     }
     return { count: listening.size, friends, groups }
-  })
+  }, { 'Cache-Control': anon ? 'public, s-maxage=10, stale-while-revalidate=20' : 'private, no-store' })
 }

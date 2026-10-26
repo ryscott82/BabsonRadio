@@ -69,7 +69,7 @@ export default function ScheduleList() {
       .then(r => { setItems(r.items); setNow(Date.now()) })
       .catch(e => setError(e instanceof Error ? e.message : 'Could not load the schedule.'))
     load()
-    const t = setInterval(load, 5 * 60_000)
+    const t = setInterval(() => { if (!document.hidden) load() }, 5 * 60_000)
     return () => clearInterval(t)
   }, [])
 

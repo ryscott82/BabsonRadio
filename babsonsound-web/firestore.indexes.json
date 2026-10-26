@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "listenSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "start", "order": "ASCENDING" },
+        { "fieldPath": "seconds", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "schedule",
       "queryScope": "COLLECTION",
       "fields": [

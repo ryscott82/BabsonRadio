@@ -28,6 +28,8 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  // Skip Next's own assets and static files so the public pages can load their fonts/images.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|robots.txt|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|woff2?)$).*)'],
+  // The lock only matters for pages and APIs that are NOT public while locked. So the matcher skips everything the lock would let through anyway
+  // (keep this list in step with PUBLIC_PAGES and PUBLIC_APIS in lib/launchLock.ts): Next's own files, static files, the countdown page ("/" needs
+  // at least one more character to match, so it is skipped), and the public pages and APIs. Skipped requests never start the function.
+  matcher: ['/((?!_next/|favicon\\.ico|robots\\.txt|sitemap\\.xml|manifest\\.webmanifest|\\.well-known/|apple-app-site-association|(?:auth|privacy|terms|unsubscribe|delete-account|coming-soon|support)(?:/|$)|api/(?:launch|unsubscribe|auth|cron|webhooks|health)(?:/|$)|.*\\.(?:png|jpe?g|gif|svg|webp|avif|ico|woff2?|ttf|otf|css|js|map|mp3|mp4|txt|xml|webmanifest)$).+)'],
 }

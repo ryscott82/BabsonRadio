@@ -55,8 +55,8 @@ export function useNowPlaying(everyMs = 12_000): NowPlaying | null {
     let alive = true
     load.current = (fresh = false) => {
       if (document.hidden) return
-      // At a song change, skip the edge cache so the new song shows as soon as the server has it.
-      fetch(fresh ? `/api/nowplaying?t=${Date.now()}` : '/api/nowplaying').then(r => (r.ok ? r.json() : null)).then(d => { if (alive && d) setNp({ ...d, receivedAt: Date.now() }) }).catch(() => {})
+      // At a song change, skip the edge cache so the new song shows as soon as the server has it. The 2 s buckets mean everyone asking in the same moment shares one answer.
+      fetch(fresh ? `/api/nowplaying?t=${Math.floor(Date.now() / 2000)}` : '/api/nowplaying').then(r => (r.ok ? r.json() : null)).then(d => { if (alive && d) setNp({ ...d, receivedAt: Date.now() }) }).catch(() => {})
     }
     const poll = () => load.current()
     poll()

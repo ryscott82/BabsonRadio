@@ -75,6 +75,18 @@ struct ContentView: View {
                 }
             }
 
+            if !isGuest {
+            ShowsView()
+                .padding(.leading, sideW).padding(.top, sideW > 0 ? 64 : 0)
+                .environment(\.hwFlushBottom, sideW > 0)
+                .ignoresSafeArea(.container, edges: sideW > 0 ? .bottom : [])
+                .modifier(TabBarStyle(hidden: hideBar))
+                .tag(4)
+                .tabItem {
+                    BRTabIcon(systemName: "square.stack", label: "Shows")
+                }
+            }
+
             if profile.hosting {
                 NavigationStack { HostPanelView() }
                     .padding(.leading, sideW).padding(.top, sideW > 0 ? 64 : 0)

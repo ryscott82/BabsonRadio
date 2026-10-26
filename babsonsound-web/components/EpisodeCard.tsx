@@ -37,17 +37,7 @@ function formatDate(ts: { seconds: number } | Date | string) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-const categoryGradients: Record<string, string> = {
-  Music:     'from-[#003D27] to-[#006644]',
-  Interview: 'from-[#00402B] to-[#0B7A55]',
-  Podcast:   'from-[#0A3322] to-[#14704D]',
-  Talk:      'from-[#06301F] to-[#0F6B48]',
-  News:      'from-[#0F2E22] to-[#1F7A58]',
-}
-
 export default function EpisodeCard({ episode, layout = 'card' }: EpisodeCardProps) {
-  const gradient = categoryGradients[episode.category ?? ''] ?? 'from-[#003D27] to-[#006644]'
-
   const thumbnail = episode.thumbnailURL ? (
     <Image
       src={episode.thumbnailURL}
@@ -56,14 +46,14 @@ export default function EpisodeCard({ episode, layout = 'card' }: EpisodeCardPro
       className="object-cover"
     />
   ) : (
-    <div className={`absolute inset-0 bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+    <div className="absolute inset-0 sk-field flex items-center justify-center">
       {episode.episodeNumber && (
         <div className="text-center">
-          <p className="font-display text-br-brass/60 text-sm tracking-[0.3em]">Ep</p>
-          <p className="font-display text-br-brass text-3xl">{episode.episodeNumber}</p>
+          <p className="font-display text-br-dk-muted text-sm tracking-[0.2em]">Ep</p>
+          <p className="font-display text-br-dk-text text-3xl">{episode.episodeNumber}</p>
         </div>
       )}
-      <div className="absolute bottom-0 inset-x-0 h-px bg-br-brass/40" />
+      
     </div>
   )
 
@@ -106,7 +96,7 @@ export default function EpisodeCard({ episode, layout = 'card' }: EpisodeCardPro
               <span className="font-display text-sm tracking-widest bg-br-red text-white px-2 py-0.5 rounded">New</span>
             )}
             {episode.category && (
-              <span className="font-display text-sm tracking-widest text-br-dk-muted">{episode.category.toUpperCase()}</span>
+              <span className="text-sm text-br-dk-muted">{episode.category}</span>
             )}
           </div>
           <p className="text-br-dk-text text-sm font-medium truncate group-hover:text-br-gold transition-colors">

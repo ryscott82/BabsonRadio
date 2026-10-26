@@ -172,7 +172,7 @@ struct EpisodeListRow: View {
         HStack(spacing: 12) {
             Button { playing = true } label: {
                 ZStack {
-                    Color.brGreen
+                    Color.black.opacity(0.55)
                     AsyncImage(url: URL(string: ep.thumbnailURL)) { img in img.resizable().scaledToFill() } placeholder: { Color.clear }
                     Color.black.opacity(0.25)
                     Image(systemName: "play.fill").foregroundColor(.white)

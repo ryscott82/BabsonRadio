@@ -7,6 +7,7 @@ import { api, apiGet } from '@/lib/auth'
 import { ErrorText, Field, PrimaryButton } from '@/components/AuthUI'
 import ImagePicker from '@/components/ImagePicker'
 import MyRecordings from '@/components/MyRecordings'
+import DmcaReminder from '@/components/DmcaReminder'
 
 interface HShow { id: string; key: string; kind: 'weekly' | 'slot'; refId: string; title: string; startAt: number; endAt: number; open: boolean }
 interface NowPlaying { song: string; elapsed: number; duration: number; isLive: boolean; streamer: string; listeners: number }
@@ -57,6 +58,7 @@ export default function HostPage() {
         <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Host</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
       </div>
+      <DmcaReminder showKey={st?.shows.find(x => x.open)?.key ?? null} />
       <ErrorText>{error}</ErrorText>
       {!st && !error && <p className="text-sm text-br-dk-sub">Loading…</p>}
       {st && !st.staff && st.shows.length === 0 && (

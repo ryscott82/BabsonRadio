@@ -1253,6 +1253,7 @@ struct HostPanelView: View {
     @State private var staffText = ""
     @State private var msgStatus: String?
     @State private var sending = false
+    @State private var showRules = false
 
     private var text: Color { scheme == .dark ? .brDkText : .brLtText }
     private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
@@ -1292,6 +1293,8 @@ struct HostPanelView: View {
         .navigationTitle("Host panel")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await host.load() }
+        .sheet(isPresented: $showRules) { HostRulesSheet { if let id = selected?.id { UserDefaults.standard.set(true, forKey: "br-dmca-\(id)") }; showRules = false } }
+        .onChange(of: selected?.id) { _, id in if let id, !UserDefaults.standard.bool(forKey: "br-dmca-\(id)") { showRules = true } }
         .task {
             await host.load()
             while !Task.isCancelled {
@@ -1765,4 +1768,30 @@ private struct BeatDelayRow: View {
 private struct CardIf: ViewModifier {
     let on: Bool
     func body(content: Content) -> some View { if on { content.brCard() } else { content } }
+}
+
+
+/// Copyright rules shown the first time a host opens the panel for a show.
+struct HostRulesSheet: View {
+    let onDone: () -> Void
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Before you go on air").font(BRFont.display(28)).foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+            Text("Copyright rules for internet radio. Following them keeps the station on the air.")
+                .font(BRFont.body(14, .regular)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+            VStack(alignment: .leading, spacing: 12) {
+                Label { Text("No more than 3 songs by the same artist in one show.").font(BRFont.body(16, .semibold)) } icon: { Image(systemName: "3.circle.fill") }
+                Label { Text("Never 2 songs by the same artist back to back. Play something else in between.").font(BRFont.body(16, .semibold)) } icon: { Image(systemName: "arrow.left.arrow.right.circle.fill") }
+            }
+            .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+            Spacer()
+            Button(action: onDone) { Text("I understand").font(BRFont.display(15)).frame(maxWidth: .infinity).padding(.vertical, 16) }
+                .buttonStyle(HWKeyStyle(corner: 14, lit: false, height: nil))
+        }
+        .padding(24)
+        .background(HWDesk())
+        .presentationDetents([.medium])
+        .interactiveDismissDisabled()
+    }
 }

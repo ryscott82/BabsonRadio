@@ -35,6 +35,10 @@ enum BackendAPI {
         try await send(path, method: "POST", body: body)
     }
 
+    static func delete<T: Decodable>(_ path: String, _ body: [String: Any]) async throws -> T {
+        try await send(path, method: "DELETE", body: body)
+    }
+
     static func put<T: Decodable>(_ path: String, _ body: [String: Any]) async throws -> T {
         try await send(path, method: "PUT", body: body)
     }

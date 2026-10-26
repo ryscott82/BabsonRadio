@@ -46,6 +46,12 @@ struct AdminToolLinks: View {
             link("People and roles", "Find people, set access levels and badges", "person.2") { UsersAdminView() }
             link("Page text", "Edit the words on About and other pages", "text.alignleft") { PageTextAdminView() }
             link("Blocked words", "How strict the word filter is, plus your own words", "nosign") { BlockedWordsAdminView() }
+            link("Phone changes", "Approve or set a member's phone number", "phone.badge.checkmark") { PhoneChangesAdminView() }
+            link("Show changes", "Approve hosts' edits to their show", "pencil.and.list.clipboard") { ShowChangesAdminView() }
+            link("Library episodes", "See, add and remove videos", "play.rectangle.on.rectangle") { EpisodesAdminView() }
+            link("Schedule", "Add, change or remove weekly shows", "calendar") { ScheduleAdminView() }
+            link("Easter eggs", "Reaction sets for certain songs, artists or shows", "sparkles") { EasterEggsAdminView() }
+            link("Birthdays", "Who shared a birthday and when", "gift") { BirthdaysAdminView() }
             link("Song requests", "What listeners asked to hear", "music.note.list") { SongRequestsAdminView() }
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading).adminCard()

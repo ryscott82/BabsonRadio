@@ -15,6 +15,7 @@ const NAV_LINKS = [
   { href: '/', label: 'Live' },
   { href: '/schedule', label: 'Schedule' },
   { href: '/library', label: 'Library' },
+  { href: '/shows', label: 'Shows' },
   { href: '/about', label: 'About' },
 ]
 

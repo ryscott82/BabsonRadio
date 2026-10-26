@@ -49,3 +49,28 @@ export function CountdownLine() {
     </p>
   )
 }
+
+/** The big one for the waiting screen: a black glass window with glowing digits, the seconds ticking on their own beat. */
+export function CountdownBig() {
+  const t = useCountdown()
+  const cells: [string, string][] = [
+    [t ? two(t.days) : '--', 'Days'], [t ? two(t.hours) : '--', 'Hours'],
+    [t ? two(t.mins) : '--', 'Minutes'], [t ? two(t.secs) : '--', 'Seconds'],
+  ]
+  return (
+    <div role="timer" aria-label="Time until launch"
+      className="w-full rounded-2xl bg-[#07090a] px-3 sm:px-8 py-6 sm:py-9 shadow-[inset_0_2px_14px_rgba(0,0,0,.9),inset_0_0_0_1px_rgba(255,255,255,.07),0_2px_0_rgba(255,255,255,.18)]">
+      <div className="flex items-start justify-center gap-1.5 sm:gap-4">
+        {cells.map(([v, label], i) => (
+          <div key={label} className="flex items-start gap-1.5 sm:gap-4">
+            <div className="flex flex-col items-center gap-2 sm:gap-3 min-w-[3.4rem] sm:min-w-[7rem]">
+              <span className="font-display tabular-nums leading-none text-[2.9rem] sm:text-[6.5rem] text-[#3DE0A0] [text-shadow:0_0_18px_rgba(61,224,160,.55),0_0_2px_rgba(190,255,230,.9)]">{v}</span>
+              <span className="font-display tracking-[0.18em] text-[0.6rem] sm:text-sm text-[#8FB5A6]">{label}</span>
+            </div>
+            {i < 3 && <span aria-hidden className="font-display leading-none text-[2.9rem] sm:text-[6.5rem] text-[#3DE0A0]/50 animate-pulse">:</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

@@ -9,15 +9,15 @@ export default async function ShowsPage() {
   return (
     <div className="max-w-[1800px] w-full mx-auto px-4 lg:px-8 py-6 fit">
       <div className="flex items-center gap-4 mb-4 shrink-0">
-        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">All shows</h1>
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.06em] shrink-0">Shows</h1>
         <div className="flex-1 h-px bg-br-dk-border" />
-        <span className="font-display text-br-dk-muted text-sm tracking-widest">{shows.length} SHOWS</span>
+        <span className="font-display text-br-dk-muted text-sm tracking-widest">{shows.length} {shows.length === 1 ? 'show' : 'shows'}</span>
       </div>
 
       {shows.length === 0 ? (
         <div className="text-center py-32 text-br-dk-muted">
-          <p className="font-display text-2xl tracking-widest mb-2">No shows yet</p>
-          <p className="text-sm">Shows will appear here once published by an admin.</p>
+          <p className="font-display text-2xl tracking-[0.06em] mb-2">No shows yet</p>
+          <p className="text-sm">New shows will show up here as they are added.</p>
         </div>
       ) : (
         <div className="fit-body grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 content-start">
@@ -28,12 +28,12 @@ export default async function ShowsPage() {
               className="group sk-raised rounded-2xl overflow-hidden"
             >
               {/* Artwork */}
-              <div className="relative w-full aspect-square bg-gradient-to-br from-[#003D27] to-br-green overflow-hidden">
+              <div className="relative w-full aspect-square sk-field overflow-hidden">
                 {show.artworkURL ? (
                   <img src={show.artworkURL} alt={show.name} className="w-full h-full object-cover" />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="font-display text-br-brass text-6xl tracking-wider">{show.name[0]}</span>
+                    <span className="font-display text-br-dk-sub text-6xl tracking-wider">{show.name[0]}</span>
                   </div>
                 )}
                 {show.isFeatured && (
@@ -45,7 +45,7 @@ export default async function ShowsPage() {
 
               {/* Info */}
               <div className="p-4">
-                <p className="font-display text-br-dk-sub text-sm tracking-widest mb-1">
+                <p className="text-br-dk-sub text-sm mb-1">
                   {show.category}
                 </p>
                 <h3 className="text-br-dk-text font-semibold text-base group-hover:text-br-gold transition-colors mb-1">

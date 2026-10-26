@@ -6,6 +6,11 @@ import { useRef } from 'react'
 export default function VolumeKnob({ value, onChange, max = 1, unity = 1, boostDb = 0 }: { value: number; onChange: (v: number) => void; max?: number; unity?: number; boostDb?: number }) {
   const start = useRef<{ y: number; v: number } | null>(null)
   const clamp = (v: number) => Math.min(max, Math.max(0, v))
+  // Detent at 0 dB: a wide sticky zone so the boost (and its distortion) is only ever entered on purpose.
+  const SNAP = 0.09
+  const snap = (v: number) => (unity < 1 && Math.abs(v - unity) < SNAP ? unity : v)
+  // Arrow keys stop at 0 dB when they would cross it.
+  const step = (from: number, d: number) => { const n = from + d; return unity < 1 && (from - unity) * (n - unity) < 0 ? unity : n }
   const angle = -135 + value * 270
   return (
     <div className="flex flex-col items-center gap-2">
@@ -20,12 +25,12 @@ export default function VolumeKnob({ value, onChange, max = 1, unity = 1, boostD
           className="hw-knob-sm w-[58px] h-[58px] rounded-full touch-none cursor-ns-resize select-none"
           style={{ ['--turn' as string]: `${angle}deg` }}
           onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); start.current = { y: e.clientY, v: value } }}
-          onPointerMove={e => { if (start.current) onChange(clamp(start.current.v + (start.current.y - e.clientY) / 140)) }}
+          onPointerMove={e => { if (start.current) onChange(snap(clamp(start.current.v + (start.current.y - e.clientY) / 140))) }}
           onPointerUp={() => { start.current = null }}
           onPointerCancel={() => { start.current = null }}
           onKeyDown={e => {
-            if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); onChange(clamp(value + 0.05)) }
-            if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { e.preventDefault(); onChange(clamp(value - 0.05)) }
+            if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); onChange(clamp(step(value, 0.05))) }
+            if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { e.preventDefault(); onChange(clamp(step(value, -0.05))) }
           }}
         />
       </div>

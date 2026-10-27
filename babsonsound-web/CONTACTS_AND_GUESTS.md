@@ -40,8 +40,8 @@ and update the App Store privacy "nutrition label" (Contacts → linked to user,
 `users/{uid}` holds three fields and no plain-text copy: `phoneEncrypted` (AES-256-GCM, `PII_KEY`; read back only on the owner's own
 phone page and the admin phone-change flow), `phoneHash` (HMAC-SHA256 with `PHONE_HASH_PEPPER` over the SHA-256 of the E.164 number,
 the same value as the `phoneIndex` document id) and `phoneVerified` (`false` until a verification step exists; there is none yet).
-`phoneIndex/{phoneHash}` is the unique index: `{ uid, verified: false }`. Contact matching (`/api/contacts/match`, `/popular`) ignores
-entries that are not `verified: true`, so no number matches yet. Guests never have a phone. Removing the number deletes all three
+`phoneIndex/{phoneHash}` is the unique index: `{ uid, verified: false }`. Contact matching (`/api/contacts/match`, `/popular`) runs on
+every entry, verified or not, because SMS verification may never be added; `verified` is stored so it can be used later. Guests never have a phone. Removing the number deletes all three
 fields and the index entry. Babson's own lines (`BLOCKED_NUMBER_PREFIXES`, 781-239) are refused as a member's number (BR-SET-009) and
 their hashes are dropped from contact uploads on the server. Older accounts may still have a plain `phoneNumber`; it is read as a
 fallback and replaced on the next save or removal.

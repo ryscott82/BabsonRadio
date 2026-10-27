@@ -38,8 +38,8 @@ export async function POST(req: Request) {
     for (let i = 0; i < refs.length; i += 300) {
       for (const snap of await db.getAll(...refs.slice(i, i + 300))) {
         const uid = snap.get('uid')
-        // Matching waits for verified numbers: entries are written with verified:false until a verification step exists.
-        if (snap.exists && snap.get('verified') === true && uid && uid !== t.uid) matchedUids.add(uid)
+        // Numbers are not SMS-verified (and may never be), so matching runs on every entry. `verified` is kept for later.
+        if (snap.exists && uid && uid !== t.uid) matchedUids.add(uid)
       }
     }
 

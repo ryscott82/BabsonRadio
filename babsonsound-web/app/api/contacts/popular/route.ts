@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     // Skip people who already have the app: they are not an invite.
     const members = new Set<string>()
     for (let i = 0; i < popular.length; i += 300) {
-      for (const s of await db.getAll(...popular.slice(i, i + 300).map(k => db.collection('phoneIndex').doc(k)))) if (s.exists && s.get('verified') === true) members.add(s.id)
+      for (const s of await db.getAll(...popular.slice(i, i + 300).map(k => db.collection('phoneIndex').doc(k)))) if (s.exists) members.add(s.id)
     }
     return { saved: popular.filter(k => !members.has(k)).map(k => ({ hash: byKey.get(k)!, others: (counts.get(k) ?? 1) - 1 })) }
   })

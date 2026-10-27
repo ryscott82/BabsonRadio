@@ -4,7 +4,7 @@ import { handle, requireStaff } from '@/lib/server/http'
 export const runtime = 'nodejs'
 
 // The friends web: members linked when each has the other's number (mutual connections).
-// Staff only, named by first and last name and username. Members in Invisible mode are left out.
+// Staff only, named by first and last name and username, with their Instagram handle if they added one. Members in Invisible mode are left out entirely.
 export async function GET(req: Request) {
   return handle(async () => {
     await requireStaff(req)
@@ -17,13 +17,13 @@ export async function GET(req: Request) {
       if (a && b && a !== b) pairs.add(a < b ? `${a}|${b}` : `${b}|${a}`)
     }
     const ids = [...new Set([...pairs].flatMap(p => p.split('|')))]
-    const info = new Map<string, { name: string; username: string }>()
+    const info = new Map<string, { name: string; username: string; instagram: string }>()
     const hidden = new Set<string>()
     for (let i = 0; i < ids.length; i += 100) {
       for (const u of await db.getAll(...ids.slice(i, i + 100).map(x => db.collection('users').doc(x)))) {
         if (!u.exists || u.get('invisible') === true) { hidden.add(u.id); continue }
         const name = [u.get('firstName') ?? u.get('displayName'), u.get('lastName')].filter(Boolean).join(' ')
-        info.set(u.id, { name: name || 'Member', username: String(u.get('username') ?? '') })
+        info.set(u.id, { name: name || 'Member', username: String(u.get('username') ?? ''), instagram: String(u.get('instagram') ?? '') })
       }
     }
     const edges = [...pairs].map(p => p.split('|')).filter(([a, b]) => !hidden.has(a) && !hidden.has(b))

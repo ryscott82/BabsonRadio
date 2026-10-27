@@ -106,7 +106,7 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | Code | What it is | What the user should do | What staff check |
 |---|---|---|---|
 | BR-SET-001 | **Unknown setup step**: The app asked about a setup step that does not exist. | Update the app and try again. | Valid steps: verifyEmail, name, avatar, birthday, gradYear, phone (lib/setup.ts). An old or modified client can send something else. |
-| BR-SET-002 | **Step not part of this account**: The step does not apply to this kind of account. Graduation year and phone number are for students only; Guests never get them. | Nothing to do. Skip it. | Guests have no gradYear or phone step; if a Guest sees one, the app is out of date. |
+| BR-SET-002 | **Step not part of this account**: The step does not apply to this kind of account. Graduation year, phone number and Instagram are for students only; Guests never get them. | Nothing to do. Skip it. | Guests have no gradYear, phone or instagram step; if a Guest sees one, the app is out of date. |
 | BR-SET-003 | **This step cannot be skipped**: The email step is required and cannot be skipped. | Open the link in your verification email. | Only verifyEmail is required. Its deadline is emailDeadlineAt in the setup block of /api/me. |
 | BR-SET-004 | **Month and day needed**: The birth year sits on the 13 or 18 line, so the year alone cannot tell whether the person is old enough or an adult. | Add your month and day. | Only happens for a year-only birthday in the cutoff years. Nothing was saved. |
 | BR-SET-005 | **Phone number already on the account**: A number is already saved. Changing it needs an admin to approve it. | Use Profile > Phone number to ask for a change. | Changes go through /api/me/phone and Admin > Phone changes. |
@@ -114,6 +114,7 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | BR-SET-007 | **First name missing**: The name step needs a first name. | Enter your first name. | — |
 | BR-SET-008 | **Avatar color not valid**: The color is not one of the profile colors. | Pick one of the colors shown. | Valid ids are in lib/profile.ts (AVATAR_COLORS). |
 | BR-SET-009 | **Babson campus line**: The number is one of Babson's own lines (781-239), not a personal number. Nothing was saved. | Enter your own mobile number, or skip this step. | The blocked prefixes are BLOCKED_NUMBER_PREFIXES in lib/phone.ts (kept in step with blockedNumberPrefixes in ProfileView.swift). Contact lists drop these hashes too. |
+| BR-SET-010 | **Instagram handle not valid**: The text is not an Instagram handle or an instagram.com profile link. A handle is 1 to 30 letters, numbers, periods or underscores. Nothing was saved. | Type your handle like @name, or paste your profile link. Or skip this step. | Rules are in lib/instagram.ts (cleanInstagram). Handles are never checked against Instagram and need not be unique. An admin can clear one in Admin > People (logged in instagramClears). |
 
 ## Sign in with Apple
 

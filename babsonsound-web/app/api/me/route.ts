@@ -43,6 +43,8 @@ export async function GET(req: Request) {
         emojis: Array.isArray(u.get('hostPrefs')?.emojis) ? u.get('hostPrefs').emojis : [],
         ratings: u.get('hostPrefs')?.ratings !== false,
       },
+      // Students only: a Guest never has one. This is whatever the person typed, cleaned up; it is not checked against Instagram.
+      instagram: a.level === 'guest' ? '' : String(u.get('instagram') ?? ''),
       gradYear: u.get('gradYear') ?? '',
       concentrations: u.get('concentrations') ?? [],
       birthday: cleanBirthday(u.get('birthday')),

@@ -2,7 +2,7 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { handle, readJson, requireUser } from '@/lib/server/http'
 import { accessOf } from '@/lib/server/access'
-import { visibleFriends } from '@/lib/server/friends'
+import { visibleFriendProfiles } from '@/lib/server/friends'
 import { getNowPlaying } from '@/lib/server/nowplaying'
 import { listeningGroups, type ListeningGroup } from '@/lib/server/groups'
 import { listeningIds } from '@/lib/server/skipVotes'
@@ -75,13 +75,13 @@ export async function GET(req: Request) {
     const db = adminDb()
     const listening = await listeningIds(db, Date.now())
 
-    let friends: { uid: string; firstName: string }[] = []
+    let friends: { uid: string; firstName: string; instagram?: string }[] = []
     let groups: ListeningGroup[] = []
     if (req.headers.get('authorization')) {
       const t = await requireUser(req).catch(() => null)
       if (t && (await accessOf(t)).level !== 'guest') {
-        const map = await visibleFriends(db, t.uid)
-        friends = [...map].filter(([id]) => listening.has(id)).map(([uid, firstName]) => ({ uid, firstName }))
+        const map = await visibleFriendProfiles(db, t.uid)
+        friends = [...map].filter(([id]) => listening.has(id)).map(([uid, f]) => ({ uid, firstName: f.firstName, ...(f.instagram ? { instagram: f.instagram } : {}) }))
         groups = await listeningGroups(db, t.uid, listening).catch(() => [])
       }
     }

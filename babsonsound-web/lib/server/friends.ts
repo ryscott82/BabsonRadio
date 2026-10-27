@@ -18,3 +18,20 @@ export async function visibleFriends(db: Firestore, uid: string): Promise<Map<st
   }
   return out
 }
+
+/**
+ * The same people as visibleFriends, with the Instagram handle they added (or ''). Members in invisible mode are left out, and a
+ * handle is never passed on for a Guest account. Only call this for a signed-in viewer who is not a Guest; the handle is not verified.
+ */
+export async function visibleFriendProfiles(db: Firestore, uid: string): Promise<Map<string, { firstName: string; instagram: string }>> {
+  const conns = await db.collection('users').doc(uid).collection('connections').where('mutual', '==', true).get()
+  const ids = conns.docs.map(d => d.id)
+  const out = new Map<string, { firstName: string; instagram: string }>()
+  if (!ids.length) return out
+  for (const d of await db.getAll(...ids.map(id => db.collection('users').doc(id)))) {
+    if (!d.exists || d.get('invisible') === true) continue
+    const ig = d.get('level') === 'guest' ? '' : d.get('instagram')
+    out.set(d.id, { firstName: d.get('firstName') ?? d.get('displayName') ?? 'Friend', instagram: typeof ig === 'string' ? ig : '' })
+  }
+  return out
+}

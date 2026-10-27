@@ -269,3 +269,123 @@ struct PhoneChangeSection: View {
         busy = false
     }
 }
+
+// MARK: - Instagram handle (students, optional)
+
+/// Same rules as lib/instagram.ts on the website: "@name", "name" or a pasted instagram.com link become a clean lowercase handle.
+/// Only the shape of the handle is checked; nothing checks that the account exists or belongs to the person.
+enum InstagramHandle {
+    private static let notPeople: Set<String> = ["p", "reel", "reels", "tv", "stories", "explore", "accounts", "direct", "about", "web",
+                                                 "developer", "legal", "privacy", "press", "api", "challenge", "oauth"]
+
+    static func clean(_ input: String) -> String? {
+        var s = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        if s.isEmpty { return nil }
+        let link = try? NSRegularExpression(pattern: #"^(?:https?://)?(?:[a-z0-9-]+\.)?(?:instagram\.com|instagr\.am)/(.*)$"#, options: .caseInsensitive)
+        if let m = link?.firstMatch(in: s, range: NSRange(s.startIndex..., in: s)), let r = Range(m.range(at: 1), in: s) {
+            let first = String(s[r]).split(omittingEmptySubsequences: false, whereSeparator: { "/?#".contains($0) }).first.map(String.init) ?? ""
+            if first.isEmpty || notPeople.contains(first.lowercased()) { return nil }
+            s = first
+        } else {
+            let bare = s.hasPrefix("@") ? String(s.dropFirst()) : s
+            if bare.contains(where: { "/?#: \t\n".contains($0) }) { return nil }
+        }
+        if s.hasPrefix("@") { s.removeFirst() }
+        guard (1...30).contains(s.count), !s.hasSuffix("."), !s.contains("..") else { return nil }
+        guard s.range(of: #"^[A-Za-z0-9._]+$"#, options: .regularExpression) != nil else { return nil }
+        let lower = s.lowercased()
+        return notPeople.contains(lower) ? nil : lower
+    }
+
+    static func url(_ handle: String) -> URL? { URL(string: "https://www.instagram.com/\(handle)/") }
+}
+
+/// "@handle" with the icon. Tapping opens instagram.com/handle outside the app.
+struct InstagramLinkView: View {
+    let handle: String
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.openURL) private var openURL
+    var body: some View {
+        Button {
+            if let u = InstagramHandle.url(handle) { openURL(u) }
+        } label: {
+            HStack(spacing: 6) {
+                InstagramGlyph(size: 14) // defined in BrandKit.swift
+                Text("@\(handle)").underline()
+            }
+            .font(BRFont.body(14, .regular))
+            .foregroundColor(scheme == .dark ? .brDkText : .brLtText)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private nonisolated struct InstagramMe: Decodable { let instagram: String? }
+private nonisolated struct InstagramReply: Decodable { let instagram: String }
+
+/// Add, change or remove your Instagram handle. Inside a Profile disclosure row.
+struct InstagramSection: View {
+    @Environment(\.colorScheme) private var scheme
+    @State private var current: String?
+    @State private var text = ""
+    @State private var editing = false
+    @State private var busy = false
+    @State private var message = ""
+
+    private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
+    private var accent: Color { scheme == .dark ? .brGold : .brGreen }
+    private var cleaned: String? { InstagramHandle.clean(text) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let handle = current, !handle.isEmpty, !editing {
+                InstagramLinkView(handle: handle)
+                HStack(spacing: 20) {
+                    Button("Change") { text = handle; editing = true }
+                    Button("Remove") { Task { await remove() } }.disabled(busy)
+                }
+                .font(BRFont.body(14, .semibold)).foregroundColor(accent)
+            } else if current != nil {
+                Text("Instagram (optional)").font(BRFont.body(12, .regular)).foregroundColor(sub)
+                TextField("@name or instagram.com link", text: $text)
+                    .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
+                    .padding(12).background(RoundedRectangle(cornerRadius: 10).stroke(sub.opacity(0.5)))
+                if let c = cleaned { Text("@\(c)").font(BRFont.body(13, .regular)).foregroundColor(sub) }
+                Button { Task { await save() } } label: {
+                    Text("Save").font(BRFont.body(15, .semibold))
+                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                        .foregroundColor(scheme == .dark ? .black : .white)
+                        .background(accent, in: RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(busy || cleaned == nil)
+                if let h = current, !h.isEmpty {
+                    Button("Cancel") { editing = false; message = "" }
+                        .font(BRFont.body(14, .semibold)).foregroundColor(accent)
+                }
+            }
+            if !message.isEmpty { Text(message).font(BRFont.body(13, .regular)).foregroundColor(.brErrorText) }
+        }
+        .task {
+            let me: InstagramMe? = try? await BackendAPI.get("/api/me")
+            current = me?.instagram ?? ""
+        }
+    }
+
+    private func save() async {
+        busy = true; message = ""
+        do {
+            let r: InstagramReply = try await BackendAPI.post("/api/me/instagram", ["instagram": text])
+            current = r.instagram; text = ""; editing = false
+        } catch { message = (error as? BackendError)?.message ?? error.localizedDescription }
+        busy = false
+    }
+
+    private func remove() async {
+        busy = true; message = ""
+        do {
+            let _: EmptyResponse = try await BackendAPI.post("/api/me/instagram", ["remove": true])
+            current = ""; editing = false
+        } catch { message = (error as? BackendError)?.message ?? error.localizedDescription }
+        busy = false
+    }
+}

@@ -471,9 +471,9 @@
   {
     "code": "BR-SET-002",
     "title": "Step not part of this account",
-    "meaning": "The step does not apply to this kind of account. Graduation year and phone number are for students only; Guests never get them.",
+    "meaning": "The step does not apply to this kind of account. Graduation year, phone number and Instagram are for students only; Guests never get them.",
     "userFix": "Nothing to do. Skip it.",
-    "staffCheck": "Guests have no gradYear or phone step; if a Guest sees one, the app is out of date."
+    "staffCheck": "Guests have no gradYear, phone or instagram step; if a Guest sees one, the app is out of date."
   },
   {
     "code": "BR-SET-003",
@@ -523,6 +523,13 @@
     "meaning": "The number is one of Babson's own lines (781-239), not a personal number. Nothing was saved.",
     "userFix": "Enter your own mobile number, or skip this step.",
     "staffCheck": "The blocked prefixes are BLOCKED_NUMBER_PREFIXES in lib/phone.ts (kept in step with blockedNumberPrefixes in ProfileView.swift). Contact lists drop these hashes too."
+  },
+  {
+    "code": "BR-SET-010",
+    "title": "Instagram handle not valid",
+    "meaning": "The text is not an Instagram handle or an instagram.com profile link. A handle is 1 to 30 letters, numbers, periods or underscores. Nothing was saved.",
+    "userFix": "Type your handle like @name, or paste your profile link. Or skip this step.",
+    "staffCheck": "Rules are in lib/instagram.ts (cleanInstagram). Handles are never checked against Instagram and need not be unique. An admin can clear one in Admin > People (logged in instagramClears)."
   },
   {
     "code": "BR-APL-001",

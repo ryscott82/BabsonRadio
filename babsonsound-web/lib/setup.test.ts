@@ -10,12 +10,12 @@ const MIN = 60_000, DAY = 24 * 60 * MIN
 /** A student who is verified but has done nothing else. */
 const base = (over: Partial<SetupInput> = {}): SetupInput => ({
   level: 'student', demo: false, emailVerified: true, graceUntil: null, joinedAt: NOW - DAY,
-  firstName: '', avatarChosen: false, birthdayDone: false, gradYear: '', hasPhone: false, skips: {}, lastPromptAt: 0, ...over,
+  firstName: '', avatarChosen: false, birthdayDone: false, gradYear: '', hasPhone: false, hasInstagram: false, skips: {}, lastPromptAt: 0, ...over,
 })
 
 test('steps come in order and the first undone one is next', () => {
   const s = setupState(base({ emailVerified: false }), NOW)
-  assert.deepEqual(s.steps.map(x => x.id), ['verifyEmail', 'name', 'avatar', 'birthday', 'gradYear', 'phone'])
+  assert.deepEqual(s.steps.map(x => x.id), ['verifyEmail', 'name', 'avatar', 'birthday', 'gradYear', 'phone', 'instagram'])
   assert.equal(s.next, 'name') // verifying the email has its own banner; it is never the prompt
   assert.equal(setupState(base(), NOW).next, 'name')
   assert.equal(setupState(base({ firstName: 'Ryan' }), NOW).next, 'avatar')
@@ -24,7 +24,7 @@ test('steps come in order and the first undone one is next', () => {
 
 test('counts and the email deadline', () => {
   const s = setupState(base({ emailVerified: false, graceUntil: NOW + 3 * DAY, firstName: 'R' }), NOW)
-  assert.equal(s.total, 6) // verify, name, avatar, birthday, grad year, phone (a student)
+  assert.equal(s.total, 7) // verify, name, avatar, birthday, grad year, phone, instagram (a student)
   assert.equal(s.doneCount, 1)
   assert.equal(s.emailDeadlineAt, NOW + 3 * DAY)
   assert.equal(setupState(base(), NOW).emailDeadlineAt, null)
@@ -53,7 +53,7 @@ test('one prompt per visit: nothing is offered for 30 minutes after a prompt', (
   assert.equal(setupState(base({ lastPromptAt: NOW - PROMPT_GAP_MS }), NOW).next, 'name')
   assert.equal(setupState(base({ lastPromptAt: NOW - 2 * DAY }), NOW).next, 'name')
   // the list itself is still reported while the prompt is held back
-  assert.equal(setupState(base({ lastPromptAt: NOW - MIN }), NOW).steps.length, 6)
+  assert.equal(setupState(base({ lastPromptAt: NOW - MIN }), NOW).steps.length, 7)
 })
 
 test('a Guest never gets the graduation year step', () => {
@@ -64,11 +64,13 @@ test('a Guest never gets the graduation year step', () => {
   const g = setupState(base(done), NOW)
   assert.equal(g.next, null)
   assert.equal(g.total, 4)
-  assert.equal(g.steps.some(s => s.id === 'gradYear' || s.id === 'phone'), false)
+  assert.equal(g.steps.some(s => s.id === 'gradYear' || s.id === 'phone' || s.id === 'instagram'), false)
   // the same person as a student is asked for graduation year, then phone last
   assert.equal(setupState(base({ ...done, level: 'student' }), NOW).next, 'gradYear')
   assert.equal(setupState(base({ ...done, level: 'student', gradYear: '2028' }), NOW).next, 'phone')
-  assert.equal(stepsFor('student').at(-1), 'phone')
+  assert.equal(setupState(base({ ...done, level: 'student', gradYear: '2028', hasPhone: true }), NOW).next, 'instagram')
+  assert.equal(stepsFor('student').at(-1), 'instagram')
+  assert.equal(stepsFor('guest').includes('instagram'), false)
   assert.equal(stepsFor('guest').includes('phone'), false)
 })
 
@@ -80,7 +82,7 @@ test('the email step is required and every other step can be skipped', () => {
 test('an unverified email never blocks the prompts for the other steps', () => {
   const s = setupState(base({ emailVerified: false, firstName: 'R', avatarChosen: true }), NOW)
   assert.equal(s.next, 'birthday')
-  assert.equal(setupState(base({ emailVerified: false, level: 'student', firstName: 'R', avatarChosen: true, birthdayDone: true, gradYear: '2028', hasPhone: true }), NOW).next, null)
+  assert.equal(setupState(base({ emailVerified: false, level: 'student', firstName: 'R', avatarChosen: true, birthdayDone: true, gradYear: '2028', hasPhone: true, hasInstagram: true }), NOW).next, null)
 })
 
 test('the demo account has nothing to set up', () => {

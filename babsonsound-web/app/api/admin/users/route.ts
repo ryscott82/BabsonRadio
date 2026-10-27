@@ -27,6 +27,7 @@ export async function GET(req: Request) {
           level: (LEVELS as string[]).includes(d.get('level')) ? d.get('level') : 'guest',
           studioTrained: d.get('studioTrained') === true,
           radioTrained: d.get('radioTrained') === true,
+          instagram: String(d.get('instagram') ?? ''),
           owner: isOwnerEmail(email),
           you: d.id === me.uid,
         }
@@ -43,6 +44,24 @@ export async function POST(req: Request) {
     const b = await readJson(req)
     let uid = str(b.uid, 128)
     const email = str(b.email, 200).toLowerCase()
+    // { uid, clearInstagram: true }: takes a member's Instagram handle off their profile (it is shown to others, so an admin can remove a bad one).
+    // The clear is logged in instagramClears (who, whom, which handle, when) before the handle is removed.
+    if (b.clearInstagram === true) {
+      if (!uid) throw new HttpError(400, 'Pick an account.')
+      const db = adminDb()
+      const ref = db.collection('users').doc(uid)
+      const u = await ref.get()
+      if (!u.exists) throw new HttpError(404, 'User not found.')
+      const old = String(u.get('instagram') ?? '')
+      if (!old) return { ok: true, cleared: false }
+      await db.collection('instagramClears').add({
+        uid, handle: old, email: String(u.get('email') ?? ''), name: [u.get('firstName'), u.get('lastName')].filter(Boolean).join(' '),
+        byUid: me.uid, byEmail: me.email ?? '', at: Timestamp.now(),
+      })
+      await ref.update({ instagram: FieldValue.delete() })
+      console.log(`[instagram-clear] ${me.email ?? me.uid} cleared the Instagram handle for ${uid}`)
+      return { ok: true, cleared: true }
+    }
     const level = b.level === undefined ? null : str(b.level, 20) as Level
     if (!uid && !ANY_EMAIL.test(email)) throw new HttpError(400, 'Enter a valid email address.')
     if (level !== null && !LEVELS.includes(level)) throw new HttpError(400, 'Invalid request.')

@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiGet } from '@/lib/auth'
+import InstagramLink from '@/components/InstagramLink'
 
-interface Node { id: string; name: string; username: string; friends: number }
+interface Node { id: string; name: string; username: string; instagram: string; friends: number }
 interface Data { members: number; connected: number; links: number; nodes: Node[]; edges: [string, string][] }
 type Pos = Record<string, { x: number; y: number }>
 
@@ -83,12 +84,12 @@ export default function Network() {
               </g>
             ))}
           </svg>
-          {picked && <p className="text-sm text-br-dk-text"><b>{picked.name}</b> {picked.username && `(${picked.username})`} has {picked.friends} friend{picked.friends === 1 ? '' : 's'}: {[...near].filter(i => i !== pick).map(i => names.get(i)?.name).join(', ') || 'none shown'}</p>}
+          {picked && <p className="text-sm text-br-dk-text"><b>{picked.name}</b> {picked.username && `(${picked.username})`} {picked.instagram && <InstagramLink handle={picked.instagram} className="mx-1" />} has {picked.friends} friend{picked.friends === 1 ? '' : 's'}: {[...near].filter(i => i !== pick).map(i => names.get(i)?.name).join(', ') || 'none shown'}</p>}
           <div>
             <h2 className="text-br-dk-text font-semibold mb-2">Most connected</h2>
             <ul className="text-sm text-br-dk-text divide-y divide-br-dk-border">
               {d.nodes.slice(0, 25).map(n => (
-                <li key={n.id} className="py-1.5 flex justify-between"><button onClick={() => setPick(n.id)} className="text-left hover:underline">{n.name} <span className="text-br-dk-sub">{n.username}</span></button><span>{n.friends}</span></li>
+                <li key={n.id} className="py-1.5 flex justify-between"><button onClick={() => setPick(n.id)} className="text-left hover:underline">{n.name} <span className="text-br-dk-sub">{n.username}</span></button>{n.instagram && <InstagramLink handle={n.instagram} className="ml-3 text-br-dk-sub" />}<span className="ml-auto pl-3">{n.friends}</span></li>
               ))}
             </ul>
           </div>

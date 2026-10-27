@@ -116,6 +116,10 @@ private struct SignedInProfileView: View {
                         ProfileDisclosure(title: "Phone number") { PhoneChangeSection() }
                             .padding(.horizontal, 20)
                             .padding(.bottom, 16)
+
+                        ProfileDisclosure(title: "Instagram") { InstagramSection() }
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 16)
                     }
 
                     reportRow

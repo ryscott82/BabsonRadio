@@ -11,6 +11,8 @@ import { Card, ErrorText, Field, GhostButton, PrimaryButton, formatPhone } from 
 import Avatar from '@/components/Avatar'
 import { AVATAR_COLORS, discStyle } from '@/lib/profile'
 import { normalizeUS } from '@/lib/phone'
+import { cleanInstagram } from '@/lib/instagram'
+import InstagramLink from '@/components/InstagramLink'
 
 function ReportForm() {
   const [type, setType] = useState<'bug' | 'feature'>('bug')
@@ -113,6 +115,56 @@ function AboutYou({ onSaved }: { onSaved?: () => void }) {
       {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}
       <PrimaryButton type="submit" busy={busy}>Save details</PrimaryButton>
     </form>
+  )
+}
+
+function InstagramEdit() {
+  const { reload } = useAuth()
+  const [current, setCurrent] = useState<string | null>(null)
+  const [text, setText] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  useEffect(() => { apiGet<{ instagram?: string }>('/api/me').then(m => setCurrent(m.instagram ?? '')).catch(() => setCurrent('')) }, [])
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); setBusy(true); setMsg('')
+    try {
+      const r = await api<{ instagram: string }>('/api/me/instagram', { instagram: text })
+      setCurrent(r.instagram); setText(''); setEditing(false); void reload()
+    } catch (err) { setMsg(err instanceof Error ? err.message : 'Could not save.') }
+    setBusy(false)
+  }
+  async function remove() {
+    setBusy(true); setMsg('')
+    try { await api('/api/me/instagram', { remove: true }); setCurrent(''); setEditing(false); void reload() }
+    catch (err) { setMsg(err instanceof Error ? err.message : 'Could not remove it.') }
+    setBusy(false)
+  }
+
+  if (current === null) return null
+  const cleaned = cleanInstagram(text)
+  return (
+    <div className="space-y-3">
+      {current && !editing ? (
+        <>
+          <p className="text-br-dk-text text-sm"><InstagramLink handle={current} /></p>
+          <div className="flex gap-4">
+            <GhostButton type="button" onClick={() => { setText(current); setEditing(true) }}>Change</GhostButton>
+            <GhostButton type="button" disabled={busy} onClick={remove}>Remove</GhostButton>
+          </div>
+          {msg && <p role="status" className="text-sm text-br-red">{msg}</p>}
+        </>
+      ) : (
+        <form onSubmit={save} className="space-y-3">
+          <Field label="Instagram (optional)" value={text} onChange={e => setText(e.target.value)} placeholder="@name or instagram.com link" autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={120} />
+          {cleaned && <p className="text-sm text-br-dk-text">@{cleaned}</p>}
+          {msg && <p role="status" className="text-sm text-br-red">{msg}</p>}
+          <PrimaryButton type="submit" busy={busy} disabled={!cleaned}>Save</PrimaryButton>
+          {current && <GhostButton type="button" onClick={() => { setEditing(false); setMsg('') }}>Cancel</GhostButton>}
+        </form>
+      )}
+    </div>
   )
 }
 
@@ -222,7 +274,7 @@ export default function ProfilePage() {
   const [hosting, setHosting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [open, setOpen] = useState<'' | 'color' | 'about' | 'ratings' | 'report' | 'phone'>('')
+  const [open, setOpen] = useState<'' | 'color' | 'about' | 'ratings' | 'report' | 'phone' | 'instagram'>('')
   const [showDelete, setShowDelete] = useState(false)
   const [pw, setPw] = useState('')
   const [setupName, setSetupName] = useState('')
@@ -351,6 +403,8 @@ export default function ProfilePage() {
         {aboutLater && <Row title="About you" open={open === 'about'} onToggle={() => toggle('about')}><AboutYou onSaved={loadMe} /></Row>}
 
         {member && <Row title="Phone number" open={open === 'phone'} onToggle={() => toggle('phone')}><PhoneChange /></Row>}
+
+        {member && <Row title="Instagram" open={open === 'instagram'} onToggle={() => toggle('instagram')}><InstagramEdit /></Row>}
 
         <Row title="Report a bug or suggest a feature" open={open === 'report'} onToggle={() => toggle('report')}><ReportForm /></Row>
 

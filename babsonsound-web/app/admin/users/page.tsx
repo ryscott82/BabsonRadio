@@ -8,7 +8,7 @@ import { api, apiDelete, apiGet } from '@/lib/auth'
 import { ErrorText } from '@/components/AuthUI'
 
 type Level = 'guest' | 'student' | 'director' | 'admin'
-interface Row { id: string; name: string; username: string; email: string; level: Level; studioTrained: boolean; radioTrained: boolean; owner: boolean; you: boolean }
+interface Row { id: string; name: string; username: string; email: string; level: Level; studioTrained: boolean; radioTrained: boolean; instagram: string; owner: boolean; you: boolean }
 
 interface Gone { id: string; email: string; name: string; level: string; reason: string; by: string; at: number; done: boolean }
 interface Invite { email: string; level: Level; studioTrained: boolean; radioTrained: boolean }
@@ -43,6 +43,14 @@ export default function AdminUsersPage() {
   const loadGone = useCallback(() => { apiGet<{ log: Gone[] }>('/api/admin/users/delete').then(r => setGone(r.log)).catch(() => {}) }, [])
   useEffect(() => { if (user && isAdmin) queueMicrotask(() => { load(); loadGone() }) }, [user, isAdmin, load, loadGone])
 
+  async function clearInstagram(r: Row) {
+    setError(''); setNote('')
+    try {
+      await api('/api/admin/users', { uid: r.id, clearInstagram: true })
+      setRows(prev => prev.map(x => (x.id === r.id ? { ...x, instagram: '' } : x)))
+      setNote(`Cleared the Instagram handle for ${r.name || r.email}.`)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not clear it.') }
+  }
   function startDelete(r: Row) { setTarget(r); setStep(1); setReason(''); setError('') }
   async function confirmDelete() {
     if (!target) return
@@ -148,6 +156,12 @@ export default function AdminUsersPage() {
               <div className="min-w-0">
                 <p className="text-sm text-br-dk-text truncate">{r.name || '(no name)'}{r.username ? ` · @${r.username}` : ''}</p>
                 <p className="text-xs text-br-dk-sub truncate">{r.email}{r.owner ? ' · owner' : ''}</p>
+                {r.instagram && (
+                  <p className="text-xs text-br-dk-sub truncate">
+                    Instagram @{r.instagram} (not checked){' '}
+                    <button type="button" onClick={() => clearInstagram(r)} className="underline" aria-label={`Clear Instagram handle for ${r.name || r.email}`}>Clear</button>
+                  </p>
+                )}
               </div>
               {fixed ? (
                 <span className="text-xs text-br-dk-sub shrink-0">{r.you ? 'You · ' : ''}{LEVEL_LABEL[r.level]}</span>

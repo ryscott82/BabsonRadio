@@ -132,5 +132,6 @@ service cloud.firestore {
     match /training/{id}             { allow read, write: if false; }
     match /noticeLog/{id}            { allow read, write: if false; } // dismissed admin notifications (the log)
     match /accountDeletions/{id}     { allow read, write: if false; } // who deleted which account, and why
+    match /instagramClears/{id}      { allow read, write: if false; } // which admin cleared which Instagram handle, and when
   }
 }

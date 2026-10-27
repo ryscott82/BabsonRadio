@@ -3,7 +3,7 @@ import { api, apiGet } from '@/lib/auth'
 
 export interface PresenceInfo {
   count: number
-  friends: { uid: string; firstName: string }[]
+  friends: { uid: string; firstName: string; /** Their Instagram handle if they added one. Never checked. */ instagram?: string }[]
   /** "3 people in your MKT 3500 class are listening" lines (counts only) */
   groups: { kind: string; label: string; count: number; text: string }[]
 }

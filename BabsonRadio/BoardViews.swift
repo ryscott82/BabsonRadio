@@ -137,9 +137,8 @@ struct LiveBoardView: View {
                 HWLeather(tint: mode.leatherTint, corner: 18, stitch: true).frame(width: 380, height: 236)
                 ForEach(0..<4, id: \.self) { i in HWScrew().offset(x: i % 2 == 0 ? 8 : 380 - 17, y: i < 2 ? 8 : 236 - 17) }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(titleText).font(BRFont.display(52)).foregroundStyle(Color.hwCream)
-                        .lineLimit(2).minimumScaleFactor(0.5).lineSpacing(-4)
-                        .frame(maxWidth: .infinity, minHeight: 98, maxHeight: 98, alignment: .bottomLeading)
+                    HWTitleLine(text: titleText, size: 52, height: 98)
+                        .frame(maxWidth: .infinity, alignment: .bottomLeading)
                     Text(subText).font(BRFont.body(22, .medium)).foregroundStyle(Color(hex: "B1AA94")).lineLimit(1).minimumScaleFactor(0.7)
                     if let n = nextText {
                         Text(n).font(BRFont.body(14)).foregroundStyle(Color(hex: "B1AA94")).lineLimit(1).frame(width: 250, alignment: .leading)
@@ -185,7 +184,7 @@ struct LiveBoardView: View {
                 HWLeather(tint: mode.leatherTint, corner: 22, stitch: true).frame(width: 500, height: 330)
                 ForEach(0..<4, id: \.self) { i in HWScrew().offset(x: i % 2 == 0 ? 9 : 500 - 18, y: i < 2 ? 9 : 330 - 18) }
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(titleText).font(BRFont.display(68)).foregroundStyle(Color.hwCream).lineLimit(2).minimumScaleFactor(0.5)
+                    HWTitleLine(text: titleText, size: 68, height: 84)
                     Text(subText).font(BRFont.body(28, .medium)).foregroundStyle(Color(hex: "B1AA94")).lineLimit(1).minimumScaleFactor(0.7)
                     if let n = nextText {
                         Text(n).font(BRFont.body(16)).foregroundStyle(Color(hex: "B1AA94")).lineLimit(1).frame(width: 330, alignment: .leading)

@@ -29,6 +29,16 @@ function Art({ item, className }: { item: Item; className: string }) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={item.imageUrl} alt="" className={`${className} object-cover`} />
   }
+  // A show with no picture gets the beaver (on the scheduler's color, if one was picked). Genre blocks keep their generated art.
+  if (item.source !== 'auto') {
+    return (
+      <div className={`${className} flex items-center justify-center ${item.color ? '' : 'sk-field'}`}
+           style={item.color ? { background: `linear-gradient(135deg, ${item.color}, ${item.color}99)` } : undefined}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/beaver.png" alt="" className="w-3/5 h-3/5 object-contain drop-shadow-[0_2px_3px_rgba(0,0,0,.35)]" />
+      </div>
+    )
+  }
   const a = genreArt(item.title)
   // A scheduler-picked color wins over the generic art.
   const background = a.background

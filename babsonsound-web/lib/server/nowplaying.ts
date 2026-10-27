@@ -1,3 +1,4 @@
+import { censor } from './wordFilter'
 import 'server-only'
 import { adminDb } from './admin'
 import { currentOnAir, getColorChanging, getNote, hostPrefsFor, type LiveNote } from './live'
@@ -78,7 +79,7 @@ type Raw = {
 }
 
 /** The scheduled thing on air right now (one-time event > student slot > weekly show > genre block). */
-async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'blockTitle' | 'color' | 'occId' | 'isShow' | 'showStart' | 'showEnd' | 'note' | 'colorChanging' | 'hostEmojis' | 'ratingsOn'> & { hostNames: string[]; fixed?: { title: string; artist: string; next: string } }> {
+async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'blockTitle' | 'color' | 'occId' | 'isShow' | 'showStart' | 'showEnd' | 'note' | 'colorChanging' | 'hostEmojis' | 'ratingsOn'> & { hostNames: string[]; eventNoMeta?: boolean }> {
   const none = { showTitle: '', blockTitle: '', color: '', occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, colorChanging: false, hostEmojis: [] as string[], ratingsOn: true, hostNames: [] as string[] }
   try {
     const db = adminDb()
@@ -88,7 +89,7 @@ async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'blockTitle' 
     const colorChanging = prefs.theme === 'art' ? true : prefs.theme === 'standard' ? false : baseColor
     return {
       showTitle: cur.isShow ? cur.item.title : '', blockTitle: cur.item.title, color: cur.item.color, occId: cur.occId, isShow: cur.isShow,
-      showStart: cur.item.startAt, showEnd: cur.item.endAt, note, colorChanging, hostEmojis: prefs.emojis, ratingsOn: true, hostNames: cur.item.hosts ?? [], fixed: cur.item.fixed,
+      showStart: cur.item.startAt, showEnd: cur.item.endAt, note, colorChanging, hostEmojis: prefs.emojis, ratingsOn: true, hostNames: cur.item.hosts ?? [], eventNoMeta: cur.item.source === 'event' && cur.item.useAutoMeta !== true,
     }
   } catch { return none }
 }
@@ -146,20 +147,12 @@ async function build(): Promise<Built> {
       ...(await onAir()), showOnly: false,
       updatedAt: Date.now(),
     }
-    // An event with a track typed in by the scheduler: that wins over whatever the auto DJ is playing.
-    const fixed = (value as { fixed?: { title: string; artist: string; next: string } }).fixed
-    delete (value as { fixed?: unknown }).fixed
-    if (fixed && fixed.title) {
-      value.title = fixed.title; value.artist = fixed.artist
-      value.album = ''; value.art = ''; value.bpm = 0; value.beatOffset = 0; value.duration = 0; value.elapsed = 0
-      value.next = fixed.next ? { title: fixed.next, artist: '' } : null
-      value.history = []
-    } else if (fixed && fixed.next) {
-      value.next = { title: fixed.next, artist: '' }
-    }
     // A scheduled show that is not the auto DJ usually streams without track info. Show the show and host names instead
     // of a stale song (or a blank), and turn off the song-only extras (ratings, beat sync, "up next").
-    if (value.isShow && !(fixed && fixed.title) && (value.isLive || !value.title)) {
+    // A one-time event does not trust the auto DJ's song info unless the scheduler chose "Use auto DJ metadata": its name is shown instead.
+    const eventNoMeta = (value as { eventNoMeta?: boolean }).eventNoMeta === true
+    delete (value as { eventNoMeta?: unknown }).eventNoMeta
+    if (value.isShow && (eventNoMeta || value.isLive || !value.title)) {
       value.title = value.showTitle || value.blockTitle
       value.artist = value.hostNames?.length ? value.hostNames.join(', ') : value.streamer
       value.album = ''; value.art = ''; value.bpm = 0; value.beatOffset = 0; value.duration = 0; value.elapsed = 0; value.next = null
@@ -168,6 +161,10 @@ async function build(): Promise<Built> {
     // When the schedule has only a genre block (not a show) and the station is on auto-play, what is really playing wins:
     // use the AzuraCast playlist name so the label never disagrees with the music.
     if (!value.isLive && !value.isShow && playlist && USE_PLAYLIST_LABEL) value.blockTitle = playlist
+    // Explicit words in song details are always starred out (N***as, Starf***er), whatever the filter setting is.
+    value.title = censor(value.title); value.artist = censor(value.artist); value.album = censor(value.album)
+    value.history = value.history.map(h => ({ ...h, title: censor(h.title), artist: censor(h.artist) }))
+    if (value.next) value.next = { title: censor(value.next.title), artist: censor(value.next.artist) }
     cache = { at: Date.now(), value }
     // Voting for the next hour closes 1 minute before it; this makes sure it is decided on time even if no one has the vote card open.
     void import('./votes').then(m => m.finalizeDue(adminDb())).catch(() => {})

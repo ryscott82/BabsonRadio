@@ -41,6 +41,14 @@ export default function FullBoard({ boardRef, eqRef, np, hasSong, onAir, glow, a
   np: NowPlaying | null | undefined; hasSong: boolean; onAir: boolean; glow: string
   awake: boolean; setAwake: (v: boolean) => void; isPlaying: boolean; canPlay: boolean; togglePlay: () => void; close: () => void
 }) {
+  // Phones scroll a long title; larger screens shrink it to fit.
+  const [phone, setPhone] = useState(false)
+  useEffect(() => {
+    const q = window.matchMedia('(max-width: 639px), (pointer: coarse) and (max-width: 1024px)')
+    const on = () => setPhone(q.matches)
+    on(); q.addEventListener('change', on)
+    return () => q.removeEventListener('change', on)
+  }, [])
   const [scale, setScale] = useState(1)
   const { colors } = useArtMain() // album-color mode follows into full screen
   const artStyle = colors ? ({ '--art-1': colors[0], '--art-2': colors[1], '--art-3': colors[2], ...eqZoneVars(colors) } as React.CSSProperties) : undefined
@@ -73,7 +81,7 @@ export default function FullBoard({ boardRef, eqRef, np, hasSong, onAir, glow, a
 
         {/* Title */}
         <div className="hw-panel absolute" style={{ position: 'absolute', left: 860, top: 232, width: 520, height: 460, padding: '48px 40px' }}>
-          <FitTitle marquee as="div" text={hasSong ? np!.title : 'Babson Radio'} className="hw-board-title" />
+          <FitTitle marquee={phone} as="div" text={hasSong ? np!.title : 'Babson Radio'} className="hw-board-title" />
           <div className="hw-board-sub">{hasSong ? sub : 'Live from campus'}</div>
           {hasSong && np!.next && <div className="hw-board-next">Next: {np!.next.title}{np!.next.artist ? ` · ${np!.next.artist}` : ''}</div>}
           <div className="hw-board-qr">

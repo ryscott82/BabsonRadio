@@ -220,3 +220,26 @@ export async function assertClean(db: Firestore, ...texts: string[]): Promise<vo
     if (worst) throw new HttpError(400, MESSAGE[worst.tier], 'BR-HST-004')
   }
 }
+
+/**
+ * For text shown to listeners that we do not write ourselves (song titles, artists, albums): masks explicit and never-allowed words
+ * with stars, keeping the first letter and any ending, like "N***as" or "Starf***er". Always on, whatever the "keep it clean" setting is.
+ * Crude words (hell, damn) are left alone. Words already starred out in the source are left as they are.
+ */
+export function censor(text: string): string {
+  if (!text) return text
+  return text.replace(/[\p{L}\p{N}@$+*]+/gu, tok => {
+    if (tok.includes('*') || tok.length < 3) return tok
+    const hit = findAll(tok).filter(h => !h.starred && RANK[h.tier] >= RANK.explicit).sort((a, b) => b.word.length - a.word.length)[0]
+    if (!hit) return tok
+    const low = tok.toLowerCase()
+    // Find the rude part inside the word (the list word, or its stem without a doubled/stretched letter); otherwise cover it all.
+    const core = [hit.word, once(hit.word)].find(c => low.includes(c))
+    let from = 0, to = tok.length
+    if (core) { from = low.indexOf(core); to = from + core.length } 
+    // A whole word of 5+ letters keeps its last two (N***as, B***es); a rude part inside a longer word keeps what is around it (Starf***er).
+    if (from === 0 && to === tok.length && tok.length >= 5) to = tok.length - 2
+    const mask = (seg: string) => seg[0] + '*'.repeat(Math.max(seg.length - 1, 1))
+    return tok.slice(0, from) + mask(tok.slice(from, to)) + tok.slice(to)
+  })
+}

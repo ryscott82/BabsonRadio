@@ -681,21 +681,20 @@ private struct ScheduleEditSheet: View {
 }
 
 
-// MARK: One-time events (with a fixed track title and "up next")
+// MARK: One-time events
 
 nonisolated private struct AdminEvent: Decodable, Identifiable {
     var id: String; var title: String; var date: String; var startTime: String; var endTime: String
     var description: String; var hostNames: [String]; var category: String; var color: String
     var imageUrl: String; var imagePath: String; var isActive: Bool
-    var trackTitle: String; var trackArtist: String; var nextTitle: String
+    var useAutoMeta: Bool
     static func blank() -> AdminEvent {
         AdminEvent(id: "", title: "", date: Date().formatted(.iso8601.year().month().day()), startTime: "20:00", endTime: "21:00", description: "", hostNames: [],
-                   category: "", color: "", imageUrl: "", imagePath: "", isActive: true, trackTitle: "", trackArtist: "", nextTitle: "")
+                   category: "", color: "", imageUrl: "", imagePath: "", isActive: true, useAutoMeta: false)
     }
     var body: [String: Any] {
         var b: [String: Any] = ["action": "save", "title": title, "date": date, "startTime": startTime, "endTime": endTime, "description": description,
-            "hostNames": hostNames, "category": category, "color": color, "imageUrl": imageUrl, "imagePath": imagePath, "isActive": isActive,
-            "trackTitle": trackTitle, "trackArtist": trackArtist, "nextTitle": nextTitle]
+            "hostNames": hostNames, "category": category, "color": color, "imageUrl": imageUrl, "imagePath": imagePath, "isActive": isActive, "useAutoMeta": useAutoMeta]
         if !id.isEmpty { b["id"] = id }
         return b
     }
@@ -718,7 +717,7 @@ struct EventsAdminView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(e.title).font(BRFont.body(16, .regular)).foregroundColor(white)
                         Text("\(e.date) · \(e.startTime) to \(e.endTime)\(e.isActive ? "" : " · Off")").font(BRFont.body(12, .regular)).foregroundColor(softWhite)
-                        if !e.trackTitle.isEmpty { Text("Showing: \(e.trackTitle)").font(BRFont.body(12, .regular)).foregroundColor(softWhite) }
+                        if e.useAutoMeta { Text("Uses auto DJ metadata").font(BRFont.body(12, .regular)).foregroundColor(softWhite) }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading).padding(14).adminCard()
                 }
@@ -766,10 +765,8 @@ private struct EventEditSheet: View {
                 TextField("", text: $event.startTime, prompt: Text("Start, e.g. 20:00").foregroundColor(.brPlaceholder)).autocorrectionDisabled().textInputAutocapitalization(.never).adminField()
                 TextField("", text: $event.endTime, prompt: Text("End, e.g. 21:00").foregroundColor(.brPlaceholder)).autocorrectionDisabled().textInputAutocapitalization(.never).adminField()
             }
-            Text("Optional. While this event is on air, the player shows these instead of what the auto DJ is playing.").font(BRFont.body(13, .regular)).foregroundColor(softWhite)
-            TextField("", text: $event.trackTitle, prompt: Text("Track title").foregroundColor(.brPlaceholder)).adminField()
-            TextField("", text: $event.trackArtist, prompt: Text("Artist").foregroundColor(.brPlaceholder)).adminField()
-            TextField("", text: $event.nextTitle, prompt: Text("Up next").foregroundColor(.brPlaceholder)).adminField()
+            Toggle("Use auto DJ metadata", isOn: $event.useAutoMeta).tint(.white).foregroundColor(white)
+            Text("Leave off for a live or special event: the player shows the event name instead of the auto DJ's songs. Turn on if the auto DJ is just playing music during this event.").font(BRFont.body(12, .regular)).foregroundColor(softWhite)
             Toggle("On the schedule", isOn: $event.isActive).tint(.white).foregroundColor(white)
             HStack(spacing: 10) {
                 AdminButton(title: "Save", enabled: !event.title.isEmpty) { Task { await done(event) } }

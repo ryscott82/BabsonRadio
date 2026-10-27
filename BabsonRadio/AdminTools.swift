@@ -50,7 +50,7 @@ struct AdminToolLinks: View {
             link("Show changes", "Approve hosts' edits to their show", "pencil.and.list.clipboard") { ShowChangesAdminView() }
             link("Library episodes", "See, add and remove videos", "play.rectangle.on.rectangle") { EpisodesAdminView() }
             link("Schedule", "Add, change or remove weekly shows", "calendar") { ScheduleAdminView() }
-            link("Events", "One-time events, with a fixed track and up next", "star.circle") { EventsAdminView() }
+            link("Events", "One-time events, and whether they use auto DJ info", "star.circle") { EventsAdminView() }
             link("Easter eggs", "Reaction sets for certain songs, artists or shows", "sparkles") { EasterEggsAdminView() }
             link("Birthdays", "Who shared a birthday and when", "gift") { BirthdaysAdminView() }
             link("Song requests", "What listeners asked to hear", "music.note.list") { SongRequestsAdminView() }

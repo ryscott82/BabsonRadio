@@ -25,8 +25,8 @@ export interface ScheduleItem {
   reminderKey: string
   /** Student hosts, for per-host show options. Never sent to the public schedule. */
   hostUids?: string[]
-  /** One-time events only: a track and "up next" the scheduler typed in, shown instead of what the auto DJ reports. */
-  fixed?: { title: string; artist: string; next: string }
+  /** One-time events only: true when the scheduler chose "Use auto DJ metadata" (otherwise the event name is shown, not the auto DJ's songs). */
+  useAutoMeta?: boolean
 }
 
 type FeedOpts = { days: number; showStudentHosts: boolean; now?: number; includeAuto?: boolean; back?: number }
@@ -125,7 +125,7 @@ async function buildFeedUncached(db: Firestore, opts: FeedOpts): Promise<Schedul
       hosts: Array.isArray(d.get('hostNames')) ? d.get('hostNames') : [], imageUrl: d.get('imageUrl') ?? '',
       category: d.get('category') ?? '', format: 'show', startAt, endAt: d.get('endAt').toMillis(), showSlug: '',
       color: d.get('color') ?? '', reminderKey: `event:${d.id}`,
-      ...(d.get('trackTitle') || d.get('nextTitle') ? { fixed: { title: String(d.get('trackTitle') ?? ''), artist: String(d.get('trackArtist') ?? ''), next: String(d.get('nextTitle') ?? '') } } : {}),
+      useAutoMeta: d.get('useAutoMeta') === true,
     })
   }
 

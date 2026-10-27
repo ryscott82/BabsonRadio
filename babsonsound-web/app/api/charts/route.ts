@@ -1,3 +1,4 @@
+import { censor } from '@/lib/server/wordFilter'
 import { azHistory } from '@/lib/server/azuracast'
 import { handle, requireMember } from '@/lib/server/http'
 
@@ -24,8 +25,8 @@ export async function GET(req: Request) {
       artists.set(r.artist, (artists.get(r.artist) ?? 0) + 1)
     }
     cache = {
-      tracks: [...tracks.values()].sort((a, b) => b.plays - a.plays).slice(0, 25),
-      artists: [...artists].map(([artist, plays]) => ({ artist, plays })).sort((a, b) => b.plays - a.plays).slice(0, 15),
+      tracks: [...tracks.values()].sort((a, b) => b.plays - a.plays).slice(0, 25).map(t => ({ ...t, title: censor(t.title), artist: censor(t.artist) })),
+      artists: [...artists].map(([artist, plays]) => ({ artist: censor(artist), plays })).sort((a, b) => b.plays - a.plays).slice(0, 15),
       days: 7, builtAt: Date.now(),
     }
     return cache

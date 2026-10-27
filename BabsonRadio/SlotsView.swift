@@ -609,14 +609,31 @@ struct GenreArt: View {
     }
 }
 
+/// The beaver on the scheduler's color (or a plain plate): what a show shows when it has no picture.
+struct BeaverArt: View {
+    let tint: Color?
+    var body: some View {
+        ZStack {
+            if let tint { LinearGradient(colors: [tint, tint.opacity(0.45)], startPoint: .topLeading, endPoint: .bottomTrailing) }
+            else { Color.black.opacity(0.12) }
+            GeometryReader { g in
+                Image("LaunchLogo").resizable().scaledToFit().frame(width: g.size.width * 0.62, height: g.size.height * 0.62)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+    }
+}
+
 /// The item's picture, or generated artwork.
 struct ScheduleArt: View {
     let entry: ScheduleEntry
     var body: some View {
         if let url = URL(string: entry.imageUrl), !entry.imageUrl.isEmpty {
             AsyncImage(url: url) { phase in
-                if let image = phase.image { image.resizable().scaledToFill() } else { GenreArt(title: entry.title) }
+                if let image = phase.image { image.resizable().scaledToFill() } else if entry.source != "auto" { BeaverArt(tint: entry.tint) } else { GenreArt(title: entry.title) }
             }
+        } else if entry.source != "auto" {
+            BeaverArt(tint: entry.tint)
         } else if let tint = entry.tint {
             ZStack {
                 LinearGradient(colors: [tint, tint.opacity(0.45)], startPoint: .topLeading, endPoint: .bottomTrailing)

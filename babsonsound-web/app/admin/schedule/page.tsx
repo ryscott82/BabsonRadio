@@ -17,6 +17,7 @@ interface Show {
 interface Ev {
   id: string; title: string; date: string; startTime: string; endTime: string; description: string
   hostNames: string[]; category: string; color: string; imageUrl: string; imagePath: string; isActive: boolean
+  trackTitle: string; trackArtist: string; nextTitle: string
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -25,7 +26,7 @@ const blank = (): Show => ({ id: '', showName: '', dayOfWeek: 1, startTime: '20:
   hostNames: [], hostUsernames: [], category: '', color: '', imageUrl: '', imagePath: '', showSlug: '', isActive: true, repeat: 'weekly', anchor: '', weeks: [], dates: [] })
 const today = () => new Date().toLocaleDateString('en-CA')
 const blankEv = (): Ev => ({ id: '', title: '', date: today(), startTime: '20:00', endTime: '21:00', description: '',
-  hostNames: [], category: '', color: '', imageUrl: '', imagePath: '', isActive: true })
+  hostNames: [], category: '', color: '', imageUrl: '', imagePath: '', isActive: true, trackTitle: '', trackArtist: '', nextTitle: '' })
 
 export default function AdminSchedulePage() {
   const { user, isDirector, loading } = useAuth()
@@ -227,6 +228,10 @@ export default function AdminSchedulePage() {
           <label className="block"><span className={lab}>Description</span>
             <textarea className={box} rows={3} maxLength={600} value={editEv.description}
                       onChange={e => setEditEv({ ...editEv, description: e.target.value })} /></label>
+          <p className="text-xs text-br-dk-sub -mb-2">Optional. While this event is on air, the player shows these instead of what the auto DJ is playing.</p>
+          <Field label="Track title" value={editEv.trackTitle} onChange={e => setEditEv({ ...editEv, trackTitle: e.target.value })} maxLength={120} />
+          <Field label="Artist" value={editEv.trackArtist} onChange={e => setEditEv({ ...editEv, trackArtist: e.target.value })} maxLength={120} />
+          <Field label="Up next" value={editEv.nextTitle} onChange={e => setEditEv({ ...editEv, nextTitle: e.target.value })} maxLength={120} />
           <ColorPicker value={editEv.color} onChange={color => setEditEv({ ...editEv, color })} />
           <ImagePicker scope="show" value={editEv.imageUrl ? { url: editEv.imageUrl, path: editEv.imagePath } : null}
                        onChange={v => setEditEv({ ...editEv, imageUrl: v?.url ?? '', imagePath: v?.path ?? '' })} />

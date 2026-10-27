@@ -679,3 +679,107 @@ private struct ScheduleEditSheet: View {
         }
     }
 }
+
+
+// MARK: One-time events (with a fixed track title and "up next")
+
+nonisolated private struct AdminEvent: Decodable, Identifiable {
+    var id: String; var title: String; var date: String; var startTime: String; var endTime: String
+    var description: String; var hostNames: [String]; var category: String; var color: String
+    var imageUrl: String; var imagePath: String; var isActive: Bool
+    var trackTitle: String; var trackArtist: String; var nextTitle: String
+    static func blank() -> AdminEvent {
+        AdminEvent(id: "", title: "", date: Date().formatted(.iso8601.year().month().day()), startTime: "20:00", endTime: "21:00", description: "", hostNames: [],
+                   category: "", color: "", imageUrl: "", imagePath: "", isActive: true, trackTitle: "", trackArtist: "", nextTitle: "")
+    }
+    var body: [String: Any] {
+        var b: [String: Any] = ["action": "save", "title": title, "date": date, "startTime": startTime, "endTime": endTime, "description": description,
+            "hostNames": hostNames, "category": category, "color": color, "imageUrl": imageUrl, "imagePath": imagePath, "isActive": isActive,
+            "trackTitle": trackTitle, "trackArtist": trackArtist, "nextTitle": nextTitle]
+        if !id.isEmpty { b["id"] = id }
+        return b
+    }
+}
+nonisolated private struct AdminEventList: Decodable { let events: [AdminEvent] }
+
+struct EventsAdminView: View {
+    @State private var events: [AdminEvent] = []
+    @State private var loaded = false
+    @State private var message: String?
+    @State private var editing: AdminEvent?
+
+    var body: some View {
+        AdminSheet(title: "Events") {
+            if let m = message { Text(m).font(BRFont.body(14, .regular)).foregroundColor(white) }
+            AdminButton(title: "Add an event") { editing = .blank() }
+            if loaded && events.isEmpty { Text("No one-time events yet.").font(BRFont.body(14, .regular)).foregroundColor(softWhite) }
+            ForEach(events) { e in
+                Button { editing = e } label: {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(e.title).font(BRFont.body(16, .regular)).foregroundColor(white)
+                        Text("\(e.date) · \(e.startTime) to \(e.endTime)\(e.isActive ? "" : " · Off")").font(BRFont.body(12, .regular)).foregroundColor(softWhite)
+                        if !e.trackTitle.isEmpty { Text("Showing: \(e.trackTitle)").font(BRFont.body(12, .regular)).foregroundColor(softWhite) }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(14).adminCard()
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .task { await load() }
+        .refreshable { await load() }
+        .sheet(item: $editing) { e in
+            EventEditSheet(event: e) { saved in
+                if let saved { await save(saved) } else { await remove(e) }
+                editing = nil
+            }
+        }
+    }
+    private func load() async {
+        do { let r: AdminEventList = try await BackendAPI.get("/api/admin/events"); events = r.events; message = nil }
+        catch { message = adminErrText(error) }
+        loaded = true
+    }
+    private func save(_ e: AdminEvent) async {
+        do { let _: EmptyResponse = try await BackendAPI.post("/api/admin/events", e.body); message = "Saved." }
+        catch { message = adminErrText(error) }
+        await load()
+    }
+    private func remove(_ e: AdminEvent) async {
+        do { let _: EmptyResponse = try await BackendAPI.post("/api/admin/events", ["action": "delete", "id": e.id]); message = "Removed." }
+        catch { message = adminErrText(error) }
+        await load()
+    }
+}
+
+private struct EventEditSheet: View {
+    @State var event: AdminEvent
+    let done: (AdminEvent?) async -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var confirmDelete = false
+
+    var body: some View {
+        AdminSheet(title: event.id.isEmpty ? "Add an event" : "Edit event") {
+            TextField("", text: $event.title, prompt: Text("Event name").foregroundColor(.brPlaceholder)).adminField()
+            TextField("", text: $event.description, prompt: Text("What it is about").foregroundColor(.brPlaceholder), axis: .vertical).lineLimit(2...5).adminField()
+            TextField("", text: $event.date, prompt: Text("Date, e.g. 2026-10-30").foregroundColor(.brPlaceholder)).autocorrectionDisabled().textInputAutocapitalization(.never).adminField()
+            HStack(spacing: 10) {
+                TextField("", text: $event.startTime, prompt: Text("Start, e.g. 20:00").foregroundColor(.brPlaceholder)).autocorrectionDisabled().textInputAutocapitalization(.never).adminField()
+                TextField("", text: $event.endTime, prompt: Text("End, e.g. 21:00").foregroundColor(.brPlaceholder)).autocorrectionDisabled().textInputAutocapitalization(.never).adminField()
+            }
+            Text("Optional. While this event is on air, the player shows these instead of what the auto DJ is playing.").font(BRFont.body(13, .regular)).foregroundColor(softWhite)
+            TextField("", text: $event.trackTitle, prompt: Text("Track title").foregroundColor(.brPlaceholder)).adminField()
+            TextField("", text: $event.trackArtist, prompt: Text("Artist").foregroundColor(.brPlaceholder)).adminField()
+            TextField("", text: $event.nextTitle, prompt: Text("Up next").foregroundColor(.brPlaceholder)).adminField()
+            Toggle("On the schedule", isOn: $event.isActive).tint(.white).foregroundColor(white)
+            HStack(spacing: 10) {
+                AdminButton(title: "Save", enabled: !event.title.isEmpty) { Task { await done(event) } }
+                AdminButton(title: "Cancel") { dismiss() }
+                if !event.id.isEmpty { AdminButton(title: "Delete") { confirmDelete = true } }
+            }
+        }
+        .confirmationDialog("Delete this event?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) { Task { await done(nil) } }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+}

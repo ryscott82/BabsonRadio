@@ -24,7 +24,8 @@ export async function GET(req: Request) {
       const [y, m, dd] = localDate(s, tz)
       return {
         id: d.id, title: d.get('title') ?? '', description: d.get('description') ?? '', hostNames: d.get('hostNames') ?? [],
-        category: d.get('category') ?? '', color: d.get('color') ?? '', imageUrl: d.get('imageUrl') ?? '', imagePath: d.get('imagePath') ?? '',
+        category: d.get('category') ?? '', color: d.get('color') ?? '',
+        trackTitle: d.get('trackTitle') ?? '', trackArtist: d.get('trackArtist') ?? '', nextTitle: d.get('nextTitle') ?? '', imageUrl: d.get('imageUrl') ?? '', imagePath: d.get('imagePath') ?? '',
         isActive: d.get('isActive') !== false, startAt: s,
         date: `${y}-${String(m).padStart(2, '0')}-${String(dd).padStart(2, '0')}`,
         startTime: fmt(s), endTime: fmt(e),
@@ -66,6 +67,7 @@ export async function POST(req: Request) {
     if (old.exists && old.get('imagePath') && old.get('imagePath') !== (img?.imagePath ?? '')) await deleteImage(old.get('imagePath'))
     await ref.set({
       title, description: str(b.description, 600), hostNames, category: str(b.category, 30), color: cleanColor(b.color),
+      trackTitle: str(b.trackTitle, 120), trackArtist: str(b.trackArtist, 120), nextTitle: str(b.nextTitle, 120),
       imageUrl: img?.imageUrl ?? '', imagePath: img?.imagePath ?? '', isActive: b.isActive !== false,
       startAt: Timestamp.fromMillis(startAt), endAt: Timestamp.fromMillis(endAt), updatedBy: t.uid,
     })

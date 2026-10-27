@@ -78,7 +78,7 @@ type Raw = {
 }
 
 /** The scheduled thing on air right now (one-time event > student slot > weekly show > genre block). */
-async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'blockTitle' | 'color' | 'occId' | 'isShow' | 'showStart' | 'showEnd' | 'note' | 'colorChanging' | 'hostEmojis' | 'ratingsOn'> & { hostNames: string[] }> {
+async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'blockTitle' | 'color' | 'occId' | 'isShow' | 'showStart' | 'showEnd' | 'note' | 'colorChanging' | 'hostEmojis' | 'ratingsOn'> & { hostNames: string[]; fixed?: { title: string; artist: string; next: string } }> {
   const none = { showTitle: '', blockTitle: '', color: '', occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, colorChanging: false, hostEmojis: [] as string[], ratingsOn: true, hostNames: [] as string[] }
   try {
     const db = adminDb()
@@ -88,7 +88,7 @@ async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'blockTitle' 
     const colorChanging = prefs.theme === 'art' ? true : prefs.theme === 'standard' ? false : baseColor
     return {
       showTitle: cur.isShow ? cur.item.title : '', blockTitle: cur.item.title, color: cur.item.color, occId: cur.occId, isShow: cur.isShow,
-      showStart: cur.item.startAt, showEnd: cur.item.endAt, note, colorChanging, hostEmojis: prefs.emojis, ratingsOn: true, hostNames: cur.item.hosts ?? [],
+      showStart: cur.item.startAt, showEnd: cur.item.endAt, note, colorChanging, hostEmojis: prefs.emojis, ratingsOn: true, hostNames: cur.item.hosts ?? [], fixed: cur.item.fixed,
     }
   } catch { return none }
 }
@@ -146,9 +146,20 @@ async function build(): Promise<Built> {
       ...(await onAir()), showOnly: false,
       updatedAt: Date.now(),
     }
+    // An event with a track typed in by the scheduler: that wins over whatever the auto DJ is playing.
+    const fixed = (value as { fixed?: { title: string; artist: string; next: string } }).fixed
+    delete (value as { fixed?: unknown }).fixed
+    if (fixed && fixed.title) {
+      value.title = fixed.title; value.artist = fixed.artist
+      value.album = ''; value.art = ''; value.bpm = 0; value.beatOffset = 0; value.duration = 0; value.elapsed = 0
+      value.next = fixed.next ? { title: fixed.next, artist: '' } : null
+      value.history = []
+    } else if (fixed && fixed.next) {
+      value.next = { title: fixed.next, artist: '' }
+    }
     // A scheduled show that is not the auto DJ usually streams without track info. Show the show and host names instead
     // of a stale song (or a blank), and turn off the song-only extras (ratings, beat sync, "up next").
-    if (value.isShow && (value.isLive || !value.title)) {
+    if (value.isShow && !(fixed && fixed.title) && (value.isLive || !value.title)) {
       value.title = value.showTitle || value.blockTitle
       value.artist = value.hostNames?.length ? value.hostNames.join(', ') : value.streamer
       value.album = ''; value.art = ''; value.bpm = 0; value.beatOffset = 0; value.duration = 0; value.elapsed = 0; value.next = null

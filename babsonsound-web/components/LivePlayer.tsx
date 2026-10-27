@@ -1,7 +1,7 @@
 'use client'
 
 import SongLinks from '@/components/SongLinks'
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { fetchPresence, friendsLine, sendHeartbeat } from '@/lib/presence'
 import { useAuth } from '@/contexts/AuthContext'
@@ -248,6 +248,25 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
     if (await guard.begin(true)) startAudio()
   }
 
+  // The card keeps one fixed height: the room held for the optional "On air" and "Next" lines is
+  // given back as even spacing between everything in the card when those lines are empty.
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const nextRef = useRef<HTMLParagraphElement | null>(null)
+  useLayoutEffect(() => {
+    const el = panelRef.current
+    if (!el) return
+    const fit = () => {
+      el.style.minHeight = ''
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+      const nextH = nextRef.current?.offsetHeight ?? 0
+      const slack = (showLineHeld ? 0 : 1.5 * rem) + (nextHeld ? Math.max(0, 2.5 * rem - nextH) : 3 * rem)
+      el.style.minHeight = `${el.offsetHeight + slack}px`
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  })
+
   return (
     <>
     <div className={`relative ${pane ? '' : ''}`}>
@@ -273,14 +292,14 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
         </div>
 
         {/* The amp */}
-        <div className="hw-panel hw-big min-w-0 max-sm:-mx-4">
+        <div ref={panelRef} className="hw-panel hw-big min-w-0 max-sm:-mx-4 flex flex-col justify-between">
           <FitTitle marquee={narrow} lines={narrow ? 1 : 2} text={hasSong ? np!.title : 'Live Stream'} className="hw-title hw-title-fit text-[2.75rem] lg:text-[3.1rem]" />
           <p className="hw-sub !text-br-dk-text text-lg font-medium line-clamp-2 mt-0.5">
             {hasSong ? subline : 'Babson College — Internet Radio'}
           </p>
-          <p className="hw-sub text-sm mt-1 min-h-[1.25rem]">{showLineHeld ? `On air: ${showLineHeld}` : ''}</p>
+          {showLineHeld && <p className="hw-sub text-sm mt-1">{`On air: ${showLineHeld}`}</p>}
           <div className={`hw-prog mt-5 ${hasSong && np!.duration > 0 ? '' : 'invisible'}`} aria-hidden><i style={{ width: `${hasSong && np!.duration > 0 ? pct : 0}%` }} /></div>
-          <p className="hw-sub text-sm mt-2 line-clamp-2 min-h-[2.5rem]">{nextHeld ? `Next: ${nextHeld.title}${nextHeld.artist ? ` · ${nextHeld.artist}` : ''}` : ''}</p>
+          {nextHeld && <p ref={nextRef} className="hw-sub text-sm mt-2 line-clamp-2">{`Next: ${nextHeld.title}${nextHeld.artist ? ` · ${nextHeld.artist}` : ''}`}</p>}
 
           {previewHeld && (
             <p className="hw-sub text-sm mt-3">

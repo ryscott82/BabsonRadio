@@ -18,7 +18,7 @@ interface UserDoc {
   username?: string
   displayName: string
   email: string
-  phoneNumber?: string
+  hasPhone?: boolean
   /** One access level per person. Only the server writes it. */
   level?: Level
   studioTrained?: boolean

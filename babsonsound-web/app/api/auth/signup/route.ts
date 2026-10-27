@@ -1,7 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from '@/lib/server/admin'
 import { ANY_EMAIL, BABSON_EMAIL, HttpError, handle, readJson, str } from '@/lib/server/http'
-import { indexKeyFromE164 } from '@/lib/server/phone'
+import { phoneFields } from '@/lib/server/phoneStore'
 import { normalizeUS } from '@/lib/phone'
 import { VERIFY_GRACE_MS } from '@/lib/verify-grace'
 import { TERMS_VERSION, validGradYear } from '@/lib/terms'
@@ -17,7 +17,8 @@ export async function POST(req: Request) {
     const lastName = str(b.lastName, 60)
     const email = str(b.email, 200).toLowerCase()
     const password = typeof b.password === 'string' ? b.password : ''
-    const phone = normalizeUS(str(b.phone, 30))
+    const rawPhone = str(b.phone, 30)
+    const phone = normalizeUS(rawPhone)
 
     const gradYear = str(b.gradYear, 10)
 
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
     if (gradYear && !validGradYear(gradYear)) throw new HttpError(400, 'Pick a valid graduation year.')
     // Anyone can sign up. A verified school email makes them a student; any other email is a guest (live radio only).
     // Name, phone and graduation year are optional here; "About you" asks for them later.
-    if (str(b.phone, 30) && !phone) throw new HttpError(400, 'Enter a valid 10-digit US phone number, or leave it blank.')
+    if (rawPhone && !phone) throw new HttpError(400, 'Enter a valid 10-digit US phone number, or leave it blank.')
     if (password.length < 8 || password.length > 128) throw new HttpError(400, 'Password must be 8–128 characters.')
 
     // The Babson username (part before @babson.edu) is the account's username. Email is unique, so it is too.
@@ -36,7 +37,9 @@ export async function POST(req: Request) {
     const domainName = email.slice(at + 1, email.indexOf('.', at))
     const username = domainName === 'babson' ? email.slice(0, at) : `${email.slice(0, at)}-${domainName}`
     const db = adminDb()
-    const phoneRef = phone ? db.collection('phoneIndex').doc(await indexKeyFromE164(phone)) : null
+    // Phone numbers are for students only: a Guest's number is not kept. Stored as phoneEncrypted + phoneHash + phoneVerified=false.
+    const pf = phone && school ? await phoneFields(phone) : null
+    const phoneRef = pf ? db.collection('phoneIndex').doc(pf.phoneHash) : null
     if (phoneRef && (await phoneRef.get()).exists) throw new HttpError(409, 'That phone number is already registered.')
 
     let uid: string
@@ -55,10 +58,10 @@ export async function POST(req: Request) {
       await db.runTransaction(async tx => {
         if (phoneRef) {
           if ((await tx.get(phoneRef)).exists) throw new HttpError(409, 'That phone number is already registered.')
-          tx.set(phoneRef, { uid })
+          tx.set(phoneRef, { uid, verified: false })
         }
         tx.set(db.collection('users').doc(uid), {
-          firstName, lastName, username, displayName: firstName || email.split('@')[0], email, phoneNumber: phone ?? '', gradYear: school ? gradYear : '',
+          firstName, lastName, username, displayName: firstName || email.split('@')[0], email, ...(pf ?? {}), gradYear: school ? gradYear : '',
           termsAcceptedAt: Timestamp.now(), termsVersion: TERMS_VERSION,
           // The sign-up form says "We'll email you when we launch." The launch email only goes to accounts with this.
           ...(b.launchNotice === false ? {} : { launchNoticeConsentAt: Timestamp.now() }),

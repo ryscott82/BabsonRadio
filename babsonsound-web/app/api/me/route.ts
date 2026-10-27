@@ -10,6 +10,7 @@ import { AVATAR_COLORS, DEFAULT_AVATAR, MAX_HOST_EMOJIS } from '@/lib/profile'
 import { HttpError, handle, readJson, requireUser, str } from '@/lib/server/http'
 import { accessOf, forgetAccess } from '@/lib/server/access'
 import { setupFor } from '@/lib/server/setup'
+import { hasPhone } from '@/lib/server/phoneStore'
 
 export const runtime = 'nodejs'
 
@@ -29,7 +30,7 @@ export async function GET(req: Request) {
       lastName: u.get('lastName') ?? '',
       username: u.get('username') ?? '',
       email: u.get('email') ?? t.email ?? '',
-      phoneNumber: u.get('phoneNumber') ?? '',
+      hasPhone: hasPhone(u), // the number itself and its hash are never in this response
       level: a.level,
       studioTrained: a.studio,
       radioTrained: a.radio,

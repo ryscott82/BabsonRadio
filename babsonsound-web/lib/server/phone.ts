@@ -1,6 +1,6 @@
 import 'server-only'
-import { createHmac } from 'node:crypto'
-import { sha256Hex } from '../phone'
+import { createHash, createHmac } from 'node:crypto'
+import { BLOCKED_NUMBER_PREFIXES, sha256Hex } from '../phone'
 
 function pepper(): string {
   const p = process.env.PHONE_HASH_PEPPER
@@ -15,4 +15,25 @@ export function indexKeyFromHash(sha256: string): string {
 
 export async function indexKeyFromE164(e164: string): Promise<string> {
   return indexKeyFromHash(await sha256Hex(e164))
+}
+
+let blocked: Set<string> | null = null
+/** SHA-256 (hex) of every number on a blocked prefix, as phones send them. Built once; 10,000 numbers per 6-digit prefix. */
+export function blockedHashes(): Set<string> {
+  if (blocked) return blocked
+  const out = new Set<string>()
+  for (const p of BLOCKED_NUMBER_PREFIXES) {
+    const rest = 10 - p.length
+    if (rest < 0 || rest > 4) throw new Error(`Blocked prefix "${p}" must be 6 to 10 digits`)
+    for (let n = 0; n < 10 ** rest; n++) {
+      out.add(createHash('sha256').update(`+1${p}${String(n).padStart(rest, '0')}`).digest('hex'))
+    }
+  }
+  return (blocked = out)
+}
+
+/** Drops hashes of Babson's own lines from a contact list before anything is looked up, counted or stored. */
+export const withoutBlocked = (hashes: string[]): string[] => {
+  const b = blockedHashes()
+  return hashes.filter(h => !b.has(h.toLowerCase()))
 }

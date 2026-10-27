@@ -10,7 +10,7 @@ const MIN = 60_000, DAY = 24 * 60 * MIN
 /** A student who is verified but has done nothing else. */
 const base = (over: Partial<SetupInput> = {}): SetupInput => ({
   level: 'student', demo: false, emailVerified: true, graceUntil: null, joinedAt: NOW - DAY,
-  firstName: '', avatarChosen: false, birthdayDone: false, gradYear: '', phoneNumber: '', skips: {}, lastPromptAt: 0, ...over,
+  firstName: '', avatarChosen: false, birthdayDone: false, gradYear: '', hasPhone: false, skips: {}, lastPromptAt: 0, ...over,
 })
 
 test('steps come in order and the first undone one is next', () => {
@@ -80,7 +80,7 @@ test('the email step is required and every other step can be skipped', () => {
 test('an unverified email never blocks the prompts for the other steps', () => {
   const s = setupState(base({ emailVerified: false, firstName: 'R', avatarChosen: true }), NOW)
   assert.equal(s.next, 'birthday')
-  assert.equal(setupState(base({ emailVerified: false, level: 'student', firstName: 'R', avatarChosen: true, birthdayDone: true, gradYear: '2028', phoneNumber: '+16175550123' }), NOW).next, null)
+  assert.equal(setupState(base({ emailVerified: false, level: 'student', firstName: 'R', avatarChosen: true, birthdayDone: true, gradYear: '2028', hasPhone: true }), NOW).next, null)
 })
 
 test('the demo account has nothing to set up', () => {

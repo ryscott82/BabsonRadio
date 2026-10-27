@@ -5,6 +5,7 @@ import { HttpError, handle, readJson, requireUser, str } from '@/lib/server/http
 import { accessOf } from '@/lib/server/access'
 import { encryptJson } from '@/lib/server/pii'
 import { indexKeyFromE164 } from '@/lib/server/phone'
+import { phoneHashOf, savePhone } from '@/lib/server/phoneStore'
 import { normalizeUS } from '@/lib/phone'
 import { validGradYear } from '@/lib/terms'
 import { ageOn } from '@/lib/age'
@@ -58,23 +59,14 @@ export async function POST(req: Request) {
     const update: Record<string, unknown> = { firstName, lastName, displayName: firstName }
 
     if (!guest) {
-      // Phone and graduation year are optional. A phone number lets friends find you; skipping it is fine.
+      // Phone and graduation year are optional. Skipping the phone number is fine.
       const rawPhone = str(b.phone, 30), phone = normalizeUS(rawPhone)
       if (rawPhone && !phone) throw new HttpError(400, 'Enter a valid 10-digit US phone number, or leave it blank.')
       const gradYear = str(b.gradYear, 10)
       if (gradYear && !validGradYear(gradYear)) throw new HttpError(400, 'Pick a valid graduation year.', 'BR-ACC-018')
       if (gradYear) update.gradYear = gradYear
-      const old = u.get('phoneNumber') as string | undefined
-      if (phone && old !== phone) {
-        const newRef = db.collection('phoneIndex').doc(await indexKeyFromE164(phone))
-        await db.runTransaction(async tx => {
-          const hit = await tx.get(newRef)
-          if (hit.exists && hit.get('uid') !== t.uid) throw new HttpError(409, 'That phone number is already registered.')
-          tx.set(newRef, { uid: t.uid })
-        })
-        if (old) await db.collection('phoneIndex').doc(await indexKeyFromE164(old)).delete().catch(() => {})
-        update.phoneNumber = phone
-      }
+      // Stored as phoneEncrypted + phoneHash + phoneVerified=false (lib/server/phoneStore.ts); Babson's own lines are refused.
+      if (phone && (await phoneHashOf(u)) !== (await indexKeyFromE164(phone))) await savePhone(db, t.uid, phone)
     }
 
     // 3. Save. The birthday/range is only ever stored encrypted; "minor" is a plain yes/no so the server can act on it.

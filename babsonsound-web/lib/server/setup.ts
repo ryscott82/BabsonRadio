@@ -6,8 +6,8 @@ import type { Access } from './access'
 import { deleteAccountData } from './deleteAccount'
 import { HttpError, str } from './http'
 import { encryptJson } from './pii'
-import { indexKeyFromE164 } from './phone'
 import { normalizeUS } from '../phone'
+import { hasPhone, savePhone } from './phoneStore'
 import { judgeAge } from '../age'
 import { AVATAR_COLORS } from '../profile'
 import { validGradYear } from '../terms'
@@ -36,7 +36,7 @@ export function setupInput(t: DecodedIdToken, a: Access, u: DocumentSnapshot): S
     avatarChosen: typeof avatar === 'string' && avatar !== '',
     birthdayDone: u.get('ageData') != null,
     gradYear: String(u.get('gradYear') ?? ''),
-    phoneNumber: String(u.get('phoneNumber') ?? ''),
+    hasPhone: hasPhone(u),
     skips, lastPromptAt: num(u.get('setup.lastPromptAt')),
   }
 }
@@ -157,17 +157,12 @@ export async function saveStep(t: DecodedIdToken, a: Access, rawStep: unknown, v
       if (a.level === 'guest') throw new HttpError(403, 'Phone number is for students.', 'BR-SET-002')
       const phone = normalizeUS(str(v.phone, 30))
       if (!phone) throw new HttpError(400, 'Enter a valid 10-digit US phone number.', 'BR-ACC-004')
-      if (u.get('phoneNumber')) throw new HttpError(409, 'There is already a number on your account. Change it from your profile.', 'BR-SET-005')
-      const idx = db.collection('phoneIndex').doc(await indexKeyFromE164(phone))
-      await db.runTransaction(async tx => {
-        const hit = await tx.get(idx)
-        if (hit.exists && hit.get('uid') !== t.uid) throw new HttpError(409, 'That phone number is already registered.', 'BR-ACC-003')
-        tx.set(idx, { uid: t.uid })
-      })
-      update.phoneNumber = phone
+      if (hasPhone(u)) throw new HttpError(409, 'There is already a number on your account. Change it from your profile.', 'BR-SET-005')
+      // Stored as phoneEncrypted + phoneHash + phoneVerified=false; Babson's own lines are refused (BR-SET-009).
+      await savePhone(db, t.uid, phone)
       break
     }
   }
-  await ref.update(update)
+  if (Object.keys(update).length) await ref.update(update)
   return settled(t, a, await ref.get(), now)
 }

@@ -2,7 +2,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { after } from 'next/server'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireMember } from '@/lib/server/http'
-import { indexKeyFromHash } from '@/lib/server/phone'
+import { indexKeyFromHash, withoutBlocked } from '@/lib/server/phone'
 import { MAX_KEYS, MIN_OTHERS, popularity, rebuildIfStale, removeContactGraph, setContactGraph } from '@/lib/server/contactGraph'
 
 export const runtime = 'nodejs'
@@ -24,7 +24,8 @@ export async function POST(req: Request) {
     if (b.remove === true) { await removeContactGraph(db, t.uid); return { saved: [] } }
 
     const hashes = Array.isArray(b.hashes) ? b.hashes : []
-    const unique = [...new Set(hashes.filter((h): h is string => typeof h === 'string' && /^[0-9a-f]{64}$/i.test(h)))].slice(0, MAX_KEYS)
+    // Babson's own lines are dropped before anything is stored or counted.
+    const unique = withoutBlocked([...new Set(hashes.filter((h): h is string => typeof h === 'string' && /^[0-9a-f]{64}$/i.test(h)))]).slice(0, MAX_KEYS)
     if (!unique.length) throw new HttpError(400, 'No contacts to check.')
 
     // Twice a day is plenty, keeps Firestore writes tiny, and stops anyone from probing numbers in bulk.
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
     // Skip people who already have the app: they are not an invite.
     const members = new Set<string>()
     for (let i = 0; i < popular.length; i += 300) {
-      for (const s of await db.getAll(...popular.slice(i, i + 300).map(k => db.collection('phoneIndex').doc(k)))) if (s.exists) members.add(s.id)
+      for (const s of await db.getAll(...popular.slice(i, i + 300).map(k => db.collection('phoneIndex').doc(k)))) if (s.exists && s.get('verified') === true) members.add(s.id)
     }
     return { saved: popular.filter(k => !members.has(k)).map(k => ({ hash: byKey.get(k)!, others: (counts.get(k) ?? 1) - 1 })) }
   })

@@ -1,7 +1,7 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireBabson } from '@/lib/server/http'
-import { indexKeyFromHash } from '@/lib/server/phone'
+import { indexKeyFromHash, withoutBlocked } from '@/lib/server/phone'
 
 export const runtime = 'nodejs'
 
@@ -17,7 +17,8 @@ export async function POST(req: Request) {
     if (!Array.isArray(hashes) || hashes.length === 0 || hashes.length > MAX_HASHES) {
       throw new HttpError(400, `Send between 1 and ${MAX_HASHES} hashes.`)
     }
-    const unique = [...new Set(hashes.filter((h): h is string => typeof h === 'string' && /^[0-9a-f]{64}$/i.test(h)))]
+    // Babson's own lines are dropped before anything is looked up.
+    const unique = withoutBlocked([...new Set(hashes.filter((h): h is string => typeof h === 'string' && /^[0-9a-f]{64}$/i.test(h)))])
     if (!unique.length) throw new HttpError(400, 'No valid hashes.')
 
     const db = adminDb()
@@ -37,7 +38,8 @@ export async function POST(req: Request) {
     for (let i = 0; i < refs.length; i += 300) {
       for (const snap of await db.getAll(...refs.slice(i, i + 300))) {
         const uid = snap.get('uid')
-        if (snap.exists && uid && uid !== t.uid) matchedUids.add(uid)
+        // Matching waits for verified numbers: entries are written with verified:false until a verification step exists.
+        if (snap.exists && snap.get('verified') === true && uid && uid !== t.uid) matchedUids.add(uid)
       }
     }
 

@@ -1,7 +1,7 @@
 import 'server-only'
 import type { Firestore, Query } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from './admin'
-import { indexKeyFromE164 } from './phone'
+import { phoneHashOf } from './phoneStore'
 import { removeContactGraph } from './contactGraph'
 
 async function deleteQuery(db: Firestore, q: Query) {
@@ -19,8 +19,8 @@ export async function deleteAccountData(uid: string) {
     const userRef = db.collection('users').doc(uid)
     const user = await userRef.get()
 
-    const phone = user.get('phoneNumber')
-    if (phone) await db.collection('phoneIndex').doc(await indexKeyFromE164(phone)).delete()
+    const phoneKey = await phoneHashOf(user)
+    if (phoneKey) await db.collection('phoneIndex').doc(phoneKey).delete()
 
     await removeContactGraph(db, uid).catch(() => {}) // take this person's saved numbers back out of the counts
     await db.collection('contactGraph').doc(uid).delete()

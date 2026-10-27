@@ -36,6 +36,16 @@ leak alone doesn't reveal phone numbers.
 > checked against registered users; numbers that don't match are discarded."
 and update the App Store privacy "nutrition label" (Contacts → linked to user, used for app functionality).
 
+## How a member's own number is stored (students only)
+`users/{uid}` holds three fields and no plain-text copy: `phoneEncrypted` (AES-256-GCM, `PII_KEY`; read back only on the owner's own
+phone page and the admin phone-change flow), `phoneHash` (HMAC-SHA256 with `PHONE_HASH_PEPPER` over the SHA-256 of the E.164 number,
+the same value as the `phoneIndex` document id) and `phoneVerified` (`false` until a verification step exists; there is none yet).
+`phoneIndex/{phoneHash}` is the unique index: `{ uid, verified: false }`. Contact matching (`/api/contacts/match`, `/popular`) ignores
+entries that are not `verified: true`, so no number matches yet. Guests never have a phone. Removing the number deletes all three
+fields and the index entry. Babson's own lines (`BLOCKED_NUMBER_PREFIXES`, 781-239) are refused as a member's number (BR-SET-009) and
+their hashes are dropped from contact uploads on the server. Older accounts may still have a plain `phoneNumber`; it is read as a
+fallback and replaced on the next save or removal.
+
 ## Known gaps
 - Phone numbers aren't SMS-verified (by choice), so someone can register a number that isn't theirs.
 - Locked-content gating protects Firestore docs, not the media files themselves.

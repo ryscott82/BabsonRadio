@@ -26,7 +26,7 @@ export async function ensureProfile(t: DecodedIdToken, opts: { agreed?: boolean;
   try {
     await ref.create({
       firstName: first, lastName: '', username: usernameOf(email), displayName: first || email.split('@')[0],
-      email, phoneNumber: '', gradYear: '',
+      email, gradYear: '',
       level: school ? 'student' : 'guest', accountType: school ? 'babson' : 'guest',
       studioTrained: false, radioTrained: false,
       ...(opts.agreed ? { termsAcceptedAt: Timestamp.now(), termsVersion: TERMS_VERSION } : {}),

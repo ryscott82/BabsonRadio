@@ -3,6 +3,11 @@ import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireStaff, str } from '@/lib/server/http'
 import { normalizeUS } from '@/lib/phone'
 import { applyPhone } from '@/lib/server/phoneChange'
+import { decryptJson } from '@/lib/server/pii'
+
+// The admin phone-change flow is the one place besides the owner's own phone page that reads a stored number back.
+const plain = (d: FirebaseFirestore.DocumentSnapshot, enc: string, legacy: string): string =>
+  d.get(enc) ? decryptJson<string>(String(d.get(enc))) : String(d.get(legacy) ?? '')
 
 export const runtime = 'nodejs'
 
@@ -13,7 +18,7 @@ export async function GET(req: Request) {
     const snap = await adminDb().collection('phoneChanges').orderBy('requestedAt', 'asc').get()
     return {
       requests: snap.docs.map(d => ({
-        uid: d.id, name: d.get('name') ?? '', email: d.get('email') ?? '', oldPhone: d.get('oldPhone') ?? '', newPhone: d.get('newPhone') ?? '',
+        uid: d.id, name: d.get('name') ?? '', email: d.get('email') ?? '', oldPhone: plain(d, 'oldPhoneEncrypted', 'oldPhone'), newPhone: plain(d, 'newPhoneEncrypted', 'newPhone'),
         at: (d.get('requestedAt') as Timestamp).toMillis(),
       })),
     }
@@ -34,7 +39,7 @@ export async function POST(req: Request) {
     if (action === 'approve') {
       const r = await reqRef.get()
       if (!r.exists) throw new HttpError(404, 'That request is gone.')
-      phone = normalizeUS(String(r.get('newPhone')))
+      phone = normalizeUS(plain(r, 'newPhoneEncrypted', 'newPhone'))
     } else if (action === 'set') phone = normalizeUS(str(b.phone, 30))
     else throw new HttpError(400, 'Unknown action.')
     if (!phone) throw new HttpError(400, 'Enter a valid 10-digit US phone number.')

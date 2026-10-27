@@ -102,7 +102,7 @@
     "title": "Phone number already registered",
     "meaning": "Another account already uses this phone number.",
     "userFix": "Sign in to the existing account. If it isn't yours, contact the station.",
-    "staffCheck": "Look up the number's owner via the users collection (phoneNumber). Never share it with the requester."
+    "staffCheck": "The number is stored encrypted, so you cannot search for it. The phoneIndex document id is the phoneHash of the owning account (its uid is inside). Never share who it is with the requester."
   },
   {
     "code": "BR-ACC-004",
@@ -516,6 +516,13 @@
     "meaning": "The color is not one of the profile colors.",
     "userFix": "Pick one of the colors shown.",
     "staffCheck": "Valid ids are in lib/profile.ts (AVATAR_COLORS)."
+  },
+  {
+    "code": "BR-SET-009",
+    "title": "Babson campus line",
+    "meaning": "The number is one of Babson's own lines (781-239), not a personal number. Nothing was saved.",
+    "userFix": "Enter your own mobile number, or skip this step.",
+    "staffCheck": "The blocked prefixes are BLOCKED_NUMBER_PREFIXES in lib/phone.ts (kept in step with blockedNumberPrefixes in ProfileView.swift). Contact lists drop these hashes too."
   },
   {
     "code": "BR-APL-001",

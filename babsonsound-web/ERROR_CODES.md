@@ -26,7 +26,7 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 |---|---|---|---|
 | BR-ACC-001 | **Babson email required**: Student sign-up/sign-in needs a @babson.edu address (or a guest used a Babson address). | Use your @babson.edu email for student accounts; use Guest access with any other email. | — |
 | BR-ACC-002 | **Email already has an account**: An account with this email already exists. | Sign in instead, or use Forgot password. | Firebase Console → Authentication → Users. |
-| BR-ACC-003 | **Phone number already registered**: Another account already uses this phone number. | Sign in to the existing account. If it isn't yours, contact the station. | Look up the number's owner via the users collection (phoneNumber). Never share it with the requester. |
+| BR-ACC-003 | **Phone number already registered**: Another account already uses this phone number. | Sign in to the existing account. If it isn't yours, contact the station. | The number is stored encrypted, so you cannot search for it. The phoneIndex document id is the phoneHash of the owning account (its uid is inside). Never share who it is with the requester. |
 | BR-ACC-004 | **Invalid phone number**: Not a valid 10-digit US number. | Enter 10 digits, e.g. (617) 555-0123. | — |
 | BR-ACC-005 | **Password problem**: Password too short/long (8–128 characters) or too weak. | Use at least 8 characters. | — |
 | BR-ACC-006 | **Name missing**: First name is required. | Enter your first name. | — |
@@ -113,6 +113,7 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | BR-SET-006 | **Finish this step from your email**: The email step is completed by opening the verification link, not by saving a value. | Open the link in your verification email, then check again. Look in spam. | Firebase Console > Authentication > Users shows verified status. The app resends with sendEmailVerification. |
 | BR-SET-007 | **First name missing**: The name step needs a first name. | Enter your first name. | — |
 | BR-SET-008 | **Avatar color not valid**: The color is not one of the profile colors. | Pick one of the colors shown. | Valid ids are in lib/profile.ts (AVATAR_COLORS). |
+| BR-SET-009 | **Babson campus line**: The number is one of Babson's own lines (781-239), not a personal number. Nothing was saved. | Enter your own mobile number, or skip this step. | The blocked prefixes are BLOCKED_NUMBER_PREFIXES in lib/phone.ts (kept in step with blockedNumberPrefixes in ProfileView.swift). Contact lists drop these hashes too. |
 
 ## Sign in with Apple
 

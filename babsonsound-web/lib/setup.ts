@@ -45,7 +45,7 @@ export interface SetupInput {
   avatarChosen: boolean
   birthdayDone: boolean
   gradYear: string
-  phoneNumber: string
+  hasPhone: boolean
   skips: Skips
   /** ms of the last prompt that was handed out (0 = never). */
   lastPromptAt: number
@@ -69,7 +69,7 @@ export function setupState(i: SetupInput, now: number): SetupState {
     avatar: i.avatarChosen,
     birthday: i.birthdayDone,
     gradYear: i.gradYear !== '',
-    phone: i.phoneNumber !== '',
+    phone: i.hasPhone,
   }
   const steps = stepsFor(i.level).map(id => ({ id, done: i.demo || doneBy[id], required: REQUIRED[id] }))
   const doneCount = steps.filter(s => s.done).length

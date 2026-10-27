@@ -78,7 +78,8 @@ service cloud.firestore {
       // unsubscribe flag are server-only, so nobody can write their own.
       allow update: if isAdmin()
         && !request.resource.data.diff(resource.data).affectedKeys()
-             .hasAny(['level', 'role', 'studioTrained', 'radioTrained', 'unsubscribed', 'unsubscribedAt', 'demo', 'email']);
+             .hasAny(['level', 'role', 'studioTrained', 'radioTrained', 'unsubscribed', 'unsubscribedAt', 'demo', 'email',
+                       'phoneEncrypted', 'phoneHash', 'phoneVerified', 'phoneNumber']);
       allow delete: if false;
 
       // Contact-network edges: written by /api/contacts/match only.

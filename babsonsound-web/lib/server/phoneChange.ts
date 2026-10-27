@@ -1,23 +1,10 @@
 import 'server-only'
-import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore'
-import { HttpError } from './http'
-import { indexKeyFromE164 } from './phone'
+import { Timestamp, type Firestore } from 'firebase-admin/firestore'
+import { clearPhone, savePhone } from './phoneStore'
 
-/** Moves an account to a new number (E.164): claims the new lookup entry, frees the old one, updates the profile. */
+/** Moves an account to a new number (E.164): claims the new lookup entry, frees the old one, writes the three phone fields. */
 export async function applyPhone(db: Firestore, uid: string, phone: string): Promise<void> {
-  const userRef = db.collection('users').doc(uid)
-  const u = await userRef.get()
-  if (!u.exists) throw new HttpError(404, 'No such account.')
-  const old = u.get('phoneNumber') as string | undefined
-  if (old === phone) return
-  const newRef = db.collection('phoneIndex').doc(await indexKeyFromE164(phone))
-  await db.runTransaction(async tx => {
-    const hit = await tx.get(newRef)
-    if (hit.exists && hit.get('uid') !== uid) throw new HttpError(409, 'That phone number is already registered to another account.')
-    tx.set(newRef, { uid })
-  })
-  if (old) await db.collection('phoneIndex').doc(await indexKeyFromE164(old)).delete().catch(() => {})
-  await userRef.update({ phoneNumber: phone, phoneChangedAt: Timestamp.now() })
+  await savePhone(db, uid, phone, { phoneChangedAt: Timestamp.now() })
 }
 
 export const last4 = (p: unknown) => (typeof p === 'string' && p.length >= 4 ? p.slice(-4) : '')
@@ -27,15 +14,10 @@ export const last4 = (p: unknown) => (typeof p === 'string' && p.length >= 4 ? p
  * The setup prompt is pushed back a week (as if skipped 3 times), so removing it on purpose does not bring the question straight back.
  */
 export async function removePhone(db: Firestore, uid: string): Promise<void> {
-  const userRef = db.collection('users').doc(uid)
-  const u = await userRef.get()
-  if (!u.exists) throw new HttpError(404, 'No such account.')
-  const old = u.get('phoneNumber') as string | undefined
-  if (old) await db.collection('phoneIndex').doc(await indexKeyFromE164(old)).delete().catch(() => {})
-  await db.collection('phoneChanges').doc(uid).delete().catch(() => {})
   const now = Date.now()
-  await userRef.update({
-    phoneNumber: FieldValue.delete(), phoneChangedAt: Timestamp.now(),
+  await clearPhone(db, uid, {
+    phoneChangedAt: Timestamp.now(),
     'setup.skips.phone.count': 3, 'setup.skips.phone.lastSkippedAt': now,
   })
+  await db.collection('phoneChanges').doc(uid).delete().catch(() => {})
 }

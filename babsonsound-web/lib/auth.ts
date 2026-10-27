@@ -6,9 +6,6 @@ import {
   sendPasswordResetEmail,
   verifyBeforeUpdateEmail,
   reauthenticateWithCredential,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
-  updatePassword,
   EmailAuthProvider,
   type User,
 } from 'firebase/auth'
@@ -62,44 +59,7 @@ export const apiDelete = <T = Record<string, unknown>>(path: string, body: unkno
 
 // ── Babson students ───────────────────────────────────────────
 
-// ── Passwordless (the default way in) ─────────────────────────
-
-/** Step 1: "Email me a link". Works for new and returning people; the account is made when they tap the link. */
-export async function requestEmailLink(email: string) {
-  const e = email.trim().toLowerCase()
-  if (!/^\S+@\S+\.\S+$/.test(e)) throw fail('Enter a valid email address.', 'BR-ACC-009')
-  await api('/api/auth/link', { email: e })
-}
-
-/** True when the current page address is a sign-in link from that email (use on /auth/link). */
-export const isEmailLink = (href = typeof window === 'undefined' ? '' : window.location.href) => isSignInWithEmailLink(auth, href)
-
-/**
- * Step 2, on /auth/link: signs in with the link in the address bar, then makes the profile on the first visit.
- * The address is read from ?e= in the link, so it works even when the link is opened on another device.
- */
-export async function completeEmailLink(opts: { launchNotice?: boolean } = {}) {
-  const url = new URL(window.location.href)
-  const email = (url.searchParams.get('e') ?? '').toLowerCase()
-  if (!email || !isSignInWithEmailLink(auth, url.href)) throw fail('That sign-in link did not work. Ask for a new one.', 'BR-AUTH-002')
-  try {
-    const { user } = await signInWithEmailLink(auth, email, url.href)
-    await api('/api/auth/init', { agreed: true, launchNotice: opts.launchNotice !== false })
-    return user
-  } catch (e) {
-    throw fbFail(e, 'That link has expired or was already used. Ask for a new one.')
-  }
-}
-
-/** Optional: lets someone who signed in with a link also sign in with a password (needs a recent sign-in). */
-export async function setMyPassword(password: string) {
-  if (!auth.currentUser) throw fail('Sign in first.', 'BR-AUTH-002')
-  if (password.length < 8 || password.length > 128) throw fail('Password must be 8–128 characters.', 'BR-ACC-009')
-  try { await updatePassword(auth.currentUser, password) }
-  catch (e) { throw fbFail(e, 'Could not set the password. Sign in again with a new link and retry.') }
-}
-
-/** Password sign-up (the "use a password instead" option). Account creation happens server-side; then we sign in and send the verify email. */
+/** Sign-up: email and password only. Account creation happens server-side; then we sign in and send the verify email. Everything else (name, avatar, birthday...) is asked later, one step at a time (lib/setup.ts). */
 export async function signUp(email: string, password: string, firstName = '', lastName = '', phone = '', gradYear = '') {
   if (!/^\S+@\S+\.\S+$/.test(email.trim())) throw fail('Enter a valid email address.', 'BR-ACC-009')
   await api('/api/auth/signup', { email, password, firstName, lastName, phone, gradYear, agreed: true })
@@ -173,7 +133,7 @@ export async function sendPasswordReset(email: string) {
 }
 
 /** Permanently deletes the signed-in account and its data. Re-checks the password first. */
-/** True when this account has a password (accounts made with an emailed link may not). */
+/** True when this account has a password (accounts made with Sign in with Apple do not). */
 export const hasPassword = () => !!auth.currentUser?.providerData.some(p => p.providerId === 'password')
 
 export async function deleteMyAccount(password = '') {
@@ -187,7 +147,7 @@ export async function deleteMyAccount(password = '') {
     }
     await u.getIdToken(true)
   }
-  // Link-only accounts have no password to check. The server still needs a sign-in from the last 5 minutes.
+  // Apple accounts have no password to check. The server still needs a sign-in from the last 5 minutes.
   await api('/api/me/delete', { confirm: 'DELETE' })
   await firebaseSignOut(auth).catch(() => {})
 }

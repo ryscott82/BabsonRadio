@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     let uid: string
     try {
       uid = (await adminAuth().createUser({ email, password, displayName: firstName || undefined, emailVerified: false })).uid
-      // 7 days of full use before the email link is required (rules and the server check this claim).
+      // 7 days of full use before email verification is required (rules and the server check this claim).
       await adminAuth().setCustomUserClaims(uid, { graceUntil: Date.now() + VERIFY_GRACE_MS })
     } catch (e) {
       const code = (e as { code?: string }).code

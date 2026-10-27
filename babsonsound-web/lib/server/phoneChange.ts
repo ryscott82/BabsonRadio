@@ -1,5 +1,5 @@
 import 'server-only'
-import { Timestamp, type Firestore } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore'
 import { HttpError } from './http'
 import { indexKeyFromE164 } from './phone'
 
@@ -21,3 +21,21 @@ export async function applyPhone(db: Firestore, uid: string, phone: string): Pro
 }
 
 export const last4 = (p: unknown) => (typeof p === 'string' && p.length >= 4 ? p.slice(-4) : '')
+
+/**
+ * Takes the number off an account: frees the lookup entry, clears the profile field and drops any pending change request.
+ * The setup prompt is pushed back a week (as if skipped 3 times), so removing it on purpose does not bring the question straight back.
+ */
+export async function removePhone(db: Firestore, uid: string): Promise<void> {
+  const userRef = db.collection('users').doc(uid)
+  const u = await userRef.get()
+  if (!u.exists) throw new HttpError(404, 'No such account.')
+  const old = u.get('phoneNumber') as string | undefined
+  if (old) await db.collection('phoneIndex').doc(await indexKeyFromE164(old)).delete().catch(() => {})
+  await db.collection('phoneChanges').doc(uid).delete().catch(() => {})
+  const now = Date.now()
+  await userRef.update({
+    phoneNumber: FieldValue.delete(), phoneChangedAt: Timestamp.now(),
+    'setup.skips.phone.count': 3, 'setup.skips.phone.lastSkippedAt': now,
+  })
+}

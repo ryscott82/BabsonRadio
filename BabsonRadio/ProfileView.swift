@@ -574,7 +574,7 @@ private struct SignedInProfileView: View {
             .brCard()
             .padding(.horizontal, 20)
 
-            Text("Friends you invite get guest access. Suggestions use scrambled phone numbers, never names. Invisible mode turns them off.")
+            Text("Friends you invite get guest access. Invisible mode turns suggestions off.")
                 .font(BRFont.body(11, .regular))
                 .foregroundColor(scheme == .dark ? .brDkMuted : .brLtMuted)
                 .padding(.horizontal, 24)
@@ -1656,9 +1656,6 @@ struct AboutYouSection: View {
                 }
                 .pickerStyle(.menu)
                 .tint(scheme == .dark ? .brGold : .brGreen)
-                Text("Only used for a birthday notification and so the DJ knows. We never ask for the year.")
-                    .font(BRFont.body(12, .regular))
-                    .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
             }
 
             if let message {

@@ -9,6 +9,7 @@ import { CONCENTRATIONS, MAX_CONCENTRATIONS, TERMS_VERSION, normText, validGradY
 import { AVATAR_COLORS, DEFAULT_AVATAR, MAX_HOST_EMOJIS } from '@/lib/profile'
 import { HttpError, handle, readJson, requireUser, str } from '@/lib/server/http'
 import { accessOf, forgetAccess } from '@/lib/server/access'
+import { setupFor } from '@/lib/server/setup'
 
 export const runtime = 'nodejs'
 
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
     // A guest who just signed in with their confirmed school email becomes a student here.
     if (t.email_verified === true && await finishSchoolUpgrade(adminDb(), t).catch(() => false)) forgetAccess(t.uid)
     const a = await accessOf(t)
-    // Passwordless sign-in may arrive before /api/auth/init ran: make the profile now.
+    // Sign in with Apple can arrive before its profile exists: make it now.
     let u = await adminDb().collection('users').doc(t.uid).get()
     if (!u.exists && await ensureProfile(t)) u = await adminDb().collection('users').doc(t.uid).get()
     if (!u.exists) throw new HttpError(404, 'Profile not found.')
@@ -49,6 +50,9 @@ export async function GET(req: Request) {
       // 'adult' only when the profile says 18+. Drives the "make public" option; minors and unknowns never see it.
       publicClauses: PUBLIC_CLAUSES, publicVersion: PUBLIC_AGREEMENT_VERSION,
       publicSharing: u.get('minor') === true ? 'minor' : (u.get('minor') === false && u.get('onboardedAt') != null ? 'adult' : 'unknown'),
+      // Progressive setup (lib/setup.ts). `next` is the one step to ask about now. Add ?prompt=1 once at the start of a visit to
+      // record that it was shown (then `next` is null for 30 minutes); every other caller just looks.
+      setup: await setupFor(t, a, u, new URL(req.url).searchParams.get('prompt') === '1'),
     }
   })
 }

@@ -7,22 +7,12 @@ import { encryptJson } from '@/lib/server/pii'
 import { indexKeyFromE164 } from '@/lib/server/phone'
 import { normalizeUS } from '@/lib/phone'
 import { validGradYear } from '@/lib/terms'
+import { ageOn } from '@/lib/age'
 
 export const runtime = 'nodejs'
 
 const RANGES = ['under13', '13-17', '18-24', '25plus'] as const
 type Range = (typeof RANGES)[number]
-
-/** Age in whole years on `now`, or null if y/m/d is not a real past date. */
-function ageOn(y: number, m: number, d: number, now = new Date()): number | null {
-  if (![y, m, d].every(Number.isInteger) || y < 1900) return null
-  const dt = new Date(Date.UTC(y, m - 1, d))
-  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null
-  if (dt.getTime() > now.getTime()) return null
-  let age = now.getUTCFullYear() - y
-  if (now.getUTCMonth() + 1 < m || (now.getUTCMonth() + 1 === m && now.getUTCDate() < d)) age--
-  return age
-}
 
 // The one-time "tell us about you" step after signing in: name, phone, graduation year and a birthday (or, if the person
 // would rather not share it, an age range). The birthday or range is saved encrypted. Under 13: nothing is kept (the

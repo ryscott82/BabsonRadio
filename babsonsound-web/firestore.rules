@@ -121,7 +121,6 @@ service cloud.firestore {
     // Launch email state (launchEmail/{sha256(email)} sent markers, launchEmail/_run) and failure log, listening-hour budget, one-device sessions, phone change requests, host training.
     // (Anything not listed is denied anyway; these lines just say so.)
     match /roleInvites/{id}          { allow read, write: if false; } // roles saved for emails with no account yet
-    match /loginLinks/{id}           { allow read, write: if false; } // email sign-in link cooldowns
     match /launchEmail/{id}          { allow read, write: if false; }
     match /launchEmailFailures/{id}  { allow read, write: if false; }
     match /usage/{id}                { allow read, write: if false; }

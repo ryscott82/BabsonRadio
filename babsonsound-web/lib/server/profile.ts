@@ -13,8 +13,8 @@ export function usernameOf(email: string): string {
 }
 
 /**
- * Makes sure the signed-in person has a profile (users/{uid}). Used by passwordless sign-in, where no sign-up form ran.
- * A school email makes them a student, anything else a guest. Name, phone, grad year and birthday are asked later, in "About you".
+ * Makes sure the signed-in person has a profile (users/{uid}). Used by Sign in with Apple, where no sign-up form ran.
+ * A school email makes them a student, anything else a guest. Name, phone, grad year and birthday are asked later, one at a time (lib/setup.ts).
  * Safe to call again: an existing profile is never changed. Returns true when it created one.
  */
 export async function ensureProfile(t: DecodedIdToken, opts: { agreed?: boolean; launchNotice?: boolean; firstName?: string } = {}): Promise<boolean> {

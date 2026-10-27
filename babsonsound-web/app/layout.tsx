@@ -5,7 +5,8 @@ import Nav from '@/components/Nav'
 import Splash from '@/components/Splash'
 import Footer from '@/components/Footer'
 import AnnouncementBanner from '@/components/AnnouncementBanner'
-import VerifyBanner from '@/components/VerifyBanner'
+import SetupBanner from '@/components/setup/SetupBanner'
+import SetupPrompt from '@/components/setup/SetupPrompt'
 import LaunchShell from '@/components/launch/LaunchShell'
 import GuestFence from '@/components/GuestFence'
 
@@ -46,7 +47,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <GuestFence />
                 <Splash />
                 <Nav />
-                <VerifyBanner />
+                <SetupBanner />
+                <SetupPrompt />
                 <main className="hw-stage hw-main relative z-[1] pt-16 pb-12 flex-1">
                   <AnnouncementBanner />
                   {children}

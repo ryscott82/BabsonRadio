@@ -10,6 +10,7 @@ import { api, apiGet, deleteMyAccount, hasPassword, signOut } from '@/lib/auth'
 import { Card, ErrorText, Field, GhostButton, PrimaryButton, formatPhone } from '@/components/AuthUI'
 import Avatar from '@/components/Avatar'
 import { AVATAR_COLORS, discStyle } from '@/lib/profile'
+import { normalizeUS } from '@/lib/phone'
 
 function ReportForm() {
   const [type, setType] = useState<'bug' | 'feature'>('bug')
@@ -108,7 +109,6 @@ function AboutYou({ onSaved }: { onSaved?: () => void }) {
             {Array.from({ length: 31 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
           </select>
         </div>
-        <p className="text-sm text-br-dk-sub mt-1.5">Used for birthday shout-outs. No year.</p>
       </div>
       {msg && <p role="status" className="text-sm text-br-gold">{msg}</p>}
       <PrimaryButton type="submit" busy={busy}>Save details</PrimaryButton>
@@ -117,18 +117,23 @@ function AboutYou({ onSaved }: { onSaved?: () => void }) {
 }
 
 function PhoneChange() {
+  const { reload } = useAuth()
   const [info, setInfo] = useState<{ current: string; pending: { last4: string; at: number } | null } | null>(null)
   const [phone, setPhone] = useState('')
+  const [changing, setChanging] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   useEffect(() => { apiGet<typeof info>('/api/me/phone').then(setInfo).catch(() => {}) }, [])
 
+  // No number yet: it is saved straight away. A number already on the account: an admin approves the change.
   async function send(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setMsg('')
     try {
-      const r = await api<{ pending: { last4: string; at: number } }>('/api/me/phone', { phone })
-      setInfo(i => ({ current: i?.current ?? '', pending: r.pending })); setPhone('')
-    } catch (err) { setMsg(err instanceof Error ? err.message : 'Could not send.') }
+      const r = await api<{ applied?: boolean; current?: string; pending?: { last4: string; at: number } }>('/api/me/phone', { phone })
+      if (r.applied) { setInfo({ current: r.current ?? '', pending: null }); void reload() }
+      else setInfo(i => ({ current: i?.current ?? '', pending: r.pending ?? null }))
+      setPhone(''); setChanging(false)
+    } catch (err) { setMsg(err instanceof Error ? err.message : 'Could not save.') }
     setBusy(false)
   }
   async function cancel() {
@@ -136,20 +141,57 @@ function PhoneChange() {
     try { await api('/api/me/phone', { cancel: true }); setInfo(i => (i ? { ...i, pending: null } : i)) } catch { /* try again */ }
     setBusy(false)
   }
+  async function remove() {
+    setBusy(true); setMsg('')
+    try { await api('/api/me/phone', { remove: true }); setInfo({ current: '', pending: null }); setChanging(false); void reload() }
+    catch (err) { setMsg(err instanceof Error ? err.message : 'Could not remove it.') }
+    setBusy(false)
+  }
+
+  const field = (
+    <div>
+      <span className="block text-sm text-br-dk-sub mb-1.5 font-display tracking-widest">{info?.current ? 'New phone number' : 'Phone number (optional)'}</span>
+      <div className="sk-field flex items-center rounded-xl pl-4 focus-within:ring-2 focus-within:ring-br-gold/40">
+        <span className="text-sm text-br-dk-sub shrink-0" aria-hidden>+1</span>
+        <input type="tel" inputMode="tel" autoComplete="tel-national" aria-label="Phone number" placeholder="(617) 555-1234"
+               value={phone} onChange={e => setPhone(formatPhone(e.target.value))}
+               className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm text-br-dk-text placeholder:text-br-dk-muted focus:outline-none" />
+      </div>
+    </div>
+  )
 
   return (
     <div className="space-y-3">
-      <p className="text-br-dk-sub text-sm">{info?.current ? `Current number ends in ${info.current}.` : ''} An admin approves changes.</p>
-      {info?.pending ? (
-        <div className="space-y-2">
-          <p className="text-sm text-br-dk-text">Waiting for approval: number ending in {info.pending.last4}.</p>
-          <GhostButton type="button" onClick={cancel}>Cancel request</GhostButton>
-        </div>
+      {info?.current ? (
+        <>
+          <p className="text-br-dk-text text-sm">Number ending in {info.current}.</p>
+          {info.pending ? (
+            <div className="space-y-2">
+              <p className="text-sm text-br-dk-sub">Waiting for approval: number ending in {info.pending.last4}.</p>
+              <GhostButton type="button" onClick={cancel}>Cancel request</GhostButton>
+            </div>
+          ) : changing ? (
+            <form onSubmit={send} className="space-y-3">
+              {field}
+              <p className="text-sm text-br-dk-sub">An admin approves changes.</p>
+              {msg && <p role="status" className="text-sm text-br-red">{msg}</p>}
+              <PrimaryButton type="submit" busy={busy} disabled={!normalizeUS(phone)}>Request change</PrimaryButton>
+              <GhostButton type="button" onClick={() => { setChanging(false); setMsg('') }}>Cancel</GhostButton>
+            </form>
+          ) : (
+            <div className="flex gap-4">
+              <GhostButton type="button" onClick={() => setChanging(true)}>Change</GhostButton>
+              <GhostButton type="button" disabled={busy} onClick={remove}>Remove</GhostButton>
+            </div>
+          )}
+          {!changing && msg && <p role="status" className="text-sm text-br-red">{msg}</p>}
+        </>
       ) : (
         <form onSubmit={send} className="space-y-3">
-          <Field label="New phone number" value={phone} onChange={e => setPhone(formatPhone(e.target.value))} placeholder="(617) 555-1234" inputMode="tel" autoComplete="tel-national" />
+          {field}
+          <p className="text-sm text-br-dk-sub">This is optional, but unlocks new features</p>
           {msg && <p role="status" className="text-sm text-br-red">{msg}</p>}
-          <PrimaryButton type="submit" busy={busy}>Request change</PrimaryButton>
+          <PrimaryButton type="submit" busy={busy} disabled={!normalizeUS(phone)}>Save</PrimaryButton>
         </form>
       )}
     </div>

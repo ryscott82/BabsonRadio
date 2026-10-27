@@ -2,7 +2,7 @@
 
 ## Env (see .env.example)
 `FIREBASE_SERVICE_ACCOUNT_JSON`, `PHONE_HASH_PEPPER`, `SEMESTER_END_DATES`.
-Firebase console → Authentication: enable **Email/Password** and **Email link (passwordless)**, and add your
+Firebase console → Authentication: enable **Email/Password** only (Email link / passwordless stays off), and add your
 site's domain under Settings → Authorized domains.
 
 ## Who gets in
@@ -11,8 +11,8 @@ site's domain under Settings → Authorized domains.
   against Firebase, but they can read nothing locked.
 
 ## Guest flow
-1. Guest → `/auth/guest`: name, email, (sponsor's babson email) → Firebase emails a sign-in link (proves the email).
-2. Link opens `/auth/guest` → `POST /api/guest/claim` (redeems a pre-approved invite) else `POST /api/guest/request`.
+1. Guest signs up at `/auth` with email and password (the verification email proves the address).
+2. Once signed in → `POST /api/guest/claim` (redeems a pre-approved invite) else `POST /api/guest/request`.
 3. Sponsor → `/guest-access`: approve (24h / 7d / 30d / end of semester) or deny. Duration is computed server-side.
    Students can also invite by email (`/api/guest/invite`); that pass starts when the guest signs in.
 4. Sponsor can revoke any time. Max 10 active guests per student.

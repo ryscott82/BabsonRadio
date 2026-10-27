@@ -3,11 +3,12 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { type User } from 'firebase/auth'
 import { apiGet, ensureLaunchPass, onAuthChange, getUserDoc, refreshUser } from '@/lib/auth'
+import type { SetupState } from '@/lib/setup'
 
 export type Level = 'guest' | 'student' | 'director' | 'admin'
 
 /** What /api/me says about access. The server is the source of truth, so the browser does not guess from the email. */
-interface Me { level: Level; studioTrained: boolean; radioTrained: boolean; isBabson: boolean }
+interface Me { level: Level; studioTrained: boolean; radioTrained: boolean; isBabson: boolean; setup?: SetupState }
 const loadMe = () => apiGet<Me>('/api/me').catch(() => null)
 
 interface UserDoc {
@@ -43,22 +44,25 @@ interface AuthContextValue {
   isGuest: boolean
   /** signed in, email not verified, and the 7-day grace period is over */
   needsVerification: boolean
-  /** ms deadline to verify the email (only while the 3-day grace period is running), else null */
-  verifyDeadline: number | null
   /** LIVE radio: everyone who is signed in */
   canListenLive: boolean
   /** Student features (reactions, ratings, slots, friends): students and above */
   hasMemberAccess: boolean
   /** The Library: students and above */
   hasLibraryAccess: boolean
+  /** Progressive setup (steps, how many are done, the one step to ask about now), from the same /api/me call. Null until it loads. */
+  setup: SetupState | null
+  /** Use the setup state a save or skip just returned, so nothing has to be fetched again. */
+  applySetup: (s: SetupState) => void
   reload: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null, userDoc: null, loading: true, isAdmin: false, isDirector: false,
   level: 'guest', studioTrained: false, radioTrained: false,
-  isBabson: false, isGuest: false, needsVerification: false, verifyDeadline: null,
+  isBabson: false, isGuest: false, needsVerification: false,
   canListenLive: false, hasMemberAccess: false, hasLibraryAccess: false,
+  setup: null, applySetup: () => {},
   reload: async () => {},
 })
 
@@ -108,13 +112,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const applySetup = useCallback((setup: SetupState) => setMe(m => (m ? { ...m, setup } : m)), [])
+
   const level: Level = me?.level ?? 'guest'
   const demo = userDoc?.demo === true // the hidden App Store reviewer account
   const inGrace = graceUntil > now
   const unverified = !!user && !user.emailVerified && !demo
   const isBabson = !!me?.isBabson && (user?.emailVerified === true || inGrace || demo)
   const needsVerification = unverified && !inGrace
-  const verifyDeadline = unverified && inGrace ? graceUntil : null
   const isGuest = !!user && !me?.isBabson
   const isStudent = isBabson
   const isAdmin = isBabson && level === 'admin'
@@ -124,10 +129,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, userDoc, loading, isAdmin, isDirector, level, studioTrained, radioTrained, isBabson, isGuest, needsVerification, verifyDeadline,
+      user, userDoc, loading, isAdmin, isDirector, level, studioTrained, radioTrained, isBabson, isGuest, needsVerification,
       canListenLive: isStudent || isGuest,
       hasMemberAccess: isStudent,
       hasLibraryAccess: isStudent,
+      setup: me?.setup ?? null, applySetup,
       reload,
     }}>
       {children}

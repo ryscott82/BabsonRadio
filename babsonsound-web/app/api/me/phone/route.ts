@@ -5,11 +5,13 @@ import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/ht
 import { notifyAdmins } from '@/lib/server/push'
 import { normalizeUS } from '@/lib/phone'
 import { indexKeyFromE164 } from '@/lib/server/phone'
-import { applyPhone, last4 } from '@/lib/server/phoneChange'
+import { applyPhone, last4, removePhone } from '@/lib/server/phoneChange'
 
 export const runtime = 'nodejs'
 
-// A student asks to change the phone number on their account. An admin approves it in /admin/phone-changes.
+// A student's phone number (private: only the person themselves and admins ever see it).
+//   POST { phone }   add one (applied at once when there is none) or ask to change it (an admin approves it in /admin/phone-changes)
+//   POST { cancel }  withdraw a pending change   POST { remove }  take the number off the account
 export async function GET(req: Request) {
   return handle(async () => {
     const t = await requireMember(req)
@@ -26,6 +28,7 @@ export async function POST(req: Request) {
   return handle(async () => {
     const t = await requireMember(req)
     const b = await readJson(req)
+    if (b.remove === true) { await removePhone(adminDb(), t.uid); return { ok: true, current: '', pending: null } }
     if (b.cancel === true) { await adminDb().collection('phoneChanges').doc(t.uid).delete(); return { ok: true } }
     const phone = normalizeUS(str(b.phone, 30))
     if (!phone) throw new HttpError(400, 'Enter a valid 10-digit US phone number.')

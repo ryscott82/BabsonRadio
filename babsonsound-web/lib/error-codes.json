@@ -462,6 +462,62 @@
     "staffCheck": "None needed. The app blocks this before the server is called."
   },
   {
+    "code": "BR-SET-001",
+    "title": "Unknown setup step",
+    "meaning": "The app asked about a setup step that does not exist.",
+    "userFix": "Update the app and try again.",
+    "staffCheck": "Valid steps: verifyEmail, name, avatar, birthday, gradYear, phone (lib/setup.ts). An old or modified client can send something else."
+  },
+  {
+    "code": "BR-SET-002",
+    "title": "Step not part of this account",
+    "meaning": "The step does not apply to this kind of account. Graduation year and phone number are for students only; Guests never get them.",
+    "userFix": "Nothing to do. Skip it.",
+    "staffCheck": "Guests have no gradYear or phone step; if a Guest sees one, the app is out of date."
+  },
+  {
+    "code": "BR-SET-003",
+    "title": "This step cannot be skipped",
+    "meaning": "The email step is required and cannot be skipped.",
+    "userFix": "Open the link in your verification email.",
+    "staffCheck": "Only verifyEmail is required. Its deadline is emailDeadlineAt in the setup block of /api/me."
+  },
+  {
+    "code": "BR-SET-004",
+    "title": "Month and day needed",
+    "meaning": "The birth year sits on the 13 or 18 line, so the year alone cannot tell whether the person is old enough or an adult.",
+    "userFix": "Add your month and day.",
+    "staffCheck": "Only happens for a year-only birthday in the cutoff years. Nothing was saved."
+  },
+  {
+    "code": "BR-SET-005",
+    "title": "Phone number already on the account",
+    "meaning": "A number is already saved. Changing it needs an admin to approve it.",
+    "userFix": "Use Profile > Phone number to ask for a change.",
+    "staffCheck": "Changes go through /api/me/phone and Admin > Phone changes."
+  },
+  {
+    "code": "BR-SET-006",
+    "title": "Finish this step from your email",
+    "meaning": "The email step is completed by opening the verification link, not by saving a value.",
+    "userFix": "Open the link in your verification email, then check again. Look in spam.",
+    "staffCheck": "Firebase Console > Authentication > Users shows verified status. The app resends with sendEmailVerification."
+  },
+  {
+    "code": "BR-SET-007",
+    "title": "First name missing",
+    "meaning": "The name step needs a first name.",
+    "userFix": "Enter your first name.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-SET-008",
+    "title": "Avatar color not valid",
+    "meaning": "The color is not one of the profile colors.",
+    "userFix": "Pick one of the colors shown.",
+    "staffCheck": "Valid ids are in lib/profile.ts (AVATAR_COLORS)."
+  },
+  {
     "code": "BR-APL-001",
     "title": "Not an Apple sign-in",
     "meaning": "This step is only for accounts that signed in with Apple.",

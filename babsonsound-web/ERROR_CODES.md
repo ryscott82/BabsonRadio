@@ -33,8 +33,8 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | BR-ACC-007 | **Delete confirmation missing**: The delete request didn't include the confirmation. | Use the Delete my account button and enter your password. | — |
 | BR-ACC-008 | **Profile not found**: The sign-in exists but its profile record is missing. | Sign out and back in. If it repeats, contact the station. | Compare Authentication → Users with Firestore users/{uid}. A failed sign-up can leave Auth without a profile; delete the Auth user so they can re-register. |
 | BR-ACC-009 | **Invalid email address**: The email isn't formatted correctly. | Check for typos. | — |
-| BR-ACC-017 | **Last name missing**: Sign-up needs both a first and last name. | Enter your last name. | Client validation or /api/auth/signup rejected an empty lastName. |
-| BR-ACC-018 | **Graduation year missing**: Sign-up needs a graduation year (or Alumni / Faculty or staff). | Pick your graduation year from the list and try again. | None needed. The form blocks this before the server is called. |
+| BR-ACC-017 | **Last name missing**: Sign-up needs both a first and last name. | Enter your last name. | No longer used: sign-up does not ask for a last name. |
+| BR-ACC-018 | **Graduation year missing**: Sign-up needs a graduation year (or Alumni / Faculty or staff). | Pick your graduation year from the list and try again. | No longer used at sign-up. Graduation year is optional and asked later in About you. |
 | BR-ACC-019 | **Terms not accepted**: Creating an account requires agreeing to the Terms of Use and Privacy Policy. | Tick the box that says you agree to the Terms of Use and Privacy Policy, then try again. | None needed. Acceptance time and version are saved on the user's profile (termsAcceptedAt, termsVersion). |
 
 ## Guest access
@@ -76,8 +76,8 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 
 | Code | What it is | What the user should do | What staff check |
 |---|---|---|---|
-| BR-PRE-001 | **Site isn't open yet**: Babson Radio is not open yet and this request had no launch pass. | Babson Radio opens on October 30 at 10 am Eastern. Check back then. | Developers, admins, directors, hosts and beta testers get a pass automatically after signing in (POST /api/launch/pass). Developer sign-in is at /auth/dev. To open the site for everyone now, set LAUNCH_OPEN=1 in Vercel and redeploy. |
-| BR-PRE-003 | **Account is waiting for launch**: The account is ready, but Babson Radio is not open to it yet. Before the launch time only staff, hosts, beta testers and early-access accounts get in. | Come back when Babson Radio opens on October 30 at 10 am Eastern. | The site opens by itself at LAUNCH_AT (default 2026-10-30T14:00:00Z). To let one person in early: Admin → Beta testers, or POST /api/admin/early-access. To open everyone now: set LAUNCH_OPEN=1 in Vercel and redeploy. |
+| BR-PRE-001 | **Site isn't open yet**: Babson Radio is not open yet and this request had no launch pass. | Babson Radio opens on October 30 at 10 am Eastern. Check back then. | Admins, Directors and Radio trained students get a pass automatically after signing in (POST /api/launch/pass). To open the site for everyone now, set LAUNCH_OPEN=1 in Vercel and redeploy. |
+| BR-PRE-003 | **Account is waiting for launch**: The account is ready, but Babson Radio is not open to it yet. Before the launch time only Admins, Directors and Radio trained students get in. | Come back when Babson Radio opens on October 30 at 10 am Eastern. | The site opens by itself at LAUNCH_AT (default 2026-10-30T14:00:00Z). To let one person in early, give them the Radio trained badge in People and roles. To open everyone now: set LAUNCH_OPEN=1 in Vercel and redeploy (Preview builds only for rehearsals). |
 | BR-PRE-004 | **Launch lock isn't set up**: The server has no LAUNCH_SECRET (or CRON_SECRET) to sign launch passes with, so nobody can be let in early. | Tell the station team. | Set LAUNCH_SECRET in Vercel (openssl rand -hex 24) and redeploy. |
 
 ## Unsubscribe
@@ -100,6 +100,19 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | BR-AGE-001 | **Under 13**: The birthday or age range says the person is under 13. Babson Radio keeps no data about under-13s, so the account and everything on it was deleted. | Babson Radio is for people 13 and older. | Nothing is kept. Check the Firebase user is gone if the person disputes it. |
 | BR-AGE-002 | **Parent or guardian OK needed**: People 13 to 17 must confirm a parent or guardian agrees to them using Babson Radio. | Tick the parent or guardian box, then continue. | None needed. The answer is saved as parentalConsent on the user's profile. |
 | BR-AGE-003 | **Birthday or age range missing or not valid**: The birthday was not a real past date, or neither a birthday nor an age range was sent. | Pick your birthday, or tap 'use age range instead' and pick a range. | None needed. The app blocks this before the server is called. |
+
+## Account setup
+
+| Code | What it is | What the user should do | What staff check |
+|---|---|---|---|
+| BR-SET-001 | **Unknown setup step**: The app asked about a setup step that does not exist. | Update the app and try again. | Valid steps: verifyEmail, name, avatar, birthday, gradYear, phone (lib/setup.ts). An old or modified client can send something else. |
+| BR-SET-002 | **Step not part of this account**: The step does not apply to this kind of account. Graduation year and phone number are for students only; Guests never get them. | Nothing to do. Skip it. | Guests have no gradYear or phone step; if a Guest sees one, the app is out of date. |
+| BR-SET-003 | **This step cannot be skipped**: The email step is required and cannot be skipped. | Open the link in your verification email. | Only verifyEmail is required. Its deadline is emailDeadlineAt in the setup block of /api/me. |
+| BR-SET-004 | **Month and day needed**: The birth year sits on the 13 or 18 line, so the year alone cannot tell whether the person is old enough or an adult. | Add your month and day. | Only happens for a year-only birthday in the cutoff years. Nothing was saved. |
+| BR-SET-005 | **Phone number already on the account**: A number is already saved. Changing it needs an admin to approve it. | Use Profile > Phone number to ask for a change. | Changes go through /api/me/phone and Admin > Phone changes. |
+| BR-SET-006 | **Finish this step from your email**: The email step is completed by opening the verification link, not by saving a value. | Open the link in your verification email, then check again. Look in spam. | Firebase Console > Authentication > Users shows verified status. The app resends with sendEmailVerification. |
+| BR-SET-007 | **First name missing**: The name step needs a first name. | Enter your first name. | — |
+| BR-SET-008 | **Avatar color not valid**: The color is not one of the profile colors. | Pick one of the colors shown. | Valid ids are in lib/profile.ts (AVATAR_COLORS). |
 
 ## Sign in with Apple
 

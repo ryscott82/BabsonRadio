@@ -33,7 +33,7 @@ class AuthManager: ObservableObject {
     private static let resetWindow: TimeInterval = 180
     /// Signed in with a babson.edu address that hasn't been verified yet.
     @Published var needsEmailVerification = false
-    /// While the 7-day window is running and the email link hasn't been clicked: the day the link is needed by.
+    /// While the 7-day window is running and the email hasn't been verified: the day the link is needed by.
     @Published var verifyDeadline: Date? = nil
     @Published var pendingEmail = ""
     /// Guest-only: sponsor pass and Library access from /api/guest/status.
@@ -218,7 +218,7 @@ class AuthManager: ObservableObject {
             enforceAccess()
             return
         }
-        // New accounts can use the app for 7 days before the email link is required (the server and rules agree).
+        // New accounts can use the app for 7 days before email verification is required (the server and rules agree).
         let graceMs = (claims?.claims["graceUntil"] as? NSNumber)?.doubleValue ?? 0
         let inGrace = graceMs > Date().timeIntervalSince1970 * 1000
         if !isDev && !user.isEmailVerified && !inGrace {

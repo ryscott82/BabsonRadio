@@ -5,6 +5,7 @@ import { adminAuth } from './admin'
 import { classifyServerError, codeForMessage } from '../errors'
 import { counted } from './cpuBudget'
 import { launchOpen } from '../launchLock'
+import { lockedMayCall } from '../verifyClock'
 
 export class HttpError extends Error {
   constructor(public status: number, message: string, public code?: string) {
@@ -21,9 +22,23 @@ export async function requireUser(req: Request): Promise<DecodedIdToken> {
   } catch {
     throw new HttpError(401, 'Your session expired. Please sign in again.')
   }
+  await enforceVerified(req, t)
   // Before launch, signed-in people without early access can only use the sign-up follow-up routes (lib/launch.ts).
   if (!launchOpen()) await (await import('./launchAccess')).enforceLaunchLock(req, t)
   return t
+}
+
+/**
+ * Verify within 7 days: after the grace period an unverified account can reach only /api/me, /api/auth and a few account
+ * routes (lib/verifyClock.ts). The demo / reviewer account is exempt. Accounts with no email (Apple "no email") are not
+ * locked, since there is nothing to verify. Verified accounts (nearly everyone) skip this with no extra work.
+ */
+async function enforceVerified(req: Request, t: DecodedIdToken) {
+  if (t.email_verified === true || !t.email || graceActive(t)) return
+  if (lockedMayCall(new URL(req.url).pathname)) return
+  const { accessOf } = await import('./access')
+  if ((await accessOf(t)).demo) return
+  throw new HttpError(403, 'Verify your email to keep using Babson Radio.', 'BR-ACC-021')
 }
 
 // Access levels live in ./access (guest | student | director | admin). Guards below all return the verified token.
@@ -48,6 +63,18 @@ export const requireStudent = (req: Request) =>
 /** Kept so older call sites read the same: members are students and above. */
 export const requireMember = requireStudent
 export const requireBabson = requireStudent
+/**
+ * A student (or above) whose school email is actually verified. The 7-day grace period is not enough: contact matching can be
+ * used to look up phone numbers, so it needs a verified identity. The App Store reviewer account is exempt.
+ */
+export async function requireVerifiedMember(req: Request): Promise<DecodedIdToken> {
+  const t = await requireStudent(req)
+  const { accessOf } = await import('./access')
+  if (t.email_verified !== true && !(await accessOf(t)).demo) {
+    throw new HttpError(403, 'Verify your school email to use contacts.', 'BR-CON-004')
+  }
+  return t
+}
 /** Student or above who is radio trained (directors and admins always are). Needed for live shows. */
 export const requireRadioTrained = (req: Request) =>
   need(req, a => a.level !== 'guest' && a.radio, 'Finish radio training to go live.')

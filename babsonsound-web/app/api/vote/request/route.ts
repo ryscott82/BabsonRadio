@@ -3,6 +3,8 @@ import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, str } from '@/lib/server/http'
 import { requireLibrary } from '@/lib/server/guests'
 import { requestsStatus } from '@/lib/server/live'
+import { firstNameOf } from '@/lib/server/names'
+import { assertClean } from '@/lib/server/wordFilter'
 
 export const runtime = 'nodejs'
 
@@ -15,6 +17,7 @@ export async function POST(req: Request) {
     const text = str(b.text, 140)
     if (text.length < 2) throw new HttpError(400, 'Type an artist or song.')
     const db = adminDb()
+    await assertClean(db, text)
     const st = await requestsStatus(db)
     if (!st.open) throw new HttpError(403, 'Requests are only open when a DJ turns them on during their show.')
     const mine = await db.collection('songRequests').where('uid', '==', t.uid).get()
@@ -23,7 +26,7 @@ export async function POST(req: Request) {
       throw new HttpError(429, 'You can send 5 requests a day. Try again tomorrow.')
     }
     await db.collection('songRequests').add({
-      uid: t.uid, name: str(t.name, 60) || 'Listener', text, at: Timestamp.now(), done: false,
+      uid: t.uid, name: await firstNameOf(db, t.uid), text, at: Timestamp.now(), done: false,
       occId: st.occId, showTitle: st.showTitle,
     })
     return { ok: true }

@@ -12,16 +12,24 @@ const ALLOWED = ['/', '/auth', '/about', '/privacy', '/terms', '/unsubscribe', '
 const SIGN_IN_PAGES = ['/schedule', '/library', '/browse', '/shows']
 const under = (path: string, p: string) => path === p || path.startsWith(`${p}/`)
 
-/** Sends a guest who opens any other page back to Live. The server refuses those calls too. */
+// An account past its 7 days without a verified email sees only the verify screen (the server refuses the rest too).
+const LOCKED_OK = ['/auth', '/privacy', '/terms', '/delete-account', '/unsubscribe']
+
+/** Sends a guest who opens any other page back to Live, and a locked (unverified) account to the verify screen. The server refuses those calls too. */
 export default function GuestFence() {
-  const { isGuest, loading } = useAuth()
+  const { isGuest, loading, needsVerification } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
   useEffect(() => {
-    if (loading || !isGuest) return
+    if (loading) return
+    if (needsVerification) {
+      if (!LOCKED_OK.some(p => under(pathname, p))) router.replace('/auth')
+      return
+    }
+    if (!isGuest) return
     if (SIGN_IN_PAGES.some(p => under(pathname, p))) { signOut().finally(() => router.replace('/auth')); return }
     if (!ALLOWED.some(p => pathname === p || (p !== '/' && pathname.startsWith(`${p}/`)))) router.replace('/')
-  }, [loading, isGuest, pathname, router])
+  }, [loading, isGuest, needsVerification, pathname, router])
   return null
 }
 

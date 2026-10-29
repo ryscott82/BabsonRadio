@@ -6,7 +6,7 @@ import 'server-only'
 //   MAIL_REPLY_TO    optional, where replies go
 export const mailConfigured = () => !!process.env.RESEND_API_KEY
 
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+export const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 export async function sendMail(to: string, subject: string, text: string, html: string): Promise<boolean> {
   if (!mailConfigured()) return false
@@ -43,7 +43,7 @@ export function slotDecisionMail(o: { approved: boolean; title: string; when: st
        '', `You are welcome to request another time at ${link}.`]
   const text = ['Hi,', '', ...lines, '', 'Babson Radio'].join('\n')
   const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1710;line-height:1.5">${
-    ['Hi,', ...lines, 'Babson Radio'].map(l => (l === '' ? '' : `<p style="white-space:pre-wrap">${esc(l)}</p>`)).join('')}</div>`
+    ['Hi,', ...lines, 'Babson Radio'].map(l => (l === '' ? '' : `<p style="white-space:pre-wrap">${escapeHtml(l)}</p>`)).join('')}</div>`
   return { subject, text, html }
 }
 
@@ -54,8 +54,24 @@ export function friendInviteMail(o: { firstName: string; email: string }) {
   const line = `${o.firstName} wants you to join them on Babson Radio! Sign up at babsonradio.com with this email to get access!`
   const text = [line, '', link, '', 'Babson Radio'].join('\n')
   const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1710;line-height:1.5">
-<p><strong>${esc(o.firstName)}</strong> wants you to join them on Babson Radio!</p>
-<p>Sign up at <a href="${link}" style="color:#006644">babsonradio.com</a> with this email (<strong>${esc(o.email)}</strong>) to get access!</p>
+<p><strong>${escapeHtml(o.firstName)}</strong> wants you to join them on Babson Radio!</p>
+<p>Sign up at <a href="${link}" style="color:#006644">babsonradio.com</a> with this email (<strong>${escapeHtml(o.email)}</strong>) to get access!</p>
 <p>Babson Radio</p></div>`
+  return { subject, text, html }
+}
+
+/** Day-10 reminder: verify the email or the account is deleted on day 14. */
+export function verifyReminderMail(o: { deleteAt: number }) {
+  const when = new Date(o.deleteAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'America/New_York' })
+  const subject = 'Verify your email to keep your Babson Radio account'
+  const link = 'https://babsonradio.com/auth'
+  const lines = [
+    'Your Babson Radio email is not verified yet, so your account is locked.',
+    `Verify it by ${when} or the account will be deleted.`,
+    `Sign in at ${link} and tap Resend email if you need a new link.`,
+  ]
+  const text = ['Hi,', '', ...lines, '', 'Babson Radio'].join('\n')
+  const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1710;line-height:1.5">${
+    ['Hi,', ...lines, 'Babson Radio'].map(l => `<p>${escapeHtml(l)}</p>`).join('')}</div>`
   return { subject, text, html }
 }

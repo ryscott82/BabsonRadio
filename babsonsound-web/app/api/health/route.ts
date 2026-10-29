@@ -1,12 +1,29 @@
+import { timingSafeEqual } from 'node:crypto'
 import { adminAuth, adminDb } from '@/lib/server/admin'
+import { handle, requireAdmin } from '@/lib/server/http'
 import { classifyServerError } from '@/lib/errors'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-// Setup checker: open /api/health to see which server pieces work. Reveals only yes/no and an error
-// code, never a secret. Safe to leave on; delete the folder if you'd rather not expose it.
-export async function GET() {
+// Setup checker: shows which server pieces work. Reveals only yes/no and an error code, never a secret.
+// Admins only (signed in), or a request with the header  x-health-key: <HEALTH_KEY, else CRON_SECRET>  for scripts and uptime checks.
+// Anyone else gets 401 before any Firebase call is made, so it can't be used to run work or learn the project id.
+function keyOk(req: Request) {
+  const secret = process.env.HEALTH_KEY || process.env.CRON_SECRET
+  const sent = req.headers.get('x-health-key')
+  if (!secret || !sent) return false
+  const a = Buffer.from(sent), b = Buffer.from(secret)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
+export async function GET(req: Request) {
+  if (!keyOk(req)) {
+    // Not the key: only a signed-in admin may continue.
+    if (!req.headers.get('authorization')) return Response.json({ error: 'Not allowed.', code: 'BR-PERM-002' }, { status: 401 })
+    const denied = await handle(async () => { await requireAdmin(req); return null })
+    if (!denied.ok) return denied
+  }
   try { return await check() }
   catch (e) {
     console.error('[health] crashed', e)

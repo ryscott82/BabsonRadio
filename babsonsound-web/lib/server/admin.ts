@@ -1,6 +1,7 @@
 import 'server-only'
 import { initializeApp, getApps, cert, type App } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
+import { getAppCheck } from 'firebase-admin/app-check'
 import { getFirestore } from 'firebase-admin/firestore'
 import { getStorage } from 'firebase-admin/storage'
 
@@ -20,6 +21,7 @@ function app(): App {
 
 export const adminAuth = () => getAuth(app())
 export const adminDb = () => getFirestore(app())
+export const adminAppCheck = () => getAppCheck(app())
 
 /** Firebase Storage bucket (images). Uses FIREBASE_STORAGE_BUCKET, else the public web config value. */
 export const adminBucket = () => {

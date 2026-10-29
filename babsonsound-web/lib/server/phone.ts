@@ -13,6 +13,11 @@ export function indexKeyFromHash(sha256: string): string {
   return createHmac('sha256', pepper()).update(sha256.toLowerCase()).digest('hex')
 }
 
+/** The 8-byte tag stored in place of a hash on a member's contactSyncs doc (see lib/contactLimits.ts). Not the hash, and not the index key. */
+export function seenIdOfHash(sha256: string): string {
+  return createHmac('sha256', pepper()).update('seen:' + sha256.toLowerCase()).digest('hex').slice(0, 16)
+}
+
 export async function indexKeyFromE164(e164: string): Promise<string> {
   return indexKeyFromHash(await sha256Hex(e164))
 }

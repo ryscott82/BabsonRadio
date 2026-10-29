@@ -1,6 +1,7 @@
 import { adminAuth, adminDb } from '@/lib/server/admin'
 import { handle, requireUser } from '@/lib/server/http'
 import { ensureGuestUserDoc } from '@/lib/server/guests'
+import { cleanOr } from '@/lib/server/wordFilter'
 import { finishSchoolUpgrade } from '@/lib/server/upgrade'
 import { isLocked } from '@/lib/server/launchAccess'
 import { accessOf, forgetAccess, isSchoolEmail } from '@/lib/server/access'
@@ -28,7 +29,7 @@ export async function GET(req: Request) {
     const needsVerification = isSchoolEmail(email)
     const db = adminDb()
     const emailVerified = t.email_verified === true || (await adminAuth().getUser(t.uid)).emailVerified
-    await ensureGuestUserDoc(db, t.uid, email, t.name ?? 'Guest')
+    await ensureGuestUserDoc(db, t.uid, email, (await cleanOr(db, t.name ?? '', 'Guest')) || 'Guest')
     return { ...base, tier: 'guest', needsVerification, emailVerified, canAccessBacklog: false }
   })
 }

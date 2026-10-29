@@ -1,12 +1,13 @@
 import 'server-only'
 import { randomUUID } from 'node:crypto'
 import { adminBucket } from './admin'
+import { IMAGE_URL_PREFIX, imageRefOk } from '../imageRef'
 
 // Schedule images live in Firebase Storage under schedule/<uid>/<random>.jpg. The browser/app shrinks
 // each picture (about 800px wide, ~100 KB) before upload; the server enforces a hard 1 MB cap.
 
 export const MAX_IMAGE_BYTES = 1_000_000
-export const IMAGE_URL_PREFIX = 'https://firebasestorage.googleapis.com/v0/b/'
+export { IMAGE_URL_PREFIX }
 
 function kind(b: Buffer): 'jpg' | 'webp' | null {
   if (b.length > 12 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'jpg'
@@ -34,10 +35,11 @@ export async function deleteImage(path: unknown) {
   await adminBucket().file(path).delete({ ignoreNotFound: true }).catch(() => {})
 }
 
-/** Validates an {imageUrl, imagePath} pair coming from a client: path must be the caller's own folder. */
+/**
+ * Validates an {imageUrl, imagePath} pair coming from a client: the path must be a schedule/<uid>/<id>.jpg file in the caller's own folder,
+ * and the URL must be exactly the download link for that path in OUR bucket (lib/imageRef.ts).
+ */
 export function checkImageRef(uid: string | null, url: unknown, path: unknown): { imageUrl: string; imagePath: string } | null {
-  if (typeof url !== 'string' || typeof path !== 'string' || !url || !path) return null
-  if (!url.startsWith(IMAGE_URL_PREFIX) || url.length > 600 || !path.startsWith('schedule/') || path.includes('..')) return null
-  if (uid && !path.startsWith(`schedule/${uid}/`)) return null
-  return { imageUrl: url, imagePath: path }
+  const bucket = process.env.FIREBASE_STORAGE_BUCKET ?? process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+  return imageRefOk(url, path, bucket, uid) ? { imageUrl: url as string, imagePath: path as string } : null
 }

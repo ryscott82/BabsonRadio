@@ -7,6 +7,7 @@ import { cleanBirthday } from '@/lib/server/birthdays'
 import { PUBLIC_AGREEMENT_VERSION, PUBLIC_CLAUSES } from '@/lib/publicContent'
 import { CONCENTRATIONS, MAX_CONCENTRATIONS, TERMS_VERSION, normText, validGradYear } from '@/lib/terms'
 import { AVATAR_COLORS, DEFAULT_AVATAR, MAX_HOST_EMOJIS } from '@/lib/profile'
+import { assertCleanName } from '@/lib/server/wordFilter'
 import { HttpError, handle, readJson, requireUser, str } from '@/lib/server/http'
 import { accessOf, forgetAccess } from '@/lib/server/access'
 import { setupFor } from '@/lib/server/setup'
@@ -71,12 +72,14 @@ export async function POST(req: Request) {
     if ('firstName' in b) {
       const firstName = str(b.firstName, 40)
       if (!firstName) throw new HttpError(400, 'Enter a first name.')
+      await assertCleanName(adminDb(), firstName)
       update.firstName = firstName
       update.displayName = firstName
     }
     if ('lastName' in b) {
       const lastName = str(b.lastName, 60)
       if (!lastName) throw new HttpError(400, 'Enter a last name.')
+      await assertCleanName(adminDb(), lastName)
       update.lastName = lastName
     }
     if (typeof b.invisible === 'boolean') update.invisible = b.invisible

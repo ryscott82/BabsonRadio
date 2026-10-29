@@ -1,5 +1,7 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
+import { firstNameOf } from '@/lib/server/names'
+import { assertClean } from '@/lib/server/wordFilter'
 import { HttpError, handle, readJson, str } from '@/lib/server/http'
 import { requireLibrary } from '@/lib/server/guests'
 import { currentOnAir } from '@/lib/server/live'
@@ -27,6 +29,7 @@ export async function POST(req: Request) {
     if (!lists.includes(playlist)) throw new HttpError(400, 'Pick a playlist from the list.')
 
     const db = adminDb()
+    await assertClean(db, title, artist)
     const dayAgo = Date.now() - 24 * 3600_000
     const mine = await db.collection('playlistRequests').where('uids', 'array-contains', t.uid).get()
     if (mine.docs.filter(d => (d.get('at')?.toMillis?.() ?? 0) > dayAgo).length >= 5) {
@@ -34,7 +37,7 @@ export async function POST(req: Request) {
     }
 
     const key = `${norm(playlist)}|${norm(title)}|${norm(artist)}`
-    const name = str(t.name, 60) || 'Listener'
+    const name = await firstNameOf(db, t.uid)
     const same = (await db.collection('playlistRequests').where('key', '==', key).get()).docs.find(d => d.get('done') !== true)
     if (same) {
       if ((same.get('uids') ?? []).includes(t.uid)) throw new HttpError(409, 'You already asked for that one.')

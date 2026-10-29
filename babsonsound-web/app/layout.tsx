@@ -9,6 +9,7 @@ import SetupBanner from '@/components/setup/SetupBanner'
 import SetupPrompt from '@/components/setup/SetupPrompt'
 import LaunchShell from '@/components/launch/LaunchShell'
 import GuestFence from '@/components/GuestFence'
+import { THEME_SCRIPT } from '@/lib/themeScript'
 
 // Colors the browser's address bar to match the top bar (not the wood). ThemeToggle and the head script follow the chosen theme.
 export const viewport: Viewport = {
@@ -36,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: "try{var t=localStorage.getItem('br-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);document.querySelectorAll('meta[name=theme-color]').forEach(function(m){m.removeAttribute('media');m.setAttribute('content',t==='dark'?'#0a0a09':'#FBF8F0')})}}catch(e){}try{var d=document.documentElement,h=new Date().getHours(),n=h>=19||h<6;d.setAttribute('data-night',n?'1':'0');d.setAttribute('data-party','0')}catch(e){}try{d.classList.add('hw-lite');var u=function(){d.classList.remove('hw-lite')};addEventListener('load',function(){setTimeout(u,150)});setTimeout(u,8000)}catch(e){}" }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-dvh flex flex-col bg-br-dk-bg text-br-dk-text">
         <AuthProvider>

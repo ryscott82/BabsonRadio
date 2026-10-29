@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { isBabsonEmail, signIn, signUp, signOut, resendVerification, sendPasswordReset } from '@/lib/auth'
 import { useResetCooldown, mmss } from '@/lib/useResetCooldown'
+import Turnstile from '@/components/Turnstile'
 import { Card, ErrorText, Field, GhostButton, PrimaryButton } from '@/components/AuthUI'
 
 export default function AuthPage() {
@@ -39,6 +40,9 @@ function Forms() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [resetBump, setResetBump] = useState(0)
+  // Only shown when the server asks for a quick check (BR-ACC-022): several sign-ups from one place, or a busy moment.
+  const [needCheck, setNeedCheck] = useState(false)
+  const [checkToken, setCheckToken] = useState('')
   const resetLeft = useResetCooldown(email, resetBump)
 
   // The countdown page's Sign up button links here with ?mode=create.
@@ -52,8 +56,13 @@ function Forms() {
     if (!/^\S+@\S+\.\S+$/.test(email)) return setError('Enter a valid email address.')
     if (password.length < 8) return setError('Password must be at least 8 characters.')
     setBusy(true)
-    try { if (create) await signUp(email, password); else await signIn(email, password) }
-    catch (err) { setError(err instanceof Error ? err.message : 'Something went wrong.') }
+    try { if (create) await signUp(email, password, '', '', '', '', checkToken); else await signIn(email, password) }
+    catch (err) {
+      const msg = err instanceof Error ? err.message : 'Something went wrong.'
+      if (msg.includes('BR-ACC-022')) setNeedCheck(true)
+      setCheckToken('')
+      setError(msg)
+    }
     finally { setBusy(false) }
   }
 
@@ -68,6 +77,7 @@ function Forms() {
         <Field label="Password" value={password} onChange={e => setPassword(e.target.value)}
                type="password" autoComplete={create ? 'new-password' : 'current-password'}
                placeholder={create ? 'At least 8 characters' : 'Password'} />
+        {create && needCheck && <Turnstile onToken={setCheckToken} />}
         <ErrorText>{error}</ErrorText>
         <PrimaryButton type="submit" busy={busy}>{create ? 'CREATE ACCOUNT' : 'SIGN IN'}</PrimaryButton>
         <p className="text-center text-sm text-br-dk-sub">

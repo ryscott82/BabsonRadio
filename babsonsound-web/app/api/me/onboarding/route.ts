@@ -1,6 +1,7 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { deleteAccountData } from '@/lib/server/deleteAccount'
+import { assertCleanName } from '@/lib/server/wordFilter'
 import { HttpError, handle, readJson, requireUser, str } from '@/lib/server/http'
 import { accessOf } from '@/lib/server/access'
 import { encryptJson } from '@/lib/server/pii'
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
     // 2. Contact details.
     const firstName = str(b.firstName, 40), lastName = str(b.lastName, 60)
     if (!firstName) throw new HttpError(400, 'Enter your first name.')
+    await assertCleanName(db, firstName, lastName)
     const update: Record<string, unknown> = { firstName, lastName, displayName: firstName }
 
     if (!guest) {

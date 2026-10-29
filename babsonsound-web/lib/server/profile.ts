@@ -1,3 +1,4 @@
+import { cleanOr } from './wordFilter'
 import 'server-only'
 import { Timestamp } from 'firebase-admin/firestore'
 import type { DecodedIdToken } from 'firebase-admin/auth'
@@ -22,7 +23,8 @@ export async function ensureProfile(t: DecodedIdToken, opts: { agreed?: boolean;
   if (!email) return false
   const ref = adminDb().collection('users').doc(t.uid)
   const school = isSchoolEmail(email)
-  const first = (opts.firstName ?? '').trim().slice(0, 40) || (t.name ?? '').split(' ')[0] || ''
+  // A name from the sign-in token (Apple, Google) is only a starting point: it skips our forms, so it goes through the word filter.
+  const first = await cleanOr(adminDb(), (opts.firstName ?? '').trim().slice(0, 40) || (t.name ?? '').split(' ')[0] || '')
   try {
     await ref.create({
       firstName: first, lastName: '', username: usernameOf(email), displayName: first || email.split('@')[0],

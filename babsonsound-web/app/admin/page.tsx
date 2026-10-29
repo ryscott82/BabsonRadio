@@ -71,6 +71,7 @@ export default function AdminPage() {
       { href: '/admin/launch-email', icon: 'mail', title: 'Launch email', text: 'Preview and send', admin: true },
       { href: '/admin/birthdays', icon: 'birthdays', title: 'Birthdays', text: 'Who is celebrating soon', admin: true },
       { href: '/admin/phone-changes', icon: 'phone', title: 'Phone changes', text: 'Approve new numbers', admin: true },
+      { href: '/admin/phone-lookup', icon: 'phone', title: 'Phone lookup', text: 'Find the account for a number', admin: true },
     ] },
     { title: 'Data and tools', tiles: [
       { href: '/admin/stats', icon: 'stats', title: 'Stats', text: 'Listeners, hours and logs' },

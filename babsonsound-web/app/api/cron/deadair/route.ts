@@ -3,7 +3,7 @@ import { after } from 'next/server'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, str } from '@/lib/server/http'
 import { notifyAdmins } from '@/lib/server/push'
-import { mailConfigured, sendMail } from '@/lib/server/mailer'
+import { escapeHtml, mailConfigured, sendMail } from '@/lib/server/mailer'
 import { refreshNowPlaying } from '@/lib/server/nowplaying'
 
 export const runtime = 'nodejs'
@@ -57,6 +57,6 @@ async function alertAdmins(title: string, body: string) {
   try {
     const admins = await adminDb().collection('users').where('level', '==', 'admin').get()
     await Promise.all(admins.docs.map(d => String(d.get('email') ?? '')).filter(Boolean).map(e =>
-      sendMail(e, `Babson Radio: ${title}`, body, `<p>${body}</p><p>Check the station at https://babsonradio.com/admin</p>`)))
+      sendMail(e, `Babson Radio: ${title}`, body, `<p>${escapeHtml(body)}</p><p>Check the station at https://babsonradio.com/admin</p>`)))
   } catch (e) { console.error('[deadair mail]', e) }
 }

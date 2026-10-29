@@ -1,7 +1,8 @@
-import { Timestamp } from 'firebase-admin/firestore'
 import { after } from 'next/server'
 import { adminDb } from '@/lib/server/admin'
-import { HttpError, handle, readJson, requireMember } from '@/lib/server/http'
+import { HttpError, handle, readJson, requireVerifiedMember } from '@/lib/server/http'
+import { requireAppCheck } from '@/lib/server/appCheck'
+import { beginSync } from '@/lib/server/contactSync'
 import { indexKeyFromHash, withoutBlocked } from '@/lib/server/phone'
 import { MAX_KEYS, MIN_OTHERS, popularity, rebuildIfStale, removeContactGraph, setContactGraph } from '@/lib/server/contactGraph'
 
@@ -12,7 +13,8 @@ export const runtime = 'nodejs'
 // "probably at Babson". Names never leave the phone.
 export async function POST(req: Request) {
   return handle(async () => {
-    const t = await requireMember(req)
+    const t = await requireVerifiedMember(req) // a verified school email, not just the 7-day grace
+    await requireAppCheck(req)
     const b = await readJson(req)
     const db = adminDb()
     if (!process.env.PHONE_HASH_PEPPER) throw new HttpError(503, 'This is not switched on yet.', 'BR-CON-002')
@@ -28,12 +30,10 @@ export async function POST(req: Request) {
     const unique = withoutBlocked([...new Set(hashes.filter((h): h is string => typeof h === 'string' && /^[0-9a-f]{64}$/i.test(h)))]).slice(0, MAX_KEYS)
     if (!unique.length) throw new HttpError(400, 'No contacts to check.')
 
-    // Twice a day is plenty, keeps Firestore writes tiny, and stops anyone from probing numbers in bulk.
-    const ref = db.collection('contactGraph').doc(t.uid)
-    const last = ((await ref.get()).get('updatedAt') as Timestamp | undefined)?.toMillis() ?? 0
-    if (Date.now() - last < 12 * 3_600_000) throw new HttpError(429, 'Contacts were checked recently. Try again later.', 'BR-CON-003')
-
-    const byKey = new Map(unique.map(h => [indexKeyFromHash(h), h]))
+    // Same limits as /api/contacts/match: one full sync a day, and a cap on new numbers per rolling 30 days.
+    const sync = await beginSync(db, t.uid, 'popular', unique)
+    if (!sync.hashes.length) throw new HttpError(400, 'No contacts to check.')
+    const byKey = new Map(sync.hashes.map(h => [indexKeyFromHash(h), h]))
     const keys = [...byKey.keys()]
     await setContactGraph(db, t.uid, keys)
 

@@ -870,6 +870,13 @@ nonisolated private struct SavedReply: Decodable {
     let saved: [Item]
 }
 
+nonisolated private struct LabelsReply: Decodable { let ok: Bool }
+
+nonisolated private struct MatchReply: Decodable {
+    struct Item: Decodable { let hash: String; let mutual: Bool }
+    let matched: [Item]
+}
+
 class ContactsManager: ObservableObject {
     @Published var accessGranted = false
     @Published var list: [BRContact] = []
@@ -972,6 +979,67 @@ class ContactsManager: ObservableObject {
         }
     }
 
+    /// Which of my contacts are Babson Radio members, and what I saved them as. hash → the name in MY contacts.
+    /// Kept on this phone so every screen can show the name I chose. Only members I matched are in here, never anyone else.
+    @Published var friendNames: [String: String] = {
+        guard let d = UserDefaults.standard.data(forKey: "br_friend_names"),
+              let m = try? JSONDecoder().decode([String: String].self, from: d) else { return [:] }
+        return m
+    }()
+
+    /// The name I saved for a matched contact, if that hash is one of my matches.
+    func friendName(forHash hash: String) -> String? { friendNames[hash.lowercased()] }
+
+    /// Match my contacts against members (once a day; the server enforces it too). The server answers with the hashes that matched and
+    /// whether the connection is mutual. It names nobody, so the names come from my own address book here. For matched members only,
+    /// the name I saved is then sent back so the website and my other screens show the same name for that friend.
+    func syncMatches(force: Bool = false) async {
+        guard suggestionsActive, !list.isEmpty else { return }
+        let last = UserDefaults.standard.double(forKey: "br_match_sync_at")
+        if !force, Date().timeIntervalSince1970 - last < 23 * 3600 { return }
+        var nameOf: [String: String] = [:]   // hash → contact name (phone numbers only, not email codes)
+        for c in list { for h in c.phoneHashes where nameOf[h] == nil { nameOf[h] = c.name } }
+        let hashes = Array(nameOf.keys.prefix(5000))
+        guard !hashes.isEmpty else { return }
+        do {
+            let r: MatchReply = try await BackendAPI.post("/api/contacts/match", ["hashes": hashes])
+            UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "br_match_sync_at")
+            var names: [String: String] = [:]
+            for m in r.matched { if let n = nameOf[m.hash] { names[m.hash] = n } }
+            await MainActor.run {
+                self.friendNames = names
+                if let data = try? JSONEncoder().encode(names) { UserDefaults.standard.set(data, forKey: "br_friend_names") }
+            }
+            await sendNameLabels(names)
+        } catch {
+            let m = (error as? BackendError)?.message ?? error.localizedDescription
+            // Already synced today (BR-CON-005) or paused (BR-CON-007): try again tomorrow either way.
+            if m.contains("BR-CON-005") || m.contains("BR-CON-007") { UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "br_match_sync_at") }
+        }
+    }
+
+    /// Tells the server the names I saved for my matched friends (matched members only), so the website shows the same names.
+    /// Only names that changed since last time are sent.
+    private func sendNameLabels(_ names: [String: String]) async {
+        let sentKey = "br_friend_names_sent"
+        let sent: [String: String] = {
+            guard let d = UserDefaults.standard.data(forKey: sentKey), let m = try? JSONDecoder().decode([String: String].self, from: d) else { return [:] }
+            return m
+        }()
+        let changed = names.filter { sent[$0.key] != $0.value }
+        guard !changed.isEmpty else { return }
+        let items = changed.map { ["hash": $0.key, "name": $0.value] }
+        do {
+            for start in stride(from: 0, to: items.count, by: 300) {
+                let chunk = Array(items[start..<min(start + 300, items.count)])
+                let _: LabelsReply = try await BackendAPI.post("/api/contacts/labels", ["labels": chunk])
+            }
+            if let data = try? JSONEncoder().encode(names) { UserDefaults.standard.set(data, forKey: sentKey) }
+        } catch {
+            print("Could not send friend names: \(error)")
+        }
+    }
+
     /// Asks for contacts once, the first time a signed-in student opens the app. If they say no, the button in Profile
     /// is still there. Guests never get this (the friends network is for students).
     func promptOnFirstOpen() {
@@ -994,6 +1062,10 @@ class ContactsManager: ObservableObject {
         suggestionsNote = ""
         UserDefaults.standard.removeObject(forKey: "br_saved_by")
         UserDefaults.standard.removeObject(forKey: "br_contact_sync_at")
+        UserDefaults.standard.removeObject(forKey: "br_match_sync_at")
+        UserDefaults.standard.removeObject(forKey: "br_friend_names")
+        UserDefaults.standard.removeObject(forKey: "br_friend_names_sent")
+        friendNames = [:]
         applySaved([:])
     }
 
@@ -1080,7 +1152,7 @@ class ContactsManager: ObservableObject {
             DispatchQueue.main.async {
                 self.list = result
                 self.applySaved(self.suggestionsActive ? Self.cachedSaved() : [:])
-                Task { await self.refreshSuggestions() }
+                Task { await self.refreshSuggestions(); await self.syncMatches() }
             }
         }
     }

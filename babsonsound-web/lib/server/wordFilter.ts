@@ -221,6 +221,21 @@ export async function assertClean(db: Firestore, ...texts: string[]): Promise<vo
   }
 }
 
+/** Same check as assertClean, for names: throws a name-specific error (BR-ACC-025). Empty names pass (callers decide if one is required). */
+export async function assertCleanName(db: Firestore, ...names: string[]): Promise<void> {
+  const { custom, level } = await loadConfig(db)
+  for (const n of names) {
+    if (n && findAll(n, custom).some(h => blocks(h, level))) throw new HttpError(400, 'Pick a different name.', 'BR-ACC-025')
+  }
+}
+
+/** The text if it passes the filter, otherwise the fallback. For names that came from outside our own forms (a token's name, an Apple profile). */
+export async function cleanOr(db: Firestore, text: string, fallback = ''): Promise<string> {
+  if (!text) return text
+  const { custom, level } = await loadConfig(db)
+  return findAll(text, custom).some(h => blocks(h, level)) ? fallback : text
+}
+
 /**
  * For text shown to listeners that we do not write ourselves (song titles, artists, albums): masks explicit and never-allowed words
  * with stars, keeping the first letter and any ending, like "N***as" or "Starf***er". Always on, whatever the "keep it clean" setting is.

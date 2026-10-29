@@ -26,6 +26,8 @@ export default function AdminUsersPage() {
   const [newRadio, setNewRadio] = useState(false)
   const [newStudio, setNewStudio] = useState(false)
   const [q, setQ] = useState('')
+  // Other admin pages link here with ?q=email to open straight to one person.
+  useEffect(() => { const v = new URLSearchParams(location.search).get('q'); if (v) queueMicrotask(() => setQ(v)) }, [])
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
   const [target, setTarget] = useState<Row | null>(null) // account being deleted

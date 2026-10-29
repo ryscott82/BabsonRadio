@@ -3,6 +3,7 @@ import { adminAuth, adminDb } from '@/lib/server/admin'
 import { BABSON_EMAIL, HttpError, handle, readJson, requireUser, str } from '@/lib/server/http'
 import { accessOf } from '@/lib/server/access'
 import { validGradYear } from '@/lib/terms'
+import { assertCleanName } from '@/lib/server/wordFilter'
 
 export const runtime = 'nodejs'
 
@@ -17,6 +18,7 @@ export async function POST(req: Request) {
     const firstName = str(b.firstName, 40), lastName = str(b.lastName, 60), gradYear = str(b.gradYear, 10)
     if (!BABSON_EMAIL.test(email)) throw new HttpError(400, 'Use your Babson, Olin or Wellesley email.')
     if (!firstName || !lastName) throw new HttpError(400, 'Enter your first and last name.')
+    await assertCleanName(adminDb(), firstName, lastName)
     if (!validGradYear(gradYear)) throw new HttpError(400, 'Pick your graduation year.')
     try {
       await adminAuth().getUserByEmail(email)

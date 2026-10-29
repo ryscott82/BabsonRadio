@@ -1,0 +1,4 @@
+// The small script in <head> that applies the saved theme (and day/night) before the page paints, so there is no flash.
+// It lives here so the Content-Security-Policy hash (next.config.ts) is computed from the exact same text as the page uses.
+// If you change it, nothing else needs updating.
+export const THEME_SCRIPT = "try{var t=localStorage.getItem('br-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);document.querySelectorAll('meta[name=theme-color]').forEach(function(m){m.removeAttribute('media');m.setAttribute('content',t==='dark'?'#0a0a09':'#FBF8F0')})}}catch(e){}try{var d=document.documentElement,h=new Date().getHours(),n=h>=19||h<6;d.setAttribute('data-night',n?'1':'0');d.setAttribute('data-party','0')}catch(e){}try{d.classList.add('hw-lite');var u=function(){d.classList.remove('hw-lite')};addEventListener('load',function(){setTimeout(u,150)});setTimeout(u,8000)}catch(e){}"

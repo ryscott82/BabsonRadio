@@ -18,17 +18,33 @@ site's domain under Settings → Authorized domains.
 4. Sponsor can revoke any time. Max 10 active guests per student.
 
 ## Contacts network (iOS → `POST /api/contacts/match`)
-Authorization: `Bearer <Firebase ID token>`. Body `{ "hashes": ["<64 hex>", ...] }` (≤ 5000, ≤ 5 syncs/day).
+Authorization: `Bearer <Firebase ID token>`. Body `{ "hashes": ["<64 hex>", ...] }` (≤ 5000). iOS also sends `X-Firebase-AppCheck`
+(required when `APPCHECK_ENFORCE=1`).
 
 Per contact phone number:
 1. Digits only; if 11 digits starting with `1`, drop the leading `1`; must be 10 digits, first digit 2–9.
 2. E.164: `"+1" + digits`  (e.g. `+16175551234`)
 3. `hash = lowercase hex( SHA-256( UTF-8 bytes of the E.164 string ) )`
 
-Response: `{ matched, people: [{ uid, firstName, mutual }] }`. Edges are stored at
-`users/{uid}/connections/{otherUid}` (`mutual: true` once both sides have each other's number).
-Unmatched hashes are discarded, never stored. Server keys its index with HMAC(pepper, hash), so a database
-leak alone doesn't reveal phone numbers.
+Response: `{ matched: [{ hash, mutual }], capped }`. It names nobody: no uid, no first name. The app already knows which of its own contacts
+each hash belongs to. Edges are stored at `users/{uid}/connections/{otherUid}` (`mutual: true` once both sides have each other's number);
+a repeat sync of the same people writes nothing. Unmatched hashes are discarded, never stored. Server keys its index with HMAC(pepper, hash),
+so a database leak alone doesn't reveal phone numbers.
+
+Why it can't be used as a reverse phone lookup (`lib/contactLimits.ts`, `lib/server/contactSync.ts`):
+- Only a **verified** school email (`email_verified`), not the 7-day grace (BR-CON-004). App Check on iOS.
+- One full sync a day per route (`/match` and `/popular` each; BR-CON-005 / BR-CON-003).
+- A cap on **new** distinct numbers per rolling 30 days (5,000). `contactSyncs/{uid}.seen` is one string of 20 characters per number: 16 hex
+  characters (8 bytes of an HMAC of the hash) plus 4 base-36 characters for the day it was first sent. Re-syncing the same contacts adds nothing;
+  a sweep of arbitrary numbers hits the cap and the rest is ignored. One read and one write per sync.
+- A sync with 500+ matches, or 70%+ of 300+ numbers matching, is treated as a scrape: nothing is returned, `contactSyncs/{uid}.flagged` is set,
+  the account's syncing stays paused (BR-CON-007) and an admin notification appears. Admin Panel → Phone lookup → Paused accounts → Clear.
+
+### Names from your own contacts (`POST /api/contacts/labels`)
+Body `{ labels: [{ hash, name }] }` (≤ 300), for contacts that **matched a member** only. The name is stored encrypted (`PII_KEY`) at
+`users/{me}/connections/{them}.contactName`; hashes that are not one of the caller's contact connections are ignored. `visibleFriends` and
+`visibleFriendProfiles` (presence, likes) return the caller's own `contactName` for each friend, or the first name when there is none. It is read
+from the caller's own connection doc, so one member's label never reaches another. The admin friends map reads account names and is unchanged.
 
 ### Required iOS change
 `NSContactsUsageDescription` currently says contacts are "never uploaded or stored". Update it, e.g.:

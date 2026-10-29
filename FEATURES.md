@@ -154,3 +154,18 @@ Access levels: guest, student, director, admin. Badges: radioTrained (live shows
 - [x] iOS About you: the save button only shows when something changed
 
 - [ ] Live DJ track names: setup guide is in `docs/DJ_METADATA_SETUP.md` (untested at the booth); clean-up + album-art lookup and an external now-playing endpoint are not built yet
+
+## Security hardening (Oct 2026)
+- [x] Next.js 16.4.3 and firebase-admin 14.5.0 (clears the critical image-optimizer and `use cache` advisories and the google-gax, gaxios, uuid and teeny-request ones). `npm audit --omit=dev` still lists the browser `firebase` package's Node-only gRPC dependency; the site never runs it on the server
+- [x] Owner accounts (OWNER_EMAILS) only count once the email is verified; the Apple "add a school email" step refuses an owner address (BR-ACC-020)
+- [x] Sign-up limits (email sign-up and the Apple profile step): per IP, per email domain, and whole site per minute. Normal sign-ups see nothing. Several from one IP in 10 minutes, a busy minute, or repeated failures ask for a Cloudflare Turnstile check (BR-ACC-022); the iOS app passes with App Check instead. Only clearly abusive levels return 429 (BR-ACC-023). IPs are stored as a keyed hash; counters expire on their own
+- [x] Verify within 7 days or be locked, deleted after 14 days (guests too; the demo account is exempt). Locked accounts reach only `/api/me`, `/api/auth/*`, delete, add-school-email and guest status; web and iOS show only "Verify your email". One reminder email around day 10 (needs Resend). Deletions run inside the daily birthdays cron, are logged to `accountDeletions` as "unverified after 14 days", and free the email
+- [x] Contacts can't be used as a reverse phone lookup: verified school email only (BR-CON-004), App Check on iOS, one sync a day per route, a cap of about 5,000 new numbers per rolling 30 days (one doc per member of 8-byte tags), and a sync that looks like a scrape (500+ matches, or 70% of a big list) pauses that account (BR-CON-007) and shows under Notifications
+- [x] `/api/contacts/match` returns only the matched hashes and whether the connection is mutual: no uid, no first name
+- [x] Matches show the name you saved in your own contacts. The iPhone keeps hash → contact name for matched members and sends only those names (`/api/contacts/labels`); the server stores each encrypted on your own connection and returns it only to you, so the website shows the same name. Friends without a saved name fall back to the first name. The admin friends map keeps account names
+- [x] Admin Panel → Phone lookup (admins only): type a number, see the account; every lookup is logged (last 4 digits only); paused contact syncs are listed there to clear
+- [x] `/api/art` serves only this station's own pictures (`/api/station/babson_radio/…`), JPEG/PNG/WebP, with nosniff and a locked-down CSP
+- [x] Security headers on every response: HSTS, nosniff, referrer policy, frame protection, permissions policy, no `X-Powered-By`; the CSP is report-only first
+- [x] Names on song and playlist requests come from the saved profile, not the sign-in token; names, request text and rating comments go through the word filter (BR-ACC-025); the client can no longer write `firstName` or `displayName` straight to Firestore
+- [x] `/api/health` is admin-only (or `x-health-key`); `/api/live/rating` GET is edge-cached for signed-out callers; RSS feed values are escaped; picture links must be exactly our bucket's link for that path; dead-air email body is HTML-escaped; the iOS launch pass lives in the Keychain
+- [ ] Switch the CSP from report-only to enforcing after checking the console on the live site (see `babsonsound-web/SECURITY_SETUP.md`)

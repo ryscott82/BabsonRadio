@@ -4,7 +4,7 @@ import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore'
 /** One thing on the admin Notifications card. Built fresh from live data each time; only the dismissals are stored. */
 export type Notice = {
   key: string
-  kind: 'deadair' | 'monitor' | 'request' | 'report' | 'cancel'
+  kind: 'deadair' | 'monitor' | 'request' | 'report' | 'cancel' | 'contacts'
   title: string
   /** Extra lines shown when the row is opened. */
   detail: string[]
@@ -75,6 +75,16 @@ export async function buildNotices(db: Firestore, admin: boolean): Promise<Notic
         at: d.get('createdAt')?.toMillis?.() ?? 0,
         detail: [clip(d.get('message'), 600), `From ${d.get('name') || 'someone'}${d.get('email') ? ` (${d.get('email')})` : ''} on ${d.get('platform') === 'ios' ? 'the iPhone app' : 'the website'}${d.get('page') ? `, page ${d.get('page')}` : ''}.`],
         href: '/admin/feedback', hrefLabel: 'Open',
+      })
+    }
+    // Contact syncs that looked like a scrape are paused until an admin clears them (Phone lookup page).
+    const paused = await db.collection('contactSyncs').where('flagged', '==', true).limit(20).get()
+    for (const d of paused.docs) {
+      const at = d.get('flagAt')?.toMillis?.() ?? 0
+      out.push({
+        key: `contacts-${d.id}-${at}`, kind: 'contacts', title: `Contact sync paused: ${clip(d.get('flagName') || d.get('flagEmail') || 'an account', 60)}`, at,
+        detail: [`${clip(d.get('flagReason'), 200)}.`, d.get('flagEmail') ? `Account: ${d.get('flagEmail')}.` : '', 'Their contact syncing stays off until you clear it.'].filter(Boolean),
+        href: '/admin/phone-lookup', hrefLabel: 'Review',
       })
     }
   }

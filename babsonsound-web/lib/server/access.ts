@@ -2,6 +2,7 @@ import 'server-only'
 import type { DecodedIdToken } from 'firebase-admin/auth'
 import { createHash } from 'node:crypto'
 import { adminDb } from './admin'
+import { isListedOwner, isVerifiedOwner } from '../ownerRule'
 
 /** One access level per person. */
 export type Level = 'guest' | 'student' | 'director' | 'admin'
@@ -14,7 +15,7 @@ export const schoolOf = (e?: string | null) => (e ? e.toLowerCase().match(/@(bab
 
 /** Owner accounts (env OWNER_EMAILS, comma separated). Cannot be demoted or deleted by anyone else. */
 export const ownerEmails = () => (process.env.OWNER_EMAILS ?? '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
-export const isOwnerEmail = (e?: string | null) => !!e && ownerEmails().includes(e.toLowerCase())
+export const isOwnerEmail = (e?: string | null) => isListedOwner(e, ownerEmails())
 
 /** Map an old `role` value to the new level (fallback before migration, and used by the migration script). */
 export function levelFromLegacy(role: unknown, email: string | null | undefined): Level {
@@ -68,7 +69,8 @@ export async function accessOf(t: DecodedIdToken): Promise<Access> {
   const email = (t.email ?? doc.get('email') ?? '').toLowerCase()
   const claimed = doc.exists && t.email_verified === true && email && doc.get('inviteChecked') !== true ? await claimInvite(email, doc) : {}
   const field = (k: string) => (k in claimed ? claimed[k] : doc.get(k))
-  const owner = isOwnerEmail(email)
+  // Owner power needs a verified email: an unverified owner address is treated like any other account.
+  const owner = isVerifiedOwner(email, t.email_verified, ownerEmails())
   const demo = doc.get('demo') === true
   const graceOk = typeof t.graceUntil === 'number' && now < t.graceUntil
   const schoolVerified = isSchoolEmail(email) && (t.email_verified === true || graceOk)

@@ -74,7 +74,7 @@
     "title": "Signed in, profile did not load",
     "meaning": "The app signed in with Firebase but could not load the account from the server.",
     "userFix": "Close and reopen the app, then try again.",
-    "staffCheck": "Check /api/health and the Vercel logs for /api/me. The app must send X-Preview-Key while the site is locked."
+    "staffCheck": "Check /api/health (admin-only) and the Vercel logs for /api/me. The app must send X-Preview-Key while the site is locked."
   },
   {
     "code": "BR-AUTH-012",
@@ -284,7 +284,7 @@
     "title": "Server key missing",
     "meaning": "FIREBASE_SERVICE_ACCOUNT_JSON isn't set on the server.",
     "userFix": "Contact the station.",
-    "staffCheck": "Vercel → Settings → Environment Variables → add it, then redeploy. Check /api/health."
+    "staffCheck": "Vercel → Settings → Environment Variables → add it, then redeploy. Check /api/health (admin-only, or send the x-health-key header)."
   },
   {
     "code": "BR-SRV-002",
@@ -340,7 +340,7 @@
     "title": "Can't reach Babson Radio",
     "meaning": "The device is offline or the server didn't answer.",
     "userFix": "Check your internet connection and try again.",
-    "staffCheck": "Open https://babsonradio.com/api/health from the same device."
+    "staffCheck": "Sign in as an admin on the same device and open /api/health (it is admin-only)."
   },
   {
     "code": "BR-CLI-002",
@@ -361,7 +361,7 @@
     "title": "Unreadable server reply",
     "meaning": "The server answered with something the app couldn't understand.",
     "userFix": "Update the app and retry.",
-    "staffCheck": "Compare app and website versions; check /api/health."
+    "staffCheck": "Compare app and website versions; check /api/health (admin-only)."
   },
   {
     "code": "BR-CLI-005",
@@ -439,6 +439,48 @@
     "meaning": "Creating an account requires agreeing to the Terms of Use and Privacy Policy.",
     "userFix": "Tick the box that says you agree to the Terms of Use and Privacy Policy, then try again.",
     "staffCheck": "None needed. Acceptance time and version are saved on the user's profile (termsAcceptedAt, termsVersion)."
+  },
+  {
+    "code": "BR-ACC-020",
+    "title": "That school email can't be used here",
+    "meaning": "An Apple account tried to set a school email that is on the owner list. Owner accounts have to sign up with the email directly.",
+    "userFix": "Use a different school email.",
+    "staffCheck": "If it is really the owner, they should sign up or sign in with that email and verify it. Check OWNER_EMAILS in Vercel."
+  },
+  {
+    "code": "BR-ACC-021",
+    "title": "Verify your email to keep using Babson Radio",
+    "meaning": "The account is more than 7 days old and its email is still not verified, so the server only allows sign-in and verification calls. After 14 days an unverified account is deleted.",
+    "userFix": "Open the verification email and click the link (check spam), or use Resend email on the verify screen. If the address is wrong, sign out and sign up again with the right one.",
+    "staffCheck": "Firebase Console → Authentication → check the Email verified column. The demo reviewer account is never locked. The nightly cleanup deletes unverified accounts after day 14 and logs them in accountDeletions."
+  },
+  {
+    "code": "BR-ACC-022",
+    "title": "Quick check needed",
+    "meaning": "Sign-up looks busy or unusual right now (several sign-ups from one network, a burst across the site, or repeated failures), so the server asks for a Cloudflare Turnstile check. The iOS app passes with App Check instead.",
+    "userFix": "Complete the check shown under the password box, then tap Create account again.",
+    "staffCheck": "Normal on launch day on campus Wi-Fi. If the check never appears, NEXT_PUBLIC_TURNSTILE_SITE_KEY is missing in Vercel; if it always fails, check TURNSTILE_SECRET_KEY and the widget hostname in Cloudflare."
+  },
+  {
+    "code": "BR-ACC-023",
+    "title": "Too many sign-ups right now",
+    "meaning": "Sign-up hit a hard limit: a very large burst from one IP, one email domain, or the whole site in a minute, or a very large number of failures from one IP.",
+    "userFix": "Wait a few minutes and try again.",
+    "staffCheck": "Look for [signup blocked] in the Vercel logs: the reason says which limit (ip burst, ip day, ip failures, domain flood, site flood). Limits are in lib/signupLimits.ts."
+  },
+  {
+    "code": "BR-ACC-024",
+    "title": "Open Babson Radio from the app",
+    "meaning": "The request had no valid Firebase App Check token. App Check proves the call comes from the real iOS app. Only enforced when APPCHECK_ENFORCE=1.",
+    "userFix": "Update the app to the latest version and open it from the home screen. A jailbroken or emulated device will not pass.",
+    "staffCheck": "Firebase Console → App Check → confirm the iOS app is registered with App Attest. If real users fail, set APPCHECK_ENFORCE empty to switch enforcement off."
+  },
+  {
+    "code": "BR-ACC-025",
+    "title": "That name isn't allowed",
+    "meaning": "A first or last name contains a word on the blocked list (Admin Panel → Blocked words, plus the built-in lists).",
+    "userFix": "Use a different name.",
+    "staffCheck": "Look at the name the person was trying to use. If it is a real name that is wrongly blocked, check Admin Panel → Blocked words for a custom entry."
   },
   {
     "code": "BR-AGE-001",
@@ -614,6 +656,41 @@
     "meaning": "A slot that overlaps 6 AM to 10 PM Eastern needs the signed clean-hours pledge.",
     "userFix": "Sign the pledge, or pick a time outside the clean hours.",
     "staffCheck": "Signed records are in conductConsents (kind=clean); the request stores cleanPledgeId."
+  },
+  {
+    "code": "BR-CON-003",
+    "title": "Contacts were checked recently",
+    "meaning": "Contact suggestions can be refreshed once a day per account.",
+    "userFix": "Try again tomorrow.",
+    "staffCheck": "Nothing to fix. The limit is MIN_GAP_MS in lib/contactLimits.ts."
+  },
+  {
+    "code": "BR-CON-004",
+    "title": "Verify your school email first",
+    "meaning": "Contact matching only works for accounts whose school email is verified. The 7-day grace period does not count.",
+    "userFix": "Open the verification email we sent to your school address and click the link, then try again.",
+    "staffCheck": "Firebase Console → Authentication → Email verified column for this user."
+  },
+  {
+    "code": "BR-CON-005",
+    "title": "Contacts already synced today",
+    "meaning": "Matching contacts can be done once a day per account.",
+    "userFix": "Try again tomorrow.",
+    "staffCheck": "Nothing to fix. The limit is MIN_GAP_MS in lib/contactLimits.ts."
+  },
+  {
+    "code": "BR-CON-006",
+    "title": "Too many new contacts this month",
+    "meaning": "No error is shown for this: once an account has sent about 5,000 different numbers in 30 days, further new numbers are ignored. Numbers sent before still work.",
+    "userFix": "Nothing to do; the limit resets as old numbers age out after 30 days.",
+    "staffCheck": "A real contact list is almost never this big. A sweep of arbitrary numbers is what this stops. NEW_HASH_CAP in lib/contactLimits.ts."
+  },
+  {
+    "code": "BR-CON-007",
+    "title": "Contacts are paused for this account",
+    "meaning": "A sync looked like someone checking lots of numbers (a very high number of matches, or most of a big list matching), so contacts are paused until an admin clears it.",
+    "userFix": "Contact Babson Radio if you think this is a mistake.",
+    "staffCheck": "Admin Panel → Phone lookup → Paused accounts. Look at the reason and the account. Clear it if it is a real student with a big friend list. Thresholds: FLAG_MATCHED and FLAG_RATIO in lib/contactLimits.ts."
   },
   {
     "code": "BR-OPS-001",

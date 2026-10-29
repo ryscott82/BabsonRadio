@@ -96,6 +96,10 @@ enum BackendAPI {
         if !anonymous, let token = await AuthManager.shared.idToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
+        // Sign-up and contacts calls also carry an App Check token (proves this is the real app; the server decides whether to require it).
+        if path.hasPrefix("/api/contacts") || path.hasPrefix("/api/auth"), let check = await BRAppCheck.token() {
+            request.setValue(check, forHTTPHeaderField: "X-Firebase-AppCheck")
+        }
 
         let data: Data
         let response: URLResponse

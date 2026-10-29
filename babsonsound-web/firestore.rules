@@ -73,7 +73,7 @@ service cloud.firestore {
       allow create: if false;
       allow update: if signedIn() && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['displayName', 'firstName', 'notifyNewEpisode', 'notifyGoesLive']);
+             .hasOnly(['notifyNewEpisode', 'notifyGoesLive']); // names change through /api/me, which runs the word filter
       // Admins edit people through the server (/api/admin/users). Never from a client: level, badges and the
       // unsubscribe flag are server-only, so nobody can write their own.
       allow update: if isAdmin()
@@ -132,6 +132,10 @@ service cloud.firestore {
     match /training/{id}             { allow read, write: if false; }
     match /noticeLog/{id}            { allow read, write: if false; } // dismissed admin notifications (the log)
     match /accountDeletions/{id}     { allow read, write: if false; } // who deleted which account, and why
+    match /phoneLookups/{id}         { allow read, write: if false; } // every admin phone-number lookup (who, last 4 digits, found or not, when)
+    match /signupIp/{id}             { allow read, write: if false; } // sign-up limit counters (keyed IP hash, TTL on expireAt)
+    match /signupDomain/{id}         { allow read, write: if false; }
+    match /signupGlobal/{id}         { allow read, write: if false; }
     match /instagramClears/{id}      { allow read, write: if false; } // which admin cleared which Instagram handle, and when
   }
 }

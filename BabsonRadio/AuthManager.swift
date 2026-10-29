@@ -200,6 +200,16 @@ class AuthManager: ObservableObject {
 
         // Non-Babson, non-developer accounts are guests: live radio for everyone signed in; the Library needs a sponsor's pass or a student connection.
         if !isDev && !Self.isBabsonEmail(email) {
+            // Guests are on the same clock as students: 7 days, then the app shows only "Verify your email".
+            let guestGraceMs = (claims?.claims["graceUntil"] as? NSNumber)?.doubleValue ?? 0
+            if !user.isEmailVerified && guestGraceMs <= Date().timeIntervalSince1970 * 1000 {
+                pendingEmail = email
+                needsEmailVerification = true
+                verifyDeadline = nil
+                isSignedIn = false
+                currentUser = nil
+                return
+            }
             needsEmailVerification = false
             guestStatus = try? await BackendAPI.get("/api/guest/status")
             isTester = false

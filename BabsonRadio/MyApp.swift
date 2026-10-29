@@ -24,6 +24,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 #if canImport(FirebaseCore)
         // Needs GoogleService-Info.plist in the app target (see SETUP_IOS.md).
         if Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
+            BRAppCheck.install() // must come before configure()
             FirebaseApp.configure()
         }
 #endif

@@ -4,6 +4,7 @@ import type { DecodedIdToken } from 'firebase-admin/auth'
 import { adminDb } from './admin'
 import type { Access } from './access'
 import { deleteAccountData } from './deleteAccount'
+import { assertCleanName } from './wordFilter'
 import { HttpError, str } from './http'
 import { encryptJson } from './pii'
 import { normalizeUS } from '../phone'
@@ -102,6 +103,7 @@ export async function saveStep(t: DecodedIdToken, a: Access, rawStep: unknown, v
     case 'name': {
       const firstName = str(v.firstName, 40), lastName = str(v.lastName, 60)
       if (!firstName) throw new HttpError(400, 'Enter your first name.', 'BR-SET-007')
+      await assertCleanName(db, firstName, lastName)
       update.firstName = firstName; update.displayName = firstName
       if (lastName) update.lastName = lastName
       break

@@ -60,9 +60,9 @@ export const apiDelete = <T = Record<string, unknown>>(path: string, body: unkno
 // ── Babson students ───────────────────────────────────────────
 
 /** Sign-up: email and password only. Account creation happens server-side; then we sign in and send the verify email. Everything else (name, avatar, birthday...) is asked later, one step at a time (lib/setup.ts). */
-export async function signUp(email: string, password: string, firstName = '', lastName = '', phone = '', gradYear = '') {
+export async function signUp(email: string, password: string, firstName = '', lastName = '', phone = '', gradYear = '', captchaToken = '') {
   if (!/^\S+@\S+\.\S+$/.test(email.trim())) throw fail('Enter a valid email address.', 'BR-ACC-009')
-  await api('/api/auth/signup', { email, password, firstName, lastName, phone, gradYear, agreed: true })
+  await api('/api/auth/signup', { email, password, firstName, lastName, phone, gradYear, agreed: true, ...(captchaToken ? { captchaToken } : {}) })
   try {
     const { user } = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password)
     await sendEmailVerification(user).catch(e => console.error('[verification email failed]', e))

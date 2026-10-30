@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     const [snap, inv] = await Promise.all([adminDb().collection('users').orderBy('joinedAt', 'desc').limit(500).get(), adminDb().collection('roleInvites').get()])
     return {
       levels: LEVELS,
-      // Roles waiting for someone who has no account yet (they apply the first time that email signs in, verified).
+      // Roles waiting for someone who has no account yet (they attach when that email signs up and start once it is verified).
       invites: inv.docs.map(d => ({ email: d.get('email'), level: d.get('level'), studioTrained: d.get('studioTrained') === true, radioTrained: d.get('radioTrained') === true, at: (d.get('createdAt') as Timestamp | undefined)?.toMillis() ?? 0 })).sort((a, b) => b.at - a.at),
       users: snap.docs.filter(d => d.get('demo') !== true).map(d => {
         const email = String(d.get('email') ?? '')
@@ -32,6 +32,7 @@ export async function GET(req: Request) {
           studioTrained: d.get('studioTrained') === true,
           radioTrained: d.get('radioTrained') === true,
           instagram: String(d.get('instagram') ?? ''),
+          awaitingVerify: d.get('roleNeedsVerify') === true,
           owner: isOwnerEmail(email),
           you: d.id === me.uid,
         }
@@ -151,8 +152,13 @@ export async function POST(req: Request) {
     }
     if (typeof b.studioTrained === 'boolean') { update.studioTrained = b.studioTrained; update.studioExpiresAt = b.studioTrained ? Timestamp.fromMillis(badgeExpiry(Date.now())) : FieldValue.delete() } // a hand-set badge ends the next June 30 like the rest
     if (typeof b.radioTrained === 'boolean') { update.radioTrained = b.radioTrained; update.radioExpiresAt = b.radioTrained ? Timestamp.fromMillis(badgeExpiry(Date.now())) : FieldValue.delete() }
+    // A role or badge given to an account whose email is not verified yet is saved, but gives nothing until it is.
+    const authUser = await adminAuth().getUser(uid)
+    if (!authUser.emailVerified && (level !== null || typeof b.studioTrained === 'boolean' || typeof b.radioTrained === 'boolean')) update.roleNeedsVerify = true
+    await ref.update(update)
+
     // Old sign-in claims are no longer used for access; clear them so they cannot confuse anything.
-    const claims = (await adminAuth().getUser(uid)).customClaims ?? {}
+    const claims = authUser.customClaims ?? {}
     const { developer: _d, tester: _t, openMember: _o, ...rest } = claims as Record<string, unknown>
     void _d; void _t; void _o
     if (Object.keys(rest).length !== Object.keys(claims).length) await adminAuth().setCustomUserClaims(uid, rest)

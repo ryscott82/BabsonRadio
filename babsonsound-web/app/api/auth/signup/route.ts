@@ -6,6 +6,7 @@ import { normalizeUS } from '@/lib/phone'
 import { VERIFY_GRACE_MS } from '@/lib/verify-grace'
 import { TERMS_VERSION, validGradYear } from '@/lib/terms'
 import { signupGuard } from '@/lib/server/signupGuard'
+import { applyInviteNow } from '@/lib/server/access'
 import { assertCleanName } from '@/lib/server/wordFilter'
 
 export const runtime = 'nodejs'
@@ -81,6 +82,8 @@ export async function POST(req: Request) {
         await adminAuth().deleteUser(uid).catch(() => {})
         throw e
       }
+      // A role saved for this email by an admin attaches now; it gives nothing until the email is verified.
+      await applyInviteNow(uid, email).catch(e => console.error('[invite]', e))
     } catch (e) {
       await guard.fail()
       throw e

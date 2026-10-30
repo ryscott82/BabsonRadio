@@ -1,6 +1,7 @@
 import 'server-only'
 import type { DecodedIdToken } from 'firebase-admin/auth'
 import { createHash } from 'node:crypto'
+import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from './admin'
 import { isListedOwner, isVerifiedOwner } from '../ownerRule'
 import { badgeActive } from '../studioRules'
@@ -45,10 +46,11 @@ export type Access = {
 export const inviteKey = (email: string) => createHash('sha256').update(email.trim().toLowerCase()).digest('hex')
 
 /**
- * The first time a person is seen with a VERIFIED email, any invite for that email is moved onto their profile.
- * (Unverified sign-ups never get one, so nobody can claim an invited address before its owner.) Runs once per account.
+ * The first time a person is seen (at sign-up, or on their first request), any invite for their email is moved onto their profile, so the role
+ * shows right away. A role claimed before the email is verified is marked `roleNeedsVerify`: it gives no privileges until the email is verified
+ * (see accessOf), so nobody can use an invited address before its owner. Runs once per account.
  */
-async function claimInvite(email: string, doc: FirebaseFirestore.DocumentSnapshot): Promise<Record<string, unknown>> {
+async function claimInvite(email: string, doc: FirebaseFirestore.DocumentSnapshot, verified: boolean): Promise<Record<string, unknown>> {
   const db = adminDb()
   const ref = db.collection('roleInvites').doc(inviteKey(email))
   const inv = await ref.get()
@@ -57,10 +59,18 @@ async function claimInvite(email: string, doc: FirebaseFirestore.DocumentSnapsho
     patch.level = LEVELS.includes(inv.get('level')) ? inv.get('level') : 'student'
     if (typeof inv.get('studioTrained') === 'boolean') patch.studioTrained = inv.get('studioTrained')
     if (typeof inv.get('radioTrained') === 'boolean') patch.radioTrained = inv.get('radioTrained')
+    if (!verified) patch.roleNeedsVerify = true
     await ref.delete()
   }
   await doc.ref.update(patch)
   return patch
+}
+
+/** Called right after an account is created: attaches any role saved for that email now (it still waits for verification to take effect). */
+export async function applyInviteNow(uid: string, email: string): Promise<void> {
+  const doc = await adminDb().collection('users').doc(uid).get()
+  if (doc.exists && doc.get('inviteChecked') !== true) await claimInvite(email.trim().toLowerCase(), doc, false)
+  forgetAccess(uid)
 }
 
 const cache = new Map<string, { at: number; a: Access }>()
@@ -74,7 +84,7 @@ export async function accessOf(t: DecodedIdToken): Promise<Access> {
   if (hit && now - hit.at < TTL) return hit.a
   const doc = await adminDb().collection('users').doc(t.uid).get()
   const email = (t.email ?? doc.get('email') ?? '').toLowerCase()
-  const claimed = doc.exists && t.email_verified === true && email && doc.get('inviteChecked') !== true ? await claimInvite(email, doc) : {}
+  const claimed = doc.exists && email && doc.get('inviteChecked') !== true ? await claimInvite(email, doc, t.email_verified === true) : {}
   const field = (k: string) => (k in claimed ? claimed[k] : doc.get(k))
   // Owner power needs a verified email: an unverified owner address is treated like any other account.
   const owner = isVerifiedOwner(email, t.email_verified, ownerEmails())
@@ -82,7 +92,11 @@ export async function accessOf(t: DecodedIdToken): Promise<Access> {
   const graceOk = typeof t.graceUntil === 'number' && now < t.graceUntil
   const schoolVerified = isSchoolEmail(email) && (t.email_verified === true || graceOk)
 
-  let level: Level = LEVELS.includes(field('level') as Level) ? (field('level') as Level) : levelFromLegacy(doc.get('role'), email)
+  // A role given by an admin (or an invite) to an account whose email is not verified yet is saved but gives nothing until it is verified.
+  const needsVerify = field('roleNeedsVerify') === true
+  const gated = needsVerify && t.email_verified !== true && !demo
+  if (needsVerify && !gated) doc.ref.update({ roleNeedsVerify: FieldValue.delete() }).catch(() => {})
+  let level: Level = gated ? (isSchoolEmail(email) ? 'student' : 'guest') : LEVELS.includes(field('level') as Level) ? (field('level') as Level) : levelFromLegacy(doc.get('role'), email)
   if (owner) level = 'admin'
   // A level above guest counts for a verified school email (7-day grace allowed), or any other email once it is verified
   // (an admin granted it by hand: sign-up makes every non-school address a guest), or the demo account, or an owner.
@@ -93,8 +107,8 @@ export async function accessOf(t: DecodedIdToken): Promise<Access> {
   // Badges from Studio training run out on a date (users.studioExpiresAt / radioExpiresAt). No date = the old flow, never expires.
   const expiry = (k: string): number | null => { const v = field(k) as { toMillis?: () => number } | null | undefined; return v?.toMillis?.() ?? null }
   const studioExp = high ? null : expiry('studioExpiresAt'), radioExp = high ? null : expiry('radioExpiresAt')
-  const studioFlag = level === 'student' && field('studioTrained') === true
-  const radioFlag = level === 'student' && field('radioTrained') === true
+  const studioFlag = !gated && level === 'student' && field('studioTrained') === true
+  const radioFlag = !gated && level === 'student' && field('radioTrained') === true
   const a: Access = {
     uid: t.uid, level, owner, demo, schoolVerified: schoolVerified || demo,
     studio: high || (studioFlag && badgeActive(studioExp, now)),

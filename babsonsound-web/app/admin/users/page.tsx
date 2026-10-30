@@ -9,7 +9,7 @@ import { ErrorText } from '@/components/AuthUI'
 import { gradYearOptions } from '@/lib/terms'
 
 type Level = 'guest' | 'student' | 'director' | 'admin'
-interface Row { id: string; name: string; firstName: string; lastName: string; gradYear: string; username: string; email: string; level: Level; studioTrained: boolean; radioTrained: boolean; instagram: string; owner: boolean; you: boolean }
+interface Row { id: string; name: string; firstName: string; lastName: string; gradYear: string; username: string; email: string; level: Level; studioTrained: boolean; radioTrained: boolean; instagram: string; awaitingVerify: boolean; owner: boolean; you: boolean }
 
 interface Gone { id: string; email: string; name: string; level: string; reason: string; by: string; at: number; done: boolean }
 interface Invite { email: string; level: Level; studioTrained: boolean; radioTrained: boolean }
@@ -143,7 +143,7 @@ export default function AdminUsersPage() {
           )}
           <button onClick={addByEmail} disabled={!newEmail.trim()} className="sk-raised rounded-lg px-4 py-2 text-sm text-br-dk-text disabled:opacity-50">Add</button>
         </div>
-        <p className="text-xs text-br-dk-sub">Any email works. The role applies the first time that email signs in and is verified. If the person already has an account, it changes right away.</p>
+        <p className="text-xs text-br-dk-sub">Any email works. The role is attached when they sign up and starts once they verify their email. If the person already has an account, it changes right away.</p>
         {invites.length > 0 && (
           <ul className="divide-y divide-br-dk-border">
             {invites.map(i => (
@@ -174,7 +174,7 @@ export default function AdminUsersPage() {
             <div key={r.id} className="sk-raised rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm text-br-dk-text truncate">{r.name || '(no name)'}{r.username ? ` · @${r.username}` : ''}</p>
-                <p className="text-xs text-br-dk-sub truncate">{r.email}{r.owner ? ' · owner' : ''}</p>
+                <p className="text-xs text-br-dk-sub truncate">{r.email}{r.owner ? ' · owner' : ''}{r.awaitingVerify ? ' · role starts when the email is verified' : ''}</p>
                 {(!r.owner || r.you) && <button type="button" onClick={() => (editId === r.id ? setEditId('') : startEdit(r))} aria-expanded={editId === r.id}
                         className="text-xs text-br-dk-sub underline" aria-label={`Edit details for ${r.name || r.email}`}>{editId === r.id ? 'Close' : 'Edit details'}</button>}
                 {r.instagram && (

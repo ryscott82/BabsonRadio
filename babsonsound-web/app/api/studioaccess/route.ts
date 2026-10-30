@@ -4,6 +4,7 @@ import { adminAuth, adminDb } from '@/lib/server/admin'
 import { ANY_EMAIL, BABSON_EMAIL, HttpError, handle, readJson, str } from '@/lib/server/http'
 import { verifyTurnstile } from '@/lib/server/turnstile'
 import { clientIp } from '@/lib/signupLimits'
+import { applyInviteNow } from '@/lib/server/access'
 import { SITE_URL } from '@/lib/links'
 import { mailConfigured, sendMail, setPasswordMail } from '@/lib/server/mailer'
 import { loadStudioForm } from '@/lib/server/studioForm'
@@ -77,6 +78,7 @@ async function preRegister(email: string) {
       preRegistered: true, preRegisteredFrom: 'studioaccess', passwordMailAt: Date.now(), joinedAt: Timestamp.now(),
     })
   } catch (e) { await auth.deleteUser(uid).catch(() => {}); throw e }
+  await applyInviteNow(uid, email).catch(e => console.error('[invite]', e))
   await sendSetPassword(email)
 }
 

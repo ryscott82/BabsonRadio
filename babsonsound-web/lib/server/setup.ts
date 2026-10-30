@@ -1,3 +1,4 @@
+import { splitName } from '../personName'
 import 'server-only'
 import { FieldValue, Timestamp, type DocumentSnapshot } from 'firebase-admin/firestore'
 import type { DecodedIdToken } from 'firebase-admin/auth'
@@ -101,8 +102,10 @@ export async function saveStep(t: DecodedIdToken, a: Access, rawStep: unknown, v
       throw new HttpError(400, 'Open the link in your verification email to finish this step.', 'BR-SET-006')
 
     case 'name': {
-      const firstName = str(v.firstName, 40), lastName = str(v.lastName, 60)
-      if (!firstName) throw new HttpError(400, 'Enter your first name.', 'BR-SET-007')
+      // One "name" box (older callers send firstName and lastName). A first name alone gets its last name from a Babson email.
+      const typed = typeof v.name === 'string' ? splitName(str(v.name, 100), String(u.get('email') ?? t.email ?? '')) : { firstName: str(v.firstName, 40), lastName: str(v.lastName, 60) }
+      const firstName = typed.firstName.slice(0, 40), lastName = typed.lastName.slice(0, 60)
+      if (!firstName) throw new HttpError(400, 'Enter your name.', 'BR-SET-007')
       await assertCleanName(db, firstName, lastName)
       update.firstName = firstName; update.displayName = firstName
       if (lastName) update.lastName = lastName

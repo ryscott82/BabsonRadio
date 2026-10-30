@@ -94,8 +94,7 @@ function Modal({ step, done, close, reload }: { step: PromptStep; done: (s?: Set
   const first = useRef<HTMLDivElement>(null)
 
   // name
-  const [firstName, setFirstName] = useState(typeof userDoc?.firstName === 'string' ? userDoc.firstName : '')
-  const [lastName, setLastName] = useState(typeof userDoc?.lastName === 'string' ? userDoc.lastName : '')
+  const [name, setName] = useState([userDoc?.firstName, userDoc?.lastName].filter((x): x is string => typeof x === 'string' && !!x).join(' '))
   // avatar
   const [color, setColor] = useState('')
   // birthday
@@ -134,7 +133,7 @@ function Modal({ step, done, close, reload }: { step: PromptStep; done: (s?: Set
   }
   const save = () => {
     switch (step) {
-      case 'name': return send('/api/me/setup', { step, value: { firstName, lastName } })
+      case 'name': return send('/api/me/setup', { step, value: { name } })
       case 'avatar': return send('/api/me/setup', { step, value: { avatarColor: color } })
       case 'birthday': return send('/api/me/setup', { step, value: { ...(useRange ? { ageRange: range } : { year, month, day }), parentalConsent: consent } })
       case 'gradYear': return send('/api/me/setup', { step, value: { gradYear: grad } })
@@ -148,7 +147,7 @@ function Modal({ step, done, close, reload }: { step: PromptStep; done: (s?: Set
     api<{ setup: SetupState }>('/api/me/setup/skip', { step }).then(r => done(r.setup)).catch(() => close())
   }
 
-  const ready = step === 'name' ? firstName.trim().length > 0
+  const ready = step === 'name' ? name.trim().length > 0
     : step === 'avatar' ? !!color
     : step === 'birthday' ? (useRange ? !!range : !!year && verdict !== 'ask-more' && verdict !== 'invalid') && !(needConsent && !consent)
     : step === 'gradYear' ? !!grad
@@ -168,8 +167,7 @@ function Modal({ step, done, close, reload }: { step: PromptStep; done: (s?: Set
 
         {step === 'name' && (
           <div className="space-y-3">
-            <Field label="First name" value={firstName} onChange={e => setFirstName(e.target.value)} autoComplete="given-name" maxLength={40} />
-            <Field label="Last name (optional)" value={lastName} onChange={e => setLastName(e.target.value)} autoComplete="family-name" maxLength={60} />
+            <Field label="Name" value={name} onChange={e => setName(e.target.value)} autoComplete="name" maxLength={100} />
           </div>
         )}
 

@@ -547,9 +547,9 @@
   },
   {
     "code": "BR-SET-007",
-    "title": "First name missing",
-    "meaning": "The name step needs a first name.",
-    "userFix": "Enter your first name.",
+    "title": "Name missing",
+    "meaning": "The name step needs a name.",
+    "userFix": "Enter your name.",
     "staffCheck": ""
   },
   {

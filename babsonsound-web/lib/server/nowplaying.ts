@@ -6,6 +6,7 @@ import { listenerSample } from './taste'
 import { getAnnouncement, type Announcement } from './announcement'
 import { getAudioFx } from './audioFx'
 import { getOnAirSign } from './onAirSign'
+import { MAINTENANCE_TITLE, getMaintenance } from './maintenance'
 import { lookupBeat } from './beats'
 import { trackActual } from './actualPlaylist'
 import { recordListeners } from './usage'
@@ -53,6 +54,8 @@ export interface NowPlayingInfo {
   audioFx: boolean
   /** True when staff switched the ON AIR sign on by hand. */
   onAirManual: boolean
+  /** True while maintenance mode is on: the title is "Babson Radio will be back shortly" and everything else about the song is blank. */
+  maintenance: boolean
   updatedAt: number
 }
 
@@ -62,7 +65,7 @@ const TTL_MS = 8_000
 let lastSample = 0
 let cache: { at: number; value: Built } | null = null
 
-type Built = Omit<NowPlayingInfo, 'announcement' | 'audioFx' | 'onAirManual'> & { showOnly: boolean; hostNames?: string[] }
+type Built = Omit<NowPlayingInfo, 'announcement' | 'audioFx' | 'onAirManual' | 'maintenance'> & { showOnly: boolean; hostNames?: string[] }
 const empty = (configured: boolean): Built => ({
   configured, title: '', artist: '', album: '', art: '', elapsed: 0, duration: 0, playedAt: 0, history: [], bpm: 0, beatOffset: 0,
   isLive: false, streamer: '', playlist: '', listeners: 0, next: null, showTitle: '', blockTitle: '', color: '',
@@ -99,7 +102,16 @@ export async function getNowPlaying(): Promise<NowPlayingInfo> {
   const announcement = await getAnnouncement(adminDb()).catch(() => null)
   const audioFx = await getAudioFx(adminDb()).catch(() => true)
   const onAirManual = await getOnAirSign(adminDb()).catch(() => false)
-  return { ...base, announcement, audioFx, onAirManual }
+  const maintenance = await getMaintenance(adminDb()).catch(() => false)
+  if (maintenance) {
+    return {
+      ...base, announcement, audioFx, onAirManual, maintenance: true,
+      title: MAINTENANCE_TITLE, artist: '', album: '', art: '', elapsed: 0, duration: 0, playedAt: 0, history: [], bpm: 0, beatOffset: 0,
+      isLive: false, streamer: '', playlist: '', next: null, showTitle: '', blockTitle: '', color: '', occId: '', isShow: false, showStart: 0, showEnd: 0,
+      note: null, showOnly: false,
+    }
+  }
+  return { ...base, announcement, audioFx, onAirManual, maintenance: false }
 }
 
 /** Looks at AzuraCast right now (skipping the few-second cache) and records any schedule correction. Used by the webhook and the studio PC's ping, so it works with nobody on the app. */

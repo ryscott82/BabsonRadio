@@ -11,6 +11,7 @@ interface Data {
   announcement: { text: string; until: number } | null
   audioFx?: boolean
   onAirSign?: boolean
+  maintenance?: boolean
 }
 
 const when = (ms: number) => new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
@@ -93,6 +94,15 @@ export default function StationPanel({ only = 'controls' }: { only?: 'controls' 
               </>
             )}
           </div>
+        </section>
+
+        <section className={card}>
+          <h3 className={h}>Maintenance mode</h3>
+          <p className="text-base opacity-90">While on, what is playing says &quot;Babson Radio will be back shortly&quot; on the site and in the app. It does not stop the audio. Use Emergency stop for that.</p>
+          <button type="button" disabled={!!busy} aria-pressed={d.maintenance === true}
+                  onClick={() => run('maintenance', { action: 'maintenance', on: d.maintenance !== true }, d.maintenance === true ? 'Maintenance mode is off.' : 'Maintenance mode is on.')} className={btn}>
+            {d.maintenance === true ? 'On: turn off' : 'Off: turn on'}
+          </button>
         </section>
 
         <section className={card}>

@@ -107,7 +107,7 @@ export async function dismissNotices(db: Firestore, items: Notice[], by: { uid: 
     batch.set(logRef(db).doc(n.key), {
       key: n.key, kind: n.kind, title: n.title, detail: n.detail, at: n.at, href: n.href ?? '',
       dismissedAt: Timestamp.now(), dismissedBy: by.uid, dismissedByName: by.name, restoredAt: FieldValue.delete(),
-    })
+    }, { merge: true }) // merge: FieldValue.delete() is not allowed in a plain set()
   }
   await batch.commit()
   return items.length

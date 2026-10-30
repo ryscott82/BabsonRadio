@@ -1,0 +1,15 @@
+[
+  { "id": "features", "group": "Overview", "title": "Features by role", "about": "What each kind of account can do, on the site and in the app.", "source": "FEATURES.md" },
+  { "id": "security", "group": "Setup", "title": "Security setup", "about": "Accounts, keys and the protections that are switched on.", "source": "babsonsound-web/SECURITY_SETUP.md" },
+  { "id": "push", "group": "Setup", "title": "Push notifications", "about": "How phone notifications are set up.", "source": "docs/PUSH_SETUP.md" },
+  { "id": "apple", "group": "Setup", "title": "Sign in with Apple", "about": "Setting up Apple sign-in for the app.", "source": "docs/APPLE_SIGNIN_SETUP.md" },
+  { "id": "metadata", "group": "Setup", "title": "DJ metadata setup", "about": "Getting song and show details from the DJ software to the site.", "source": "docs/DJ_METADATA_SETUP.md" },
+  { "id": "studio", "group": "Studio and people", "title": "Studio training", "about": "How training check-in and studio access work.", "source": "babsonsound-web/STUDIO.md" },
+  { "id": "helper", "group": "Studio and people", "title": "Studio PC helper", "about": "The small program on the studio computer.", "source": "tools/studio-helper/README.md" },
+  { "id": "contacts", "group": "Studio and people", "title": "Contacts and guests", "about": "Friends, contacts and what guests can see.", "source": "babsonsound-web/CONTACTS_AND_GUESTS.md" },
+  { "id": "copy-friends", "group": "Studio and people", "title": "Friends and contacts wording", "about": "The words used for friends and contacts across the site.", "source": "docs/COPY_FRIENDS_AND_CONTACTS.md" },
+  { "id": "errors", "group": "Reference", "title": "Error codes", "about": "What each BR error code means and what to do about it.", "source": "babsonsound-web/ERROR_CODES.md" },
+  { "id": "style", "group": "Reference", "title": "Style guide", "about": "Colors, type and the hardware look.", "source": "design/STYLE_GUIDE.md" },
+  { "id": "components", "group": "Reference", "title": "Design components", "about": "The reusable pieces of the design.", "source": "design/COMPONENTS.md" },
+  { "id": "ios", "group": "Reference", "title": "Website to iOS mapping", "about": "Which website piece matches which part of the app.", "source": "design/IOS_MAPPING.md" }
+]

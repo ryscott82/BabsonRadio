@@ -18,6 +18,7 @@ const P: Record<string, string> = {
   requests: 'M9 18V6l11-2v12M9 18a3 3 0 11-6 0 3 3 0 016 0zM20 16a3 3 0 11-6 0 3 3 0 016 0z',
   stats: 'M4 20V10M10 20V4M16 20v-8M22 20H2',
   tests: 'M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3M8 15h8',
+  docs: 'M6 3h9l4 4v14H6V3zM15 3v4h4M9 12h7M9 16h7M9 8h3',
   radio: 'M5 8h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2zM3 8l14-4M8 14a2 2 0 100 .01M13 12h5M13 16h5',
 }
 export type OpsIcon = keyof typeof P

@@ -17,7 +17,7 @@ interface Data {
 const when = (ms: number) => new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
 
 // The station controls: skip, a message for the whole audience, a message on one show, and the emergency stop.
-export default function StationPanel({ only = 'controls' }: { only?: 'controls' | 'tests' }) {
+export default function StationPanel({ only = 'controls', onReady }: { only?: 'controls' | 'tests'; onReady?: () => void }) {
   const [d, setD] = useState<Data | null>(null)
   const [err, setErr] = useState('')
   const [msg, setMsg] = useState('')
@@ -31,7 +31,7 @@ export default function StationPanel({ only = 'controls' }: { only?: 'controls' 
   const [found, setFound] = useState<{ requestId: string; title: string; artist: string }[]>([])
   const [confirm, setConfirm] = useState<'emergency-stop' | 'resume' | null>(null)
 
-  const load = useCallback(() => { apiGet<Data>('/api/admin/controls').then(setD).catch(e => setErr(e.message)) }, [])
+  const load = useCallback(() => { apiGet<Data>('/api/admin/controls').then(setD).catch(e => setErr(e.message)).finally(() => onReady?.()) }, [onReady])
   useEffect(() => { queueMicrotask(load); const t = setInterval(() => { if (!document.hidden) load() }, 30_000); return () => clearInterval(t) }, [load])
 
   async function run(key: string, body: Record<string, unknown>, ok: string) {

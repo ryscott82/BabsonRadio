@@ -5,7 +5,10 @@ import { accessOf } from '@/lib/server/access'
 import { loadConfig } from '@/lib/server/autoschedule'
 import { localDate } from '@/lib/server/tz'
 import { getNowPlaying } from '@/lib/server/nowplaying'
-import { budgetState, inQuietHours, loadUsageConfig, policyFor } from '@/lib/server/usage'
+import { budgetState, loadUsageConfig, policyFor } from '@/lib/server/usage'
+import { loadLimits } from '@/lib/server/listenLimits'
+import { effectiveLimits, hourLabel, isQuiet } from '@/lib/listenLimits'
+import { localParts } from '@/lib/autoschedule'
 import { FieldValue } from 'firebase-admin/firestore'
 
 export const runtime = 'nodejs'
@@ -37,13 +40,18 @@ export async function POST(req: Request) {
       return { ok: true }
     }
 
-    const [cfg, uc, budget, np, access, s] = await Promise.all([
-      loadConfig(db), loadUsageConfig(db), budgetState(db, now), getNowPlaying(), accessOf(t), sref.get(),
+    const [cfg, uc, budget, np, access, s, limits] = await Promise.all([
+      loadConfig(db), loadUsageConfig(db), budgetState(db, now), getNowPlaying(), accessOf(t), sref.get(), loadLimits(db),
     ])
-    const policy = policyFor(budget)
     const live = !!(np.isShow || np.isLive)
     const guest = access.level === 'guest'
     const staff = access.level === 'director' || access.level === 'admin'
+    // Students (and directors and admins) and guests have their own limits (Admin > Listening limits). The monthly-hours budget only
+    // tightens them while it is switched on there.
+    const aud = guest ? limits.guest : limits.student
+    const bp = limits.budgetEnabled ? policyFor(budget) : null
+    const policy = { ...effectiveLimits(aud, bp), liveOnly: !!bp?.liveOnly }
+    const guestsOpen = !limits.budgetEnabled || budget.guestsOpen
 
     // One device at a time. Someone else's stream (a different device, playing within the last 90 s) stops a new start
     // unless the person chooses to switch; after a switch the old device is stopped at its next check-in.
@@ -60,7 +68,7 @@ export async function POST(req: Request) {
     }
 
     if (!live && !staff) {
-      if (inQuietHours(uc, cfg.timezone, now)) return deny('quiet', `Quiet hours. The station is back at ${uc.quietEnd > 12 ? uc.quietEnd - 12 : uc.quietEnd}${uc.quietEnd >= 12 ? 'pm' : 'am'}.`)
+      if (isQuiet(aud, localParts(now, cfg.timezone).minutes / 60)) return deny('quiet', `Quiet hours. The station is back at ${hourLabel(aud.quietEnd)}.`)
       if (policy.liveOnly) return deny('budget', 'The station is saving listening time this month. Live shows are still on.')
     }
 
@@ -78,17 +86,20 @@ export async function POST(req: Request) {
         if (live) liveMin += dt; else autoMin += dt
       }
       const started = (s.get('startedAt') as Timestamp).toMillis()
-      if (now - started > policy.sessionMaxMin * 60_000) { await sref.delete(); return deny('session', `Stopped after ${Math.round(policy.sessionMaxMin / 60 * 10) / 10} hours. Tap play to keep listening.`) }
+      if (policy.sessionMaxMin > 0 && now - started > policy.sessionMaxMin * 60_000) { await sref.delete(); return deny('session', `Stopped after ${Math.round(policy.sessionMaxMin / 60 * 10) / 10} hours. Tap play to keep listening.`) }
       const idleMs = Math.max(0, Number(b.activeAgoSec) || 0) * 1000
       if (idleMs > (policy.idleMin + 3) * 60_000) { await sref.delete(); return deny('idle', 'Stopped because no one seemed to be listening. Tap play to start again.') }
     }
 
     // Guests hear everything while the month is comfortably under the limit; otherwise live shows plus a few playlist minutes a day.
-    if (guest && !live && !budget.guestsOpen && autoMin >= uc.guestAutoMin) return deny('guestAuto', 'Listening is busy this month, so guests can hear live shows plus a few minutes of the playlist each day. Add your school email for the rest.')
-    if (!guest && !staff && policy.dailyCapMin != null && autoMin + liveMin >= policy.dailyCapMin) return deny('daily', 'You have reached today\'s listening limit, which the station sets when listening runs high. It resets at midnight.')
+    if (!live && !staff && aud.dailyAutoMin > 0 && autoMin >= aud.dailyAutoMin) return deny('autoDaily', guest
+      ? 'You have used today\'s playlist time. Live shows are still on. Add your school email for more.'
+      : 'You have used today\'s playlist time. Live shows are still on. It resets at midnight.')
+    if (guest && !live && !guestsOpen && autoMin >= uc.guestAutoMin) return deny('guestAuto', 'Listening is busy this month, so guests can hear live shows plus a few minutes of the playlist each day. Add your school email for the rest.')
+    if (!staff && policy.dailyCapMin > 0 && autoMin + liveMin >= policy.dailyCapMin) return deny('daily', 'You have reached today\'s listening limit. It resets at midnight.')
 
     if (action === 'start') await sref.set({ sessionId, uid: t.uid, startedAt: Timestamp.fromMillis(now), lastBeat: Timestamp.fromMillis(now), device, deviceId })
     else await sref.update({ lastBeat: Timestamp.fromMillis(now) })
-    return { ok: true, idleMin: policy.idleMin, sessionMaxMin: policy.sessionMaxMin, level: budget.level }
+    return { ok: true, idleMin: policy.idleMin, sessionMaxMin: policy.sessionMaxMin, level: limits.budgetEnabled ? budget.level : 'normal' }
   })
 }

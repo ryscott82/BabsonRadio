@@ -887,5 +887,12 @@
     "meaning": "The link saved in Admin > Studio form is not an https Microsoft Forms link.",
     "userFix": "Nothing for listeners to do.",
     "staffCheck": "Paste the form's share link (starts with https://forms.office.com or https://forms.cloud.microsoft)."
+  },
+  {
+    "code": "BR-LIM-001",
+    "title": "Listening limit not accepted",
+    "meaning": "A number saved in Admin > Listening limits is outside its allowed range (minutes 0-1440, session up to 10080, sleep hours 0-23).",
+    "userFix": "Nothing for listeners to do.",
+    "staffCheck": "Enter a number inside the range shown in the message and save again."
   }
 ]

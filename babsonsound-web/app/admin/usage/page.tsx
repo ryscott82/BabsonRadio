@@ -8,6 +8,7 @@ import { api, apiGet } from '@/lib/auth'
 import CpuMeter from '@/components/admin/CpuMeter'
 
 interface Data {
+  budgetEnabled?: boolean
   forecast: { mode: string; sigma: number; historyDays: number; level: number; lifts: { label: string; lift: number; hours: number; avg: number }[] } | null
   budget: { riskHours: number; guestsOpen: boolean; forecastMode: string; usedHours: number; limitHours: number; projectedHours: number; pct: number; level: string; month: string; byDay: Record<string, number>; peak: number }
   policy: { idleMin: number; sessionMaxMin: number; dailyCapMin: number | null; liveOnly: boolean }
@@ -51,6 +52,9 @@ export default function UsagePage() {
           <span className="text-xs text-br-dk-sub ml-auto">{b.month}</span>
         </div>
         {error && <p className="text-sm text-br-red">{error}</p>}
+        {d.budgetEnabled === false && (
+          <p className="text-sm text-br-dk-sub">The monthly hours limit is off, so nothing below tightens the player. Hours are still counted here. Limits for students and guests are in <Link href="/admin/listening-limits" className="underline">Listening limits</Link>.</p>
+        )}
 
         <div className="sk-raised p-4 space-y-3">
           <div className="flex items-baseline justify-between">
@@ -110,15 +114,7 @@ export default function UsagePage() {
           <p className="text-sm text-br-dk-text">Settings</p>
           <label className="flex items-center justify-between gap-3 text-sm text-br-dk-sub">Monthly limit (hours)
             <input type="number" className={field} value={cfg.limitHours} onChange={e => setCfg({ ...cfg, limitHours: Number(e.target.value) })} /></label>
-          <label className="flex items-center justify-between gap-3 text-sm text-br-dk-sub">Guest minutes of playlist per day
-            <input type="number" className={field} value={cfg.guestAutoMin} onChange={e => setCfg({ ...cfg, guestAutoMin: Number(e.target.value) })} /></label>
-          <label className="flex items-center justify-between gap-3 text-sm text-br-dk-sub">Overnight quiet hours
-            <input type="checkbox" checked={cfg.quietEnabled} onChange={e => setCfg({ ...cfg, quietEnabled: e.target.checked })} /></label>
-          <div className="flex items-center justify-between gap-3 text-sm text-br-dk-sub">From / until (hour, 0–23)
-            <span className="flex gap-2">
-              <input type="number" className={field} value={cfg.quietStart} onChange={e => setCfg({ ...cfg, quietStart: Number(e.target.value) })} />
-              <input type="number" className={field} value={cfg.quietEnd} onChange={e => setCfg({ ...cfg, quietEnd: Number(e.target.value) })} />
-            </span></div>
+          <p className="text-xs text-br-dk-sub">Sleep hours and guest playlist time moved to <Link href="/admin/listening-limits" className="underline">Listening limits</Link>.</p>
           <button onClick={save} className="rounded-md border border-br-dk-border px-3 py-1.5 text-xs text-br-dk-text hover:text-br-gold">Save</button>
           {notice && <span className="ml-3 text-xs text-br-gold">{notice}</span>}
         </div>

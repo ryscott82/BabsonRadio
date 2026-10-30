@@ -60,6 +60,7 @@ export default function AdminPage() {
       { href: '/admin/studio-form', icon: 'training', title: 'Studio form', text: 'The training form people open from /studioaccess', admin: true },
       { href: '/admin/library', icon: 'library', title: 'Library', text: 'Add and remove episodes' },
       { href: '/admin/autoschedule', icon: 'auto', title: 'Auto DJ', text: 'Playlists, times and how often', admin: true },
+      { href: '/admin/listening-limits', icon: 'stats', title: 'Listening limits', text: 'Daily limits and sleep hours for students and guests', admin: true },
       { href: '/admin/setlists', icon: 'setlists', title: 'Set lists', text: 'Songs planned for shows', admin: true },
       { href: '/admin/easter-eggs', icon: 'eggs', title: 'Easter eggs', text: 'Hidden surprises on the site', admin: true },
       { href: '/admin/blocked-words', icon: 'blocked', title: 'Blocked words', text: 'Words that are filtered out', admin: true },

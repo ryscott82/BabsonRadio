@@ -6,6 +6,7 @@ import { localParts } from '../autoschedule'
 import { normLabel } from '../forecast'
 import { forecastUsage } from './forecastUsage'
 import { notifyAdmins } from './push'
+import { loadLimits } from './listenLimits'
 
 // The station's hosting plan allows a fixed number of listener-hours a month (1,500). This module counts them
 // (listeners on the stream x time, sampled whenever now-playing is checked) and works out how tight things are,
@@ -62,6 +63,8 @@ export async function recordListeners(db: Firestore, listeners: number, label: s
     return { minutes: Number(s.get('minutes') ?? 0) + add, alerts: (s.get('alerts') as number[] | undefined) ?? [] }
   })
   if (!total) return
+  // The monthly hours are still counted (for the stats), but nobody is alerted unless the budget is switched on in Admin > Listening limits.
+  if (!(await loadLimits(db)).budgetEnabled) return
   const pct = total.minutes / 60 / uc.limitHours * 100
   const crossed = [50, 75, 90].filter(t => pct >= t && !total.alerts.includes(t))
   if (crossed.length) {

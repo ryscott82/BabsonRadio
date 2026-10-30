@@ -18,11 +18,14 @@ function nearestHeart(hex: string): string {
   return best
 }
 
+// Pittsburgh pictures that are PNG artwork; the rest are our simple SVG drawings.
+const PGH_PNG = new Set(['bridge', 'helmet', 'stadium', 'heart'])
+
 // A reaction, drawn: normal emoji as text, the beaver logo (":br:") as the logo image, and the Pittsburgh set (":pgh-*:") as drawings.
 export default function EmojiGlyph({ e, size }: { e: string; size?: number | string }) {
   const { main } = useArtMain()
   if ((e === '❤️' || e === '❤') && /^#[0-9a-f]{6}$/i.test(main)) return <>{nearestHeart(main)}</>
   if (e === ':br:') return <img src="/beaver.png" alt="" draggable={false} style={{ height: size ?? '1.25em', width: 'auto', display: 'inline-block' }} />
-  if (/^:pgh-[a-z]+:$/.test(e)) return <img src={`/pgh/${e.slice(5, -1)}.svg`} alt="" draggable={false} style={{ height: size ?? '1.25em', width: 'auto', display: 'inline-block' }} />
+  if (/^:pgh-[a-z]+:$/.test(e)) return <img src={`/pgh/${e.slice(5, -1)}.${PGH_PNG.has(e.slice(5, -1)) ? 'png' : 'svg'}`} alt="" draggable={false} style={{ height: size ?? '1.25em', width: 'auto', display: 'inline-block' }} />
   return <>{e}</>
 }

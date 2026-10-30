@@ -1,6 +1,6 @@
 // Reaction rows that change with the music are rules an admin edits (Admin > Easter eggs), served from /api/live/easter-eggs.
-// The built-in pictures are our own simple drawings (public/pgh/*.svg, and the matching ones in the iOS app), not team logos.
-export const PITTSBURGH = [':pgh-bridge:', ':pgh-helmet:', ':pgh-pirate:', ':pgh-heart:'] as const
+// The built-in pictures are in public/pgh (PNG artwork), with matching ones in the iOS app.
+export const PITTSBURGH = [':pgh-bridge:', ':pgh-helmet:', ':pgh-stadium:', ':pgh-heart:'] as const
 
 export interface EggRule { id: string; artist: string[]; title: string[]; show: string[]; emojis: string[] }
 

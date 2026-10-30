@@ -249,7 +249,7 @@ struct LiveExtrasView: View {
 
     /// The reactions change with the music through admin-made rules (Test Lab can force the Pittsburgh one).
     private var reactionRow: [String] {
-        if lab.pittsburgh { return [":pgh-bridge:", ":pgh-helmet:", ":pgh-pirate:", ":pgh-heart:"] }
+        if lab.pittsburgh { return [":pgh-bridge:", ":pgh-helmet:", ":pgh-stadium:", ":pgh-heart:"] }
         if let n = np, let e = model.eggs.first(where: { $0.matches(artist: n.artist, title: n.title, show: n.showTitle ?? "") }) {
             return e.emojis
         }
@@ -468,7 +468,12 @@ struct ReactionGlyph: View {
         if emoji == ":br:" {
             Image("LaunchLogo").resizable().scaledToFit().frame(height: size * 1.15)
         } else if emoji.hasPrefix(":pgh-"), emoji.hasSuffix(":") {
-            PittsburghGlyph(kind: String(emoji.dropFirst(5).dropLast()), size: size * 1.2)
+            let kind = String(emoji.dropFirst(5).dropLast())
+            if ["bridge", "helmet", "stadium", "heart"].contains(kind) {
+                Image("Pgh" + kind.capitalized).resizable().scaledToFit().frame(height: size * 1.2)
+            } else {
+                PittsburghGlyph(kind: kind, size: size * 1.2)
+            }
         } else {
             Text(emoji).font(.system(size: size))
         }
@@ -588,7 +593,7 @@ struct ReactionKeys: View {
 
     private var row: [String] {
         let list: [String]
-        if lab.pittsburgh { list = [":pgh-bridge:", ":pgh-helmet:", ":pgh-pirate:", ":pgh-heart:"] }
+        if lab.pittsburgh { list = [":pgh-bridge:", ":pgh-helmet:", ":pgh-stadium:", ":pgh-heart:"] }
         else if let n = audio.nowPlaying, let e = model.eggs.first(where: { $0.matches(artist: n.artist, title: n.title, show: n.showTitle ?? "") }) { list = e.emojis }
         else { list = model.topEmojis }
         return Array(list.prefix(count))

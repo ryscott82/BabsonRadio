@@ -7,8 +7,6 @@ import { api, resendVerification, signOut } from '@/lib/auth'
 import { sharedAudio } from '@/lib/spectrum'
 import { judgeAge } from '@/lib/age'
 import { normalizeUS } from '@/lib/phone'
-import { cleanInstagram } from '@/lib/instagram'
-import { InstagramIcon } from '@/components/InstagramLink'
 import { AVATAR_COLORS, discStyle } from '@/lib/profile'
 import { gradYearOptions } from '@/lib/terms'
 import type { SetupState } from '@/lib/setup'
@@ -90,7 +88,6 @@ function Modal({ step, done, close, reload }: { step: PromptStep; done: (s?: Set
   // grad year, phone
   const [grad, setGrad] = useState(setup?.gradGuess ?? '')
   const [phone, setPhone] = useState('')
-  const [insta, setInsta] = useState('')
 
   useEffect(() => {
     first.current?.querySelector<HTMLElement>('input, select, button')?.focus({ preventScroll: true })
@@ -123,7 +120,6 @@ function Modal({ step, done, close, reload }: { step: PromptStep; done: (s?: Set
       case 'birthday': return send('/api/me/setup', { step, value: { year, month, day, parentalConsent: consent } })
       case 'gradYear': return send('/api/me/setup', { step, value: { gradYear: grad } })
       case 'phone': return send('/api/me/setup', { step, value: { phone } })
-      case 'instagram': return send('/api/me/setup', { step, value: { instagram: insta } })
     }
   }
   function notNow() {
@@ -137,12 +133,11 @@ function Modal({ step, done, close, reload }: { step: PromptStep; done: (s?: Set
     : step === 'birthday' ? (!!year && verdict !== 'ask-more' && verdict !== 'invalid') && !(needConsent && !consent)
     : step === 'gradYear' ? !!grad
     : step === 'phone' ? !!normalizeUS(phone)
-    : step === 'instagram' ? !!cleanInstagram(insta)
     : false
 
   const title: Record<PromptStep, string> = {
     name: "What's your name?", avatar: 'Pick your color', birthday: 'When were you born?', gradYear: 'Graduation year',
-    phone: 'Phone number', instagram: 'Instagram', verify: 'Verify your email',
+    phone: 'Phone number', verify: 'Verify your email',
   }
 
   return (
@@ -206,18 +201,6 @@ function Modal({ step, done, close, reload }: { step: PromptStep; done: (s?: Set
                      value={phone} onChange={e => setPhone(formatPhone(e.target.value))}
                      className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm text-br-dk-text placeholder:text-br-dk-muted focus:outline-none" />
             </div>
-          </div>
-        )}
-
-        {step === 'instagram' && (
-          <div className="space-y-2">
-            <div className="sk-field flex items-center rounded-xl pl-4 focus-within:ring-2 focus-within:ring-br-gold/40">
-              <InstagramIcon className="h-4 w-4 shrink-0 text-br-dk-sub" />
-              <input type="text" inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false} aria-label="Instagram" placeholder="@name or instagram.com link"
-                     value={insta} onChange={e => setInsta(e.target.value)} maxLength={120}
-                     className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm text-br-dk-text placeholder:text-br-dk-muted focus:outline-none" />
-            </div>
-            {cleanInstagram(insta) && <p className="text-sm text-br-dk-text">@{cleanInstagram(insta)}</p>}
           </div>
         )}
 

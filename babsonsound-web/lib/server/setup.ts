@@ -11,7 +11,6 @@ import { decryptJson, encryptJson } from './pii'
 import { normalizeUS } from '../phone'
 import { hasPhone, savePhone } from './phoneStore'
 import { judgeAge } from '../age'
-import { cleanInstagram } from '../instagram'
 import { AVATAR_COLORS } from '../profile'
 import { guessGradYear, validGradYear } from '../terms'
 import { REQUIRED, STEP_IDS, isStepId, setupState, stepsFor, type SetupInput, type SetupState, type Skips, type StepId } from '../setup'
@@ -51,7 +50,6 @@ export function setupInput(t: DecodedIdToken, a: Access, u: DocumentSnapshot): S
     birthdayDone: u.get('ageData') != null,
     gradYear: String(u.get('gradYear') ?? ''),
     hasPhone: hasPhone(u),
-    hasInstagram: typeof u.get('instagram') === 'string' && u.get('instagram') !== '',
     skips, gradGuess: gradGuessFor(u),
   }
 }
@@ -161,14 +159,6 @@ export async function saveStep(t: DecodedIdToken, a: Access, rawStep: unknown, v
       if (hasPhone(u)) throw new HttpError(409, 'There is already a number on your account. Change it from your profile.', 'BR-SET-005')
       // Stored as phoneEncrypted + phoneHash + phoneVerified=false; Babson's own lines are refused (BR-SET-009).
       await savePhone(db, t.uid, phone)
-      break
-    }
-
-    case 'instagram': {
-      if (a.level === 'guest') throw new HttpError(403, 'Instagram is for students.', 'BR-SET-002')
-      const handle = cleanInstagram(v.instagram)
-      if (!handle) throw new HttpError(400, 'Enter your Instagram handle, like @name, or paste your profile link.', 'BR-SET-010')
-      update.instagram = handle
       break
     }
   }

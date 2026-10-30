@@ -157,6 +157,8 @@ export const hasSpectrum = () => !!current
 const BLOCK_KEY = 'br-eq-blocked'
 export const eqBlocked = () => { try { return sessionStorage.getItem(BLOCK_KEY) === '1' } catch { return false } }
 /** Turns the analyser off for this session and puts its audio engine to sleep (the element that was routed through it must be discarded). */
+export let eqNote = ''
+export const setEqNote = (n: string) => { eqNote = n }
 export function blockEq() {
   try { sessionStorage.setItem(BLOCK_KEY, '1') } catch { /* ignore */ }
   const t = current
@@ -169,29 +171,29 @@ export function verifyAnalyser(el: HTMLAudioElement, good: () => void, bad: () =
   let done = false, playingSince = 0, asleepSince = 0
   const end = () => { done = true; clearInterval(timer); el.removeEventListener('error', onErr) }
   const finish = (ok: boolean) => { if (done) return; end(); if (ok) good(); else bad() }
-  const onErr = () => finish(false)
+  const onErr = () => { setEqNote(`element error ${el.error?.code ?? '?'}`); finish(false) }
   el.addEventListener('error', onErr)
   const buf = new Uint8Array(new ArrayBuffer(t?.an.fftSize ?? 32))
   const timer = setInterval(() => {
-    if (!t) return finish(false)
+    if (!t) { setEqNote('no tap'); return finish(false) }
     if (el.paused || el.readyState < 3) return // not flowing yet
     const now = Date.now()
     if (t.ctx.state !== 'running') {
       t.ctx.resume().catch(() => {})
       if (!asleepSince) asleepSince = now
-      if (now - asleepSince > 4000) finish(false) // a sleeping engine means silence for the listener, so give up and play the stream plainly
+      if (now - asleepSince > 4000) { setEqNote(`engine ${t.ctx.state}`); finish(false) } // a sleeping engine means silence for the listener, so give up and play the stream plainly
       return
     }
     asleepSince = 0
     if (!playingSince) playingSince = now
     t.an.getByteTimeDomainData(buf)
-    for (let i = 0; i < buf.length; i++) if (Math.abs(buf[i] - 128) > 1) return finish(true)
-    if (now - playingSince > 8000) finish(false)
+    for (let i = 0; i < buf.length; i++) if (Math.abs(buf[i] - 128) > 1) { setEqNote('heard sound'); return finish(true) }
+    if (now - playingSince > 8000) { setEqNote('silent'); finish(false) }
   }, 250)
   return end
 }
 /** One line of state for the ?eqdebug=1 readout: is the analyser attached, is its audio engine awake, is it hearing anything. */
-export const eqDebug = () => `cors:${corsKnown}${corsKnown === false ? ` (${corsErr})` : ''} attached:${!!current} ctx:${current?.ctx.state ?? '-'} peak:${lastPeak.toFixed(3)} vol:${elementVolumeWorks() ? 'el' : 'gain'}`
+export const eqDebug = () => `cors:${corsKnown}${corsKnown === false ? ` (${corsErr})` : ''} attached:${!!current} ctx:${current?.ctx.state ?? '-'} peak:${lastPeak.toFixed(3)} vol:${elementVolumeWorks() ? 'el' : 'gain'} blocked:${eqBlocked()}${eqNote ? ` note:${eqNote}` : ''}`
 export function wakeSpectrum() { const c = current?.ctx; if (c && c.state !== 'running') c.resume().catch(() => {}) }
 
 /**

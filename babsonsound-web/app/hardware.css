@@ -552,14 +552,14 @@ html.hw-lite .hw-eq.hw-led > i { filter: none; }
 .hw-eq:not(.hw-well .hw-eq) { padding: 8px; border-radius: 10px; background: #05080B; box-sizing: content-box;
   box-shadow: inset 0 3px 8px rgba(0,0,0,.85), 0 0 0 3px #1B1B19, 0 0 0 4px #4A4A44, 0 6px 10px rgba(24,16,8,.35); }
 
-/* Lit rings: like the equalizer's lamps. A thin white-hot core inside a ring of light color, with a soft bloom around it. The volume knob's color comes from --glow
+/* Lit rings: like the equalizer's lamps. A ring of light color with a soft bloom around it (no white ring). The volume knob's color comes from --glow
    (green, then yellow and red as it overdrives). */
 .sk-btn.hw-knob[aria-pressed="true"] {
-  box-shadow: 0 0 0 2px rgba(255,255,255,.92), 0 0 0 6px color-mix(in srgb, var(--eq-g) 78%, #fff), 0 0 3px 6px color-mix(in srgb, var(--eq-g) 70%, transparent), 0 0 16px 7px color-mix(in srgb, var(--eq-g) 55%, transparent), 0 3px 6px rgba(0,0,0,.5), inset 0 3px 6px rgba(0,0,0,.4);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--eq-g) 78%, #fff), 0 0 3px 6px color-mix(in srgb, var(--eq-g) 70%, transparent), 0 0 16px 7px color-mix(in srgb, var(--eq-g) 55%, transparent), 0 3px 6px rgba(0,0,0,.5), inset 0 3px 6px rgba(0,0,0,.4);
 }
 .hw-knob-sm.hw-lit {
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,.92), 0 0 0 4px color-mix(in srgb, var(--glow, var(--eq-g)) 78%, #fff), 0 0 3px 4px color-mix(in srgb, var(--glow, var(--eq-g)) 70%, transparent), 0 0 14px 5px color-mix(in srgb, var(--glow, var(--eq-g)) 55%, transparent), 0 7px 10px rgba(0,0,0,.45), inset 0 2px 2px rgba(255,255,255,.65), inset 0 -2px 3px rgba(0,0,0,.35);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--glow, var(--eq-g)) 78%, #fff), 0 0 3px 4px color-mix(in srgb, var(--glow, var(--eq-g)) 70%, transparent), 0 0 14px 5px color-mix(in srgb, var(--glow, var(--eq-g)) 55%, transparent), 0 7px 10px rgba(0,0,0,.45), inset 0 2px 2px rgba(255,255,255,.65), inset 0 -2px 3px rgba(0,0,0,.35);
 }
 .hw-panel .sk-key[aria-pressed="true"], .hw-main .sk-key[aria-pressed="true"], .hw-board .sk-key[aria-pressed="true"], .hw-key[aria-pressed="true"] {
-  box-shadow: 0 1px 0 var(--hw-key-edge), 0 0 0 1px rgba(255,255,255,.9), 0 0 0 3px color-mix(in srgb, var(--eq-g) 78%, #fff), 0 0 3px 3px color-mix(in srgb, var(--eq-g) 70%, transparent), 0 0 12px 3px color-mix(in srgb, var(--eq-g) 50%, transparent), inset 0 3px 6px rgba(0,0,0,.65), inset 0 0 0 1px rgba(24,26,18,.4);
+  box-shadow: 0 1px 0 var(--hw-key-edge), 0 0 0 3px color-mix(in srgb, var(--eq-g) 78%, #fff), 0 0 3px 3px color-mix(in srgb, var(--eq-g) 70%, transparent), 0 0 12px 3px color-mix(in srgb, var(--eq-g) 50%, transparent), inset 0 3px 6px rgba(0,0,0,.65), inset 0 0 0 1px rgba(24,26,18,.4);
 }

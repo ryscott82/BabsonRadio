@@ -17,7 +17,7 @@ import { useArtMain } from '@/components/ArtTheme'
 import { useListenGuard } from '@/lib/listenGuard'
 import { useHeld } from '@/lib/settle'
 import { takeTryIt } from '@/lib/splash'
-import { blockEq, eqBlocked, verifyAnalyser, eqDebug, corsResult, applyVolume, elementVolumeWorks, attachSpectrum, probeCors, registerAudio, sharedAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
+import { setEqNote, blockEq, eqBlocked, verifyAnalyser, eqDebug, corsResult, applyVolume, elementVolumeWorks, attachSpectrum, probeCors, registerAudio, sharedAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 
@@ -217,6 +217,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
       const corsOk = corsResult() ?? await probeCors(STREAM_URL)
       // Safari fails the test request but may still let the player read the stream: try it anyway and watch it (see verifyAnalyser).
       const tryAnyway = !corsOk && !eqBlocked()
+      if (!corsOk) setEqNote(tryAnyway ? 'trying' : 'skipped (blocked earlier this session)')
       let attached = false
       if ((fxRef.current || !elementVolumeWorks()) && (corsOk || tryAnyway)) { el.crossOrigin = 'anonymous'; attached = attachSpectrum(el); if (!attached) el.removeAttribute('crossorigin') }
       audioRef.current = el

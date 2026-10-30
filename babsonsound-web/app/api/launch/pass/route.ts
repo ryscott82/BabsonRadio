@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const res = await handle(async () => {
     const t = await requireUser(req)
     if (launchOpen()) return { open: true, gate: null }
-    if (!(await hasEarlyAccess(t))) throw new HttpError(403, 'Babson Radio opens October 30 at 10 am. Your account is ready.', 'BR-PRE-003')
+    if (!(await hasEarlyAccess(t))) throw new HttpError(403, 'Babson Radio opens October 30 at 3 pm. Your account is ready.', 'BR-PRE-003')
     const pass = await makePass(t.uid)
     if (!pass) throw new HttpError(503, 'The launch lock is not set up on the server.', 'BR-PRE-004')
     return { open: false, gate: pass.token, expiresAt: pass.expiresAt }

@@ -1,14 +1,14 @@
 // Launch lock, shared by proxy.ts (edge) and the server. Web Crypto only, so it runs anywhere. No server imports here.
 // (The countdown screens use lib/launch.ts for the launch time; this file is the lock itself.)
 //
-//   LAUNCH_AT       optional, ISO time the site opens. Default: Oct 30, 2026 at 10:00 am Eastern (14:00 UTC).
+//   LAUNCH_AT       optional, ISO time the site opens. Default: Oct 30, 2026 at 3:00 pm Eastern (19:00 UTC).
 //   LAUNCH_OPEN=1   manual override: open the site now, whatever the clock says.
 //   LAUNCH_SECRET   random secret (16+ chars). Signs the launch pass cookie and the unsubscribe links. Falls back to CRON_SECRET.
 //
 // Before the launch time only admins, directors and radio-trained students get in.
 // Everyone else can sign up and sign in but is "locked". At the launch time the site opens by itself: no redeploy.
 
-export const LAUNCH_AT_DEFAULT = '2026-10-30T14:00:00Z'
+export const LAUNCH_AT_DEFAULT = '2026-10-30T19:00:00Z'
 
 export function launchAtMs(): number {
   const ms = Date.parse(process.env.LAUNCH_AT || LAUNCH_AT_DEFAULT)

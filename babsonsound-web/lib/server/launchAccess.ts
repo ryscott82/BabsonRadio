@@ -26,5 +26,5 @@ export async function enforceLaunchLock(req: Request, t: DecodedIdToken): Promis
   try { path = new URL(req.url).pathname } catch { /* no URL: treat as a normal route */ }
   if (path && lockedUserMayCall(path)) return
   if (await hasEarlyAccess(t)) return
-  throw new HttpError(403, 'Babson Radio opens October 30 at 10 am. Your account is ready.', 'BR-PRE-003')
+  throw new HttpError(403, 'Babson Radio opens October 30 at 3 pm. Your account is ready.', 'BR-PRE-003')
 }

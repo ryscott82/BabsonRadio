@@ -15,7 +15,7 @@ export default function CountdownHome() {
       <h1 className="font-display text-br-dk-text text-5xl sm:text-7xl lg:text-8xl leading-[0.95] tracking-wide mb-8 sm:mb-8">Radio is back</h1>
 
       <CountdownTiles />
-      <p className="text-br-dk-sub text-base sm:text-lg mt-8 sm:mt-10 mb-8">October 30 at 10am Eastern</p>
+      <p className="text-br-dk-sub text-base sm:text-lg mt-8 sm:mt-10 mb-8">October 30 at 3pm Eastern</p>
 
       <Link href="/auth?mode=create" className="sk-btn font-display tracking-[0.06em] text-sm px-12 py-3.5 rounded-xl">Sign up</Link>
       <p className="text-sm text-br-dk-sub mt-3">

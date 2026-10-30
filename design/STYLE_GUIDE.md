@@ -51,7 +51,7 @@ e.g. "Can't reach Babson Radio. Check your connection. (BR-CLI-001)". Codes are 
 (`ERROR_CODES.md`). Button text names the action: "Unlock", "Approve", "Sign in".
 
 ## Pre-launch
-Before the launch time (`LAUNCH_AT`, default Oct 30, 2026 at 10 am ET) the homepage is a countdown with a sign-up button.
+Before the launch time (`LAUNCH_AT`, default Oct 30, 2026 at 3 pm ET) the homepage is a countdown with a sign-up button.
 People can create accounts but see a waiting screen; staff, hosts and beta testers get the normal site. The site opens by itself
 at the launch time. `LAUNCH_OPEN=1` opens it early. The lock lives in `proxy.ts`, `lib/launchLock.ts` and `lib/server/launchAccess.ts`.
 

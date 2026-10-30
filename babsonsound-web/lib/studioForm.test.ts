@@ -1,7 +1,7 @@
 // Run with:  npm test
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { cleanFormUrl } from './studioForm.ts'
+import { cleanFormUrl, formUrlFor } from './studioForm.ts'
 
 test('Microsoft Forms links are accepted and made embeddable', () => {
   assert.equal(cleanFormUrl(' https://forms.office.com/r/AbC123 '), 'https://forms.office.com/r/AbC123?embed=true')
@@ -12,4 +12,10 @@ test('Microsoft Forms links are accepted and made embeddable', () => {
 test('anything else is refused', () => {
   for (const bad of ['', 'forms.office.com/r/x', 'http://forms.office.com/r/x', 'https://evil.com/r/x', 'https://forms.office.com.evil.com/r/x', 'https://user:pw@forms.office.com/r/x', 'javascript:alert(1)', null, 5])
     assert.equal(cleanFormUrl(bad as string), null, String(bad))
+})
+
+test('embed=true is added for the in-page form and removed for the new window', () => {
+  const u = 'https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=abc'
+  assert.equal(formUrlFor(u, true), u + '&embed=true')
+  assert.equal(formUrlFor(u + '&embed=true', false), u)
 })

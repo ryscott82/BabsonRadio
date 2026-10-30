@@ -13,3 +13,10 @@ export function cleanFormUrl(raw: unknown): string | null {
     return u.toString()
   } catch { return null }
 }
+
+/** The address to hand out: with "embed=true" when the form is shown inside the page, without it when the form opens in its own window. */
+export function formUrlFor(url: string, embed: boolean): string {
+  const u = new URL(url)
+  if (embed) u.searchParams.set('embed', 'true'); else u.searchParams.delete('embed')
+  return u.toString()
+}

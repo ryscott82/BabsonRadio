@@ -12,6 +12,7 @@ export default function StudioAccess() {
   const [email, setEmail] = useState('')
   const [token, setToken] = useState('')
   const [url, setUrl] = useState('')
+  const [embed, setEmbed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const onToken = useCallback((t: string) => setToken(t), [])
@@ -21,10 +22,21 @@ export default function StudioAccess() {
     if (busy) return
     setBusy(true); setErr('')
     try {
-      const r = await api<{ url: string }>('/api/studioaccess', { email: email.trim(), captchaToken: token })
-      setUrl(r.url)
+      const r = await api<{ url: string; embed: boolean }>('/api/studioaccess', { email: email.trim(), captchaToken: token })
+      setUrl(r.url); setEmbed(r.embed)
     } catch (error) { setErr(error instanceof Error ? error.message : 'Could not open the form. Try again.') }
     setBusy(false)
+  }
+
+  if (url && !embed) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-10">
+        <div className="hw-panel hw-big space-y-5">
+          <h1 className="font-display text-br-dk-text text-3xl tracking-wide">Studio training</h1>
+          <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-full h-12 rounded-xl bg-white text-[#0f5233] font-semibold">Open the training form</a>
+        </div>
+      </div>
+    )
   }
 
   if (url) {

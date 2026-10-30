@@ -6,14 +6,14 @@ import { verifyTurnstile } from '@/lib/server/turnstile'
 import { clientIp } from '@/lib/signupLimits'
 import { SITE_URL } from '@/lib/links'
 import { mailConfigured, sendMail, setPasswordMail } from '@/lib/server/mailer'
-import { loadStudioFormUrl } from '@/lib/server/studioForm'
+import { loadStudioForm } from '@/lib/server/studioForm'
 
 export const runtime = 'nodejs'
 
 // The Studio training form is behind an email step. The form's address (set in Admin > Studio form, or STUDIO_FORM_URL in Vercel; never in the page or its scripts) is
 // handed out only in the answer to this POST, so the page itself never contains it. This keeps casual sharing down; it cannot stop
 // someone who opens their browser's developer tools from copying the address, because the browser has to load it to show it.
-//   POST { email, captchaToken? }  ->  { url }
+//   POST { email, captchaToken? }  ->  { url, embed }   (embed: show it in the page; otherwise the page offers it in a new window)
 const PER_IP_PER_DAY = 25
 const DAY = 86_400_000
 
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     const email = str(b.email, 254).toLowerCase()
     if (!ANY_EMAIL.test(email)) throw new HttpError(400, 'Enter a valid email address.', 'BR-STU-101')
 
-    const url = await loadStudioFormUrl()
+    const { url, embed } = await loadStudioForm()
     if (!url) throw new HttpError(503, 'The training form is not available right now. Try again later.', 'BR-STU-102')
 
     const ip = clientIp(req.headers)
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     await db.collection('studioAccess').add({ email, at: Timestamp.fromMillis(now), ...(ipKey ? { ipHash: ipKey } : {}), expireAt: Timestamp.fromMillis(now + 365 * DAY) })
     // The email also becomes a Babson Radio account with no password yet. They get an email with a link to set a password, which also proves the email is theirs. The form is shown either way, and the answer is the same whether or not an account already existed.
     await preRegister(email).catch(e => console.error('[studioaccess account]', e))
-    return { url }
+    return { url, embed }
   }, { 'Cache-Control': 'private, no-store' })
 }
 

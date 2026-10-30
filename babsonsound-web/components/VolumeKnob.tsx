@@ -3,7 +3,11 @@
 import { useRef } from 'react'
 
 /** Volume knob: drag up/down (or use the arrow keys) to turn it. A ring of dots shows the level. */
-export default function VolumeKnob({ value, onChange, max = 1, unity = 1, boostDb = 0, boost = true }: { value: number; onChange: (v: number) => void; max?: number; unity?: number; boostDb?: number; boost?: boolean }) {
+export default function VolumeKnob({ value: rawValue, onChange: rawChange, max: rawMax = 1, unity: rawUnity = 1, boostDb = 0, boost = true }: { value: number; onChange: (v: number) => void; max?: number; unity?: number; boostDb?: number; boost?: boolean }) {
+  // Without the boost range (browsers that cannot do it), the dial is stretched so that 0 dB sits at the very end of its travel, fully turned up.
+  const sc = !boost && rawUnity < 1 ? 1 / rawUnity : 1
+  const value = rawValue * sc, unity = rawUnity * sc, max = rawMax * sc
+  const onChange = (v: number) => rawChange(v / sc)
   const start = useRef<{ y: number; v: number } | null>(null)
   const lastTap = useRef(0) // when the knob was last clicked without dragging (a second quick click resets it to 0 dB)
   const motion = useRef({ y: 0, t: 0, speed: 0 }) // how fast the knob is being dragged, in pixels per millisecond (smoothed)
@@ -32,7 +36,7 @@ export default function VolumeKnob({ value, onChange, max = 1, unity = 1, boostD
         {Array.from({ length: 11 }, (_, i) => {
           const a = ((-135 + (i / 10) * 270) * Math.PI) / 180
           return <i key={i} aria-hidden className={`hw-dot ${i / 10 <= value + 0.001 ? 'on' : ''} ${i / 10 > unity ? 'hot' : ''}`}
-                    style={{ left: `calc(50% + ${Math.sin(a) * 42}px - 2px)`, top: `calc(50% - ${Math.cos(a) * 42}px - 2px)`, visibility: !boost && i / 10 > unity + 0.001 ? 'hidden' : undefined }} />
+                    style={{ left: `calc(50% + ${Math.sin(a) * 42}px - 2px)`, top: `calc(50% - ${Math.cos(a) * 42}px - 2px)` }} />
         })}
         <div
           role="slider" tabIndex={0} aria-label="Volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value * 100)} aria-valuetext={boostDb > 0 ? `Boosted ${Math.round(boostDb)} decibels` : undefined}

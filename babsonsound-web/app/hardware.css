@@ -532,7 +532,7 @@ html.hw-lite .hw-eq.hw-led > i { filter: none; }
 
 /* Metal profile discs: brushed steel under the member's color, a turning sheen, a machined rim. Set --tint on the element
    (lib/profile.ts discStyle). Same recipe as the iOS HWAvatar. */
-.hw-disc { position: relative; display: inline-block; border-radius: 50%; isolation: isolate; flex-shrink: 0;
+.hw-disc { position: relative; display: inline-flex; align-items: center; justify-content: center; text-align: center; line-height: 1; border-radius: 50%; isolation: isolate; flex-shrink: 0;
   background: url(/hw/steel.jpg) center / 160px auto, #8F8E88;
   box-shadow: 0 3px 3px rgba(0,0,0,.42), inset 0 0 0 1.5px rgba(255,255,255,.55), inset 0 0 0 2.5px rgba(78,77,71,.55), inset -1px -1px 0 2.5px rgba(0,0,0,.18); }
 .hw-disc::before, .hw-disc::after { content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; }

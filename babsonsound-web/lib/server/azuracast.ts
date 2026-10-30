@@ -152,18 +152,18 @@ export async function azSkip(): Promise<string> {
   return r?.message ?? ''
 }
 
-/** Skips, then checks that the song really changed (AzuraCast can say yes and do nothing). Throws with what it said if not. */
-export async function azSkipVerified(): Promise<void> {
+/** Skips, then looks for up to about 6 seconds for the now-playing info to change. AzuraCast's "now playing" can lag and the stream itself is delayed,
+ *  so "not changed yet" is not a failure: it returns false and the caller says so. Real refusals still throw (see azSkip). */
+export async function azSkipVerified(): Promise<boolean> {
   const before = await azNowPlaying().catch(() => null)
-  const said = await azSkip()
-  if (!before) return
+  await azSkip()
+  if (!before) return false
   for (const wait of [1500, 2000, 2500]) {
     await new Promise(r => setTimeout(r, wait))
     const now = await azNowPlaying().catch(() => null)
-    if (!now) continue
-    if (now.song !== before.song || now.elapsed < before.elapsed - 3) return
+    if (now && (now.song !== before.song || now.elapsed < before.elapsed - 3)) return true
   }
-  throw new Error(`AzuraCast said OK${said ? ` ("${said}")` : ''} but the song did not change`)
+  return false
 }
 
 /** Start/stop the broadcast engine (backend = AutoDJ, frontend = the stream server). Needs "Manage station broadcasting". */

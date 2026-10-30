@@ -62,8 +62,9 @@ export async function POST(req: Request) {
       return { ok: true }
     }
     if (!azuraConfigured()) throw new HttpError(503, 'The radio controls are not connected yet.', 'BR-HST-003')
+    let note = ''
     try {
-      if (action === 'skip') await azSkipVerified()
+      if (action === 'skip') { if (!(await azSkipVerified())) note = 'AzuraCast skipped the song, but the now-playing info has not changed yet. The stream runs behind, so it can take a few seconds to hear.' }
       else if (action === 'emergency-stop') { await azControl('backend', 'stop'); await azControl('frontend', 'stop') }
       else if (action === 'resume') { await azControl('frontend', 'start'); await azControl('backend', 'start') }
       else throw new HttpError(400, 'Unknown action.')
@@ -76,6 +77,6 @@ export async function POST(req: Request) {
     }
     await adminDb().collection('hostActions').add({ uid: t.uid, action: String(action), show: '(admin)', at: Timestamp.now() })
     if (action === 'emergency-stop' || action === 'resume') after(() => notifyAdmins('ops', { title: action === 'resume' ? 'Station back on air' : 'Station stopped', body: 'Another admin used the station controls.' }, t.uid))
-    return { ok: true }
+    return { ok: true, ...(note ? { note } : {}) }
   })
 }

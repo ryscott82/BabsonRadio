@@ -17,7 +17,7 @@ import { useArtMain } from '@/components/ArtTheme'
 import { useListenGuard } from '@/lib/listenGuard'
 import { useHeld } from '@/lib/settle'
 import { takeTryIt } from '@/lib/splash'
-import { eqDebug, corsResult, applyVolume, elementVolumeWorks, attachSpectrum, probeCors, registerAudio, sharedAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
+import { blockEq, eqBlocked, verifyAnalyser, eqDebug, corsResult, applyVolume, elementVolumeWorks, attachSpectrum, probeCors, registerAudio, sharedAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 
@@ -214,13 +214,28 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
       const el = new Audio()
       // Real equalizer needs a cross-origin-readable stream. Only opt in when the server allows it, so playback never breaks.
       // Don't wait for the check when it has already finished: on a phone the audio context has to be created and woken inside the tap itself.
-      if ((fxRef.current || !elementVolumeWorks()) && (corsResult() ?? await probeCors(STREAM_URL))) { el.crossOrigin = 'anonymous'; if (!attachSpectrum(el)) el.removeAttribute('crossorigin') }
+      const corsOk = corsResult() ?? await probeCors(STREAM_URL)
+      // Safari fails the test request but may still let the player read the stream: try it anyway and watch it (see verifyAnalyser).
+      const tryAnyway = !corsOk && !eqBlocked()
+      let attached = false
+      if ((fxRef.current || !elementVolumeWorks()) && (corsOk || tryAnyway)) { el.crossOrigin = 'anonymous'; attached = attachSpectrum(el); if (!attached) el.removeAttribute('crossorigin') }
       audioRef.current = el
       registerAudio(el)
       applyVolume(audioRef.current, level / UNITY); setBoostDb(boostDb)
-      el.addEventListener('waiting', () => setIsBuffering(true))
-      el.addEventListener('playing', () => setIsBuffering(false))
-      el.addEventListener('pause', () => { setIsBuffering(false); setIsPlaying(false) })
+      wireAudio(el)
+      if (attached && tryAnyway) {
+        verifyAnalyser(el, () => setCanBoost(true), () => {
+          // No sound could be read: drop the analyser and carry on with a plain player (a new element, since this one is routed through it).
+          blockEq(); setCanBoost(false)
+          const was = !el.paused
+          el.pause(); el.src = ''
+          const plain = new Audio()
+          audioRef.current = plain; registerAudio(plain)
+          applyVolume(plain, level / UNITY); setBoostDb(0)
+          wireAudio(plain)
+          if (was) startAudio()
+        })
+      }
     }
 
     if (isPlaying) {
@@ -242,6 +257,12 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
     run()
     return () => window.removeEventListener('br:try-it', run)
   }, [])
+
+  function wireAudio(el: HTMLAudioElement) {
+    el.addEventListener('waiting', () => setIsBuffering(true))
+    el.addEventListener('playing', () => setIsBuffering(false))
+    el.addEventListener('pause', () => { setIsBuffering(false); setIsPlaying(false) })
+  }
 
   function startAudio() {
     if (!audioRef.current) {

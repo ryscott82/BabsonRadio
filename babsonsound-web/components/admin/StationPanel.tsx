@@ -36,7 +36,7 @@ export default function StationPanel({ only = 'controls' }: { only?: 'controls' 
 
   async function run(key: string, body: Record<string, unknown>, ok: string) {
     setBusy(key); setErr(''); setMsg('')
-    try { await api('/api/admin/controls', body); setMsg(ok); load() }
+    try { const r = await api<{ note?: string }>('/api/admin/controls', body); setMsg(r?.note || ok); load() }
     catch (e) { setErr(e instanceof Error ? e.message : 'Failed.') }
     setBusy(''); setConfirm(null)
   }

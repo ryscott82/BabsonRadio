@@ -31,7 +31,7 @@ export function probeCors(url: string): Promise<boolean> {
   return corsProbe
 }
 
-interface Tap { ctx: AudioContext; an: AnalyserNode; data: Uint8Array<ArrayBuffer>; master: GainNode; direct: GainNode; dry: GainNode; drive: GainNode; wet: GainNode; ex: GainNode; low: BiquadFilterNode; air: BiquadFilterNode; comp: DynamicsCompressorNode }
+interface Tap { ctx: AudioContext; an: AnalyserNode; data: Uint8Array<ArrayBuffer>; master: GainNode; direct: GainNode; dry: GainNode; drive: GainNode; wet: GainNode; ex: GainNode; low: BiquadFilterNode; mud: BiquadFilterNode; air: BiquadFilterNode; comp: DynamicsCompressorNode }
 /** The sound is held back this long before the speakers while the analyser hears it right away, so the lights line up with what you hear. */
 export const AUDIO_DELAY_MS = 216
 
@@ -74,14 +74,15 @@ export function attachSpectrum(el: HTMLAudioElement): boolean {
     const hp = ctx.createBiquadFilter(), exSat = ctx.createWaveShaper(), exDrive = ctx.createGain(), ex = ctx.createGain()
     hp.type = 'highpass'; hp.frequency.value = 3200; exDrive.gain.value = 5; exSat.curve = tubeCurve(); exSat.oversample = '4x'; ex.gain.value = 0
     src.connect(hp); hp.connect(exDrive); exDrive.connect(exSat); exSat.connect(ex); ex.connect(bus)
-    // Weight: a low shelf for chest, an air shelf for shine, then a glue compressor so loudness comes from density, and a limiter as the ceiling.
-    const low = ctx.createBiquadFilter(), air = ctx.createBiquadFilter(), comp = ctx.createDynamicsCompressor(), lim = ctx.createDynamicsCompressor()
-    low.type = 'lowshelf'; low.frequency.value = 95; low.gain.value = 0
-    air.type = 'highshelf'; air.frequency.value = 9000; air.gain.value = 0
+    // The boost zone is a V-shaped EQ: a low shelf for chest, a dip in the muddy low mids, a high shelf for air, then a glue compressor and a limiter as the ceiling.
+    const low = ctx.createBiquadFilter(), mud = ctx.createBiquadFilter(), air = ctx.createBiquadFilter(), comp = ctx.createDynamicsCompressor(), lim = ctx.createDynamicsCompressor()
+    low.type = 'lowshelf'; low.frequency.value = 100; low.gain.value = 0
+    mud.type = 'peaking'; mud.frequency.value = 320; mud.Q.value = 0.8; mud.gain.value = 0
+    air.type = 'highshelf'; air.frequency.value = 6500; air.gain.value = 0
     comp.threshold.value = 0; comp.ratio.value = 1; comp.knee.value = 18; comp.attack.value = 0.012; comp.release.value = 0.16
     lim.threshold.value = -1.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.08
-    bus.connect(low); low.connect(air); air.connect(comp); comp.connect(clip); clip.connect(lim); lim.connect(out)
-    const tap: Tap = { ctx, an, data: new Uint8Array(new ArrayBuffer(an.frequencyBinCount)), master, direct, dry, drive, wet, ex, low, air, comp }
+    bus.connect(low); low.connect(mud); mud.connect(air); air.connect(comp); comp.connect(clip); clip.connect(lim); lim.connect(out)
+    const tap: Tap = { ctx, an, data: new Uint8Array(new ArrayBuffer(an.frequencyBinCount)), master, direct, dry, drive, wet, ex, low, mud, air, comp }
     taps.set(el, tap); current = tap
     setBoostDb(boostDb)
     // Phones keep a new audio context asleep (and put it to sleep again after a call, a lock or a tab switch) until it is woken from a tap.
@@ -135,13 +136,14 @@ export function setBoostDb(db: number) {
   if (!t) return
   const on = boostDb > 0.05, k = Math.min(1, boostDb / MAX_BOOST_DB), now = t.ctx.currentTime, glide = 0.03
   t.direct.gain.setTargetAtTime(on ? 0 : 1, now, glide)
-  t.dry.gain.setTargetAtTime(on ? Math.pow(10, boostDb / 20) * (1 - 0.35 * k) : 0, now, glide) // the clean full-range sound stays; the crunch is added on top of the highs
-  t.drive.gain.setTargetAtTime(1 + 6 * k, now, glide)
-  t.wet.gain.setTargetAtTime(on ? 0.9 * k : 0, now, glide)
+  t.dry.gain.setTargetAtTime(on ? Math.pow(10, boostDb / 20) * (1 - 0.45 * k) : 0, now, glide) // the clean full-range sound stays; a touch of crunch is added on top of the highs
+  t.drive.gain.setTargetAtTime(1 + 3 * k, now, glide)
+  t.wet.gain.setTargetAtTime(on ? 0.35 * k : 0, now, glide) // just a touch of overdrive
   // The cool part: more chest, more shine, a touch of high-frequency sparkle, and glue compression that grows with the boost.
-  t.ex.gain.setTargetAtTime(on ? 0.22 * k : 0, now, glide)
-  t.low.gain.setTargetAtTime(on ? 2.5 * k : 0, now, glide)
-  t.air.gain.setTargetAtTime(on ? 3 * k : 0, now, glide)
+  t.ex.gain.setTargetAtTime(on ? 0.3 * k : 0, now, glide)       // sparkle: the driven highs blended back in
+  t.low.gain.setTargetAtTime(on ? 7 * k : 0, now, glide)        // bass boost
+  t.mud.gain.setTargetAtTime(on ? -4.5 * k : 0, now, glide)     // dip in the muddy low mids, which makes the V
+  t.air.gain.setTargetAtTime(on ? 7 * k : 0, now, glide)        // air and shine
   t.comp.threshold.setTargetAtTime(on ? -10 - 8 * k : 0, now, glide)
   t.comp.ratio.setTargetAtTime(on ? 1.5 + 3.5 * k : 1, now, glide)
 }
@@ -149,6 +151,45 @@ export function setBoostDb(db: number) {
 /** Call from a click/tap handler: browsers keep the audio context asleep until then. */
 /** True once the stream is routed through the analyser (so silence can be read as silence, not as "no analysis"). */
 export const hasSpectrum = () => !!current
+
+// Some browsers (Safari) fail the page's cross-origin test request even though the audio player itself may be allowed to read the stream.
+// So the equalizer is tried anyway there, and watched: if it errors, or never hears anything, it is switched off for the rest of the session.
+const BLOCK_KEY = 'br-eq-blocked'
+export const eqBlocked = () => { try { return sessionStorage.getItem(BLOCK_KEY) === '1' } catch { return false } }
+/** Turns the analyser off for this session and puts its audio engine to sleep (the element that was routed through it must be discarded). */
+export function blockEq() {
+  try { sessionStorage.setItem(BLOCK_KEY, '1') } catch { /* ignore */ }
+  const t = current
+  current = null
+  t?.ctx.suspend().catch(() => {})
+}
+/** Calls good() once real sound is read from the element's analyser, or bad() if the element errors, the engine stays asleep, or it only hears silence for ~8 s of playing. */
+export function verifyAnalyser(el: HTMLAudioElement, good: () => void, bad: () => void): () => void {
+  const t = taps.get(el)
+  let done = false, playingSince = 0, asleepSince = 0
+  const end = () => { done = true; clearInterval(timer); el.removeEventListener('error', onErr) }
+  const finish = (ok: boolean) => { if (done) return; end(); if (ok) good(); else bad() }
+  const onErr = () => finish(false)
+  el.addEventListener('error', onErr)
+  const buf = new Uint8Array(new ArrayBuffer(t?.an.fftSize ?? 32))
+  const timer = setInterval(() => {
+    if (!t) return finish(false)
+    if (el.paused || el.readyState < 3) return // not flowing yet
+    const now = Date.now()
+    if (t.ctx.state !== 'running') {
+      t.ctx.resume().catch(() => {})
+      if (!asleepSince) asleepSince = now
+      if (now - asleepSince > 4000) finish(false) // a sleeping engine means silence for the listener, so give up and play the stream plainly
+      return
+    }
+    asleepSince = 0
+    if (!playingSince) playingSince = now
+    t.an.getByteTimeDomainData(buf)
+    for (let i = 0; i < buf.length; i++) if (Math.abs(buf[i] - 128) > 1) return finish(true)
+    if (now - playingSince > 8000) finish(false)
+  }, 250)
+  return end
+}
 /** One line of state for the ?eqdebug=1 readout: is the analyser attached, is its audio engine awake, is it hearing anything. */
 export const eqDebug = () => `cors:${corsKnown}${corsKnown === false ? ` (${corsErr})` : ''} attached:${!!current} ctx:${current?.ctx.state ?? '-'} peak:${lastPeak.toFixed(3)} vol:${elementVolumeWorks() ? 'el' : 'gain'}`
 export function wakeSpectrum() { const c = current?.ctx; if (c && c.state !== 'running') c.resume().catch(() => {}) }

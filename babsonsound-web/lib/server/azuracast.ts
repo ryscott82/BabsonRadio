@@ -18,7 +18,7 @@ interface ScheduleItem {
 }
 interface Playlist { id: number; name: string; is_enabled?: boolean; schedule_items?: ScheduleItem[] }
 
-async function az<T>(path: string, init?: RequestInit): Promise<T> {
+export async function az<T>(path: string, init?: RequestInit): Promise<T> {
   const base = (process.env.AZURACAST_URL ?? '').replace(/\/+$/, '')
   const res = await fetch(`${base}/api${path}`, {
     ...init,
@@ -29,10 +29,11 @@ async function az<T>(path: string, init?: RequestInit): Promise<T> {
     const text = await res.text().catch(() => '')
     throw new Error(`AzuraCast ${res.status} on ${path}: ${text.slice(0, 200)}`)
   }
-  return res.json() as Promise<T>
+  const body = await res.text()
+  return (body ? JSON.parse(body) : {}) as T
 }
 
-const station = () => encodeURIComponent(process.env.AZURACAST_STATION_ID || '1')
+export const station = () => encodeURIComponent(process.env.AZURACAST_STATION_ID || '1')
 const norm = (s: string) => s.trim().toLowerCase()
 
 /** Station-local date "YYYY-MM-DD" and HHMM for a timestamp. */

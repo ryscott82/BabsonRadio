@@ -55,6 +55,17 @@ export const api = <T = Record<string, unknown>>(path: string, body: unknown) =>
 export const apiGet = <T = Record<string, unknown>>(path: string) => request<T>('GET', path)
 /** GET without the sign-in header, for public data. Requests with a header can not be cached by Vercel's edge, so crowds would each cost CPU. */
 export const apiGetPublic = <T = Record<string, unknown>>(path: string) => request<T>('GET', path, undefined, true)
+/** POST a form (file pieces) to one of our API routes with the user's ID token. */
+export async function apiUpload<T = Record<string, unknown>>(path: string, form: FormData): Promise<T> {
+  const token = await auth.currentUser?.getIdToken()
+  let res: Response
+  try { res = await fetch(path, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form }) }
+  catch { throw fail("Can't reach Babson Radio. Check your connection.", 'BR-CLI-001') }
+  const data = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(withCode(data?.error ?? (res.status === 413 ? 'That piece was too big for the site.' : 'Something went wrong.'), data?.code ?? 'BR-SRV-000', data?.ref))
+  if (data === null) throw fail('Unexpected reply from the server.', 'BR-CLI-004')
+  return data as T
+}
 export const apiDelete = <T = Record<string, unknown>>(path: string, body: unknown) => request<T>('DELETE', path, body)
 
 // ── Babson students ───────────────────────────────────────────

@@ -13,7 +13,7 @@ type Level = 'guest' | 'student' | 'director' | 'admin'
 interface Row { id: string; name: string; firstName: string; lastName: string; gradYear: string; username: string; email: string; level: Level; studioTrained: boolean; radioTrained: boolean; instagram: string; awaitingVerify: boolean; owner: boolean; you: boolean }
 
 interface Gone { id: string; email: string; name: string; level: string; reason: string; by: string; at: number; done: boolean }
-interface Invite { email: string; level: Level; studioTrained: boolean; radioTrained: boolean }
+interface Invite { email: string; level: Level; studioTrained: boolean; radioTrained: boolean; mailedAt?: number }
 
 const LEVEL_LABEL: Record<Level, string> = { guest: 'Guest', student: 'Student', director: 'Director', admin: 'Admin' }
 const LEVELS = Object.keys(LEVEL_LABEL) as Level[]
@@ -112,15 +112,33 @@ export default function AdminUsersPage() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save.') }
   }
 
+  /** Paste any number of emails, separated by commas or new lines. Each gets the chosen role (now if it has an account, else at sign-up). */
   async function addByEmail() {
     setError(''); setNote('')
-    const email = newEmail.trim().toLowerCase()
+    const emails = [...new Set(newEmail.split(/[\s,;]+/).map(x => x.trim().toLowerCase()).filter(Boolean))]
+    if (!emails.length) return
+    let invitedN = 0, updatedN = 0
+    const failed: string[] = []
+    for (const email of emails) {
+      try {
+        const res = await api<{ invited?: boolean }>('/api/admin/users', { email, level: newLevel, studioTrained: newStudio, radioTrained: newRadio })
+        if (res.invited) invitedN++; else updatedN++
+      } catch (e) { failed.push(`${email} (${e instanceof Error ? e.message : 'could not save'})`) }
+    }
+    if (!failed.length) { setNewEmail(''); setNewRadio(false); setNewStudio(false) } else setNewEmail(failed.map(f => f.split(' (')[0]).join('\n'))
+    const bits = [invitedN && `${invitedN} will get the role when they sign up`, updatedN && `${updatedN} already had an account and ${updatedN === 1 ? 'was' : 'were'} updated now`].filter(Boolean)
+    if (bits.length) setNote(`Saved: ${bits.join('; ')}.`)
+    if (failed.length) setError(`Could not save ${failed.length}: ${failed.join('; ')}`)
+    await load()
+  }
+  /** Emails Studio trained people who have not signed up yet (one email, or all of them). */
+  async function mailInvites(emails?: string[]) {
+    setError(''); setNote('')
     try {
-      const res = await api<{ invited?: boolean }>('/api/admin/users', { email, level: newLevel, studioTrained: newStudio, radioTrained: newRadio })
-      setNewEmail(''); setNewRadio(false); setNewStudio(false)
-      setNote(res.invited ? `Saved. ${email} gets this when they first sign in with that email.` : `${email} already has an account, so it was updated now.`)
+      const r = await api<{ sent: number; skipped: number; failed: number }>('/api/admin/users/invite-mail', emails ? { emails } : {})
+      setNote(`Emailed ${r.sent}.${r.skipped ? ` ${r.skipped} skipped (emailed in the last 3 days).` : ''}${r.failed ? ` ${r.failed} failed to send.` : ''}`)
       await load()
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not save.') }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not send.') }
   }
   async function removeInvite(email: string) {
     setError(''); setNote('')
@@ -148,10 +166,10 @@ export default function AdminUsersPage() {
         Any email can be given a role. A school email (babson.edu, olin.edu, wellesley.edu) becomes a Student on its own; any other email stays a Guest until you give it a role, and the role works once that email is verified.
       </p>
       <div className="sk-raised rounded-xl px-4 py-3 space-y-3">
-        <p className="text-sm text-br-dk-text">Give a role to someone who has no account yet</p>
+        <p className="text-sm text-br-dk-text">Give a role to people who have no account yet</p>
         <div className="flex flex-wrap items-center gap-3">
-          <input value={newEmail} onChange={e => setNewEmail(e.target.value)} type="email" placeholder="name@example.com" aria-label="Email address"
-                 className="sk-field flex-1 min-w-[14rem] rounded-lg px-3 py-2 text-sm text-br-dk-text" />
+          <textarea value={newEmail} onChange={e => setNewEmail(e.target.value)} rows={3} placeholder="Paste emails, separated by commas or new lines" aria-label="Email addresses"
+                    autoCapitalize="none" spellCheck={false} className="sk-field flex-1 min-w-[14rem] rounded-lg px-3 py-2 text-sm text-br-dk-text" />
           <select value={newLevel} onChange={e => setNewLevel(e.target.value as Level)} aria-label="Level" className="sk-field rounded-lg px-2 py-2 text-sm text-br-dk-text">
             {LEVELS.filter(l => l !== 'guest').map(l => <option key={l} value={l}>{LEVEL_LABEL[l]}</option>)}
           </select>
@@ -163,13 +181,20 @@ export default function AdminUsersPage() {
           )}
           <button onClick={addByEmail} disabled={!newEmail.trim()} className="sk-raised rounded-lg px-4 py-2 text-sm text-br-dk-text disabled:opacity-50">Add</button>
         </div>
-        <p className="text-xs text-br-dk-sub">Any email works. The role is attached when they sign up and starts once they verify their email. If the person already has an account, it changes right away.</p>
+        <p className="text-xs text-br-dk-sub">Any emails work. The role is attached when they sign up and starts once they verify their email. If the person already has an account, it changes right away.</p>
+        {invites.some(i => i.studioTrained) && (
+          <div className="flex flex-wrap items-center gap-3">
+            <button onClick={() => mailInvites()} className="sk-raised rounded-lg px-4 py-2 text-sm text-br-dk-text">Email all Studio trained people who have not signed up</button>
+            <span className="text-xs text-br-dk-sub">Sends a link to the Studio form page, where they set a password.</span>
+          </div>
+        )}
         {invites.length > 0 && (
           <ul className="divide-y divide-br-dk-border">
             {invites.map(i => (
               <li key={i.email} className="py-2 flex items-center justify-between gap-3 text-sm">
                 <span className="min-w-0 truncate text-br-dk-text">{i.email}</span>
                 <span className="text-xs text-br-dk-sub shrink-0">{LEVEL_LABEL[i.level]}{i.radioTrained ? ' · radio' : ''}{i.studioTrained ? ' · studio' : ''}</span>
+                {i.studioTrained && <button onClick={() => mailInvites([i.email])} className="text-xs text-br-dk-text underline shrink-0">{i.mailedAt ? 'Email again' : 'Email'}</button>}
                 <button onClick={() => removeInvite(i.email)} className="text-xs text-br-dk-sub underline shrink-0">Remove</button>
               </li>
             ))}

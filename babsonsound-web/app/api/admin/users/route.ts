@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     return {
       levels: LEVELS,
       // Roles waiting for someone who has no account yet (they attach when that email signs up and start once it is verified).
-      invites: inv.docs.map(d => ({ email: d.get('email'), level: d.get('level'), studioTrained: d.get('studioTrained') === true, radioTrained: d.get('radioTrained') === true, at: (d.get('createdAt') as Timestamp | undefined)?.toMillis() ?? 0 })).sort((a, b) => b.at - a.at),
+      invites: inv.docs.map(d => ({ email: d.get('email'), level: d.get('level'), studioTrained: d.get('studioTrained') === true, radioTrained: d.get('radioTrained') === true, mailedAt: (d.get('mailedAt') as number | undefined) ?? 0, at: (d.get('createdAt') as Timestamp | undefined)?.toMillis() ?? 0 })).sort((a, b) => b.at - a.at),
       users: snap.docs.filter(d => d.get('demo') !== true).map(d => {
         const email = String(d.get('email') ?? '')
         return {

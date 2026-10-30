@@ -106,3 +106,18 @@ export function setPasswordMail(o: { link: string }) {
 <p>If this was not you, you can ignore this email.</p><p>Babson Radio</p></div>`
   return { subject, text, html }
 }
+
+/** Sent by an admin to someone who is Studio trained but has not signed up yet. */
+export function studioInviteMail(o: { link: string }) {
+  const subject = 'Set up your Babson Radio account'
+  const lines = [
+    'You are on the Babson Radio Studio trained list, but you have not set up your account yet.',
+    'Enter your email on this page to open the Studio form and get a link to set a password:',
+  ]
+  const text = ['Hi,', '', ...lines, '', o.link, '', 'If this does not look right, you can ignore this email.', '', 'Babson Radio'].join('\n')
+  const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1710;line-height:1.5">
+<p>Hi,</p>${lines.map(l => `<p>${escapeHtml(l)}</p>`).join('')}
+<p style="margin:28px 0"><a href="${escapeHtml(o.link)}" style="background:#006644;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;display:inline-block;font-weight:600">Set up my account</a></p>
+<p>If this does not look right, you can ignore this email.</p><p>Babson Radio</p></div>`
+  return { subject, text, html }
+}

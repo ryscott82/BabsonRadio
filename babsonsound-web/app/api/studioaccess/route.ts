@@ -8,6 +8,7 @@ import { applyInviteNow } from '@/lib/server/access'
 import { SITE_URL } from '@/lib/links'
 import { mailConfigured, sendMail, setPasswordMail } from '@/lib/server/mailer'
 import { loadStudioForm } from '@/lib/server/studioForm'
+import { inviteKey } from '@/lib/server/access'
 
 export const runtime = 'nodejs'
 
@@ -39,12 +40,25 @@ export async function POST(req: Request) {
       if (n >= PER_IP_PER_DAY) throw new HttpError(429, 'Too many tries. Try again tomorrow.', 'BR-STU-103')
       await ref.set({ n: n + 1, expireAt: Timestamp.fromMillis(now + 2 * DAY) })
     }
+    // Only emails already in the system as Studio trained get the form: an account with the badge, or a role saved for that email with the badge.
+    const trained = await isStudioTrained(email)
     // Staff can see who opened the form (admin only; clients cannot read this collection).
-    await db.collection('studioAccess').add({ email, at: Timestamp.fromMillis(now), ...(ipKey ? { ipHash: ipKey } : {}), expireAt: Timestamp.fromMillis(now + 365 * DAY) })
+    await db.collection('studioAccess').add({ email, allowed: trained, at: Timestamp.fromMillis(now), ...(ipKey ? { ipHash: ipKey } : {}), expireAt: Timestamp.fromMillis(now + 365 * DAY) })
+    if (!trained) throw new HttpError(403, 'That email is not on the Studio trained list. Ask a Studio director to add it.', 'BR-STU-105')
     // The email also becomes a Babson Radio account with no password yet. They get an email with a link to set a password, which also proves the email is theirs. The form is shown either way, and the answer is the same whether or not an account already existed.
     await preRegister(email).catch(e => console.error('[studioaccess account]', e))
     return { url, embed }
   }, { 'Cache-Control': 'private, no-store' })
+}
+
+/** True when the email belongs to an account marked Studio trained, or has a saved role (not yet signed up) that includes Studio trained. */
+async function isStudioTrained(email: string): Promise<boolean> {
+  const db = adminDb()
+  const [users, invite] = await Promise.all([
+    db.collection('users').where('email', '==', email).limit(1).get(),
+    db.collection('roleInvites').doc(inviteKey(email)).get(),
+  ])
+  return users.docs[0]?.get('studioTrained') === true || invite.get('studioTrained') === true
 }
 
 /** Creates the account (student for a school email, otherwise guest) unless one exists. No password, no Terms acceptance and no launch-email

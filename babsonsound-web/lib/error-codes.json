@@ -889,6 +889,20 @@
     "staffCheck": "Paste the form's share link (starts with https://forms.office.com or https://forms.cloud.microsoft)."
   },
   {
+    "code": "BR-MAIL-001",
+    "title": "Email is not set up",
+    "meaning": "An admin tried to send an email but RESEND_API_KEY is not set on the server.",
+    "userFix": "Nothing for members to do.",
+    "staffCheck": "Add RESEND_API_KEY in Vercel (and verify the sending domain in Resend), then redeploy."
+  },
+  {
+    "code": "BR-STU-105",
+    "title": "Email not on the Studio trained list",
+    "meaning": "Someone entered an email on /studioaccess that has no account marked Studio trained and no saved role with Studio trained.",
+    "userFix": "Ask a Studio director to add your email.",
+    "staffCheck": "In Admin > Users, mark the account Studio trained, or add the email under 'Give a role to people who have no account yet' with Studio ticked. Attempts are in the studioAccess log (allowed: false)."
+  },
+  {
     "code": "BR-LIM-001",
     "title": "Listening limit not accepted",
     "meaning": "A number saved in Admin > Listening limits is outside its allowed range (minutes 0-1440, session up to 10080, sleep hours 0-23).",

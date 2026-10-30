@@ -1,7 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireStaff } from '@/lib/server/http'
-import { azControl, azSkip, azuraConfigured, azNowPlaying } from '@/lib/server/azuracast'
+import { azControl, azSkipVerified, azuraConfigured, azNowPlaying } from '@/lib/server/azuracast'
 import { buildScheduleFeed } from '@/lib/server/scheduleFeed'
 import { getNote, occIdOf } from '@/lib/server/live'
 import { getAnnouncement, setAnnouncement } from '@/lib/server/announcement'
@@ -63,14 +63,16 @@ export async function POST(req: Request) {
     }
     if (!azuraConfigured()) throw new HttpError(503, 'The radio controls are not connected yet.', 'BR-HST-003')
     try {
-      if (action === 'skip') await azSkip()
+      if (action === 'skip') await azSkipVerified()
       else if (action === 'emergency-stop') { await azControl('backend', 'stop'); await azControl('frontend', 'stop') }
       else if (action === 'resume') { await azControl('frontend', 'start'); await azControl('backend', 'start') }
       else throw new HttpError(400, 'Unknown action.')
     } catch (e) {
       if (e instanceof HttpError) throw e
       console.error('[admin controls]', e)
-      throw new HttpError(502, 'The radio did not accept that. Check the AzuraCast key has broadcasting permission.', 'BR-HST-003')
+      // Say what AzuraCast actually answered (without any key), so a skip that does nothing can be diagnosed.
+      const why = e instanceof Error ? e.message.replace(/\s+/g, ' ').slice(0, 160) : ''
+      throw new HttpError(502, `The radio did not accept that${why ? ` (${why})` : ''}. Check the AzuraCast key has broadcasting permission.`, 'BR-HST-003')
     }
     await adminDb().collection('hostActions').add({ uid: t.uid, action: String(action), show: '(admin)', at: Timestamp.now() })
     if (action === 'emergency-stop' || action === 'resume') after(() => notifyAdmins('ops', { title: action === 'resume' ? 'Station back on air' : 'Station stopped', body: 'Another admin used the station controls.' }, t.uid))

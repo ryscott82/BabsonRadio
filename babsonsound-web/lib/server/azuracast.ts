@@ -144,9 +144,26 @@ export async function azNowPlaying(): Promise<NowPlaying | null> {
 }
 
 /** Skip to the next song. The API key needs the "Manage station broadcasting" permission. */
-export async function azSkip(): Promise<void> {
+export async function azSkip(): Promise<string> {
   if (!azuraConfigured()) throw new Error('AzuraCast is not configured')
-  await az(`/station/${station()}/backend/skip`, { method: 'POST' })
+  // AzuraCast answers { success, message }. A plain "200 OK" is not enough: success:false means it did not skip.
+  const r = await az<{ success?: boolean; message?: string }>(`/station/${station()}/backend/skip`, { method: 'POST' })
+  if (r && r.success === false) throw new Error(`AzuraCast refused the skip: ${r.message ?? 'no reason given'}`)
+  return r?.message ?? ''
+}
+
+/** Skips, then checks that the song really changed (AzuraCast can say yes and do nothing). Throws with what it said if not. */
+export async function azSkipVerified(): Promise<void> {
+  const before = await azNowPlaying().catch(() => null)
+  const said = await azSkip()
+  if (!before) return
+  for (const wait of [1500, 2000, 2500]) {
+    await new Promise(r => setTimeout(r, wait))
+    const now = await azNowPlaying().catch(() => null)
+    if (!now) continue
+    if (now.song !== before.song || now.elapsed < before.elapsed - 3) return
+  }
+  throw new Error(`AzuraCast said OK${said ? ` ("${said}")` : ''} but the song did not change`)
 }
 
 /** Start/stop the broadcast engine (backend = AutoDJ, frontend = the stream server). Needs "Manage station broadcasting". */

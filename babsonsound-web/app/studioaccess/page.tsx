@@ -30,7 +30,7 @@ export default function StudioAccess() {
 
   if (url && !embed) {
     return (
-      <div className="max-w-md mx-auto px-4 py-10">
+      <div className="mx-auto px-4 py-10" style={{ maxWidth: 448 }}>
         <div className="hw-panel hw-big space-y-5">
           <h1 className="font-display text-br-dk-text text-3xl tracking-wide">Studio training</h1>
           <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-full h-12 rounded-xl bg-white text-[#0f5233] font-semibold">Open the training form</a>
@@ -41,7 +41,7 @@ export default function StudioAccess() {
 
   if (url) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-4">
+      <div className="mx-auto px-4 py-8 space-y-4" style={{ maxWidth: 896 }}>
         <h1 className="font-display text-br-dk-text text-3xl tracking-wide">Studio training</h1>
         <iframe title="Studio training form" src={url} referrerPolicy="no-referrer"
                 sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
@@ -51,7 +51,7 @@ export default function StudioAccess() {
   }
 
   return (
-    <div className="max-w-md mx-auto px-4 py-10">
+    <div className="mx-auto px-4 py-10" style={{ maxWidth: 448 }}>
       <form onSubmit={submit} className="hw-panel hw-big space-y-5" noValidate>
         <h1 className="font-display text-br-dk-text text-3xl tracking-wide">Studio training</h1>
         <Field label="Email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false}

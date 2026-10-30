@@ -13,7 +13,8 @@ export default async function Image() {
     (
       <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 96, position: 'relative', background: '#006644', color: '#ffffff' }}>
         <div style={{ fontSize: 132, fontWeight: 800, letterSpacing: -3 }}>Babson Radio</div>
-        <div style={{ fontSize: 44, marginTop: 24, opacity: 0.85 }}>Student-run internet radio</div>
+        <div style={{ fontSize: 40, marginTop: 24, opacity: 0.85, maxWidth: 700, lineHeight: 1.2 }}>The first all-internet radio station in the United States</div>
+        <div style={{ fontSize: 32, marginTop: 12, opacity: 0.7 }}>Student-run since 1998</div>
         <div style={{ fontSize: 32, marginTop: 56, opacity: 0.7 }}>babsonradio.com</div>
         <img src={beaver} width={400} height={400} alt="" style={{ position: 'absolute', right: 70, bottom: 60 }} />
       </div>

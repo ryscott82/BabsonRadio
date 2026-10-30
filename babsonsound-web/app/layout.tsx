@@ -22,10 +22,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL('https://babsonradio.com'),
   title: 'Babson Radio',
-  description: 'Student-run internet radio — Babson College',
+  description: 'The first all-internet radio station in the United States. Student-run at Babson College, since 1998.',
   openGraph: {
     title: 'Babson Radio',
-    description: 'Student-run internet radio — Babson College',
+    description: 'The first all-internet radio station in the United States. Student-run at Babson College, since 1998.',
     siteName: 'Babson Radio',
   },
   twitter: { card: 'summary_large_image' },

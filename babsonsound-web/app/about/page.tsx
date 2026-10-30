@@ -8,7 +8,7 @@ import { lines, txt } from '@/lib/siteText'
 
 export const metadata: Metadata = {
   title: 'About us | Babson Radio',
-  description: 'Babson Radio is the student-run internet radio station of Babson College, made by Babson Sound.',
+  description: 'Babson Radio is the first all-internet radio station in the United States, run by students at Babson College since 1998 and made by Babson Sound.',
 }
 
 export const revalidate = 60 // admins can change these words (Admin Panel > Page text); the page picks them up within a minute

@@ -9,7 +9,7 @@ export interface SiteTextItem { key: string; page: string; label: string; def: s
 
 export const SITE_TEXT: SiteTextItem[] = [
   { key: 'about.title', page: 'About', label: 'Page title', def: 'About us' },
-  { key: 'about.subtitle', page: 'About', label: 'Line under the title', def: 'The student-run radio station of Babson College.' },
+  { key: 'about.subtitle', page: 'About', label: 'Line under the title', def: 'The first all-internet radio station in the United States. Student-run at Babson College, on the air since 1998.' },
   { key: 'about.what.title', page: 'About', label: 'What we do: heading', def: 'What we do' },
   { key: 'about.what.items', page: 'About', label: 'What we do: lines', lines: true, hint: 'One line per bullet. Start a line with ~ for small gray text.',
     def: 'Live shows from campus\nMusic in between\nMade by students and volunteers\n~ Babson College does not review or endorse what we play.' },

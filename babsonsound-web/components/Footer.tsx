@@ -13,9 +13,12 @@ export default function Footer() {
   return (
     <footer className="hw-foot relative z-[1]">
       <div className="max-w-[1800px] mx-auto px-4 lg:px-8 xl:px-12 py-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 text-sm">
-        <p className="tracking-[0.3em] text-sm font-bold text-br-dk-text shrink-0">
-          <span className="text-br-gold">Babson</span> RADIO
-        </p>
+        <div className="shrink-0">
+          <p className="tracking-[0.3em] text-sm font-bold text-br-dk-text">
+            <span className="text-br-gold">Babson</span> RADIO
+          </p>
+          <p className="text-br-dk-sub mt-1">The first all-internet radio station in the United States. Since 1998.</p>
+        </div>
         <nav className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <a href="/about" className={link}>About us</a>
           <a href={LINKS.events} {...ext} className={link}>Events</a>

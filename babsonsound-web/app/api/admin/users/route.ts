@@ -4,6 +4,8 @@ import { ANY_EMAIL, HttpError, handle, readJson, requireAdmin, str } from '@/lib
 import { badgeExpiry } from '@/lib/studioRules'
 import { cleanInstagram } from '@/lib/instagram'
 import { validGradYear } from '@/lib/terms'
+import { clearPhone, phoneFieldsDeleted } from '@/lib/server/phoneStore'
+import { removeContactGraph } from '@/lib/server/contactGraph'
 import { LEVELS, forgetAccess, inviteKey, isOwnerEmail, type Level } from '@/lib/server/access'
 
 export const runtime = 'nodejs'
@@ -66,6 +68,27 @@ export async function POST(req: Request) {
       await ref.update({ instagram: FieldValue.delete() })
       console.log(`[instagram-clear] ${me.email ?? me.uid} cleared the Instagram handle for ${uid}`)
       return { ok: true, cleared: true }
+    }
+    // { uid, resetSetup: true }: starts the first-time setup over for one account (name, color, birthday, graduation year, phone, Instagram and the
+    // "Not now" history), so it can be tried again without deleting the account. Sign-in, role, badges and Terms acceptance stay. Logged in adminProfileEdits.
+    if (b.resetSetup === true) {
+      if (!uid) throw new HttpError(400, 'Pick an account.')
+      const db = adminDb()
+      const ref = db.collection('users').doc(uid)
+      const u = await ref.get()
+      if (!u.exists) throw new HttpError(404, 'User not found.')
+      const em = String(u.get('email') ?? '')
+      if (isOwnerEmail(em.toLowerCase()) && uid !== me.uid) throw new HttpError(403, 'Owner accounts cannot be changed.')
+      await clearPhone(db, uid).catch(() => {})
+      await removeContactGraph(db, uid).catch(() => {})
+      await ref.update({
+        firstName: FieldValue.delete(), lastName: FieldValue.delete(), displayName: em.split('@')[0],
+        avatarColor: FieldValue.delete(), ageData: FieldValue.delete(), minor: FieldValue.delete(), parentalConsent: FieldValue.delete(), onboardedAt: FieldValue.delete(),
+        gradYear: '', instagram: FieldValue.delete(), setup: FieldValue.delete(), ...phoneFieldsDeleted(),
+      })
+      await db.collection('adminProfileEdits').add({ uid, byUid: me.uid, byEmail: me.email ?? '', at: Timestamp.now(), action: 'reset-setup' })
+      forgetAccess(uid)
+      return { ok: true }
     }
     // { uid, profile: { firstName?, lastName?, gradYear?, instagram? } }: an admin edits or adds a member's details. Leave a field out to keep it; send '' to clear
     // a last name, grad year or Instagram handle. Instagram and grad year are for students and above. Every change is logged in adminProfileEdits (who, whom, before and after).

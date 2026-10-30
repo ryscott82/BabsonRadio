@@ -40,6 +40,18 @@ export default function AdminUsersPage() {
   const [editId, setEditId] = useState('')
   const [ef, setEf] = useState({ firstName: '', lastName: '', gradYear: '', instagram: '' })
   const [editBusy, setEditBusy] = useState(false)
+  const [resetAsk, setResetAsk] = useState(false)
+  async function resetSetup(r: Row) {
+    setEditBusy(true); setError(''); setNote('')
+    try {
+      await api('/api/admin/users', { uid: r.id, resetSetup: true })
+      setRows(prev => prev.map(x => (x.id === r.id ? { ...x, name: '', firstName: '', lastName: '', gradYear: '', instagram: '' } : x)))
+      setNote(`Setup was reset for ${r.email}. They see the setup steps again the next time they open the site.`)
+      setEditId(''); setResetAsk(false)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not reset.') }
+    setEditBusy(false)
+  }
+  function startEdit(r: Row) { setResetAsk(false); setEditId(r.id); setEf({ firstName: r.firstName, lastName: r.lastName, gradYear: r.gradYear, instagram: r.instagram }); setError(''); setNote('') }
   async function saveEdit(r: Row) {
     setEditBusy(true); setError(''); setNote('')
     try {
@@ -223,7 +235,10 @@ export default function AdminUsersPage() {
                                className="sk-field w-full rounded-lg px-3 py-2 text-sm text-br-dk-text" /></label>
                     </>
                   )}
-                  <div className="sm:col-span-2 flex gap-3 justify-end">
+                  <div className="sm:col-span-2 flex flex-wrap gap-3 justify-end items-center">
+                    {resetAsk
+                      ? <span className="text-xs text-br-dk-sub mr-auto">Clears name, color, birthday, grad year, phone and Instagram. <button type="button" onClick={() => resetSetup(r)} disabled={editBusy} className="underline text-red-400">Yes, reset</button> · <button type="button" onClick={() => setResetAsk(false)} className="underline">No</button></span>
+                      : <button type="button" onClick={() => setResetAsk(true)} className="text-sm text-br-dk-sub underline mr-auto">Reset setup</button>}
                     <button type="button" onClick={() => setEditId('')} className="text-sm text-br-dk-sub underline">Cancel</button>
                     <button type="button" onClick={() => saveEdit(r)} disabled={editBusy || !ef.firstName.trim()} className="sk-raised rounded-lg px-4 py-2 text-sm text-br-dk-text disabled:opacity-50">{editBusy ? 'Saving…' : 'Save'}</button>
                   </div>

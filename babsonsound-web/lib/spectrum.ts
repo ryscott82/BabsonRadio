@@ -9,15 +9,23 @@ import { useEffect, type RefObject } from 'react'
 
 let corsProbe: Promise<boolean> | null = null
 let corsKnown: boolean | null = null
+let corsErr = '' // why the last check failed (shown by ?eqdebug=1)
 /** The answer of probeCors once it has finished (null while unknown). Lets the first tap attach the analyser without waiting, which phones need. */
 export const corsResult = () => corsKnown
 export function probeCors(url: string): Promise<boolean> {
   if (!url) return Promise.resolve(false)
   if (!corsProbe) {
     corsProbe = (async () => {
-      const ctl = new AbortController()
-      const t = setTimeout(() => ctl.abort(), 6000)
-      try { await fetch(url, { method: 'HEAD', mode: 'cors', cache: 'no-store', signal: ctl.signal }); corsKnown = true; return true } catch { corsKnown = false; return false } finally { clearTimeout(t) }
+      // HEAD first (it costs the stream server nothing). Safari, and some stream servers, refuse HEAD on a live stream, so if it fails a normal GET
+      // is tried, cancelled the moment the headers arrive so no audio is downloaded.
+      const tryFetch = async (method: 'HEAD' | 'GET') => {
+        const ctl = new AbortController()
+        const t = setTimeout(() => ctl.abort(), 6000)
+        try { await fetch(url, { method, mode: 'cors', cache: 'no-store', signal: ctl.signal }); return true } catch (e) { corsErr = `${method} ${(e as Error)?.name}: ${(e as Error)?.message}`.slice(0, 80); return false } finally { clearTimeout(t); if (method === 'GET') ctl.abort() }
+      }
+      const ok = (await tryFetch('HEAD')) || (await tryFetch('GET'))
+      corsKnown = ok
+      return ok
     })()
   }
   return corsProbe
@@ -28,6 +36,8 @@ interface Tap { ctx: AudioContext; an: AnalyserNode; data: Uint8Array<ArrayBuffe
 export const AUDIO_DELAY_MS = 216
 
 let wakeHooked = false
+/** The crunch only touches sound above this. */
+const CRUNCH_HZ = 1800
 const taps = new WeakMap<HTMLAudioElement, Tap>()
 let current: Tap | null = null
 
@@ -56,7 +66,10 @@ export function attachSpectrum(el: HTMLAudioElement): boolean {
     dry.gain.value = 0; wet.gain.value = 0; drive.gain.value = 1; bus.gain.value = 0.9
     src.connect(direct); direct.connect(out)
     src.connect(dry); dry.connect(bus)
-    src.connect(drive); drive.connect(sat); sat.connect(wet); wet.connect(bus)
+    // Only the highs are driven into the crunch: a high-pass in front of the shaper keeps the lows and mids clean, so it grits up the top without turning the whole mix to mud.
+    const crunchHp = ctx.createBiquadFilter()
+    crunchHp.type = 'highpass'; crunchHp.frequency.value = CRUNCH_HZ; crunchHp.Q.value = 0.6
+    src.connect(crunchHp); crunchHp.connect(drive); drive.connect(sat); sat.connect(wet); wet.connect(bus)
     // Sparkle: only the highs are driven into a shaper and blended back in (harmonic excitement instead of a crushed mix).
     const hp = ctx.createBiquadFilter(), exSat = ctx.createWaveShaper(), exDrive = ctx.createGain(), ex = ctx.createGain()
     hp.type = 'highpass'; hp.frequency.value = 3200; exDrive.gain.value = 5; exSat.curve = tubeCurve(); exSat.oversample = '4x'; ex.gain.value = 0
@@ -122,12 +135,12 @@ export function setBoostDb(db: number) {
   if (!t) return
   const on = boostDb > 0.05, k = Math.min(1, boostDb / MAX_BOOST_DB), now = t.ctx.currentTime, glide = 0.03
   t.direct.gain.setTargetAtTime(on ? 0 : 1, now, glide)
-  t.dry.gain.setTargetAtTime(on ? Math.pow(10, boostDb / 20) * (1 - 0.7 * k) : 0, now, glide)
-  t.drive.gain.setTargetAtTime(1 + 4 * k, now, glide)
-  t.wet.gain.setTargetAtTime(on ? 0.5 * k : 0, now, glide)
+  t.dry.gain.setTargetAtTime(on ? Math.pow(10, boostDb / 20) * (1 - 0.35 * k) : 0, now, glide) // the clean full-range sound stays; the crunch is added on top of the highs
+  t.drive.gain.setTargetAtTime(1 + 6 * k, now, glide)
+  t.wet.gain.setTargetAtTime(on ? 0.9 * k : 0, now, glide)
   // The cool part: more chest, more shine, a touch of high-frequency sparkle, and glue compression that grows with the boost.
   t.ex.gain.setTargetAtTime(on ? 0.22 * k : 0, now, glide)
-  t.low.gain.setTargetAtTime(on ? 4.5 * k : 0, now, glide)
+  t.low.gain.setTargetAtTime(on ? 2.5 * k : 0, now, glide)
   t.air.gain.setTargetAtTime(on ? 3 * k : 0, now, glide)
   t.comp.threshold.setTargetAtTime(on ? -10 - 8 * k : 0, now, glide)
   t.comp.ratio.setTargetAtTime(on ? 1.5 + 3.5 * k : 1, now, glide)
@@ -137,7 +150,7 @@ export function setBoostDb(db: number) {
 /** True once the stream is routed through the analyser (so silence can be read as silence, not as "no analysis"). */
 export const hasSpectrum = () => !!current
 /** One line of state for the ?eqdebug=1 readout: is the analyser attached, is its audio engine awake, is it hearing anything. */
-export const eqDebug = () => `cors:${corsKnown} attached:${!!current} ctx:${current?.ctx.state ?? '-'} peak:${lastPeak.toFixed(3)} vol:${elementVolumeWorks() ? 'el' : 'gain'}`
+export const eqDebug = () => `cors:${corsKnown}${corsKnown === false ? ` (${corsErr})` : ''} attached:${!!current} ctx:${current?.ctx.state ?? '-'} peak:${lastPeak.toFixed(3)} vol:${elementVolumeWorks() ? 'el' : 'gain'}`
 export function wakeSpectrum() { const c = current?.ctx; if (c && c.state !== 'running') c.resume().catch(() => {}) }
 
 /**

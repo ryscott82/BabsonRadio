@@ -22,8 +22,23 @@ export function rain(e: string, count = 1, spreadMs = 0) {
   window.dispatchEvent(new CustomEvent<P[]>(EVT, { detail: list }))
 }
 
-/** A burst of 4 or 5, for when you tap a reaction. */
-export const rainBurst = (e: string) => rain(e, 4 + (Math.random() < 0.5 ? 0 : 1))
+// Keeps the screen from filling up: each kind of rain draws from its own bucket of "drops" that refills steadily. A calm room gets the full
+// shower every time; someone hammering the button, or a crowd all reacting at once, gets only what the bucket has left (down to nothing for a moment).
+const buckets = { self: { cap: 30, perSec: 7, tokens: 30, at: 0 }, others: { cap: 24, perSec: 4, tokens: 24, at: 0 } }
+function take(kind: keyof typeof buckets, want: number): number {
+  const b = buckets[kind], now = Date.now()
+  if (b.at) b.tokens = Math.min(b.cap, b.tokens + ((now - b.at) / 1000) * b.perSec)
+  b.at = now
+  const n = Math.min(want, Math.floor(b.tokens))
+  b.tokens -= n
+  return n
+}
+
+/** About 10 drops (9 to 11) from the person who tapped a reaction, fewer if they are tapping rapidly. */
+export const rainBurst = (e: string) => { const n = take('self', 9 + Math.floor(Math.random() * 3)); if (n > 0) rain(e, n) }
+
+/** 3 drops for a reaction someone else sent, spread out a little; fewer when many arrive at once, so a busy room never gets distracting. */
+export const rainFromOthers = (e: string) => { const n = take('others', 3); if (n > 0) rain(e, n, 2_500) }
 
 const noop = () => () => {}
 

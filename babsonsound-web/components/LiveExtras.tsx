@@ -7,7 +7,7 @@ import { createContext, useCallback, useContext, useEffect, useId, useRef, useSt
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet, apiGetPublic } from '@/lib/auth'
 import type { NowPlaying } from '@/lib/nowplaying'
-import EmojiRain, { rain, rainBurst } from './EmojiRain'
+import EmojiRain, { rainBurst, rainFromOthers } from './EmojiRain'
 import { useArtMain } from '@/components/ArtTheme'
 
 // Things around the live player: a pinned note from the host, quick reactions, the host's set list with upvotes,
@@ -20,9 +20,9 @@ const poll = (fn: () => void, ms: number) => {
   return () => clearInterval(t)
 }
 
-// One reaction per 10s is sent to the server. Extra taps inside that window still rain on your own screen.
+// One reaction per 3s is sent to the server (it also allows at most 30 a minute per person). Extra taps inside that window still rain on your own screen, within the bucket in EmojiRain.
 let lastTap = 0
-const tooSoon = () => { const n = Date.now(); const r = n - lastTap < 10_000; if (!r) lastTap = n; return r }
+const tooSoon = () => { const n = Date.now(); const r = n - lastTap < 3_000; if (!r) lastTap = n; return r }
 
 interface Song { id: string; text: string; votes: number; mine: boolean }
 
@@ -83,7 +83,7 @@ function useLiveExtrasState(np: NowPlaying | null) {
           const first = since.current === 0 // do not replay what happened before we arrived
           const fresh = r.events.filter(x => x.c !== cid && x.at > since.current)
           if (fresh.length) lastEvent = Date.now()
-          if (!first) fresh.forEach(x => rain(x.e, 1, 2_500))
+          if (!first) fresh.forEach(x => rainFromOthers(x.e))
           since.current = Math.max(since.current, r.events.length ? r.events[r.events.length - 1].at : 0, r.now - 4_000)
         }).catch(() => {}).finally(next)
     }

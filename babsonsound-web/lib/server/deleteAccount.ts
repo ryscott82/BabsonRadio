@@ -32,6 +32,8 @@ export async function deleteAccountData(uid: string) {
     await deleteQuery(db, db.collection('guestInvites').where('sponsorUid', '==', uid))
     await deleteQuery(db, db.collection('likes').where('uid', '==', uid))
     await deleteQuery(db, db.collection('deviceTokens').where('uid', '==', uid))
+    // Studio training: sign-ins, badges, club interest, check-in tries and expiry notices go with the account.
+    for (const c of ['trainingAttendance', 'trainingGrants', 'trainingNotices', 'trainingCheckinLog']) await deleteQuery(db, db.collection(c).where('uid', '==', uid))
     await Promise.all([
       db.collection('presence').doc(uid).delete(),
       db.collection('guestPasses').doc(uid).delete(),
@@ -39,6 +41,8 @@ export async function deleteAccountData(uid: string) {
       db.collection('guestLinks').doc(uid).delete(),
       db.collection('contactSyncs').doc(uid).delete(),
       db.collection('training').doc(uid).delete(),
+      db.collection('clubInterest').doc(uid).delete(),
+      db.collection('trainingCheckinGuard').doc(uid).delete(),
       userRef.delete(),
     ])
     await adminAuth().deleteUser(uid)

@@ -136,6 +136,14 @@ service cloud.firestore {
     match /signupIp/{id}             { allow read, write: if false; } // sign-up limit counters (keyed IP hash, TTL on expireAt)
     match /signupDomain/{id}         { allow read, write: if false; }
     match /signupGlobal/{id}         { allow read, write: if false; }
+    // Studio training (admin SDK only): sessions with check-in secrets, attendance, append-only badge grants, club interest, check-in tries and logs, expiry notices
+    match /trainingSessions/{id}     { allow read, write: if false; }
+    match /trainingAttendance/{id}   { allow read, write: if false; }
+    match /trainingGrants/{id}       { allow read, write: if false; }
+    match /clubInterest/{id}         { allow read, write: if false; }
+    match /trainingCheckinGuard/{id} { allow read, write: if false; } // 5 tries a minute, 15-minute lock (TTL on expireAt)
+    match /trainingCheckinLog/{id}   { allow read, write: if false; } // wrong codes and locks (TTL on expireAt)
+    match /trainingNotices/{id}      { allow read, write: if false; }
     match /instagramClears/{id}      { allow read, write: if false; } // which admin cleared which Instagram handle, and when
   }
 }

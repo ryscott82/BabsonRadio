@@ -75,3 +75,19 @@ export function verifyReminderMail(o: { deleteAt: number }) {
     ['Hi,', ...lines, 'Babson Radio'].map(l => `<p>${escapeHtml(l)}</p>`).join('')}</div>`
   return { subject, text, html }
 }
+
+/** Studio training badges are ending: 14 days before, and again on May 1. */
+export function trainingExpiryMail(o: { badges: string[]; expiresAt: number; kind: 'd14' | 'may1' }) {
+  const what = o.badges.map(b => (b === 'studio' ? 'Studio' : 'Radio')).join(' and ')
+  const when = new Date(o.expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })
+  const subject = o.kind === 'd14' ? `Your Babson Radio ${what} training ends soon` : `Renew your Babson Radio ${what} training before June 30`
+  const lines = [
+    `Your ${what} training runs out on ${when}.`,
+    'After that you cannot request new live shows until you renew. Shows already approved stay on the schedule.',
+    'To renew, come to a training session. Check babsonradio.com for the next one.',
+  ]
+  const text = ['Hi,', '', ...lines, '', 'Babson Radio'].join('\n')
+  const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1710;line-height:1.5">${
+    ['Hi,', ...lines, 'Babson Radio'].map(l => `<p>${escapeHtml(l)}</p>`).join('')}</div>`
+  return { subject, text, html }
+}

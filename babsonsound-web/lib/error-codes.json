@@ -726,5 +726,159 @@
     "meaning": "Resend did not accept the test email.",
     "userFix": "",
     "staffCheck": "Read the reason in the error. Common: the sending domain is not verified in Resend, or the free plan's daily limit is used up."
+  },
+  {
+    "code": "BR-TRN-010",
+    "title": "Radio training ended",
+    "meaning": "The radio badge ran out (it ends each June 30) and a new live show was requested.",
+    "userFix": "Come to a training session to renew. Shows already approved stay on the schedule.",
+    "staffCheck": "Admin > Studio roster shows the expiry. A director or admin can extend it by hand with a reason."
+  },
+  {
+    "code": "BR-STU-001",
+    "title": "Training session not found",
+    "meaning": "The session id does not exist, or the trainer is not a Director or Admin.",
+    "userFix": "Pick a session from the list.",
+    "staffCheck": "A session needs a Director or Admin as its trainer to be created or opened. Check the trainer's level in Admin > Users."
+  },
+  {
+    "code": "BR-STU-002",
+    "title": "Verify your school email",
+    "meaning": "Studio training needs a verified school email, not just the 7-day grace period.",
+    "userFix": "Open the verification email, or resend it from your profile.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-STU-003",
+    "title": "Trainer only",
+    "meaning": "Only the named trainer (or an Admin) can open or close check-in, see the code, remove people and confirm. Only an Admin can name another trainer.",
+    "userFix": "Ask the trainer, or an admin.",
+    "staffCheck": "Check trainerUid on the trainingSessions document."
+  },
+  {
+    "code": "BR-STU-004",
+    "title": "Check-in not open",
+    "meaning": "Check-in is not open, the session is over, or it closed itself 15 minutes after the end.",
+    "userFix": "Ask the trainer to open check-in.",
+    "staffCheck": "Status checkin_open is needed. It auto-closes at endsAt + 15 minutes. A closed session can be reopened until then."
+  },
+  {
+    "code": "BR-STU-005",
+    "title": "Too many tries",
+    "meaning": "More than 5 check-in tries in a minute.",
+    "userFix": "Wait a minute and try again.",
+    "staffCheck": "Counted per person in trainingCheckinGuard."
+  },
+  {
+    "code": "BR-STU-006",
+    "title": "Check-in locked",
+    "meaning": "10 wrong codes in a row locked check-in for 15 minutes.",
+    "userFix": "Wait 15 minutes, then enter the code shown on the trainer's screen.",
+    "staffCheck": "Wrong codes and the lock are in trainingCheckinLog. Delete the person's trainingCheckinGuard document to unlock them."
+  },
+  {
+    "code": "BR-STU-007",
+    "title": "Already checked in",
+    "meaning": "This person already checked in to this session.",
+    "userFix": "Nothing to do. Wait for the trainer to confirm.",
+    "staffCheck": "One check-in per person per session."
+  },
+  {
+    "code": "BR-STU-008",
+    "title": "Removed from session",
+    "meaning": "The trainer removed this person from the session.",
+    "userFix": "Ask the trainer.",
+    "staffCheck": "removedAt is set on the trainingAttendance row."
+  },
+  {
+    "code": "BR-STU-009",
+    "title": "Session full",
+    "meaning": "The session has no spots left.",
+    "userFix": "Pick another session.",
+    "staffCheck": "Capacity is checked when saving a spot (rsvpCount on the session)."
+  },
+  {
+    "code": "BR-STU-010",
+    "title": "Wrong check-in code",
+    "meaning": "The code did not match the current or previous 30-second code.",
+    "userFix": "Type the code exactly as shown. It changes every 30 seconds.",
+    "staffCheck": "Logged in trainingCheckinLog. Ten wrong codes lock check-in for 15 minutes."
+  },
+  {
+    "code": "BR-STU-011",
+    "title": "Close check-in first",
+    "meaning": "Attendance can be confirmed only after check-in is closed and someone has checked in.",
+    "userFix": "Close check-in, then confirm.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-STU-012",
+    "title": "Staff do not check in",
+    "meaning": "Directors and admins skip training, so they do not check in.",
+    "userFix": "Nothing to do.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-STU-013",
+    "title": "Attendance not confirmed",
+    "meaning": "The quiz and agreement open only after the trainer confirms this person attended this session.",
+    "userFix": "Ask the trainer to confirm attendance.",
+    "staffCheck": "Look for confirmedAt on trainingAttendance/{sessionId}_{uid}. A removed person never gets it."
+  },
+  {
+    "code": "BR-STU-014",
+    "title": "Studio first",
+    "meaning": "Radio training needs a Studio badge already held, or granted by the same session.",
+    "userFix": "Take Studio training first (or a session that covers both).",
+    "staffCheck": "Check studioTrained and studioExpiresAt on the profile."
+  },
+  {
+    "code": "BR-STU-015",
+    "title": "Quiz not finished",
+    "meaning": "Some quiz questions were left blank.",
+    "userFix": "Answer every question before submitting.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-STU-016",
+    "title": "Quiz retried too fast",
+    "meaning": "A second quiz attempt came within 20 seconds of the last.",
+    "userFix": "Read the explanations, then try again.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-STU-017",
+    "title": "Agreement not signed",
+    "meaning": "The agreement needs every box ticked and a typed full name. Nothing is granted until it is signed.",
+    "userFix": "Tick every box and type your first and last name.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-STU-018",
+    "title": "Already confirmed",
+    "meaning": "A confirmed person cannot be removed from the session.",
+    "userFix": "Ask a director or admin to revoke the badge instead.",
+    "staffCheck": "Revoke from Admin > Studio roster."
+  },
+  {
+    "code": "BR-STU-019",
+    "title": "Reason too short",
+    "meaning": "Revoking or granting by hand needs a typed reason of at least 10 characters.",
+    "userFix": "Type a reason.",
+    "staffCheck": "The reason is stored on the grant."
+  },
+  {
+    "code": "BR-STU-020",
+    "title": "Grant not found or already revoked",
+    "meaning": "The grant id is wrong, or it was revoked before.",
+    "userFix": "Refresh the roster.",
+    "staffCheck": "Grants are never edited or deleted, only revoked."
+  },
+  {
+    "code": "BR-STU-021",
+    "title": "Cannot train this account",
+    "meaning": "Guests cannot be trained and directors and admins do not need badges.",
+    "userFix": "Verify a school email first.",
+    "staffCheck": "Check the level in Admin > Users."
   }
 ]

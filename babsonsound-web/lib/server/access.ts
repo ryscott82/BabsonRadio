@@ -3,6 +3,7 @@ import type { DecodedIdToken } from 'firebase-admin/auth'
 import { createHash } from 'node:crypto'
 import { adminDb } from './admin'
 import { isListedOwner, isVerifiedOwner } from '../ownerRule'
+import { badgeActive } from '../studioRules'
 
 /** One access level per person. */
 export type Level = 'guest' | 'student' | 'director' | 'admin'
@@ -32,6 +33,12 @@ export type Access = {
   owner: boolean
   demo: boolean
   schoolVerified: boolean
+  /** When the Studio / Radio badge runs out (ms), or null when it has no date. Directors and admins have none. */
+  studioExpiresAt: number | null
+  radioExpiresAt: number | null
+  /** True when the person holds the badge but it ran out (so the app can say "renew" instead of "get trained"). */
+  studioExpired: boolean
+  radioExpired: boolean
 }
 
 /** Roles given to an email before it has an account: roleInvites/{sha256(email)}. */
@@ -83,10 +90,18 @@ export async function accessOf(t: DecodedIdToken): Promise<Access> {
   if (level !== 'guest' && !trusted) level = 'guest'
 
   const high = level === 'admin' || level === 'director'
+  // Badges from Studio training run out on a date (users.studioExpiresAt / radioExpiresAt). No date = the old flow, never expires.
+  const expiry = (k: string): number | null => { const v = field(k) as { toMillis?: () => number } | null | undefined; return v?.toMillis?.() ?? null }
+  const studioExp = high ? null : expiry('studioExpiresAt'), radioExp = high ? null : expiry('radioExpiresAt')
+  const studioFlag = level === 'student' && field('studioTrained') === true
+  const radioFlag = level === 'student' && field('radioTrained') === true
   const a: Access = {
     uid: t.uid, level, owner, demo, schoolVerified: schoolVerified || demo,
-    studio: high || (level === 'student' && field('studioTrained') === true),
-    radio: high || (level === 'student' && field('radioTrained') === true),
+    studio: high || (studioFlag && badgeActive(studioExp, now)),
+    radio: high || (radioFlag && badgeActive(radioExp, now)),
+    studioExpiresAt: studioExp, radioExpiresAt: radioExp,
+    studioExpired: studioFlag && !badgeActive(studioExp, now),
+    radioExpired: radioFlag && !badgeActive(radioExp, now),
   }
   if (cache.size > 2000) cache.clear()
   cache.set(t.uid, { at: now, a })

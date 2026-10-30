@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireMember } from '@/lib/server/http'
 import { readiness } from '@/lib/server/conduct'
 import { forgetAccess } from '@/lib/server/access'
+import { badgeExpiry } from '@/lib/studioRules'
 import { PASS_PERCENT, QUIZ, TRAINING_VERSION, publicQuiz } from '@/lib/training'
 import { AGREEMENTS_VERSION, HOST_AGREEMENTS } from '@/lib/conduct'
 
@@ -46,7 +47,8 @@ export async function POST(req: Request) {
     const base = { lastAttemptAt: now, lastScore: percent, attempts: (prev.get('attempts') ?? 0) + 1 }
     if (passed) {
       await ref.set({ ...base, certifiedAt: prev.get('certifiedAt') ?? now, version: TRAINING_VERSION, score: percent, revokedAt: null, certifiedBy: 'quiz' }, { merge: true })
-      await db.collection('users').doc(t.uid).update({ radioTrained: true, studioTrained: true }) // badges are what the server checks
+      const ends = Timestamp.fromMillis(badgeExpiry(Date.now()))
+      await db.collection('users').doc(t.uid).update({ radioTrained: true, studioTrained: true, radioExpiresAt: ends, studioExpiresAt: ends }) // badges are what the server checks
       forgetAccess(t.uid)
     } else {
       await ref.set(base, { merge: true })

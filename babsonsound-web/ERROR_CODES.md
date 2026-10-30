@@ -135,6 +135,7 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | BR-TRN-001 | **Training required**: A student tried to request a slot without being certified. | Take the host quiz at /training, or request in-person training. | Admin > Training shows who is certified. Directors can certify by hand. |
 | BR-TRN-002 | **Quiz retried too fast**: A second quiz attempt came within 20 seconds of the last. | Read the explanations, then try again. | — |
 | BR-TRN-003 | **Quiz not finished**: Some questions were left blank. | Answer every question before submitting. | — |
+| BR-TRN-010 | **Radio training ended**: The radio badge ran out (it ends each June 30) and a new live show was requested. | Come to a training session to renew. Shows already approved stay on the schedule. | Admin > Studio roster shows the expiry. A director or admin can extend it by hand with a reason. |
 
 ## Conduct agreements
 

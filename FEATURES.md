@@ -169,3 +169,17 @@ Access levels: guest, student, director, admin. Badges: radioTrained (live shows
 - [x] Names on song and playlist requests come from the saved profile, not the sign-in token; names, request text and rating comments go through the word filter (BR-ACC-025); the client can no longer write `firstName` or `displayName` straight to Firestore
 - [x] `/api/health` is admin-only (or `x-health-key`); `/api/live/rating` GET is edge-cached for signed-out callers; RSS feed values are escaped; picture links must be exactly our bucket's link for that path; dead-air email body is HTML-escaped; the iOS launch pass lives in the Keychain
 - [ ] Switch the CSP from report-only to enforcing after checking the console on the live site (see `babsonsound-web/SECURITY_SETUP.md`)
+
+## Studio training (built Oct 29, 2026 — do NOT ship before launch)
+Server side is done; the website and app screens are the Frontend's job. Full notes: `babsonsound-web/STUDIO.md`. The old "I'm at my training" flow and the manual grant on Admin > Training still work; remove them once Frontend ships Studio.
+- [x] Sessions (`trainingSessions`): title, what it covers (studio / radio), time, place, capacity, a required Director or Admin trainer; scheduled → checkin_open → closed → confirmed
+- [x] Only the trainer (or an Admin) opens check-in, which closes itself 15 minutes after the session ends. The trainer's page gets a rotating 6-digit code (30-second windows) and a QR link, the next ten at once so there is no polling; the secret never leaves the server
+- [x] Students check in with the code: verified school email, one check-in per person per session, 5 tries a minute, locked 15 minutes after 10 wrong codes, wrong codes logged. Guests get 403 BR-PERM-001 on every Studio route
+- [x] Trainer sees the attendee list, removes people, then confirms attendance. The quiz and agreement open only for a confirmed row; passing the quiz and signing grants every badge the session covers. Radio needs Studio (held, or granted in the same session). Directors and admins skip training
+- [x] Badges end on the next June 30, 11:59 PM Eastern (`studioExpiresAt` / `radioExpiresAt` on the profile; `lib/server/access.ts` treats an expired badge as not trained). New live-show requests are blocked after expiry (BR-TRN-010); approved shows stay on the schedule
+- [x] Notices 14 days before expiry and again May 1 to 3 (email through Resend and a push; the in-app banner reads `training` from `/api/me`), sent from the daily birthdays cron
+- [x] Admin endpoints: roster with filters, revoke (director or admin, typed reason of 10+ characters), grant or extend by hand with a reason (director or admin), CSV by session / person / roster, club recruiting list (`clubInterest`) with CSV
+- [x] Grants are append-only (`trainingGrants`): they change only by setting the revoke fields
+- [ ] Run `node --env-file=.env.local scripts/studio-migrate-expiry.mjs --apply` once after deploy (existing badges end 2027-06-30)
+- [ ] Frontend: trainer page (code + QR), student check-in page (`/studio/checkin?session=…&code=…`), quiz + agreement page, admin roster / sessions / recruits pages, expiry banner
+- [ ] Real quiz questions and agreement text: change only `lib/studioConfig.ts`

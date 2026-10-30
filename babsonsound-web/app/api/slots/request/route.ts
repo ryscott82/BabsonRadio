@@ -7,6 +7,7 @@ import { findConflict } from '@/lib/server/slots'
 import { checkImageRef } from '@/lib/server/images'
 import { assertAllAdults, recordConsent } from '@/lib/server/publicContent'
 import { readiness } from '@/lib/server/conduct'
+import { accessOf } from '@/lib/server/access'
 import { touchesCleanHours } from '@/lib/conduct'
 import { SLOT_CATEGORIES, SLOT_RULES, SLOT_TYPES, type SlotCategory, type SlotType } from '@/lib/slots'
 
@@ -60,7 +61,11 @@ export async function POST(req: Request) {
     // Pre-recorded shows are open to students. Live shows need the radioTrained badge (directors and admins always have it). The on-air agreements (which include the clean music hours) are signed right after they submit,
     // so the request is saved first and carries a flag for whether the account has signed yet.
     const ready = await readiness(db, t)
-    if (type === 'live' && !ready.trained) throw new HttpError(403, 'Finish radio training to request a live show.', 'BR-TRN-001')
+    // A radio badge that ran out blocks NEW live requests until renewed. Shows already approved stay on the schedule.
+    if (type === 'live' && !ready.trained) {
+      if ((await accessOf(t)).radioExpired) throw new HttpError(403, 'Your radio training has ended. Renew it to request a live show.', 'BR-TRN-010')
+      throw new HttpError(403, 'Finish radio training to request a live show.', 'BR-TRN-001')
+    }
     const cleanHours = touchesCleanHours(startMs, startMs + durationMin * 60_000)
 
     const mine = await db.collection('slotRequests').where('requesterUid', '==', t.uid).get()

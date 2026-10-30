@@ -1,6 +1,7 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from '@/lib/server/admin'
 import { ANY_EMAIL, HttpError, handle, readJson, requireAdmin, str } from '@/lib/server/http'
+import { badgeExpiry } from '@/lib/studioRules'
 import { LEVELS, forgetAccess, inviteKey, isOwnerEmail, type Level } from '@/lib/server/access'
 
 export const runtime = 'nodejs'
@@ -97,8 +98,8 @@ export async function POST(req: Request) {
       update.role = FieldValue.delete() // old field, replaced by level
       if (level === 'guest') { update.studioTrained = false; update.radioTrained = false }
     }
-    if (typeof b.studioTrained === 'boolean') update.studioTrained = b.studioTrained
-    if (typeof b.radioTrained === 'boolean') update.radioTrained = b.radioTrained
+    if (typeof b.studioTrained === 'boolean') { update.studioTrained = b.studioTrained; update.studioExpiresAt = b.studioTrained ? Timestamp.fromMillis(badgeExpiry(Date.now())) : FieldValue.delete() } // a hand-set badge ends the next June 30 like the rest
+    if (typeof b.radioTrained === 'boolean') { update.radioTrained = b.radioTrained; update.radioExpiresAt = b.radioTrained ? Timestamp.fromMillis(badgeExpiry(Date.now())) : FieldValue.delete() }
     await ref.update(update)
 
     // Old sign-in claims are no longer used for access; clear them so they cannot confuse anything.

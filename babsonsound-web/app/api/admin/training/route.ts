@@ -1,8 +1,9 @@
-import { Timestamp } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { forgetAccess } from '@/lib/server/access'
 import { HttpError, handle, readJson, requireDirector, str } from '@/lib/server/http'
 import { TRAINING_VERSION } from '@/lib/training'
+import { badgeExpiry } from '@/lib/studioRules'
 import { CHECKIN_VALID_MS } from '@/lib/server/conduct'
 
 export const runtime = 'nodejs'
@@ -48,10 +49,11 @@ export async function POST(req: Request) {
     const user = adminDb().collection('users').doc(uid)
     if (action === 'certify') {
       await ref.set({ certifiedAt: now, revokedAt: null, version: TRAINING_VERSION, certifiedBy: me.email ?? me.uid, requestedAt: null }, { merge: true })
-      await user.update({ radioTrained: true, studioTrained: true }) // the badges are what the server checks
+      const ends = Timestamp.fromMillis(badgeExpiry(Date.now())) // like Studio badges: good until the next June 30
+      await user.update({ radioTrained: true, studioTrained: true, radioExpiresAt: ends, studioExpiresAt: ends }) // the badges are what the server checks
     } else if (action === 'revoke') {
       await ref.set({ revokedAt: now }, { merge: true })
-      await user.update({ radioTrained: false, studioTrained: false })
+      await user.update({ radioTrained: false, studioTrained: false, radioExpiresAt: FieldValue.delete(), studioExpiresAt: FieldValue.delete() })
     }
     else if (action === 'approveCheckin') await ref.set({ checkInApprovedAt: now, checkInApprovedBy: me.email ?? me.uid, requestedAt: null }, { merge: true })
     else if (action === 'clearRequest') await ref.set({ requestedAt: null }, { merge: true })

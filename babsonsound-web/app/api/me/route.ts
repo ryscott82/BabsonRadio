@@ -35,6 +35,8 @@ export async function GET(req: Request) {
       level: a.level,
       studioTrained: a.studio,
       radioTrained: a.radio,
+      // Studio training: when each badge ends (ms, or null), and whether it already ran out. The app shows the renew banner from these.
+      training: { studioExpiresAt: a.studioExpiresAt, radioExpiresAt: a.radioExpiresAt, studioExpired: a.studioExpired, radioExpired: a.radioExpired },
       isBabson: a.level !== 'guest',
       invisible: u.get('invisible') === true,
       avatarColor: u.get('avatarColor') ?? DEFAULT_AVATAR,

@@ -1,6 +1,6 @@
 // The one launch time for the whole site. Safe to import anywhere (no env, no server code).
-// Oct 30, 2026 at 3:00 pm Eastern (EDT) = 19:00 UTC. Matches `launchAt` from /api/launch/status.
-export const LAUNCH_ISO = '2026-10-30T15:00:00-04:00'
+// Oct 30, 2026 at 12:00 am Eastern (EDT) = 04:00 UTC (already past: the site is open). Matches `launchAt` from /api/launch/status.
+export const LAUNCH_ISO = '2026-10-30T00:00:00-04:00'
 export const LAUNCH_MS = Date.parse(LAUNCH_ISO)
 export const LAUNCH_TEXT = 'October 30th at 3pm Eastern'
 

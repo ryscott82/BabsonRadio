@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiDelete, apiGet } from '@/lib/auth'
 import { ErrorText } from '@/components/AuthUI'
+import { gradYearOptions } from '@/lib/terms'
 
 type Level = 'guest' | 'student' | 'director' | 'admin'
-interface Row { id: string; name: string; username: string; email: string; level: Level; studioTrained: boolean; radioTrained: boolean; instagram: string; owner: boolean; you: boolean }
+interface Row { id: string; name: string; firstName: string; lastName: string; gradYear: string; username: string; email: string; level: Level; studioTrained: boolean; radioTrained: boolean; instagram: string; owner: boolean; you: boolean }
 
 interface Gone { id: string; email: string; name: string; level: string; reason: string; by: string; at: number; done: boolean }
 interface Invite { email: string; level: Level; studioTrained: boolean; radioTrained: boolean }
@@ -35,6 +36,22 @@ export default function AdminUsersPage() {
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [gone, setGone] = useState<Gone[]>([])
+  // Editing one person's details (name, graduation year, Instagram).
+  const [editId, setEditId] = useState('')
+  const [ef, setEf] = useState({ firstName: '', lastName: '', gradYear: '', instagram: '' })
+  const [editBusy, setEditBusy] = useState(false)
+  async function saveEdit(r: Row) {
+    setEditBusy(true); setError(''); setNote('')
+    try {
+      const profile: Record<string, string> = { firstName: ef.firstName.trim(), lastName: ef.lastName.trim(), instagram: ef.instagram.trim() }
+      if (r.level !== 'guest') profile.gradYear = ef.gradYear
+      const res = await api<{ firstName: string; lastName: string; gradYear: string; instagram: string }>('/api/admin/users', { uid: r.id, profile })
+      setRows(prev => prev.map(x => (x.id === r.id ? { ...x, ...res, name: `${res.firstName} ${res.lastName}`.trim() } : x)))
+      setNote(`Saved details for ${`${res.firstName} ${res.lastName}`.trim() || r.email}.`)
+      setEditId('')
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not save.') }
+    setEditBusy(false)
+  }
 
   const load = useCallback(async () => {
     try { const d = await apiGet<{ users: Row[]; invites: Invite[] }>('/api/admin/users'); setRows(d.users); setInvites(d.invites ?? []) }
@@ -158,6 +175,8 @@ export default function AdminUsersPage() {
               <div className="min-w-0">
                 <p className="text-sm text-br-dk-text truncate">{r.name || '(no name)'}{r.username ? ` · @${r.username}` : ''}</p>
                 <p className="text-xs text-br-dk-sub truncate">{r.email}{r.owner ? ' · owner' : ''}</p>
+                {(!r.owner || r.you) && <button type="button" onClick={() => (editId === r.id ? setEditId('') : startEdit(r))} aria-expanded={editId === r.id}
+                        className="text-xs text-br-dk-sub underline" aria-label={`Edit details for ${r.name || r.email}`}>{editId === r.id ? 'Close' : 'Edit details'}</button>}
                 {r.instagram && (
                   <p className="text-xs text-br-dk-sub truncate">
                     Instagram @{r.instagram} (not checked){' '}
@@ -184,6 +203,30 @@ export default function AdminUsersPage() {
                     {LEVELS.map(l => <option key={l} value={l}>{LEVEL_LABEL[l]}</option>)}
                   </select>
                   <button type="button" onClick={() => startDelete(r)} className="text-sm text-red-400 underline" aria-label={`Delete account for ${r.name || r.email}`}>Delete</button>
+                </div>
+              )}
+              {editId === r.id && (
+                <div className="basis-full border-t border-br-dk-border pt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="text-xs text-br-dk-sub space-y-1 block">First name
+                    <input value={ef.firstName} onChange={e => setEf({ ...ef, firstName: e.target.value })} maxLength={40} className="sk-field w-full rounded-lg px-3 py-2 text-sm text-br-dk-text" /></label>
+                  <label className="text-xs text-br-dk-sub space-y-1 block">Last name
+                    <input value={ef.lastName} onChange={e => setEf({ ...ef, lastName: e.target.value })} maxLength={60} className="sk-field w-full rounded-lg px-3 py-2 text-sm text-br-dk-text" /></label>
+                  {r.level !== 'guest' && (
+                    <>
+                      <label className="text-xs text-br-dk-sub space-y-1 block">Graduation year
+                        <select value={ef.gradYear} onChange={e => setEf({ ...ef, gradYear: e.target.value })} className="sk-field w-full rounded-lg px-2 py-2 text-sm text-br-dk-text">
+                          <option value="">Not set</option>
+                          {gradYearOptions().map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select></label>
+                      <label className="text-xs text-br-dk-sub space-y-1 block">Instagram
+                        <input value={ef.instagram} onChange={e => setEf({ ...ef, instagram: e.target.value })} maxLength={200} placeholder="@name or link" autoCapitalize="none" spellCheck={false}
+                               className="sk-field w-full rounded-lg px-3 py-2 text-sm text-br-dk-text" /></label>
+                    </>
+                  )}
+                  <div className="sm:col-span-2 flex gap-3 justify-end">
+                    <button type="button" onClick={() => setEditId('')} className="text-sm text-br-dk-sub underline">Cancel</button>
+                    <button type="button" onClick={() => saveEdit(r)} disabled={editBusy || !ef.firstName.trim()} className="sk-raised rounded-lg px-4 py-2 text-sm text-br-dk-text disabled:opacity-50">{editBusy ? 'Saving…' : 'Save'}</button>
+                  </div>
                 </div>
               )}
             </div>

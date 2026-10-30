@@ -2,6 +2,8 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from '@/lib/server/admin'
 import { ANY_EMAIL, HttpError, handle, readJson, requireAdmin, str } from '@/lib/server/http'
 import { badgeExpiry } from '@/lib/studioRules'
+import { cleanInstagram } from '@/lib/instagram'
+import { validGradYear } from '@/lib/terms'
 import { LEVELS, forgetAccess, inviteKey, isOwnerEmail, type Level } from '@/lib/server/access'
 
 export const runtime = 'nodejs'
@@ -23,6 +25,7 @@ export async function GET(req: Request) {
         return {
           id: d.id,
           name: [d.get('firstName') ?? d.get('displayName') ?? '', d.get('lastName') ?? ''].join(' ').trim(),
+          firstName: String(d.get('firstName') ?? d.get('displayName') ?? ''), lastName: String(d.get('lastName') ?? ''), gradYear: String(d.get('gradYear') ?? ''),
           username: d.get('username') ?? '',
           email,
           level: (LEVELS as string[]).includes(d.get('level')) ? d.get('level') : 'guest',
@@ -63,6 +66,54 @@ export async function POST(req: Request) {
       console.log(`[instagram-clear] ${me.email ?? me.uid} cleared the Instagram handle for ${uid}`)
       return { ok: true, cleared: true }
     }
+    // { uid, profile: { firstName?, lastName?, gradYear?, instagram? } }: an admin edits or adds a member's details. Leave a field out to keep it; send '' to clear
+    // a last name, grad year or Instagram handle. Instagram and grad year are for students and above. Every change is logged in adminProfileEdits (who, whom, before and after).
+    if (b.profile && typeof b.profile === 'object') {
+      if (!uid) throw new HttpError(400, 'Pick an account.')
+      const p = b.profile as Record<string, unknown>
+      const db = adminDb()
+      const ref = db.collection('users').doc(uid)
+      const u = await ref.get()
+      if (!u.exists) throw new HttpError(404, 'User not found.')
+      if (isOwnerEmail(String(u.get('email') ?? '').toLowerCase()) && uid !== me.uid) throw new HttpError(403, 'Owner accounts cannot be changed.')
+      const student = String(u.get('level') ?? 'guest') !== 'guest'
+      const update: Record<string, unknown> = {}
+      if ('firstName' in p) {
+        const v = str(p.firstName, 40)
+        if (!v) throw new HttpError(400, 'A first name is needed.')
+        update.firstName = v; update.displayName = v
+      }
+      if ('lastName' in p) { const v = str(p.lastName, 60); update.lastName = v || FieldValue.delete() }
+      if ('gradYear' in p) {
+        const v = str(p.gradYear, 10)
+        if (v && !student) throw new HttpError(400, 'Graduation year is for students.')
+        if (v && !validGradYear(v)) throw new HttpError(400, 'Pick a graduation year from the list.')
+        update.gradYear = v
+      }
+      if ('instagram' in p) {
+        const raw = str(p.instagram, 200)
+        if (!raw) update.instagram = FieldValue.delete()
+        else {
+          if (!student) throw new HttpError(400, 'Instagram is for students.')
+          const h = cleanInstagram(raw)
+          if (!h) throw new HttpError(400, 'That is not an Instagram handle or profile link.')
+          update.instagram = h
+        }
+      }
+      if (!Object.keys(update).length) throw new HttpError(400, 'Nothing to change.')
+      const before: Record<string, unknown> = {}
+      for (const k of Object.keys(update)) before[k] = u.get(k) ?? ''
+      await db.collection('adminProfileEdits').add({
+        uid, byUid: me.uid, byEmail: me.email ?? '', at: Timestamp.now(), before,
+        after: Object.fromEntries(Object.entries(update).map(([k, v]) => [k, v instanceof FieldValue ? '' : v])),
+      })
+      await ref.update(update)
+      const n = (await ref.get())
+      return {
+        ok: true, firstName: String(n.get('firstName') ?? n.get('displayName') ?? ''), lastName: String(n.get('lastName') ?? ''),
+        gradYear: String(n.get('gradYear') ?? ''), instagram: String(n.get('instagram') ?? ''),
+      }
+    }
     const level = b.level === undefined ? null : str(b.level, 20) as Level
     if (!uid && !ANY_EMAIL.test(email)) throw new HttpError(400, 'Enter a valid email address.')
     if (level !== null && !LEVELS.includes(level)) throw new HttpError(400, 'Invalid request.')
@@ -100,8 +151,6 @@ export async function POST(req: Request) {
     }
     if (typeof b.studioTrained === 'boolean') { update.studioTrained = b.studioTrained; update.studioExpiresAt = b.studioTrained ? Timestamp.fromMillis(badgeExpiry(Date.now())) : FieldValue.delete() } // a hand-set badge ends the next June 30 like the rest
     if (typeof b.radioTrained === 'boolean') { update.radioTrained = b.radioTrained; update.radioExpiresAt = b.radioTrained ? Timestamp.fromMillis(badgeExpiry(Date.now())) : FieldValue.delete() }
-    await ref.update(update)
-
     // Old sign-in claims are no longer used for access; clear them so they cannot confuse anything.
     const claims = (await adminAuth().getUser(uid)).customClaims ?? {}
     const { developer: _d, tester: _t, openMember: _o, ...rest } = claims as Record<string, unknown>

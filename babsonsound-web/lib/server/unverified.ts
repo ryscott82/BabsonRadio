@@ -26,7 +26,8 @@ export function runUnverifiedSweep(now = Date.now()) {
     profile: async uid => {
       const s = await db.collection('users').doc(uid).get()
       return {
-        demo: s.get('demo') === true, level: String(s.get('level') ?? ''), reminded: !!s.get('verifyReminderAt'),
+        demo: s.get('demo') === true || s.get('preRegistered') === true, // pre-registered (no password yet) accounts wait to be claimed
+         level: String(s.get('level') ?? ''), reminded: !!s.get('verifyReminderAt'),
         name: [s.get('firstName'), s.get('lastName')].filter(Boolean).join(' '),
       }
     },

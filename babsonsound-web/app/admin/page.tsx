@@ -57,6 +57,7 @@ export default function AdminPage() {
       { href: '/admin/training', icon: 'training', title: 'Training', text: 'Check in and certify hosts' },
       { href: '/admin/show-updates', icon: 'updates', title: 'Show changes', text: 'Review edits hosts made' },
       { href: '/admin/site-text', icon: 'updates', title: 'Page text', text: 'Edit the words on About and other pages', admin: true },
+      { href: '/admin/studio-form', icon: 'training', title: 'Studio form', text: 'The training form people open from /studioaccess', admin: true },
       { href: '/admin/library', icon: 'library', title: 'Library', text: 'Add and remove episodes' },
       { href: '/admin/autoschedule', icon: 'auto', title: 'Auto DJ', text: 'Playlists, times and how often', admin: true },
       { href: '/admin/setlists', icon: 'setlists', title: 'Set lists', text: 'Songs planned for shows', admin: true },

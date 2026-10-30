@@ -25,7 +25,7 @@ export function securityHeaders(env: Record<string, string | undefined> = proces
     `media-src 'self' blob: ${station.join(' ')} https://firebasestorage.googleapis.com https://storage.googleapis.com`,
     // Firebase (sign-in, Firestore, App Check/installations), Turnstile, and the stream (probed for CORS before the equalizer attaches).
     `connect-src 'self' ${station.join(' ')} https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://challenges.cloudflare.com`,
-    `frame-src https://www.youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com https://*.firebaseapp.com`,
+    `frame-src https://www.youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com https://*.firebaseapp.com https://forms.office.com https://forms.cloud.microsoft https://forms.microsoft.com`,
     `worker-src 'self' blob:`,
     `object-src 'none'`,
     `base-uri 'self'`,

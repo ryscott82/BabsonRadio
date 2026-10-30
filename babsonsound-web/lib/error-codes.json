@@ -880,5 +880,33 @@
     "meaning": "Guests cannot be trained and directors and admins do not need badges.",
     "userFix": "Verify a school email first.",
     "staffCheck": "Check the level in Admin > Users."
+  },
+  {
+    "code": "BR-STU-101",
+    "title": "Enter a valid email",
+    "meaning": "The email step on /studioaccess got something that is not an email address.",
+    "userFix": "Type your email address and submit again.",
+    "staffCheck": "Nothing to check."
+  },
+  {
+    "code": "BR-STU-102",
+    "title": "Training form not available",
+    "meaning": "No Studio form link is saved in Admin > Studio form and STUDIO_FORM_URL is not set (or is not a Microsoft Forms link).",
+    "userFix": "Try again later and tell a Babson Sound officer.",
+    "staffCheck": "Paste the form link in Admin > Studio form (or set STUDIO_FORM_URL in Vercel)."
+  },
+  {
+    "code": "BR-STU-103",
+    "title": "Too many tries today",
+    "meaning": "One IP address opened the training form email step more than 25 times in a day.",
+    "userFix": "Try again tomorrow.",
+    "staffCheck": "Counters are in the studioAccessIp collection (they expire after 2 days)."
+  },
+  {
+    "code": "BR-STU-104",
+    "title": "Form link not accepted",
+    "meaning": "The link saved in Admin > Studio form is not an https Microsoft Forms link.",
+    "userFix": "Nothing for listeners to do.",
+    "staffCheck": "Paste the form's share link (starts with https://forms.office.com or https://forms.cloud.microsoft)."
   }
 ]

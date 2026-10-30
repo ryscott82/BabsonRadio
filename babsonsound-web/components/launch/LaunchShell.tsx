@@ -11,7 +11,7 @@ import WaitingScreen from './WaitingScreen'
 interface Status { open: boolean; launchAt: string; locked?: boolean }
 
 // These work for everyone before launch, with no site chrome around them for locked accounts.
-const OPEN_PATHS = ['/auth', '/privacy', '/terms', '/unsubscribe']
+const OPEN_PATHS = ['/auth', '/privacy', '/terms', '/unsubscribe', '/studioaccess']
 const isOpenPath = (p: string) => OPEN_PATHS.some(o => p === o || p.startsWith(`${o}/`))
 
 /**

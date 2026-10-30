@@ -21,9 +21,9 @@ export const launchOpen = (now = Date.now()) => process.env.LAUNCH_OPEN === '1' 
 const under = (pathname: string, base: string) => pathname === base || pathname.startsWith(`${base}/`)
 
 /** Pages anyone can open before launch. Everything else redirects to the homepage. */
-const PUBLIC_PAGES = ['/auth', '/privacy', '/terms', '/unsubscribe', '/delete-account', '/coming-soon', '/support']
+const PUBLIC_PAGES = ['/auth', '/privacy', '/terms', '/unsubscribe', '/delete-account', '/coming-soon', '/support', '/studioaccess']
 /** APIs anyone can call before launch. /api/cron and /api/webhooks check their own secrets. */
-const PUBLIC_APIS = ['/api/launch', '/api/unsubscribe', '/api/auth', '/api/cron', '/api/webhooks', '/api/health']
+const PUBLIC_APIS = ['/api/launch', '/api/unsubscribe', '/api/auth', '/api/cron', '/api/webhooks', '/api/health', '/api/studioaccess']
 /** APIs a signed-in but locked person may still call: sign-up follow-ups, About you, delete account. The server checks this too. */
 const LOCKED_USER_APIS = ['/api/me', '/api/auth', '/api/launch', '/api/unsubscribe', '/api/guest/status']
 

@@ -91,3 +91,18 @@ export function trainingExpiryMail(o: { badges: string[]; expiresAt: number; kin
     ['Hi,', ...lines, 'Babson Radio'].map(l => `<p>${escapeHtml(l)}</p>`).join('')}</div>`
   return { subject, text, html }
 }
+
+/** Sent after someone opens the Studio training form: a link to set a password for their Babson Radio account. */
+export function setPasswordMail(o: { link: string }) {
+  const subject = 'Set your Babson Radio password'
+  const lines = [
+    'You opened the Studio training form at babsonradio.com, so we made you a Babson Radio account.',
+    'Set a password to sign in and see your Studio access:',
+  ]
+  const text = ['Hi,', '', ...lines, '', o.link, '', 'If this was not you, you can ignore this email.', '', 'Babson Radio'].join('\n')
+  const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1710;line-height:1.5">
+<p>Hi,</p>${lines.map(l => `<p>${escapeHtml(l)}</p>`).join('')}
+<p style="margin:28px 0"><a href="${escapeHtml(o.link)}" style="background:#006644;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;display:inline-block;font-weight:600">Set password</a></p>
+<p>If this was not you, you can ignore this email.</p><p>Babson Radio</p></div>`
+  return { subject, text, html }
+}

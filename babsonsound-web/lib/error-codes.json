@@ -399,6 +399,34 @@
     "staffCheck": "Check AZURACAST_URL / AZURACAST_API_KEY in Vercel, and that the API key's role has Manage Station Broadcasting."
   },
   {
+    "code": "BR-BTH-001",
+    "title": "Not the studio PC",
+    "meaning": "The go-live page was opened somewhere the studio helper is not running, or the helper's secret does not match the website's.",
+    "userFix": "Use the studio PC.",
+    "staffCheck": "On the studio PC, check the helper window is running. STUDIO_PC_SECRET in tools/studio-helper/.env must match the Vercel variable of the same name."
+  },
+  {
+    "code": "BR-BTH-002",
+    "title": "Studio helper refused",
+    "meaning": "The helper on the studio PC rejected the control token (expired, or signed with another secret).",
+    "userFix": "Sign out and sign in again on the studio PC.",
+    "staffCheck": "Check the PC clock is right and the two STUDIO_PC_SECRET values match."
+  },
+  {
+    "code": "BR-BTH-003",
+    "title": "Studio session over",
+    "meaning": "The studio PC session this request belongs to ended or belongs to someone else.",
+    "userFix": "Sign in again on the studio PC.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-BTH-004",
+    "title": "Studio PC not set up",
+    "meaning": "STUDIO_PC_SECRET is missing or too short on the website server.",
+    "userFix": "Tell a station admin.",
+    "staffCheck": "Add STUDIO_PC_SECRET (32+ random characters) in Vercel and redeploy. Use the same value in tools/studio-helper/.env."
+  },
+  {
     "code": "BR-ACC-017",
     "title": "Last name missing",
     "meaning": "Sign-up needs both a first and last name.",

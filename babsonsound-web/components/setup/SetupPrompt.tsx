@@ -17,7 +17,7 @@ import { ErrorText, Field, formatPhone } from '@/components/AuthUI'
 // The name cannot be dismissed. Anything else can be: it goes to the back of the line and comes up again on a later visit.
 // It holds off on sign-in and policy pages, over another dialog or the full-screen board, and while the stream is starting.
 
-const QUIET = ['/auth', '/privacy', '/terms', '/unsubscribe', '/delete-account', '/coming-soon', '/admin']
+const QUIET = ['/auth', '/privacy', '/terms', '/unsubscribe', '/delete-account', '/coming-soon', '/admin', '/booth']
 const quiet = (p: string) => QUIET.some(q => p === q || p.startsWith(`${q}/`))
 
 /** The stream is starting: audio was asked to play but has not got enough data yet. */

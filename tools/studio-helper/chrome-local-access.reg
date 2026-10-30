@@ -1,0 +1,6 @@
+Windows Registry Editor Version 5.00
+
+; Lets babsonradio.com reach the studio helper on 127.0.0.1 without Chrome asking each time (Local Network Access).
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome\LocalNetworkAccessAllowedForUrls]
+"1"="https://babsonradio.com"
+"2"="https://www.babsonradio.com"

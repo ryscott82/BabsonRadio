@@ -10,6 +10,7 @@ import { MAINTENANCE_TITLE, getMaintenance } from './maintenance'
 import { lookupBeat } from './beats'
 import { trackActual } from './actualPlaylist'
 import { recordListeners } from './usage'
+import { boothSong } from './booth'
 
 // Public "what is on air" feed for the website and the iOS app.
 // Reads AzuraCast's public now-playing endpoint (no API key). Env: AZURACAST_URL, AZURACAST_STATION_ID.
@@ -169,6 +170,15 @@ async function build(): Promise<Built> {
       value.artist = value.hostNames?.length ? value.hostNames.join(', ') : value.streamer
       value.album = ''; value.art = ''; value.bpm = 0; value.beatOffset = 0; value.duration = 0; value.elapsed = 0; value.next = null
       value.showOnly = true
+    }
+    // A song the host typed on the studio PC wins over the show name while they are live (cleared when they go off air).
+    if (value.isLive) {
+      const typed = await boothSong(adminDb()).catch(() => null)
+      if (typed) {
+        value.title = typed.title; value.artist = typed.artist
+        value.album = ''; value.art = ''; value.bpm = 0; value.beatOffset = 0; value.duration = 0; value.elapsed = 0; value.next = null
+        value.showOnly = false
+      }
     }
     // When the schedule has only a genre block (not a show) and the station is on auto-play, what is really playing wins:
     // use the AzuraCast playlist name so the label never disagrees with the music.

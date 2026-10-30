@@ -108,6 +108,10 @@ service cloud.firestore {
     match /contactPopularity/{id} { allow read, write: if false; }
     // Auto-scheduler settings and generated filler blocks: server only (served via /api routes).
     match /config/{id}        { allow read, write: if false; }
+    // Studio PC sign-in log (server only).
+    match /boothSessions/{id} { allow read, write: if false; }
+    match /boothEvents/{id}   { allow read, write: if false; }
+    match /boothNowPlaying/{id} { allow read, write: if false; }
     match /feedback/{id}      { allow read, write: if false; }
     match /autoBlocks/{id}    { allow read, write: if false; }
     match /songVotes/{id}     { allow read, write: if false; }

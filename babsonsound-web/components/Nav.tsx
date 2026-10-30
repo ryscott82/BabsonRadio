@@ -39,7 +39,7 @@ export default function Nav() {
     const last = (userDoc?.lastName ?? '').trim()
     return ((first[0] ?? 'U') + (last[0] ?? '')).toUpperCase()
   })()
-  if (pathname === '/coming-soon' || pathname.startsWith('/admin')) return null
+  if (pathname === '/coming-soon' || pathname.startsWith('/admin') || pathname.startsWith('/booth')) return null
 
   const showHost = hosting && !isGuest
   const links = isGuest ? NAV_LINKS.slice(0, 1) : showHost ? [...NAV_LINKS, HOST_LINK] : NAV_LINKS // guests: Live only

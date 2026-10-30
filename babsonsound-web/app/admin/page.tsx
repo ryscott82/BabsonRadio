@@ -32,18 +32,24 @@ export default function AdminPage() {
   const router = useRouter()
   const [alerts, setAlerts] = useState<Alerts | null>(null)
   const [dash, setDash] = useState<Dash | null>(null)
+  // The page is shown all at once: it waits (a second or so) until the alerts, the dashboard numbers and the station controls have all arrived, so nothing pops in later.
+  const [got, setGot] = useState({ alerts: false, dash: false, station: false })
+  const [waited, setWaited] = useState(false)
+  const stationReady = useCallback(() => setGot(g => (g.station ? g : { ...g, station: true })), [])
 
   useEffect(() => { if (!loading && (!user || !isDirector)) router.replace(user ? '/host' : '/') }, [loading, user, isDirector, router])
   const load = useCallback(() => {
-    apiGet<Alerts>('/api/admin/alerts').then(setAlerts).catch(() => {})
-    apiGet<Dash>('/api/admin/dashboard').then(setDash).catch(() => {})
+    apiGet<Alerts>('/api/admin/alerts').then(setAlerts).catch(() => {}).finally(() => setGot(g => (g.alerts ? g : { ...g, alerts: true })))
+    apiGet<Dash>('/api/admin/dashboard').then(setDash).catch(() => {}).finally(() => setGot(g => (g.dash ? g : { ...g, dash: true })))
   }, [])
   useEffect(() => {
     if (!user || !isDirector) return
     queueMicrotask(load)
     const t = setInterval(() => { if (!document.hidden) load() }, 60_000)
-    return () => clearInterval(t)
+    const giveUp = setTimeout(() => setWaited(true), 5000) // if something is slow or fails, show the page anyway
+    return () => { clearInterval(t); clearTimeout(giveUp) }
   }, [user, isDirector, load])
+  const ready = waited || (got.alerts && got.dash && (got.station || !isAdmin))
 
   if (loading || !user || !isDirector) return <div className="min-h-[60vh]" />
 
@@ -55,6 +61,7 @@ export default function AdminPage() {
       { href: '/admin/schedule', icon: 'schedule', title: 'Schedule', text: 'See and edit what is on air' },
       { href: '/admin/slots', icon: 'slots', title: 'Show requests', text: 'Approve or decline requests', badge: pending },
       { href: '/admin/training', icon: 'training', title: 'Training', text: 'Check in and certify hosts' },
+      { href: '/admin/booth', icon: 'users', title: 'Studio PC log', text: 'Who signed in at the studio and went live' },
       { href: '/admin/show-updates', icon: 'updates', title: 'Show changes', text: 'Review edits hosts made' },
       { href: '/admin/site-text', icon: 'updates', title: 'Page text', text: 'Edit the words on About and other pages', admin: true },
       { href: '/admin/studio-form', icon: 'training', title: 'Studio form', text: 'The training form people open from /studioaccess', admin: true },
@@ -78,12 +85,14 @@ export default function AdminPage() {
     { title: 'Data and tools', tiles: [
       { href: '/admin/stats', icon: 'stats', title: 'Stats', text: 'Listeners, hours and logs' },
       { href: '/admin/tests', icon: 'tests', title: 'Tests', text: 'Preview features safely', admin: true },
+      { href: '/admin/docs', icon: 'docs', title: 'Information and documentation', text: 'Features, setup guides and reference', admin: true },
     ] },
   ]
 
   return (
     <div className="ops-hub">
-      <div className="max-w-[1800px] mx-auto px-5 lg:px-10 py-8 space-y-8">
+      {!ready && <div className="min-h-[60vh] flex items-center justify-center text-lg opacity-90" role="status">Loading the admin panel…</div>}
+      <div className={`max-w-[1800px] mx-auto px-5 lg:px-10 py-8 space-y-8 ${ready ? '' : 'hidden'}`} aria-hidden={!ready}>
         <header className="flex flex-wrap items-center gap-4">
           <span className="ops-tile-icon !w-16 !h-16 shrink-0"><OpsIcon name="radio" size={40} /></span>
           <div>
@@ -120,7 +129,7 @@ export default function AdminPage() {
         {isAdmin && (
           <section aria-label="Station controls" className="space-y-4">
             <h2 className="text-3xl font-light">Station controls</h2>
-            <StationPanel />
+            <StationPanel onReady={stationReady} />
           </section>
         )}
 

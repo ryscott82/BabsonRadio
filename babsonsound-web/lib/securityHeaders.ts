@@ -23,8 +23,9 @@ export function securityHeaders(env: Record<string, string | undefined> = proces
     `font-src 'self' data: https://use.typekit.net https://p.typekit.net`,
     `img-src 'self' data: blob: https://firebasestorage.googleapis.com https://storage.googleapis.com https://img.youtube.com https://i.ytimg.com ${station.join(' ')}`,
     `media-src 'self' blob: ${station.join(' ')} https://firebasestorage.googleapis.com https://storage.googleapis.com`,
-    // Firebase (sign-in, Firestore, App Check/installations), Turnstile, and the stream (probed for CORS before the equalizer attaches).
-    `connect-src 'self' ${station.join(' ')} https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://challenges.cloudflare.com`,
+    // Firebase (sign-in, Firestore, App Check/installations), Turnstile, the stream (probed for CORS before the equalizer attaches),
+    // and the studio PC helper on 127.0.0.1 (only answers on the studio PC; see tools/studio-helper).
+    `connect-src 'self' ${station.join(' ')} http://127.0.0.1:7781 https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://challenges.cloudflare.com`,
     `frame-src https://www.youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com https://*.firebaseapp.com https://forms.office.com https://forms.cloud.microsoft https://forms.microsoft.com`,
     `worker-src 'self' blob:`,
     `object-src 'none'`,

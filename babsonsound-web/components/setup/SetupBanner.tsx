@@ -8,7 +8,7 @@ import { amberFrom, firstMissing, openSetup } from '@/lib/setup-ui'
 
 // A slim bar under the top menu on every signed-in page while setup is unfinished. It floats over the page (nothing moves when it
 // appears). Tap it to open the next missing step. In the last 2 days of the 7-day email window it turns amber and offers a resend.
-const HIDDEN = ['/auth', '/admin', '/coming-soon']
+const HIDDEN = ['/auth', '/admin', '/coming-soon', '/booth']
 
 export default function SetupBanner() {
   const { user, setup } = useAuth()

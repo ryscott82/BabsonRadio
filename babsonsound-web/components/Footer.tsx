@@ -8,7 +8,7 @@ const ext = { target: '_blank', rel: 'noopener noreferrer' } as const
 
 export default function Footer() {
   const path = usePathname()
-  if (path === '/coming-soon' || path.startsWith('/admin')) return null
+  if (path === '/coming-soon' || path.startsWith('/admin') || path.startsWith('/booth')) return null
   const link = 'text-br-dk-sub hover:text-br-dk-text transition-colors'
   return (
     <footer className="hw-foot relative z-[1]">

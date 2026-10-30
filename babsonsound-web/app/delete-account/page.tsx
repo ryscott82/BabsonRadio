@@ -1,5 +1,6 @@
 'use client'
 
+import { openSignIn } from '@/lib/signInPrompt'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -13,7 +14,7 @@ export default function DeleteAccountPage() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  useEffect(() => { if (!loading && !user) router.replace('/auth') }, [loading, user, router])
+  useEffect(() => { if (!loading && !user) openSignIn() }, [loading, user, router])
   if (loading || !user) return null
 
   async function remove(e: React.FormEvent) {

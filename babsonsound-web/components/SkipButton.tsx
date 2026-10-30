@@ -1,7 +1,7 @@
 'use client'
 
+import { openSignIn } from '@/lib/signInPrompt'
 import { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet, signOut } from '@/lib/auth'
 import type { NowPlaying } from '@/lib/nowplaying'
@@ -11,7 +11,6 @@ interface Skip { votes: number; needed: number; mine: boolean; eligible: boolean
 /** Next-track button beside play/pause. Only shows when the station is playing its own music; shows "X/Y requested". */
 export default function SkipButton({ np }: { np: NowPlaying | null }) {
   const { user, isGuest } = useAuth()
-  const router = useRouter()
   const autoPlay = !!np?.title && !np.isLive && !np.isShow
   const [skip, setSkip] = useState<Skip | null>(null)
   const [err, setErr] = useState('')
@@ -39,7 +38,7 @@ export default function SkipButton({ np }: { np: NowPlaying | null }) {
 
   // Guests and signed-out visitors see the button too; pressing it takes them to sign in.
   if (!user || isGuest) {
-    const go = () => { (isGuest ? signOut() : Promise.resolve()).finally(() => router.push(isGuest ? '/auth' : '/auth?mode=create')) }
+    const go = () => { (isGuest ? signOut() : Promise.resolve()).finally(() => openSignIn(!isGuest)) }
     return (
       <div className="flex flex-col items-center gap-2">
         <button type="button" onClick={go} aria-label={isGuest ? 'Sign in to ask to skip this song' : 'Sign up to ask to skip this song'}
@@ -64,7 +63,7 @@ export default function SkipButton({ np }: { np: NowPlaying | null }) {
     <div className="flex flex-col items-center gap-2">
       <button type="button" onClick={ask} disabled={skip.mine}
               aria-label={skip.mine ? 'You asked to skip this song' : 'Ask to skip this song'}
-              className="hw-knob-sm hw-skip w-[58px] h-[58px] rounded-full flex items-center justify-center text-[#1a1710] disabled:opacity-70">
+              className={`hw-knob-sm hw-skip w-[58px] h-[58px] rounded-full flex items-center justify-center text-[#1a1710] disabled:opacity-70 ${skip.mine ? 'hw-lit' : ''}`}>
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path d="M6 6l9 6-9 6V6zm10 0h2v12h-2V6z" /></svg>
       </button>
       <span className="text-sm font-semibold text-br-dk-text">Ask to skip</span>

@@ -1,5 +1,6 @@
 'use client'
 
+import { openSignIn } from '@/lib/signInPrompt'
 import { CONCENTRATIONS, MAX_CONCENTRATIONS, gradYearOptions } from '@/lib/terms'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -306,7 +307,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (loading) return
-    if (!user) router.replace('/auth')
+    if (!user) openSignIn()
   }, [loading, user, router])
 
   const loadMe = () => apiGet<{ invisible: boolean; avatarColor: string; joinedAt: number | null; gradYear: string; concentrations: string[]; birthday?: unknown }>('/api/me')

@@ -1,8 +1,8 @@
 'use client'
 
+import { openSignIn } from '@/lib/signInPrompt'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
 import { genreArt } from '@/lib/genreArt'
@@ -63,7 +63,6 @@ function Bell({ on, onClick, label, small }: { on: boolean; onClick: (e: React.M
 
 export default function ScheduleList() {
   const { user } = useAuth()
-  const router = useRouter()
   const [bells, setBells] = useState<Set<string>>(new Set())
   const [note, setNote] = useState('')
   const [items, setItems] = useState<Item[] | null>(null)
@@ -89,7 +88,7 @@ export default function ScheduleList() {
   }, [user])
 
   async function toggleBell(it: Item) {
-    if (!user) { router.push('/auth'); return }
+    if (!user) { openSignIn(); return }
     const on = !bells.has(it.reminderKey)
     setBells(prev => { const n = new Set(prev); if (on) n.add(it.reminderKey); else n.delete(it.reminderKey); return n })
     setNote('')

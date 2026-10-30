@@ -8,6 +8,7 @@ import AnnouncementBanner from '@/components/AnnouncementBanner'
 import SetupBanner from '@/components/setup/SetupBanner'
 import SetupPrompt from '@/components/setup/SetupPrompt'
 import GuestFence from '@/components/GuestFence'
+import SignInModal from '@/components/SignInModal'
 import { THEME_SCRIPT } from '@/lib/themeScript'
 
 // Colors the browser's address bar to match the top bar (not the wood). ThemeToggle and the head script follow the chosen theme.
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <GuestFence />
           <Splash />
+          <SignInModal />
           <Nav />
           <SetupBanner />
           <SetupPrompt />

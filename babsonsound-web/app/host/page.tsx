@@ -1,5 +1,6 @@
 'use client'
 
+import { openSignIn } from '@/lib/signInPrompt'
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -41,7 +42,7 @@ export default function HostPage() {
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load the host panel.') }
   }, [])
 
-  useEffect(() => { if (!loading && !user) router.replace('/auth') }, [loading, user, router])
+  useEffect(() => { if (!loading && !user) openSignIn() }, [loading, user, router])
   useEffect(() => {
     if (!user || !isBabson) return
     queueMicrotask(load)

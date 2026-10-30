@@ -1,5 +1,6 @@
 'use client'
 
+import { openSignIn } from '@/lib/signInPrompt'
 import { useEffect, type ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -27,7 +28,7 @@ export default function GuestFence() {
       return
     }
     if (!isGuest) return
-    if (SIGN_IN_PAGES.some(p => under(pathname, p))) { signOut().finally(() => router.replace('/auth')); return }
+    if (SIGN_IN_PAGES.some(p => under(pathname, p))) { signOut().finally(() => openSignIn()); return }
     if (!ALLOWED.some(p => pathname === p || (p !== '/' && pathname.startsWith(`${p}/`)))) router.replace('/')
   }, [loading, isGuest, needsVerification, pathname, router])
   return null

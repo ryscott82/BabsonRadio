@@ -3,8 +3,9 @@
 import { useRef } from 'react'
 
 /** Volume knob: drag up/down (or use the arrow keys) to turn it. A ring of dots shows the level. */
-export default function VolumeKnob({ value, onChange, max = 1, unity = 1, boostDb = 0 }: { value: number; onChange: (v: number) => void; max?: number; unity?: number; boostDb?: number }) {
+export default function VolumeKnob({ value, onChange, max = 1, unity = 1, boostDb = 0, boost = true }: { value: number; onChange: (v: number) => void; max?: number; unity?: number; boostDb?: number; boost?: boolean }) {
   const start = useRef<{ y: number; v: number } | null>(null)
+  const lastTap = useRef(0) // when the knob was last clicked without dragging (a second quick click resets it to 0 dB)
   const motion = useRef({ y: 0, t: 0, speed: 0 }) // how fast the knob is being dragged, in pixels per millisecond (smoothed)
   const clamp = (v: number) => Math.min(max, Math.max(0, v))
   // Detent at 0 dB. The sticky zone follows the speed of the drag: sweep fast and it is wide (easy to land on, and the boost is only entered on purpose),
@@ -31,7 +32,7 @@ export default function VolumeKnob({ value, onChange, max = 1, unity = 1, boostD
         {Array.from({ length: 11 }, (_, i) => {
           const a = ((-135 + (i / 10) * 270) * Math.PI) / 180
           return <i key={i} aria-hidden className={`hw-dot ${i / 10 <= value + 0.001 ? 'on' : ''} ${i / 10 > unity ? 'hot' : ''}`}
-                    style={{ left: `calc(50% + ${Math.sin(a) * 42}px - 2px)`, top: `calc(50% - ${Math.cos(a) * 42}px - 2px)` }} />
+                    style={{ left: `calc(50% + ${Math.sin(a) * 42}px - 2px)`, top: `calc(50% - ${Math.cos(a) * 42}px - 2px)`, visibility: !boost && i / 10 > unity + 0.001 ? 'hidden' : undefined }} />
         })}
         <div
           role="slider" tabIndex={0} aria-label="Volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value * 100)} aria-valuetext={boostDb > 0 ? `Boosted ${Math.round(boostDb)} decibels` : undefined}
@@ -39,7 +40,13 @@ export default function VolumeKnob({ value, onChange, max = 1, unity = 1, boostD
           style={{ ['--turn' as string]: `${angle}deg`, ['--glow' as string]: glow }}
           onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); start.current = { y: e.clientY, v: value }; motion.current = { y: e.clientY, t: e.timeStamp, speed: 0 } }}
           onPointerMove={e => { if (start.current) { track(e.clientY, e.timeStamp); onChange(snap(clamp(start.current.v + (start.current.y - e.clientY) / 140))) } }}
-          onPointerUp={() => { start.current = null }}
+          onPointerUp={e => {
+            const s = start.current; start.current = null
+            if (!s) return
+            if (Math.abs(e.clientY - s.y) > 6) { lastTap.current = 0; return }
+            if (e.timeStamp - lastTap.current < 400) { lastTap.current = 0; onChange(Math.min(max, unity)) } // double click or double tap: back to 0 dB
+            else lastTap.current = e.timeStamp
+          }}
           onPointerCancel={() => { start.current = null }}
           onKeyDown={e => {
             if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); onChange(clamp(step(value, 0.05))) }

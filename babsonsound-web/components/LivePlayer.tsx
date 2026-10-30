@@ -79,8 +79,10 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   const UNITY = 0.75, MAX_DB = 6
   const [volume, setVolume] = useState(0.64)
   const [canBoost, setCanBoost] = useState(false)
+  // Whether this browser lets the page read the stream's audio: null until known (the equalizer shows meanwhile), false hides the equalizer and the boost range.
+  const [eqOk, setEqOk] = useState<boolean | null>(null)
   useEffect(() => {
-    probeCors(STREAM_URL).then(setCanBoost).catch(() => {})
+    probeCors(STREAM_URL).then(v => { setCanBoost(v); setEqOk(v) }).catch(() => setEqOk(false))
     try {
       const v = Number(localStorage.getItem('br-vol2')), old = Number(localStorage.getItem('br-vol'))
       const start = v > 0 && v <= 1 ? v : old > 0 && old <= 1 ? old * UNITY : 0
@@ -140,8 +142,10 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   }, [board, awake])
   const eqRef = useRef<HTMLDivElement | null>(null)
   const boardEqRef = useRef<HTMLDivElement | null>(null)
-  useLedSpectrum(eqRef, isPlaying)
-  useLedSpectrum(boardEqRef, isPlaying && board, 12)
+  // Browsers that don't let the page read the stream's sound have no real equalizer and no boost, so those controls are not shown.
+  const showEq = fxOn && eqOk !== false
+  useLedSpectrum(eqRef, isPlaying && showEq)
+  useLedSpectrum(boardEqRef, isPlaying && board && showEq, 12)
   const [clock, setClock] = useState(0)
   useEffect(() => { const t = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(t) }, [])
   // Progress between polls: elapsed at the time of the last poll plus the seconds since.
@@ -226,9 +230,9 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
       applyVolume(audioRef.current, level / UNITY); setBoostDb(boostDb)
       wireAudio(el)
       if (attached && tryAnyway) {
-        verifyAnalyser(el, () => setCanBoost(true), () => {
+        verifyAnalyser(el, () => { setCanBoost(true); setEqOk(true) }, () => {
           // No sound could be read: drop the analyser and carry on with a plain player (a new element, since this one is routed through it).
-          blockEq(); setCanBoost(false)
+          blockEq(); setCanBoost(false); setEqOk(false)
           const was = !el.paused
           el.pause(); el.src = ''
           const plain = new Audio()
@@ -351,17 +355,19 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
             </p>
           )}
 
-          <div className="hw-well mt-3" aria-hidden>
-            <div ref={eqRef} className="hw-eq hw-led" data-on={isPlaying}>
-              {EQ_BARS.map((b, i) => (
-                <i key={i} style={{ ['--h' as string]: b.h, animationDelay: `${b.d}s`, animationDuration: `${b.t}s` }} />
-              ))}
+          {showEq && (
+            <div className="hw-well mt-3" aria-hidden>
+              <div ref={eqRef} className="hw-eq hw-led" data-on={isPlaying}>
+                {EQ_BARS.map((b, i) => (
+                  <i key={i} style={{ ['--h' as string]: b.h, animationDelay: `${b.d}s`, animationDuration: `${b.t}s` }} />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Volume knob, play knob, skip knob */}
           <div className="grid grid-cols-3 items-start gap-4 mt-5">
-            <div className="justify-self-center"><VolumeKnob value={level} onChange={setVolume} max={canBoost && fxOn ? 1 : UNITY} unity={UNITY} boostDb={boostDb} /></div>
+            <div className="justify-self-center"><VolumeKnob value={level} onChange={setVolume} max={canBoost && fxOn ? 1 : UNITY} unity={UNITY} boostDb={boostDb} boost={canBoost && fxOn} /></div>
             <div className="justify-self-center pt-1">
               <button
                 onClick={togglePlay}
@@ -457,7 +463,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
       )}
     </div>
     <div className="mt-8 empty:hidden"><ExtrasStack compact={pane} /></div>
-    {board && <FullBoard boardRef={boardRef} eqRef={boardEqRef} np={np} hasSong={hasSong} onAir={onAir} glow={glow} awake={awake} setAwake={setAwake}
+    {board && <FullBoard boardRef={boardRef} eqRef={boardEqRef} showEq={showEq} np={np} hasSong={hasSong} onAir={onAir} glow={glow} awake={awake} setAwake={setAwake}
                          isPlaying={isPlaying} canPlay={canListenLive} togglePlay={togglePlay} close={closeBoard} />}
     </>
   )

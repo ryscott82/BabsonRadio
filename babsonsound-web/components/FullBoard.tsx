@@ -36,8 +36,8 @@ function GlassClock() {
   )
 }
 
-export default function FullBoard({ boardRef, eqRef, np, hasSong, onAir, glow, awake, setAwake, isPlaying, canPlay, togglePlay, close }: {
-  boardRef: RefObject<HTMLDivElement | null>; eqRef: RefObject<HTMLDivElement | null>
+export default function FullBoard({ boardRef, eqRef, showEq, np, hasSong, onAir, glow, awake, setAwake, isPlaying, canPlay, togglePlay, close }: {
+  boardRef: RefObject<HTMLDivElement | null>; eqRef: RefObject<HTMLDivElement | null>; showEq: boolean
   np: NowPlaying | null | undefined; hasSong: boolean; onAir: boolean; glow: string
   awake: boolean; setAwake: (v: boolean) => void; isPlaying: boolean; canPlay: boolean; togglePlay: () => void; close: () => void
 }) {
@@ -93,9 +93,11 @@ export default function FullBoard({ boardRef, eqRef, np, hasSong, onAir, glow, a
 
         {/* Equalizer */}
         <div className="hw-well hw-board-well absolute" style={{ left: 56, top: 736, width: 740, height: 110 }} aria-hidden>
-          <div ref={eqRef} className="hw-eq hw-led hw-big-led" data-on={isPlaying}>
-            {BOARD_BARS.map((b, i) => <i key={i} style={{ ['--h' as string]: b.h, animationDelay: `${b.d}s`, animationDuration: `${b.t}s` }} />)}
-          </div>
+          {showEq && (
+            <div ref={eqRef} className="hw-eq hw-led hw-big-led" data-on={isPlaying}>
+              {BOARD_BARS.map((b, i) => <i key={i} style={{ ['--h' as string]: b.h, animationDelay: `${b.d}s`, animationDuration: `${b.t}s` }} />)}
+            </div>
+          )}
         </div>
 
         {/* Reactions */}

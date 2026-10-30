@@ -237,7 +237,7 @@ export default function AdminUsersPage() {
                       <label className="text-xs text-br-dk-sub space-y-1 block">Graduation year
                         <select value={ef.gradYear} onChange={e => setEf({ ...ef, gradYear: e.target.value })} className="sk-field w-full rounded-lg px-2 py-2 text-sm text-br-dk-text">
                           <option value="">Not set</option>
-                          {gradYearOptions().map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          {[...(ef.gradYear && !gradYearOptions().some(o => o.value === ef.gradYear) ? [{ value: ef.gradYear, label: /^\d{4}$/.test(ef.gradYear) ? `Class of ${ef.gradYear}` : ef.gradYear }] : []), ...gradYearOptions()].map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select></label>
                       <label className="text-xs text-br-dk-sub space-y-1 block">Instagram
                         <input value={ef.instagram} onChange={e => setEf({ ...ef, instagram: e.target.value })} maxLength={200} placeholder="@name or link" autoCapitalize="none" spellCheck={false}

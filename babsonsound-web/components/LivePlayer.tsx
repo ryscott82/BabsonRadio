@@ -17,7 +17,7 @@ import { useArtMain } from '@/components/ArtTheme'
 import { useListenGuard } from '@/lib/listenGuard'
 import { useHeld } from '@/lib/settle'
 import { takeTryIt } from '@/lib/splash'
-import { corsResult, applyVolume, elementVolumeWorks, attachSpectrum, probeCors, registerAudio, sharedAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
+import { eqDebug, corsResult, applyVolume, elementVolumeWorks, attachSpectrum, probeCors, registerAudio, sharedAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 
@@ -193,6 +193,16 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
     const t = setInterval(() => sendHeartbeat(true), 120_000)
     return () => { clearInterval(t); sendHeartbeat(false) }
   }, [isPlaying])
+
+  // Adding ?eqdebug=1 to the address shows a one-line readout of the equalizer's state (for finding out why the bars look fake on a phone).
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has('eqdebug')) return
+    const d = document.createElement('div')
+    d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#000;color:#0f0;font:12px monospace;padding:4px 8px'
+    document.body.appendChild(d)
+    const t = setInterval(() => { d.textContent = `${eqDebug()} playing:${audioRef.current ? !audioRef.current.paused : '-'}` }, 400)
+    return () => { clearInterval(t); d.remove() }
+  }, [])
 
   // Warm the cross-origin check now so the first tap on Play isn't delayed by it.
   useEffect(() => { probeCors(STREAM_URL).catch(() => {}) }, [])

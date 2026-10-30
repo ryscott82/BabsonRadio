@@ -136,6 +136,8 @@ export function setBoostDb(db: number) {
 /** Call from a click/tap handler: browsers keep the audio context asleep until then. */
 /** True once the stream is routed through the analyser (so silence can be read as silence, not as "no analysis"). */
 export const hasSpectrum = () => !!current
+/** One line of state for the ?eqdebug=1 readout: is the analyser attached, is its audio engine awake, is it hearing anything. */
+export const eqDebug = () => `cors:${corsKnown} attached:${!!current} ctx:${current?.ctx.state ?? '-'} peak:${lastPeak.toFixed(3)} vol:${elementVolumeWorks() ? 'el' : 'gain'}`
 export function wakeSpectrum() { const c = current?.ctx; if (c && c.state !== 'running') c.resume().catch(() => {}) }
 
 /**

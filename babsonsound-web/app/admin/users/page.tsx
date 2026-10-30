@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { api, apiDelete, apiGet } from '@/lib/auth'
 import { ErrorText } from '@/components/AuthUI'
 import { gradYearOptions } from '@/lib/terms'
+import { isTestEmail } from '@/lib/testAccount'
 
 type Level = 'guest' | 'student' | 'director' | 'admin'
 interface Row { id: string; name: string; firstName: string; lastName: string; gradYear: string; username: string; email: string; level: Level; studioTrained: boolean; radioTrained: boolean; instagram: string; awaitingVerify: boolean; owner: boolean; you: boolean }
@@ -81,6 +82,13 @@ export default function AdminUsersPage() {
       setRows(prev => prev.map(x => (x.id === r.id ? { ...x, instagram: '' } : x)))
       setNote(`Cleared the Instagram handle for ${r.name || r.email}.`)
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not clear it.') }
+  }
+  async function deleteTest(r: Row) {
+    setError(''); setNote('')
+    try {
+      await api('/api/admin/users/delete', { uid: r.id, testAccount: true })
+      setRows(prev => prev.filter(x => x.id !== r.id)); setNote(`Deleted test account ${r.email}.`); loadGone()
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not delete.') }
   }
   function startDelete(r: Row) { setTarget(r); setStep(1); setReason(''); setError('') }
   async function confirmDelete() {
@@ -214,6 +222,7 @@ export default function AdminUsersPage() {
                           className="sk-field rounded-lg px-2 py-1.5 text-sm text-br-dk-text">
                     {LEVELS.map(l => <option key={l} value={l}>{LEVEL_LABEL[l]}</option>)}
                   </select>
+                  {isTestEmail(r.email) && <button type="button" onClick={() => deleteTest(r)} className="text-sm rounded-lg px-3 py-1.5 bg-red-700 text-white" aria-label={`Delete test account ${r.email}`}>Delete test</button>}
                   <button type="button" onClick={() => startDelete(r)} className="text-sm text-red-400 underline" aria-label={`Delete account for ${r.name || r.email}`}>Delete</button>
                 </div>
               )}

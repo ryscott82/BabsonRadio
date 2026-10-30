@@ -2,6 +2,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireAdmin, str } from '@/lib/server/http'
 import { isOwnerEmail } from '@/lib/server/access'
+import { isTestEmail } from '@/lib/testAccount'
 import { deleteAccountData } from '@/lib/server/deleteAccount'
 
 export const runtime = 'nodejs'
@@ -23,16 +24,17 @@ export async function GET(req: Request) {
   })
 }
 
-// { uid, reason, confirmed: true }
+// { uid, reason, confirmed: true }   or, for a "+test" alias only (rydj007+test1@gmail.com), { uid, testAccount: true } with no reason or second step. Both are logged.
 export async function POST(req: Request) {
   return handle(async () => {
     const me = await requireAdmin(req)
     const b = await readJson(req)
     const uid = str(b.uid, 128)
-    const reason = str(b.reason, 500)
+    const quick = b.testAccount === true
+    const reason = quick ? 'Test account (+test address)' : str(b.reason, 500)
     if (!uid) throw new HttpError(400, 'Invalid request.')
-    if (b.confirmed !== true) throw new HttpError(400, 'Confirmation missing.')
-    if (reason.length < 10) throw new HttpError(400, 'Write a reason of at least 10 characters.')
+    if (!quick && b.confirmed !== true) throw new HttpError(400, 'Confirmation missing.')
+    if (!quick && reason.length < 10) throw new HttpError(400, 'Write a reason of at least 10 characters.')
     if (uid === me.uid) throw new HttpError(400, 'You cannot delete your own account here. Use Delete account on your profile.')
 
     const db = adminDb()
@@ -40,6 +42,7 @@ export async function POST(req: Request) {
     if (!u.exists) throw new HttpError(404, 'User not found.')
     const email = String(u.get('email') ?? '').toLowerCase()
     if (isOwnerEmail(email)) throw new HttpError(403, 'Owner accounts cannot be deleted.')
+    if (quick && !isTestEmail(email)) throw new HttpError(400, 'Only +test addresses can be deleted in one click.')
     if (u.get('demo') === true) throw new HttpError(403, 'The App Store reviewer account cannot be deleted.')
 
     const by = await db.collection('users').doc(me.uid).get()

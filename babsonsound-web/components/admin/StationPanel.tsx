@@ -78,7 +78,7 @@ export default function StationPanel({ only = 'controls' }: { only?: 'controls' 
       <div className="grid md:grid-cols-2 gap-5">
         {only === 'controls' && (<>
         <section className={card}>
-          <h3 className={h}>Playback</h3>
+          <h3 className={h}>Stream controls</h3>
           <div className="flex flex-wrap gap-2 items-center">
             <button type="button" disabled={!!busy} onClick={() => run('skip', { action: 'skip' }, 'Skipped.')} className={btn}>Skip song</button>
             {confirm ? (
@@ -94,15 +94,13 @@ export default function StationPanel({ only = 'controls' }: { only?: 'controls' 
               </>
             )}
           </div>
-        </section>
-
-        <section className={card}>
-          <h3 className={h}>Maintenance mode</h3>
-          <p className="text-base opacity-90">While on, what is playing says &quot;Babson Radio will be back shortly&quot; on the site and in the app. It does not stop the audio. Use Emergency stop for that.</p>
-          <button type="button" disabled={!!busy} aria-pressed={d.maintenance === true}
-                  onClick={() => run('maintenance', { action: 'maintenance', on: d.maintenance !== true }, d.maintenance === true ? 'Maintenance mode is off.' : 'Maintenance mode is on.')} className={btn}>
-            {d.maintenance === true ? 'On: turn off' : 'Off: turn on'}
-          </button>
+          <div className="space-y-2">
+            <p className="text-base opacity-90">Maintenance mode: while on, what is playing says &quot;Babson Radio will be back shortly&quot; on the site and in the app. It does not stop the audio. Use Emergency stop for that.</p>
+            <button type="button" disabled={!!busy} aria-pressed={d.maintenance === true}
+                    onClick={() => run('maintenance', { action: 'maintenance', on: d.maintenance !== true }, d.maintenance === true ? 'Maintenance mode is off.' : 'Maintenance mode is on.')} className={btn}>
+              {d.maintenance === true ? 'Maintenance mode: on (turn off)' : 'Maintenance mode: off (turn on)'}
+            </button>
+          </div>
         </section>
 
         <section className={card}>

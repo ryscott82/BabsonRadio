@@ -159,6 +159,7 @@ export const eqBlocked = () => { try { return sessionStorage.getItem(BLOCK_KEY) 
 /** Turns the analyser off for this session and puts its audio engine to sleep (the element that was routed through it must be discarded). */
 export let eqNote = ''
 export const setEqNote = (n: string) => { eqNote = n }
+export function clearEqBlock() { try { sessionStorage.removeItem(BLOCK_KEY) } catch { /* ignore */ } }
 export function blockEq() {
   try { sessionStorage.setItem(BLOCK_KEY, '1') } catch { /* ignore */ }
   const t = current

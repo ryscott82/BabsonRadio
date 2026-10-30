@@ -17,7 +17,7 @@ import { useArtMain } from '@/components/ArtTheme'
 import { useListenGuard } from '@/lib/listenGuard'
 import { useHeld } from '@/lib/settle'
 import { takeTryIt } from '@/lib/splash'
-import { setEqNote, blockEq, eqBlocked, verifyAnalyser, eqDebug, corsResult, applyVolume, elementVolumeWorks, attachSpectrum, probeCors, registerAudio, sharedAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
+import { clearEqBlock, setEqNote, blockEq, eqBlocked, verifyAnalyser, eqDebug, corsResult, applyVolume, elementVolumeWorks, attachSpectrum, probeCors, registerAudio, sharedAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 
@@ -197,6 +197,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   // Adding ?eqdebug=1 to the address shows a one-line readout of the equalizer's state (for finding out why the bars look fake on a phone).
   useEffect(() => {
     if (!new URLSearchParams(window.location.search).has('eqdebug')) return
+    clearEqBlock() // a debug visit always retries the equalizer, so an earlier failed attempt can't hide the result
     const d = document.createElement('div')
     d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#000;color:#0f0;font:12px monospace;padding:4px 8px'
     document.body.appendChild(d)

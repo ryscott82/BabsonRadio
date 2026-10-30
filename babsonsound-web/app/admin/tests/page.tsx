@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import ArtTest from '@/components/admin/ArtTest'
 import StationPanel from '@/components/admin/StationPanel'
+import BoostLab from '@/components/admin/BoostLab'
 
 export default function TestsPage() {
   const { isAdmin, loading } = useAuth()
@@ -16,6 +17,7 @@ export default function TestsPage() {
           <h1 className="text-4xl font-light leading-tight mt-1">Tests</h1>
         </header>
         <StationPanel only="tests" />
+        <BoostLab />
         <ArtTest />
       </div>
     </div>

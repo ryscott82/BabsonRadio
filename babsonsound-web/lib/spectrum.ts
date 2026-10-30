@@ -31,13 +31,41 @@ export function probeCors(url: string): Promise<boolean> {
   return corsProbe
 }
 
-interface Tap { ctx: AudioContext; an: AnalyserNode; data: Uint8Array<ArrayBuffer>; master: GainNode; direct: GainNode; dry: GainNode; drive: GainNode; wet: GainNode; ex: GainNode; low: BiquadFilterNode; mud: BiquadFilterNode; air: BiquadFilterNode; comp: DynamicsCompressorNode }
+interface Tap { ctx: AudioContext; an: AnalyserNode; data: Uint8Array<ArrayBuffer>; master: GainNode; direct: GainNode; dry: GainNode; drive: GainNode; wet: GainNode; ex: GainNode; eq: BiquadFilterNode[]; crunchHp: BiquadFilterNode; comp: DynamicsCompressorNode }
 /** The sound is held back this long before the speakers while the analyser hears it right away, so the lights line up with what you hear. */
 export const AUDIO_DELAY_MS = 216
 
 let wakeHooked = false
-/** The crunch only touches sound above this. */
-const CRUNCH_HZ = 1800
+/**
+ * The knob's boost zone. All of this can be tuned on the admin Tests page, then the winning numbers go in DEFAULT_BOOST.
+ * bands: gain in dB at each of the 8 EQ bands when the knob is at its maximum (+6 dB); less boost scales them down in step.
+ * level: extra overall volume in dB at maximum. overdrive: how much of the crunchy copy is mixed in (0 = none). drive: how hard that copy is driven.
+ * crunchHz: only sound above this is crunched. sparkle: harmonic shimmer added to the highs (0 = none). comp: strength of the glue compressor (0 = none).
+ */
+export interface BoostSettings { bands: number[]; level: number; overdrive: number; drive: number; crunchHz: number; sparkle: number; comp: number }
+export const BAND_HZ = [60, 150, 350, 800, 1800, 4000, 8000, 14000]
+export const DEFAULT_BOOST: BoostSettings = {
+  bands: [9, 6, -3, -1, 0.5, 3, 6, 7], // big bass, a dip through the muddy low mids, shiny highs and air
+  level: 3, overdrive: 0, drive: 3, crunchHz: 1800, sparkle: 0, comp: 1,
+}
+let settings: BoostSettings = { ...DEFAULT_BOOST, bands: [...DEFAULT_BOOST.bands] }
+export const getBoostSettings = (): BoostSettings => ({ ...settings, bands: [...settings.bands] })
+/** Replaces the boost settings (the Tests page does this live while you listen). */
+export function setBoostSettings(next: BoostSettings) { settings = { ...next, bands: [...next.bands] }; setBoostDb(boostDb) }
+/** The EQ curve at a given boost (0..1 of maximum): the gain in dB at each of the given frequencies, from the real filters. */
+export function boostCurve(freqs: number[], b: BoostSettings = settings, k = 1): number[] {
+  const ctx = new OfflineAudioContext(1, 1, 48000)
+  const fr = new Float32Array(freqs), mag = new Float32Array(freqs.length), ph = new Float32Array(freqs.length)
+  const out = new Array<number>(freqs.length).fill(0)
+  b.bands.forEach((g, i) => {
+    const f = ctx.createBiquadFilter()
+    f.type = i === 0 ? 'lowshelf' : i === BAND_HZ.length - 1 ? 'highshelf' : 'peaking'
+    f.frequency.value = BAND_HZ[i]; f.Q.value = 1.1; f.gain.value = g * k
+    f.getFrequencyResponse(fr, mag, ph)
+    for (let j = 0; j < freqs.length; j++) out[j] += 20 * Math.log10(mag[j])
+  })
+  return out
+}
 const taps = new WeakMap<HTMLAudioElement, Tap>()
 let current: Tap | null = null
 
@@ -68,21 +96,26 @@ export function attachSpectrum(el: HTMLAudioElement): boolean {
     src.connect(dry); dry.connect(bus)
     // Only the highs are driven into the crunch: a high-pass in front of the shaper keeps the lows and mids clean, so it grits up the top without turning the whole mix to mud.
     const crunchHp = ctx.createBiquadFilter()
-    crunchHp.type = 'highpass'; crunchHp.frequency.value = CRUNCH_HZ; crunchHp.Q.value = 0.6
+    crunchHp.type = 'highpass'; crunchHp.frequency.value = settings.crunchHz; crunchHp.Q.value = 0.6
     src.connect(crunchHp); crunchHp.connect(drive); drive.connect(sat); sat.connect(wet); wet.connect(bus)
     // Sparkle: only the highs are driven into a shaper and blended back in (harmonic excitement instead of a crushed mix).
     const hp = ctx.createBiquadFilter(), exSat = ctx.createWaveShaper(), exDrive = ctx.createGain(), ex = ctx.createGain()
     hp.type = 'highpass'; hp.frequency.value = 3200; exDrive.gain.value = 5; exSat.curve = tubeCurve(); exSat.oversample = '4x'; ex.gain.value = 0
     src.connect(hp); hp.connect(exDrive); exDrive.connect(exSat); exSat.connect(ex); ex.connect(bus)
-    // The boost zone is a V-shaped EQ: a low shelf for chest, a dip in the muddy low mids, a high shelf for air, then a glue compressor and a limiter as the ceiling.
-    const low = ctx.createBiquadFilter(), mud = ctx.createBiquadFilter(), air = ctx.createBiquadFilter(), comp = ctx.createDynamicsCompressor(), lim = ctx.createDynamicsCompressor()
-    low.type = 'lowshelf'; low.frequency.value = 100; low.gain.value = 0
-    mud.type = 'peaking'; mud.frequency.value = 320; mud.Q.value = 0.8; mud.gain.value = 0
-    air.type = 'highshelf'; air.frequency.value = 6500; air.gain.value = 0
+    // The boost zone is an 8-band EQ (see BoostSettings), then a glue compressor and a limiter as the ceiling.
+    const eq = BAND_HZ.map((hz, i) => {
+      const f = ctx.createBiquadFilter()
+      f.type = i === 0 ? 'lowshelf' : i === BAND_HZ.length - 1 ? 'highshelf' : 'peaking'
+      f.frequency.value = hz; f.Q.value = 1.1; f.gain.value = 0
+      return f
+    })
+    const comp = ctx.createDynamicsCompressor(), lim = ctx.createDynamicsCompressor()
     comp.threshold.value = 0; comp.ratio.value = 1; comp.knee.value = 18; comp.attack.value = 0.012; comp.release.value = 0.16
     lim.threshold.value = -1.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.08
-    bus.connect(low); low.connect(mud); mud.connect(air); air.connect(comp); comp.connect(clip); clip.connect(lim); lim.connect(out)
-    const tap: Tap = { ctx, an, data: new Uint8Array(new ArrayBuffer(an.frequencyBinCount)), master, direct, dry, drive, wet, ex, low, mud, air, comp }
+    let node: AudioNode = bus
+    for (const f of eq) { node.connect(f); node = f }
+    node.connect(comp); comp.connect(clip); clip.connect(lim); lim.connect(out)
+    const tap: Tap = { ctx, an, data: new Uint8Array(new ArrayBuffer(an.frequencyBinCount)), master, direct, dry, drive, wet, ex, eq, crunchHp, comp }
     taps.set(el, tap); current = tap
     setBoostDb(boostDb)
     // Phones keep a new audio context asleep (and put it to sleep again after a call, a lock or a tab switch) until it is woken from a tap.
@@ -134,18 +167,16 @@ export function setBoostDb(db: number) {
   boostDb = Math.max(0, db)
   const t = current
   if (!t) return
-  const on = boostDb > 0.05, k = Math.min(1, boostDb / MAX_BOOST_DB), now = t.ctx.currentTime, glide = 0.03
+  const on = boostDb > 0.05, k = Math.min(1, boostDb / MAX_BOOST_DB), now = t.ctx.currentTime, glide = 0.03, S = settings
   t.direct.gain.setTargetAtTime(on ? 0 : 1, now, glide)
-  t.dry.gain.setTargetAtTime(on ? Math.pow(10, boostDb / 20) * (1 - 0.45 * k) : 0, now, glide) // the clean full-range sound stays; a touch of crunch is added on top of the highs
-  t.drive.gain.setTargetAtTime(1 + 3 * k, now, glide)
-  t.wet.gain.setTargetAtTime(on ? 0.35 * k : 0, now, glide) // just a touch of overdrive
-  // The cool part: more chest, more shine, a touch of high-frequency sparkle, and glue compression that grows with the boost.
-  t.ex.gain.setTargetAtTime(on ? 0.3 * k : 0, now, glide)       // sparkle: the driven highs blended back in
-  t.low.gain.setTargetAtTime(on ? 7 * k : 0, now, glide)        // bass boost
-  t.mud.gain.setTargetAtTime(on ? -4.5 * k : 0, now, glide)     // dip in the muddy low mids, which makes the V
-  t.air.gain.setTargetAtTime(on ? 7 * k : 0, now, glide)        // air and shine
-  t.comp.threshold.setTargetAtTime(on ? -10 - 8 * k : 0, now, glide)
-  t.comp.ratio.setTargetAtTime(on ? 1.5 + 3.5 * k : 1, now, glide)
+  t.dry.gain.setTargetAtTime(on ? Math.pow(10, (S.level * k) / 20) * (1 - 0.45 * Math.min(1, S.overdrive) * k) : 0, now, glide)
+  t.crunchHp.frequency.setTargetAtTime(S.crunchHz, now, glide)
+  t.drive.gain.setTargetAtTime(1 + S.drive * k, now, glide)
+  t.wet.gain.setTargetAtTime(on ? S.overdrive * k : 0, now, glide)  // the crunchy copy (0 = no distortion)
+  t.ex.gain.setTargetAtTime(on ? S.sparkle * k : 0, now, glide)     // harmonic shimmer on the highs
+  t.eq.forEach((f, i) => f.gain.setTargetAtTime(on ? S.bands[i] * k : 0, now, glide))
+  t.comp.threshold.setTargetAtTime(on ? -10 * S.comp - 8 * k * S.comp : 0, now, glide)
+  t.comp.ratio.setTargetAtTime(on ? 1 + (0.5 + 3.5 * k) * S.comp : 1, now, glide)
 }
 
 /** Call from a click/tap handler: browsers keep the audio context asleep until then. */

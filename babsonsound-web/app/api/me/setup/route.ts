@@ -8,10 +8,9 @@ export const runtime = 'nodejs'
 //   name      { firstName, lastName? }
 //   avatar    { avatarColor }
 //   birthday  { year, month?, day?, parentalConsent? }   (year alone is enough unless it sits on the 13 or 18 line)
-//             or { ageRange: 'under13' | '13-17' | '18-24' | '25plus', parentalConsent? }  (for people who would rather not share a birthday)
 //   gradYear  { gradYear }                               (students only)
-//   phone     { phone }                                  (students only, optional; only when no number is on the account yet)
-// The reply carries the updated setup state with next = null: one prompt per visit.
+//   phone     { phone }                                  (students only; only when no number is on the account yet. A number another member uses is allowed.)
+// The reply carries the updated setup state; next is the following step to ask about.
 export async function POST(req: Request) {
   return handle(async () => {
     const t = await requireUser(req)

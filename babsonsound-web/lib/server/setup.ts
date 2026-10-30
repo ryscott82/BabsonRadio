@@ -7,19 +7,30 @@ import type { Access } from './access'
 import { deleteAccountData } from './deleteAccount'
 import { assertCleanName } from './wordFilter'
 import { HttpError, str } from './http'
-import { encryptJson } from './pii'
+import { decryptJson, encryptJson } from './pii'
 import { normalizeUS } from '../phone'
 import { hasPhone, savePhone } from './phoneStore'
 import { judgeAge } from '../age'
 import { cleanInstagram } from '../instagram'
 import { AVATAR_COLORS } from '../profile'
-import { validGradYear } from '../terms'
+import { guessGradYear, validGradYear } from '../terms'
 import { REQUIRED, STEP_IDS, isStepId, setupState, stepsFor, type SetupInput, type SetupState, type Skips, type StepId } from '../setup'
 
-// Progressive setup, server side. The rules (order, back-off, one prompt per visit) are in lib/setup.ts.
-// Stored on users/{uid}:  setup.skips.{stepId} = { count, lastShownAt, lastSkippedAt }  and  setup.lastPromptAt  (all ms).
+// Setup, server side. The rules (order, required name, dismissed steps going to the back) are in lib/setup.ts.
+// Stored on users/{uid}:  setup.skips.{stepId} = { count, lastShownAt, lastSkippedAt }  (ms).
 
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
+
+/** A graduation choice to pre-select, worked out from the saved birthday (it is stored encrypted). '' when there is none. */
+function gradGuessFor(u: DocumentSnapshot): string {
+  const enc = u.get('ageData')
+  if (enc == null || String(u.get('gradYear') ?? '') !== '') return ''
+  try {
+    const d = decryptJson<{ birthdate?: { year?: number; month?: number } }>(String(enc))
+    const b = d?.birthdate
+    return b && typeof b.year === 'number' ? guessGradYear(b.year, typeof b.month === 'number' ? b.month : null) : ''
+  } catch { return '' }
+}
 
 /** Everything the rules need, read from the profile and the sign-in token. */
 export function setupInput(t: DecodedIdToken, a: Access, u: DocumentSnapshot): SetupInput {
@@ -41,26 +52,19 @@ export function setupInput(t: DecodedIdToken, a: Access, u: DocumentSnapshot): S
     gradYear: String(u.get('gradYear') ?? ''),
     hasPhone: hasPhone(u),
     hasInstagram: typeof u.get('instagram') === 'string' && u.get('instagram') !== '',
-    skips, lastPromptAt: num(u.get('setup.lastPromptAt')),
+    skips, gradGuess: gradGuessFor(u),
   }
 }
 
-/**
- * The setup block for GET /api/me. `prompt` is true only when the app is asking at the start of a visit (/api/me?prompt=1):
- * then, if a step is being offered, it is recorded as shown and no other prompt goes out for 30 minutes. Other callers of
- * /api/me (profile page, host options...) just look, so they can never use up the prompt.
- */
+/** The setup block for GET /api/me: what is done and which step to ask about next. */
 export async function setupFor(t: DecodedIdToken, a: Access, u: DocumentSnapshot, prompt: boolean, now = Date.now()): Promise<SetupState> {
   const state = setupState(setupInput(t, a, u), now)
-  if (prompt && state.next) {
-    await u.ref.update({ 'setup.lastPromptAt': now, [`setup.skips.${state.next}.lastShownAt`]: now })
-  }
+  if (prompt && state.next) await u.ref.update({ [`setup.skips.${state.next}.lastShownAt`]: now })
   return state
 }
 
-/** The same state with the prompt already used up (what the skip and save routes send back). */
-export const settled = (t: DecodedIdToken, a: Access, u: DocumentSnapshot, now = Date.now()) =>
-  setupState({ ...setupInput(t, a, u), lastPromptAt: now }, now)
+/** The state after a skip or a save. */
+export const settled = (t: DecodedIdToken, a: Access, u: DocumentSnapshot, now = Date.now()) => setupState(setupInput(t, a, u), now)
 
 function checkStep(step: unknown, a: Access): StepId {
   if (!isStepId(step)) throw new HttpError(400, 'That setup step does not exist.', 'BR-SET-001')
@@ -79,7 +83,6 @@ export async function skipStep(t: DecodedIdToken, a: Access, rawStep: unknown, n
     await ref.update({
       [`setup.skips.${step}.count`]: FieldValue.increment(1),
       [`setup.skips.${step}.lastSkippedAt`]: now,
-      'setup.lastPromptAt': now,
     })
   }
   return settled(t, a, await ref.get(), now)
@@ -118,21 +121,12 @@ export async function saveStep(t: DecodedIdToken, a: Access, rawStep: unknown, v
       break
 
     case 'birthday': {
-      // Year is required; month and day are optional. A year alone is enough unless it falls on the 13 or 18 line.
-      // "Use age range instead": { ageRange } with one of the About you ranges, for people who would rather not share a birthday.
-      const RANGES = { under13: 'under13', '13-17': 'minor', '18-24': 'adult', '25plus': 'adult' } as const
-      let saved: Record<string, unknown>
-      let verdict: ReturnType<typeof judgeAge>
-      if (typeof v.ageRange === 'string' && v.ageRange in RANGES) {
-        verdict = { kind: RANGES[v.ageRange as keyof typeof RANGES] }
-        saved = { ageRange: v.ageRange }
-      } else {
-        const year = Number(v.year)
-        const month = v.month == null || v.month === '' ? null : Number(v.month)
-        const day = v.day == null || v.day === '' ? null : Number(v.day)
-        verdict = judgeAge(year, month, day, new Date(now))
-        saved = { birthdate: { year, ...(month != null && day != null ? { month, day } : {}) } }
-      }
+      // Year is required; month and day can be left out. A year alone is enough unless it falls on the 13 or 18 line.
+      const year = Number(v.year)
+      const month = v.month == null || v.month === '' ? null : Number(v.month)
+      const day = v.day == null || v.day === '' ? null : Number(v.day)
+      const verdict = judgeAge(year, month, day, new Date(now))
+      const saved = { birthdate: { year, ...(month != null && day != null ? { month, day } : {}) } }
       if (verdict.kind === 'invalid') throw new HttpError(400, 'Pick a real birthday.', 'BR-AGE-003')
       if (verdict.kind === 'under13') {
         // Same rule as About you: nothing is kept, the account and its info are deleted.

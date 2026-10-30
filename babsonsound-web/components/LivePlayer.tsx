@@ -17,7 +17,7 @@ import { useArtMain } from '@/components/ArtTheme'
 import { useListenGuard } from '@/lib/listenGuard'
 import { useHeld } from '@/lib/settle'
 import { takeTryIt } from '@/lib/splash'
-import { applyVolume, elementVolumeWorks, attachSpectrum, probeCors, registerAudio, sharedAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
+import { corsResult, applyVolume, elementVolumeWorks, attachSpectrum, probeCors, registerAudio, sharedAudio, setBoostDb, useLedSpectrum, wakeSpectrum } from '@/lib/spectrum'
 
 const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 
@@ -203,7 +203,8 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
     if (!audioRef.current) {
       const el = new Audio()
       // Real equalizer needs a cross-origin-readable stream. Only opt in when the server allows it, so playback never breaks.
-      if ((fxRef.current || !elementVolumeWorks()) && await probeCors(STREAM_URL)) { el.crossOrigin = 'anonymous'; if (!attachSpectrum(el)) el.removeAttribute('crossorigin') }
+      // Don't wait for the check when it has already finished: on a phone the audio context has to be created and woken inside the tap itself.
+      if ((fxRef.current || !elementVolumeWorks()) && (corsResult() ?? await probeCors(STREAM_URL))) { el.crossOrigin = 'anonymous'; if (!attachSpectrum(el)) el.removeAttribute('crossorigin') }
       audioRef.current = el
       registerAudio(el)
       applyVolume(audioRef.current, level / UNITY); setBoostDb(boostDb)

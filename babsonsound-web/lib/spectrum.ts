@@ -8,13 +8,16 @@ import { useEffect, type RefObject } from 'react'
 // fall back to the synthetic motion in CSS.
 
 let corsProbe: Promise<boolean> | null = null
+let corsKnown: boolean | null = null
+/** The answer of probeCors once it has finished (null while unknown). Lets the first tap attach the analyser without waiting, which phones need. */
+export const corsResult = () => corsKnown
 export function probeCors(url: string): Promise<boolean> {
   if (!url) return Promise.resolve(false)
   if (!corsProbe) {
     corsProbe = (async () => {
       const ctl = new AbortController()
       const t = setTimeout(() => ctl.abort(), 6000)
-      try { await fetch(url, { method: 'HEAD', mode: 'cors', cache: 'no-store', signal: ctl.signal }); return true } catch { return false } finally { clearTimeout(t) }
+      try { await fetch(url, { method: 'HEAD', mode: 'cors', cache: 'no-store', signal: ctl.signal }); corsKnown = true; return true } catch { corsKnown = false; return false } finally { clearTimeout(t) }
     })()
   }
   return corsProbe
@@ -24,6 +27,7 @@ interface Tap { ctx: AudioContext; an: AnalyserNode; data: Uint8Array<ArrayBuffe
 /** The sound is held back this long before the speakers while the analyser hears it right away, so the lights line up with what you hear. */
 export const AUDIO_DELAY_MS = 216
 
+let wakeHooked = false
 const taps = new WeakMap<HTMLAudioElement, Tap>()
 let current: Tap | null = null
 
@@ -67,6 +71,14 @@ export function attachSpectrum(el: HTMLAudioElement): boolean {
     const tap: Tap = { ctx, an, data: new Uint8Array(new ArrayBuffer(an.frequencyBinCount)), master, direct, dry, drive, wet, ex, low, air, comp }
     taps.set(el, tap); current = tap
     setBoostDb(boostDb)
+    // Phones keep a new audio context asleep (and put it to sleep again after a call, a lock or a tab switch) until it is woken from a tap.
+    ctx.resume().catch(() => {})
+    if (!wakeHooked) {
+      wakeHooked = true
+      for (const ev of ['touchend', 'click', 'keydown'] as const) window.addEventListener(ev, wakeSpectrum, { capture: true, passive: true })
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) wakeSpectrum() })
+    }
+    el.addEventListener('playing', wakeSpectrum)
     return true
   } catch { return false }
 }
@@ -124,7 +136,7 @@ export function setBoostDb(db: number) {
 /** Call from a click/tap handler: browsers keep the audio context asleep until then. */
 /** True once the stream is routed through the analyser (so silence can be read as silence, not as "no analysis"). */
 export const hasSpectrum = () => !!current
-export function wakeSpectrum() { current?.ctx.resume().catch(() => {}) }
+export function wakeSpectrum() { const c = current?.ctx; if (c && c.state !== 'running') c.resume().catch(() => {}) }
 
 /**
  * Fills `out` with 0..1 levels, log-spaced from about 50 Hz to 15 kHz, on a real decibel scale: 0 is -70 dB and 1 is -10 dB

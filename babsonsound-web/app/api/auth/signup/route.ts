@@ -47,7 +47,6 @@ export async function POST(req: Request) {
       // Phone numbers are for students only: a Guest's number is not kept. Stored as phoneEncrypted + phoneHash + phoneVerified=false.
       const pf = phone && school ? await phoneFields(phone) : null
       const phoneRef = pf ? db.collection('phoneIndex').doc(pf.phoneHash) : null
-      if (phoneRef && (await phoneRef.get()).exists) throw new HttpError(409, 'That phone number is already registered.')
 
       let uid: string
       try {
@@ -63,10 +62,8 @@ export async function POST(req: Request) {
 
       try {
         await db.runTransaction(async tx => {
-          if (phoneRef) {
-            if ((await tx.get(phoneRef)).exists) throw new HttpError(409, 'That phone number is already registered.')
-            tx.set(phoneRef, { uid, verified: false })
-          }
+          // A number someone else already uses is allowed: the lookup entry stays with the first account.
+          if (phoneRef && !(await tx.get(phoneRef)).exists) tx.set(phoneRef, { uid, verified: false })
           tx.set(db.collection('users').doc(uid), {
             firstName, lastName, username, displayName: firstName || email.split('@')[0], email, ...(pf ?? {}), gradYear: school ? gradYear : '',
             termsAcceptedAt: Timestamp.now(), termsVersion: TERMS_VERSION,

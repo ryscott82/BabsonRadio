@@ -50,31 +50,54 @@ export const phoneFieldsDeleted = (): Record<string, FieldValue> =>
   Object.fromEntries(PHONE_FIELDS.map(f => [f, FieldValue.delete()]))
 
 /**
- * Saves a number on an account: claims the unique lookup entry (409 if another account has it), frees this account's old
- * entry, writes the three fields. `extra` is merged into the same user update.
+ * Gives up this account's claim on a number's lookup entry (only if it owns the entry) and hands it to another account that
+ * has the same number, so contact matching keeps finding that person. Safe to call when nothing is owned.
+ */
+export async function releasePhoneIndex(db: Firestore, uid: string, hash: string): Promise<void> {
+  const ref = db.collection('phoneIndex').doc(hash)
+  const idx = await ref.get()
+  if (!idx.exists || idx.get('uid') !== uid) return
+  const others = await db.collection('users').where('phoneHash', '==', hash).limit(3).get()
+  const next = others.docs.find(d => d.id !== uid)
+  if (next) await ref.set({ uid: next.id, verified: false })
+  else await ref.delete().catch(() => {})
+}
+
+/** How many OTHER accounts use the same number as this account. */
+export async function otherPhoneUsers(db: Firestore, uid: string, hash: string | null): Promise<number> {
+  if (!hash) return 0
+  const snap = await db.collection('users').where('phoneHash', '==', hash).count().get()
+  const total = snap.data().count
+  const self = await db.collection('users').doc(uid).get()
+  return Math.max(0, total - (self.get('phoneHash') === hash ? 1 : 0))
+}
+
+/**
+ * Saves a number on an account and writes the three fields. A number another account already uses is allowed: the lookup
+ * entry stays with the first account (the owner of a number is warned on their profile). `extra` is merged into the same update.
  */
 export async function savePhone(db: Firestore, uid: string, e164: string, extra: Record<string, unknown> = {}): Promise<void> {
   const fields = await phoneFields(e164)
   const userRef = db.collection('users').doc(uid)
   const newRef = db.collection('phoneIndex').doc(fields.phoneHash)
+  let oldHash: string | null = null
   await db.runTransaction(async tx => {
     const [u, hit] = await Promise.all([tx.get(userRef), tx.get(newRef)])
     if (!u.exists) throw new HttpError(404, 'No such account.')
     if (u.get('level') === 'guest') throw new HttpError(403, 'Phone number is for students.', 'BR-SET-002')
-    if (hit.exists && hit.get('uid') !== uid) throw new HttpError(409, 'That phone number is already registered.', 'BR-ACC-003')
-    const oldHash = await phoneHashOf(u)
-    if (oldHash && oldHash !== fields.phoneHash) tx.delete(db.collection('phoneIndex').doc(oldHash))
-    tx.set(newRef, { uid, verified: false })
+    oldHash = await phoneHashOf(u)
+    if (!hit.exists) tx.set(newRef, { uid, verified: false })
     tx.update(userRef, { ...fields, phoneNumber: FieldValue.delete(), ...extra })
   })
+  if (oldHash && oldHash !== fields.phoneHash) await releasePhoneIndex(db, uid, oldHash)
 }
 
-/** Takes the number off an account: frees the lookup entry and deletes all three fields (and any old plain copy). */
+/** Takes the number off an account: deletes all three fields (and any old plain copy) and frees or hands off the lookup entry. */
 export async function clearPhone(db: Firestore, uid: string, extra: Record<string, unknown> = {}): Promise<void> {
   const userRef = db.collection('users').doc(uid)
   const u = await userRef.get()
   if (!u.exists) throw new HttpError(404, 'No such account.')
   const hash = await phoneHashOf(u)
-  if (hash) await db.collection('phoneIndex').doc(hash).delete().catch(() => {})
   await userRef.update({ ...phoneFieldsDeleted(), ...extra })
+  if (hash) await releasePhoneIndex(db, uid, hash)
 }

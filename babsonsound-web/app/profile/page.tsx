@@ -14,6 +14,22 @@ import { normalizeUS } from '@/lib/phone'
 import { cleanInstagram } from '@/lib/instagram'
 import InstagramLink from '@/components/InstagramLink'
 
+/** How many other members use the same phone number / Instagram handle. A count only, never who. */
+function useShared(refresh: unknown) {
+  const [n, setN] = useState<{ phone: number; instagram: number }>({ phone: 0, instagram: 0 })
+  useEffect(() => { apiGet<{ phone: number; instagram: number }>('/api/me/shared').then(setN).catch(() => {}) }, [refresh])
+  return n
+}
+
+function SharedWarning({ n, what }: { n: number; what: string }) {
+  if (n < 1) return null
+  return (
+    <p role="status" className="text-sm text-br-gold">
+      {n === 1 ? '1 other member is' : `${n} other members are`} using this {what}. If that is not right, change it here.
+    </p>
+  )
+}
+
 function ReportForm() {
   const [type, setType] = useState<'bug' | 'feature'>('bug')
   const [message, setMessage] = useState('')
@@ -86,7 +102,7 @@ function AboutYou({ onSaved }: { onSaved?: () => void }) {
       <label className="block"><span className={lab}>Graduation year</span>
         <select className={box} value={gradYear} onChange={e => setGradYear(e.target.value)}>
           <option value="">Not set</option>
-          {gradYearOptions().map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {[...(gradYear && !gradYearOptions().some(o => o.value === gradYear) ? [{ value: gradYear, label: /^\d{4}$/.test(gradYear) ? `Class of ${gradYear}` : gradYear }] : []), ...gradYearOptions()].map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select></label>
       {CONCENTRATIONS.length ? (
         Array.from({ length: MAX_CONCENTRATIONS }, (_, i) => (
@@ -100,7 +116,7 @@ function AboutYou({ onSaved }: { onSaved?: () => void }) {
         <Field label="Concentration" value={conc[0] ?? ''} maxLength={60} onChange={e => setConc([e.target.value])} placeholder="Entrepreneurship" />
       )}
       <div>
-        <span className={lab}>Birthday (optional)</span>
+        <span className={lab}>Birthday</span>
         <div className="flex gap-3">
           <select className={box} aria-label="Birthday month" value={bMonth} onChange={e => setBMonth(e.target.value)}>
             <option value="">Month</option>
@@ -142,6 +158,7 @@ function InstagramEdit() {
     setBusy(false)
   }
 
+  const shared = useShared(current)
   if (current === null) return null
   const cleaned = cleanInstagram(text)
   return (
@@ -149,6 +166,7 @@ function InstagramEdit() {
       {current && !editing ? (
         <>
           <p className="text-br-dk-text text-sm"><InstagramLink handle={current} /></p>
+          <SharedWarning n={shared.instagram} what="Instagram account" />
           <div className="flex gap-4">
             <GhostButton type="button" onClick={() => { setText(current); setEditing(true) }}>Change</GhostButton>
             <GhostButton type="button" disabled={busy} onClick={remove}>Remove</GhostButton>
@@ -157,7 +175,7 @@ function InstagramEdit() {
         </>
       ) : (
         <form onSubmit={save} className="space-y-3">
-          <Field label="Instagram (optional)" value={text} onChange={e => setText(e.target.value)} placeholder="@name or instagram.com link" autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={120} />
+          <Field label="Instagram" value={text} onChange={e => setText(e.target.value)} placeholder="@name or instagram.com link" autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={120} />
           {cleaned && <p className="text-sm text-br-dk-text">@{cleaned}</p>}
           {msg && <p role="status" className="text-sm text-br-red">{msg}</p>}
           <PrimaryButton type="submit" busy={busy} disabled={!cleaned}>Save</PrimaryButton>
@@ -176,6 +194,7 @@ function PhoneChange() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   useEffect(() => { apiGet<typeof info>('/api/me/phone').then(setInfo).catch(() => {}) }, [])
+  const shared = useShared(info?.current)
 
   // No number yet: it is saved straight away. A number already on the account: an admin approves the change.
   async function send(e: React.FormEvent) {
@@ -202,7 +221,7 @@ function PhoneChange() {
 
   const field = (
     <div>
-      <span className="block text-sm text-br-dk-sub mb-1.5 font-display tracking-widest">{info?.current ? 'New phone number' : 'Phone number (optional)'}</span>
+      <span className="block text-sm text-br-dk-sub mb-1.5 font-display tracking-widest">{info?.current ? 'New phone number' : 'Phone number'}</span>
       <div className="sk-field flex items-center rounded-xl pl-4 focus-within:ring-2 focus-within:ring-br-gold/40">
         <span className="text-sm text-br-dk-sub shrink-0" aria-hidden>+1</span>
         <input type="tel" inputMode="tel" autoComplete="tel-national" aria-label="Phone number" placeholder="(617) 555-1234"
@@ -217,6 +236,7 @@ function PhoneChange() {
       {info?.current ? (
         <>
           <p className="text-br-dk-text text-sm">Number ending in {info.current}.</p>
+          <SharedWarning n={shared.phone} what="phone number" />
           {info.pending ? (
             <div className="space-y-2">
               <p className="text-sm text-br-dk-sub">Waiting for approval: number ending in {info.pending.last4}.</p>
@@ -241,7 +261,6 @@ function PhoneChange() {
       ) : (
         <form onSubmit={send} className="space-y-3">
           {field}
-          <p className="text-sm text-br-dk-sub">This is optional, but unlocks new features</p>
           {msg && <p role="status" className="text-sm text-br-red">{msg}</p>}
           <PrimaryButton type="submit" busy={busy} disabled={!normalizeUS(phone)}>Save</PrimaryButton>
         </form>

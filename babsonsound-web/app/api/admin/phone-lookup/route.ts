@@ -48,18 +48,24 @@ export async function POST(req: Request) {
 
     const e164 = normalizeUS(str(b.phone, 30))
     if (!e164) throw new HttpError(400, 'Enter a valid 10-digit US phone number.')
-    const idx = await db.collection('phoneIndex').doc(await indexKeyFromE164(e164)).get()
+    const key = await indexKeyFromE164(e164)
+    const idx = await db.collection('phoneIndex').doc(key).get()
     const uid = idx.exists ? (idx.get('uid') as string | undefined) : undefined
     const u = uid ? await db.collection('users').doc(uid).get() : null
     const account = u?.exists
       ? { uid: uid!, name: [u.get('firstName'), u.get('lastName')].filter(Boolean).join(' ') || String(u.get('displayName') ?? ''), email: String(u.get('email') ?? ''), level: String(u.get('level') ?? '') }
       : null
 
+    // Several accounts can share a number: list the others too.
+    const sharing = (await db.collection('users').where('phoneHash', '==', key).limit(10).get()).docs
+      .filter(d => d.id !== uid)
+      .map(d => ({ uid: d.id, name: [d.get('firstName'), d.get('lastName')].filter(Boolean).join(' ') || String(d.get('displayName') ?? ''), email: String(d.get('email') ?? ''), level: String(d.get('level') ?? '') }))
+
     const by = await db.collection('users').doc(me.uid).get()
     await db.collection('phoneLookups').add({
       byUid: me.uid, byEmail: me.email ?? '', byName: String(by.get('firstName') ?? ''),
       last4: e164.slice(-4), found: !!account, ...(account ? { resultUid: account.uid, resultEmail: account.email } : {}), at: Timestamp.now(),
     })
-    return { found: !!account, account, last4: e164.slice(-4) }
+    return { found: !!account || sharing.length > 0, account: account ?? sharing[0] ?? null, alsoUsing: account ? sharing : sharing.slice(1), last4: e164.slice(-4) }
   })
 }

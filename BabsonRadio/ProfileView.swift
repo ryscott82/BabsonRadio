@@ -1718,7 +1718,7 @@ struct AboutYouSection: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Birthday (optional)").font(BRFont.body(12, .semibold))
+                Text("Birthday").font(BRFont.body(12, .semibold))
                     .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 HStack {
                     Picker("Month", selection: $bMonth) {

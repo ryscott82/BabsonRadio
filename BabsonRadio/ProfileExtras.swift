@@ -346,7 +346,7 @@ struct InstagramSection: View {
                 }
                 .font(BRFont.body(14, .semibold)).foregroundColor(accent)
             } else if current != nil {
-                Text("Instagram (optional)").font(BRFont.body(12, .regular)).foregroundColor(sub)
+                Text("Instagram").font(BRFont.body(12, .regular)).foregroundColor(sub)
                 TextField("@name or instagram.com link", text: $text)
                     .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
                     .padding(12).background(RoundedRectangle(cornerRadius: 10).stroke(sub.opacity(0.5)))

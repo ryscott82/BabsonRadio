@@ -42,8 +42,7 @@ export async function POST(req: Request) {
     const u = await db.collection('users').doc(t.uid).get()
     const key = await indexKeyFromE164(phone)
     if ((await phoneHashOf(u)) === key) throw new HttpError(400, 'That is already your number.')
-    const hit = await db.collection('phoneIndex').doc(key).get()
-    if (hit.exists && hit.get('uid') !== t.uid) throw new HttpError(409, 'That phone number is already registered.', 'BR-ACC-003')
+    // A number another member uses is allowed; both owners are told on their profile page.
     // No number on file yet (they skipped it at sign-up): add it straight away. Only a change needs an admin.
     if (!hasPhone(u)) {
       await applyPhone(db, t.uid, phone)

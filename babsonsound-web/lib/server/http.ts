@@ -4,7 +4,6 @@ import type { DecodedIdToken } from 'firebase-admin/auth'
 import { adminAuth } from './admin'
 import { classifyServerError, codeForMessage } from '../errors'
 import { counted } from './cpuBudget'
-import { launchOpen } from '../launchLock'
 import { lockedMayCall } from '../verifyClock'
 
 export class HttpError extends Error {
@@ -23,8 +22,6 @@ export async function requireUser(req: Request): Promise<DecodedIdToken> {
     throw new HttpError(401, 'Your session expired. Please sign in again.')
   }
   await enforceVerified(req, t)
-  // Before launch, signed-in people without early access can only use the sign-up follow-up routes (lib/launch.ts).
-  if (!launchOpen()) await (await import('./launchAccess')).enforceLaunchLock(req, t)
   return t
 }
 

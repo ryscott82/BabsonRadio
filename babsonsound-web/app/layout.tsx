@@ -7,7 +7,6 @@ import Footer from '@/components/Footer'
 import AnnouncementBanner from '@/components/AnnouncementBanner'
 import SetupBanner from '@/components/setup/SetupBanner'
 import SetupPrompt from '@/components/setup/SetupPrompt'
-import LaunchShell from '@/components/launch/LaunchShell'
 import GuestFence from '@/components/GuestFence'
 import { THEME_SCRIPT } from '@/lib/themeScript'
 
@@ -41,23 +40,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-dvh flex flex-col bg-br-dk-bg text-br-dk-text">
         <AuthProvider>
-          <LaunchShell
-            page={children}
-            chrome={
-              <>
-                <GuestFence />
-                <Splash />
-                <Nav />
-                <SetupBanner />
-                <SetupPrompt />
-                <main className="hw-stage hw-main relative z-[1] pt-16 pb-12 flex-1">
-                  <AnnouncementBanner />
-                  {children}
-                </main>
-                <Footer />
-              </>
-            }
-          />
+          <GuestFence />
+          <Splash />
+          <Nav />
+          <SetupBanner />
+          <SetupPrompt />
+          <main className="hw-stage hw-main relative z-[1] pt-16 pb-12 flex-1">
+            <AnnouncementBanner />
+            {children}
+          </main>
+          <Footer />
         </AuthProvider>
       </body>
     </html>

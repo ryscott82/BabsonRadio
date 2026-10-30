@@ -371,27 +371,6 @@
     "staffCheck": "Open the stream URL directly; check the Asura panel (source connected? bitrate/listener limit?)."
   },
   {
-    "code": "BR-PRE-001",
-    "title": "Site isn't open yet",
-    "meaning": "Babson Radio is not open yet and this request had no launch pass.",
-    "userFix": "Babson Radio opens on October 30 at 3 pm Eastern. Check back then.",
-    "staffCheck": "Admins, Directors and Radio trained students get a pass automatically after signing in (POST /api/launch/pass). To open the site for everyone now, set LAUNCH_OPEN=1 in Vercel and redeploy."
-  },
-  {
-    "code": "BR-PRE-003",
-    "title": "Account is waiting for launch",
-    "meaning": "The account is ready, but Babson Radio is not open to it yet. Before the launch time only Admins, Directors and Radio trained students get in.",
-    "userFix": "Come back when Babson Radio opens on October 30 at 3 pm Eastern.",
-    "staffCheck": "The site opens by itself at LAUNCH_AT (default 2026-10-30T04:00:00Z). To let one person in early, give them the Radio trained badge in People and roles. To open everyone now: set LAUNCH_OPEN=1 in Vercel and redeploy (Preview builds only for rehearsals)."
-  },
-  {
-    "code": "BR-PRE-004",
-    "title": "Launch lock isn't set up",
-    "meaning": "The server has no LAUNCH_SECRET (or CRON_SECRET) to sign launch passes with, so nobody can be let in early.",
-    "userFix": "Tell the station team.",
-    "staffCheck": "Set LAUNCH_SECRET in Vercel (openssl rand -hex 24) and redeploy."
-  },
-  {
     "code": "BR-HST-001",
     "title": "Host controls are closed",
     "meaning": "Radio controls and the set list are open from 4 hours before a host's show until 4 hours after it.",

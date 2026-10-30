@@ -11,7 +11,7 @@ a gold accent.
 | Display / labels / buttons | Bebas Neue (`font-display`) | Always uppercase feel, wide tracking: `tracking-widest` (labels), `tracking-[0.2em]` (buttons), `tracking-[0.3em–0.4em]` (wordmark) |
 | Body | System UI stack | 14px (`text-sm`) default, 12px (`text-xs`) for meta |
 
-Sizes: page title `text-3xl`/`4xl` display; hero headline `text-4xl`–`5xl`; countdown numerals `text-5xl`–`7xl`.
+Sizes: page title `text-3xl`/`4xl` display; hero headline `text-4xl`–`5xl`.
 
 ## Color tokens
 Use the Tailwind names in code (`bg-br-dk-surface`); they resolve to CSS variables that change per theme.
@@ -49,11 +49,6 @@ side padding `px-4`. Fixed header 64px; content starts at `pt-16`.
 Sentence case, plain verbs, no apologies in errors. Say what happened and what to do, then the code,
 e.g. "Can't reach Babson Radio. Check your connection. (BR-CLI-001)". Codes are listed at `/support/errors`
 (`ERROR_CODES.md`). Button text names the action: "Unlock", "Approve", "Sign in".
-
-## Pre-launch
-Before the launch time (`LAUNCH_AT`, default Oct 30, 2026 at 3 pm ET) the homepage is a countdown with a sign-up button.
-People can create accounts but see a waiting screen; staff, hosts and beta testers get the normal site. The site opens by itself
-at the launch time. `LAUNCH_OPEN=1` opens it early. The lock lives in `proxy.ts`, `lib/launchLock.ts` and `lib/server/launchAccess.ts`.
 
 ## Color and layout rules (Oct 2026)
 - The site is Babson green only: cream paper in light mode, near-black green in dark mode. Category thumbnails and genre fallbacks are shades of green. Red is only for On Air and errors.

@@ -2,7 +2,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { NextResponse } from 'next/server'
 import { HttpError, handle } from '@/lib/server/http'
-import { uidFromUnsubscribeToken } from '@/lib/launchLock'
+import { uidFromUnsubscribeToken } from '@/lib/unsubscribeToken'
 
 export const runtime = 'nodejs'
 

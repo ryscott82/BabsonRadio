@@ -4,7 +4,7 @@ import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore'
 import { adminAuth } from './admin'
 import { HttpError } from './http'
 import { SITE_URL } from '../links'
-import { unsubscribeToken } from '../launchLock'
+import { unsubscribeToken } from '../unsubscribeToken'
 import { LAUNCH_EMAIL_HTML, LAUNCH_EMAIL_SUBJECT, LAUNCH_EMAIL_TEXT } from './launchEmailCopy'
 
 // The one launch email, sent from /admin/launch-email through POST /api/admin/launch-email.

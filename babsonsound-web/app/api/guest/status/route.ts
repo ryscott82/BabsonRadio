@@ -3,7 +3,6 @@ import { handle, requireUser } from '@/lib/server/http'
 import { ensureGuestUserDoc } from '@/lib/server/guests'
 import { cleanOr } from '@/lib/server/wordFilter'
 import { finishSchoolUpgrade } from '@/lib/server/upgrade'
-import { isLocked } from '@/lib/server/launchAccess'
 import { accessOf, forgetAccess, isSchoolEmail } from '@/lib/server/access'
 
 export const runtime = 'nodejs'
@@ -20,7 +19,7 @@ export async function GET(req: Request) {
     // A guest who just switched to their school email becomes a student here.
     if (isSchoolEmail(email) && t.email_verified === true && await finishSchoolUpgrade(adminDb(), t).catch(() => false)) forgetAccess(t.uid)
     const a = await accessOf(t)
-    const locked = await isLocked(t)
+    const locked = false // the pre-launch lock is gone; the field stays for older app versions
     const base = { level: a.level, studioTrained: a.studio, radioTrained: a.radio, locked, canListenLive: !locked }
 
     if (a.level !== 'guest') return { ...base, tier: 'student', needsVerification: false, canAccessBacklog: !locked }

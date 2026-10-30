@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { type User } from 'firebase/auth'
-import { apiGet, ensureLaunchPass, onAuthChange, getUserDoc, refreshUser } from '@/lib/auth'
+import { apiGet, onAuthChange, getUserDoc, refreshUser } from '@/lib/auth'
 import type { SetupState } from '@/lib/setup'
 
 export type Level = 'guest' | 'student' | 'director' | 'admin'
@@ -78,7 +78,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsub = onAuthChange(async (firebaseUser) => {
       setUser(firebaseUser)
       if (firebaseUser) {
-        await ensureLaunchPass() // before launch: early-access accounts get their pass before any page decides what to show
         const tokenResult = await firebaseUser.getIdTokenResult().catch(() => null)
         setGrace(typeof tokenResult?.claims.graceUntil === 'number' ? tokenResult.claims.graceUntil : 0)
         setUserDoc((await getUserDoc(firebaseUser.uid).catch(() => null)) as UserDoc | null)

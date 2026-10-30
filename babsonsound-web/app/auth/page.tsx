@@ -45,7 +45,7 @@ function Forms() {
   const [checkToken, setCheckToken] = useState('')
   const resetLeft = useResetCooldown(email, resetBump)
 
-  // The countdown page's Sign up button links here with ?mode=create.
+  // Links with ?mode=create open the sign-up form.
   useEffect(() => {
     if (new URLSearchParams(location.search).get('mode') === 'create') queueMicrotask(() => setCreate(true))
   }, [])

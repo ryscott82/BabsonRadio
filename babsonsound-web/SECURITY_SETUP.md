@@ -14,6 +14,7 @@ Everything here is switched on by code already in the repo. These are the steps 
 | `APPCHECK_ENFORCE` | later | Set to `1` once the iOS build that sends App Check tokens is live. Makes `/api/contacts/*` refuse requests without one. Leave empty until then. |
 | `HEALTH_KEY` | optional | `/api/health` is admin-only now. For scripts or uptime checks send `x-health-key: <value>` (falls back to `CRON_SECRET`). |
 | `RESEND_API_KEY` | already set? | The day-10 "verify your email" reminder uses it. Without it the reminder is skipped, nothing breaks. |
+| `WORKER_SECRET` | for the Library worker | 32+ random characters (`node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`). Put the same value on the studio PC. The PC trades it for a 1-hour Firestore login; it never holds a service-account key. Without it the worker routes answer BR-LIB-001. |
 | `OWNER_EMAILS` | already set | Owners now also need a verified email. |
 | `PII_KEY` | already set | Also encrypts contact names. Must stay the same. |
 

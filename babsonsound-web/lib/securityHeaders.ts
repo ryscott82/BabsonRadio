@@ -21,8 +21,8 @@ export function securityHeaders(env: Record<string, string | undefined> = proces
     // Inline style attributes and Next's style tags are used throughout; Typekit stylesheets.
     `style-src 'self' 'unsafe-inline' https://use.typekit.net https://p.typekit.net`,
     `font-src 'self' data: https://use.typekit.net https://p.typekit.net`,
-    `img-src 'self' data: blob: https://firebasestorage.googleapis.com https://storage.googleapis.com https://img.youtube.com https://i.ytimg.com ${station.join(' ')}`,
-    `media-src 'self' blob: ${station.join(' ')} https://firebasestorage.googleapis.com https://storage.googleapis.com`,
+    `img-src 'self' data: blob: https://firebasestorage.googleapis.com https://storage.googleapis.com https://img.youtube.com https://i.ytimg.com https://*.mzstatic.com https://*.dzcdn.net ${station.join(' ')}`,
+    `media-src 'self' blob: http://127.0.0.1:7781 ${station.join(' ')} https://firebasestorage.googleapis.com https://storage.googleapis.com`,
     // Firebase (sign-in, Firestore, App Check/installations), Turnstile, the stream (probed for CORS before the equalizer attaches),
     // and the studio PC helper on 127.0.0.1 (only answers on the studio PC; see tools/studio-helper).
     `connect-src 'self' ${station.join(' ')} http://127.0.0.1:7781 https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://challenges.cloudflare.com`,

@@ -142,7 +142,7 @@ async function build(): Promise<Built> {
     // "beat" custom field looks like "123.5,0.34" (BPM, first beat in seconds).
     const cf = s.custom_fields && !Array.isArray(s.custom_fields) ? s.custom_fields : {}
     const [bpmRaw, offRaw] = String(cf.beat ?? '').split(',')
-    const known = lookupBeat(artist, title)
+    const known = await lookupBeat(artist, title)
     const bpm = known ? known.bpm : Number(bpmRaw) >= 50 && Number(bpmRaw) <= 220 ? Number(bpmRaw) : 0
     const isLive = r.live?.is_live === true
     const playlist = r.now_playing?.playlist ?? ''

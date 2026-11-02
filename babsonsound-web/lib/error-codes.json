@@ -936,5 +936,96 @@
     "meaning": "A number saved in Admin > Listening limits is outside its allowed range (minutes 0-1440, session up to 10080, sleep hours 0-23).",
     "userFix": "Nothing for listeners to do.",
     "staffCheck": "Enter a number inside the range shown in the message and save again."
+  },
+  {
+    "code": "BR-LIB-001",
+    "title": "Library worker not set up",
+    "meaning": "WORKER_SECRET is missing or shorter than 32 characters on the website server.",
+    "userFix": "Tell a station admin.",
+    "staffCheck": "Add WORKER_SECRET (32+ random characters) in Vercel and redeploy. Use the same value on the studio PC."
+  },
+  {
+    "code": "BR-LIB-002",
+    "title": "Studio PC not accepted",
+    "meaning": "The worker's signature was wrong or expired, or its sign-in token is not the studio worker's.",
+    "userFix": "Nothing to do on the website; check the studio PC.",
+    "staffCheck": "The PC clock must be within 2 minutes. WORKER_SECRET must match on the PC and in Vercel. Each nonce works once."
+  },
+  {
+    "code": "BR-LIB-003",
+    "title": "Job type not allowed",
+    "meaning": "The job type is not one of the allowed library jobs.",
+    "userFix": "Pick a job from the Library page.",
+    "staffCheck": "Allowed: library.scan, fetch_metadata, fetch_art, analyze_beats, measure_loudness, apply, undo, schedule.reconcile."
+  },
+  {
+    "code": "BR-LIB-004",
+    "title": "Job parameters not valid",
+    "meaning": "The job's params do not fit its type (unknown key, too many ids, bad value).",
+    "userFix": "Change the options and try again.",
+    "staffCheck": "See LIBRARY_WORKER.md for the params of each job type."
+  },
+  {
+    "code": "BR-LIB-005",
+    "title": "Job already queued",
+    "meaning": "A job of this type is already queued or running.",
+    "userFix": "Wait for it to finish, or cancel it first.",
+    "staffCheck": "If the PC is off, cancel the queued job from the Library page."
+  },
+  {
+    "code": "BR-LIB-006",
+    "title": "Job not found",
+    "meaning": "No job with that id.",
+    "userFix": "Refresh the Library page.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-LIB-007",
+    "title": "Job already finished",
+    "meaning": "Only queued or running jobs can be cancelled.",
+    "userFix": "Nothing to do.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-LIB-008",
+    "title": "Proposal can't be changed",
+    "meaning": "The proposal does not exist, or it was already applied.",
+    "userFix": "Refresh the list.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-LIB-009",
+    "title": "Proposal edit not valid",
+    "meaning": "An edited field is not allowed, empty, or the art link is not https.",
+    "userFix": "Fix the field and save again.",
+    "staffCheck": "Editable: title, artist, album, artUrl."
+  },
+  {
+    "code": "BR-LIB-010",
+    "title": "Request not valid",
+    "meaning": "A list was empty or too long (400 ids at most), an id was not valid, or a filter was unknown.",
+    "userFix": "Select fewer rows and try again.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-LIB-011",
+    "title": "Change refused",
+    "meaning": "The PC reported a change the server will not record: the job is not running, it is the wrong kind of job, the song has no approved proposal, or the change was already undone.",
+    "userFix": "Nothing to do on the website; tell the station team.",
+    "staffCheck": "Apply jobs may only change songs whose proposal is approved. An undo can be recorded once per change."
+  },
+  {
+    "code": "BR-LIB-012",
+    "title": "Beats shard full",
+    "meaning": "One beats document would grow past the safe size.",
+    "userFix": "Tell a station admin.",
+    "staffCheck": "Split the shard (use two characters) in lib/worker.ts beatShard before adding more beats."
+  },
+  {
+    "code": "BR-LIB-013",
+    "title": "Too many tries",
+    "meaning": "Too many refused worker requests in a minute.",
+    "userFix": "Wait a minute.",
+    "staffCheck": "Check WORKER_SECRET and the PC clock."
   }
 ]

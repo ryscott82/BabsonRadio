@@ -19,8 +19,15 @@ Run:
 Optional: AZURACAST_URL (default https://a12.asurahosting.com), AZURACAST_STATION (default babson_radio)
 
 Do not also turn on ReplayGain in AzuraCast: the two would add up.
+
+Worker mode (tools/pc-worker runs these; dry run unless --apply):
+  python3 tools/normalize_loudness.py --json --measure [--ids f.json] [--target -14] [--limit N] [--resume f.json]
+      library.measure_loudness: measures each song and prints the gain it should get as a proposal. Changes nothing.
+  python3 tools/normalize_loudness.py --json --plan plan.json [--apply]
+      library.apply / library.undo: plan = [{"songId": "12", "amplify": -3.2, "undoOf"?: "..."}]. Asks the worker before each change.
 """
 import argparse, json, os, re, subprocess, sys, tempfile, time, urllib.request
+import azlib
 
 BASE = os.environ.get("AZURACAST_URL", "https://a12.asurahosting.com").rstrip("/")
 STATION = os.environ.get("AZURACAST_STATION", "babson_radio")
@@ -30,27 +37,11 @@ MAX_GAIN = 12.0        # never move a song by more than this many dB
 
 
 def api(method, path, body=None, raw=False):
-    key = os.environ.get("AZURACAST_API_KEY") or os.environ.get("AZURACAST_KEY") or ""
-    if not key:
-        sys.exit("Set AZURACAST_API_KEY first (see the top of this file).")
-    url = path if path.startswith("http") else f"{BASE}/api/station/{STATION}/{path}"
-    req = urllib.request.Request(url, method=method,
-        data=json.dumps(body).encode() if body is not None else None,
-        headers={"X-API-Key": key, "Accept": "application/json", "Content-Type": "application/json",
-                 "User-Agent": "babson-radio-loudness/1.0"})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        return r.read() if raw else json.load(r)
+    return azlib.request(method, path, body, raw=raw)
 
 
 def list_songs():
-    items, page = [], 1
-    while True:
-        data = api("GET", f"files?page={page}&per_page=500")
-        rows = data if isinstance(data, list) else data.get("rows") or data.get("data") or []
-        items += rows
-        if isinstance(data, list) or len(rows) < 500 or page > 200:
-            return items
-        page += 1
+    return azlib.list_songs()
 
 
 def measure(path):
@@ -79,7 +70,11 @@ def main():
     ap.add_argument("--limit", type=int, default=0, help="only do this many songs (default 5 on a dry run)")
     ap.add_argument("--redo", action="store_true", help="measure and set songs that are already done too")
     ap.add_argument("--target", type=float, default=-14.0, help="loudness to aim for, in LUFS (default -14)")
+    ap.add_argument("--measure", action="store_true", help="worker mode: measure and propose gains (changes nothing)")
+    azlib.add_worker_args(ap)
     a = ap.parse_args()
+    if a.json:
+        return worker(a)
     try:
         subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
     except Exception:
@@ -102,10 +97,11 @@ def main():
         try:
             rec = cache.get(sid)
             if not rec or a.redo:
-                dl = (m.get("links") or {}).get("download") or (m.get("links") or {}).get("play") or f"file/{m['id']}/play"
-                with tempfile.NamedTemporaryFile(suffix=".audio") as tmp:
-                    tmp.write(api("GET", dl, raw=True)); tmp.flush()
-                    res = measure(tmp.name)
+                tmp = azlib.download_temp(m)
+                try:
+                    res = measure(tmp)
+                finally:
+                    azlib.remove(tmp)
                 if not res:
                     print(f"[{n}/{len(todo)}] {name}: could not measure (silent or unreadable), skipped"); continue
                 rec = {"lufs": res[0], "tp": res[1]}
@@ -126,6 +122,64 @@ def main():
     if a.apply or cache:
         json.dump(cache, open(CACHE, "w"), indent=0)
     print(f"\nDone {done}, failed {failed}." + ("" if a.apply else " Dry run: nothing changed in AzuraCast. Add --apply to set the gains."))
+
+
+# ── worker mode ──
+def worker(a):
+    run = azlib.Run(a)
+    if a.measure:
+        try:
+            subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
+        except Exception:
+            sys.exit("ffmpeg is missing (install it and put it on PATH).")
+        songs = [m for m in azlib.list_songs() if run.wanted(m.get("id"))]
+        if run.limit:
+            songs = songs[: run.limit]
+        total = len(songs)
+        run.progress(0, total, f"{total} songs to measure")
+        for n, m in enumerate(songs, 1):
+            sid = str(m.get("id"))
+            if not run.next(n, total, sid, m.get("path") or ""):
+                continue
+            try:
+                tmp = azlib.download_temp(m)
+                try:
+                    res = measure(tmp)
+                finally:
+                    azlib.remove(tmp)
+                if res:
+                    gain = gain_for(res[0], res[1], a.target)
+                    run.result({"id": sid, "current": azlib.tags(m), "amplify": m.get("amplify"),
+                                "loudness": {"lufs": round(res[0], 2), "tp": round(res[1], 2), "gainDb": gain}})
+                run.ok(sid)
+            except Exception as e:
+                run.fail(sid, e)
+            run.progress(n, total)
+        return run.finish()
+    if a.plan:
+        items = run.plan()
+        total = len(items)
+        for n, item in enumerate(items, 1):
+            sid = str(item["songId"])
+            key = str(item.get("undoOf") or sid)
+            if not run.wanted(key) or not run.next(n, total, sid):
+                continue
+            try:
+                new = item.get("amplify")
+                if new is not None and (not isinstance(new, (int, float)) or abs(new) > 24):
+                    raise RuntimeError("amplify must be a number between -24 and 24")
+                old = api("GET", f"file/{sid}").get("amplify")
+                if old == new:
+                    run.ok(key); continue
+                if run.change(sid, [{"field": "amplify", "old": old, "new": new, **({"undoOf": item["undoOf"]} if item.get("undoOf") else {})}]):
+                    api("PUT", f"file/{sid}", {"amplify": new})
+                    run.emit({"t": "applied", "id": sid})
+                run.ok(key)
+            except Exception as e:
+                run.fail(sid, e)
+            run.progress(n, total)
+        return run.finish()
+    sys.exit("Worker mode needs --measure or --plan.")
 
 
 main()

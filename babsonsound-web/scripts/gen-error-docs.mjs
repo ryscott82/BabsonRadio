@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 
 const list = JSON.parse(readFileSync(new URL('../lib/error-codes.json', import.meta.url), 'utf8'))
 const areas = { AUTH: 'Signing in', ACC: 'Accounts', GST: 'Guest access', NET: 'Contacts & friends',
-  SLT: 'Air-time requests', PERM: 'Permissions', PRE: 'Pre-launch', UNS: 'Unsubscribe', LCH: 'Launch email', AGE: 'Age and birthday', SET: 'Account setup', APL: 'Sign in with Apple', TRN: 'Host training', CON: 'Conduct agreements', PUB: 'Public sharing', OPS: 'Operations', REQ: 'Requests', SRV: 'Server / setup', CLI: 'App & connection', BTH: 'Studio PC' }
+  SLT: 'Air-time requests', PERM: 'Permissions', PRE: 'Pre-launch', UNS: 'Unsubscribe', LCH: 'Launch email', AGE: 'Age and birthday', SET: 'Account setup', APL: 'Sign in with Apple', TRN: 'Host training', CON: 'Conduct agreements', PUB: 'Public sharing', OPS: 'Operations', REQ: 'Requests', SRV: 'Server / setup', CLI: 'App & connection', BTH: 'Studio PC', LIB: 'Library worker' }
 
 let md = `# Babson Radio error codes (staff key)\n\nGenerated from \`lib/error-codes.json\`. Public version: \`/support/errors\`.\nFormat: \`BR-<AREA>-<NNN>\`. Unexpected server errors also show a \`ref\`: search Vercel → Logs for it.\n`
 for (const [a, title] of Object.entries(areas)) {

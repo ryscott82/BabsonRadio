@@ -71,6 +71,9 @@ Access levels: guest, student, director, admin. Badges: radioTrained (live shows
 - [x] Auto-scheduler learns from listeners (listener counts, song and show ratings, reactions); toggle on the scheduler page
 - [x] Listener Insights page (/admin/insights, directors too)
 - [x] Review bug reports
+- [x] Library worker (needs WORKER_SECRET, see babsonsound-web/LIBRARY_WORKER.md): admins queue jobs (scan, fetch metadata and art, find beats, measure loudness, apply, undo, schedule check), the studio PC picks them up, admins approve or reject proposals, and every AzuraCast change is logged so it can be undone. Nothing listener-facing depends on the PC
+- [x] Admin > Music library (web, admins only; tile in the Music section, `/admin/music-library`): a status line (studio PC online or offline with last seen, current job and progress; read on open and after actions, and every 10 seconds only while a job is running and the page is visible), run buttons (scan, fetch metadata, fetch covers, analyze beats, measure loudness, apply approved, undo last apply; each disabled while that job type is queued or running; undo asks first and says how many songs), a Review queue (old to new title, artist and album, cover thumbnail, confidence, beat and loudness; filters for status, search and low confidence under 70%; select rows to approve or reject, edit inline, "Approve all above N%"; 50 per page) and an Activity list (recent jobs, progress, errors, cancel). Cover thumbnails load from iTunes and Deezer image hosts (added to the page's image rules). The old "Library" tile for episodes is now called Episodes.
+- [x] PC worker (`tools/pc-worker`, Windows service on the studio PC; install: `tools/pc-worker/README.md`, overview: `docs/LIBRARY_WORKER_PC.md`): signs in with a one-hour token from the site (no service-account key on the PC), listens for queued jobs, runs one at a time with the Python tools at low priority, pauses before each job and between songs while a show is live, about one AzuraCast call a second with back-off, stops a job after 20 failures in a row, dry run unless `ALLOW_APPLY=1`, apply only for approved proposals with each change logged before it is made, resumes after a restart, heartbeat every 5 minutes (admin shows online for 11 minutes), queues a scan hourly when new media appears, schedule check every 15 minutes, rotating log with keys removed. `npm run e2e` tests it end to end with 3 songs
 
 ## Demo account (App Store review)
 - [x] One hidden student account (demo flag), treated as school-verified, not listed in admin Users, never emailed
@@ -88,6 +91,7 @@ Access levels: guest, student, director, admin. Badges: radioTrained (live shows
 - iOS: set list upvotes, ratings list on the profile
 
 ## Setup still needed
+- Studio PC worker: set `WORKER_SECRET` in Vercel and the PC's `tools/pc-worker/.env`, make a media-only AzuraCast key, install the service and run the 3-song test (`tools/pc-worker/README.md`). Same PC: dead-air monitor service with `tools/deadair.env`
 - Optional: Firestore TTL policies on `exp` for collection groups `rxEvents` (reaction events, 1 day) and `listenSessions` (listening log, 1 year)
 - Add the listening log to the privacy policy before launch
 - Shared-contact suggestions need `PHONE_HASH_PEPPER` set in Vercel (already used for contact matching), and App Store privacy answers should list Contacts as collected (phone numbers, scrambled, linked to the account, used for app functionality)

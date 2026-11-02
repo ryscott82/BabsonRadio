@@ -68,7 +68,8 @@ export default function AdminPage() {
       { href: '/admin/setlists', icon: 'setlists', title: 'Set lists', text: 'Songs planned for shows', admin: true },
     ] },
     { id: 'music', title: 'Music', icon: 'library', tiles: [
-      { href: '/admin/library', icon: 'library', title: 'Library', text: 'Add and remove episodes' },
+      { href: '/admin/library', icon: 'library', title: 'Episodes', text: 'Add and remove episodes' },
+      { href: '/admin/music-library', icon: 'auto', title: 'Music library', text: 'Fix titles, covers, beats and loudness', admin: true },
       { href: '/admin/media', icon: 'library', title: 'Music uploads', text: 'Add .mp3 files, folders and playlists', admin: true },
       { href: '/admin/autoschedule', icon: 'auto', title: 'Auto DJ', text: 'Playlists, times and how often', admin: true },
       { href: '/admin/requests', icon: 'requests', title: 'Song requests', text: 'What listeners asked to hear' },

@@ -1,0 +1,19 @@
+{
+  "name": "babson-radio-pc-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Runs Babson Radio library jobs on the studio PC (tools/*.py) from the workerJobs queue.",
+  "scripts": {
+    "start": "node worker.mjs",
+    "check": "node worker.mjs --check",
+    "test": "node --test test/rules.test.mjs",
+    "e2e": "node test/e2e/all.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "firebase": "11.10.0"
+  }
+}

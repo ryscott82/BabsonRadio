@@ -35,6 +35,13 @@ service cloud.firestore {
     // Directors run show times and slot requests; admins can do everything directors can.
     function isDirector() { return isStudent() && level() in ['director', 'admin']; }
 
+    // The studio PC's library worker signs in with a custom token (uid studio-worker, claim worker: true, minted by POST /api/worker/token).
+    // Its session counts for one hour after sign-in (auth_time) plus 5 minutes of slack, so a stolen refresh token stops working.
+    function isWorker() {
+      return signedIn() && request.auth.uid == 'studio-worker' && request.auth.token.get('worker', false) == true
+        && request.auth.token.get('auth_time', 0) * 1000 > request.time.toMillis() - 3900000;
+    }
+
     // ── public ───────────────────────────────────────────────
     match /shows/{id} {
       allow read: if true;
@@ -112,6 +119,7 @@ service cloud.firestore {
     match /boothSessions/{id} { allow read, write: if false; }
     match /boothEvents/{id}   { allow read, write: if false; }
     match /boothNowPlaying/{id} { allow read, write: if false; }
+    match /boothNotes/{id}    { allow read, write: if false; }
     match /feedback/{id}      { allow read, write: if false; }
     match /autoBlocks/{id}    { allow read, write: if false; }
     match /songVotes/{id}     { allow read, write: if false; }
@@ -149,5 +157,36 @@ service cloud.firestore {
     match /trainingCheckinLog/{id}   { allow read, write: if false; } // wrong codes and locks (TTL on expireAt)
     match /trainingNotices/{id}      { allow read, write: if false; }
     match /instagramClears/{id}      { allow read, write: if false; } // which admin cleared which Instagram handle, and when
+
+    // ── library worker (studio PC) ───────────────────────────
+    // Jobs are created by the API only (/api/admin/library/jobs), never from a client. The worker can read them and update progress and the final state;
+    // it can not queue, cancel or delete a job. Admins read these three collections; everything else goes through the API.
+    match /workerJobs/{id} {
+      allow read: if isWorker() || isAdmin();
+      allow create, delete: if false;
+      allow update: if isWorker()
+        && resource.data.status in ['queued', 'running']
+        && request.resource.data.status in ['running', 'done', 'failed']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'startedAt', 'finishedAt', 'progress', 'error']);
+    }
+    // Proposals come from the worker (always pending). Only the API (an admin approving) can make one approved or rejected; the worker can
+    // then only mark an approved one applied or failed, and can not change what it would write.
+    match /workerProposals/{id} {
+      allow read: if isWorker() || isAdmin();
+      allow create: if isWorker() && request.resource.data.status == 'pending' && request.resource.data.songId == id;
+      allow update: if isWorker() && request.resource.data.songId == resource.data.songId && (
+        (resource.data.status == 'approved' && request.resource.data.status in ['applied', 'failed']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'error']))
+        || (resource.data.status in ['pending', 'failed', 'applied'] && request.resource.data.status == 'pending')
+        || (resource.data.status == 'rejected' && request.resource.data.status == 'rejected'));
+      allow delete: if isWorker() && resource.data.status != 'approved';
+    }
+    match /workerStatus/{id} {
+      allow read: if isWorker() || isAdmin();
+      allow write: if isWorker();
+    }
+    // Append-only change log of every AzuraCast change (written by the API from the worker's reports), and the stored beats: server only.
+    match /libraryChanges/{id}       { allow read, write: if false; }
+    match /libraryBeats/{id}         { allow read, write: if false; }
   }
 }

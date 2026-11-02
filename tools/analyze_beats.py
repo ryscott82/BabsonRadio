@@ -17,8 +17,13 @@ Run:
   python3 tools/analyze_beats.py --apply --limit 10   only the first 10
 Safe to stop and run again: songs already saved are skipped. Add --apply, then git add / commit / push beats.json.
 Optional: AZURACAST_URL (default https://a12.asurahosting.com), AZURACAST_STATION (default babson_radio)
+
+Worker mode (tools/pc-worker, library.analyze_beats; changes nothing anywhere):
+  python3 tools/analyze_beats.py --json [--ids f.json] [--skip f.json] [--limit N] [--resume f.json]
+      prints {bpm, firstBeat} for each song as a proposal. --skip: JSON list of artist|title keys already known (unless --redo).
 """
 import argparse, csv, json, os, re, subprocess, sys, tempfile, time, unicodedata, urllib.request
+import azlib
 
 BASE = os.environ.get("AZURACAST_URL", "https://a12.asurahosting.com").rstrip("/")
 STATION = os.environ.get("AZURACAST_STATION", "babson_radio")
@@ -36,37 +41,27 @@ def song_key(artist, title):
 
 
 def api(method, path, body=None, raw=False):
-    key = os.environ.get("AZURACAST_API_KEY") or os.environ.get("AZURACAST_KEY") or ""
-    if not key:
-        sys.exit("Set AZURACAST_API_KEY first (see the top of this file).")
-    url = path if path.startswith("http") else f"{BASE}/api/station/{STATION}/{path}"
-    req = urllib.request.Request(url, method=method,
-        data=json.dumps(body).encode() if body is not None else None,
-        headers={"X-API-Key": key, "Accept": "application/json", "Content-Type": "application/json",
-                 "User-Agent": "babson-radio-beats/1.0"})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        return r.read() if raw else json.load(r)
+    return azlib.request(method, path, body, raw=raw)
 
 
 def list_songs():
-    items, page = [], 1
-    while True:
-        data = api("GET", f"files?page={page}&per_page=500")
-        rows = data if isinstance(data, list) else data.get("rows") or data.get("data") or []
-        items += rows
-        if isinstance(data, list) or len(rows) < 500 or page > 200:
-            return items
-        page += 1
+    return azlib.list_songs()
 
 
-def decode(audio_bytes):
+def decode(path):
     import numpy as np
-    with tempfile.NamedTemporaryFile(suffix=".audio") as tmp:
-        tmp.write(audio_bytes); tmp.flush()
-        out = subprocess.run(["ffmpeg", "-v", "error", "-t", str(SECONDS), "-i", tmp.name,
-                              "-ac", "1", "-ar", str(SR), "-f", "f32le", "-"],
-                             capture_output=True, check=True).stdout
+    out = subprocess.run(["ffmpeg", "-v", "error", "-t", str(SECONDS), "-i", path,
+                          "-ac", "1", "-ar", str(SR), "-f", "f32le", "-"],
+                         capture_output=True, check=True).stdout
     return np.frombuffer(out, dtype="float32")
+
+
+def analyze_song(m):
+    tmp = azlib.download_temp(m)
+    try:
+        return analyze(decode(tmp))
+    finally:
+        azlib.remove(tmp)
 
 
 def analyze(y):
@@ -123,12 +118,16 @@ def main():
     ap.add_argument("--apply", action="store_true", help="save results to AzuraCast")
     ap.add_argument("--limit", type=int, default=0, help="only do this many songs (default 3 on a dry run)")
     ap.add_argument("--redo", action="store_true", help="also re-analyze songs that already have a beat")
+    ap.add_argument("--skip", help="worker mode: JSON list of artist|title keys that already have a beat")
+    azlib.add_worker_args(ap)
     a = ap.parse_args()
     try:
         subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
         import numpy, librosa  # noqa: F401
     except Exception as e:
         sys.exit(f"Missing a tool ({e}). See the setup lines at the top of this file.")
+    if a.json:
+        return worker(a)
 
     try:
         beats = json.load(open(BEATS_JSON))
@@ -151,8 +150,7 @@ def main():
     for n, (k, m) in enumerate(todo, 1):
         name = m.get("path") or m.get("id")
         try:
-            dl = (m.get("links") or {}).get("download") or (m.get("links") or {}).get("play") or f"file/{m['id']}/play"
-            res = analyze(decode(api("GET", dl, raw=True)))
+            res = analyze_song(m)
             if not res:
                 print(f"[{n}/{len(todo)}] {name}: no steady beat found, skipped"); continue
             bpm, first = res
@@ -174,6 +172,35 @@ def save(beats):
     os.makedirs(os.path.dirname(BEATS_JSON), exist_ok=True)
     with open(BEATS_JSON, "w") as f:
         json.dump(dict(sorted(beats.items())), f, indent=0)
+
+
+# ── worker mode ──
+def worker(a):
+    run = azlib.Run(a)
+    known = set(json.load(open(a.skip, encoding="utf-8"))) if a.skip and not a.redo else set()
+    songs = []
+    for m in azlib.list_songs():
+        k = song_key(m.get("artist"), m.get("title"))
+        if k.endswith("|") or k.startswith("|") or k in known or not run.wanted(m.get("id")):
+            continue
+        songs.append(m)
+    if run.limit:
+        songs = songs[: run.limit]
+    total = len(songs)
+    run.progress(0, total, f"{total} songs to analyze")
+    for n, m in enumerate(songs, 1):
+        sid = str(m.get("id"))
+        if not run.next(n, total, sid, f"{m.get('artist')} - {m.get('title')}"):
+            continue
+        try:
+            res = analyze_song(m)
+            if res:
+                run.result({"id": sid, "current": azlib.tags(m), "beat": {"bpm": res[0], "firstBeat": res[1]}})
+            run.ok(sid)
+        except Exception as e:
+            run.fail(sid, e)
+        run.progress(n, total)
+    run.finish()
 
 
 main()

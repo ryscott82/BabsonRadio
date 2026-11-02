@@ -8,9 +8,19 @@
 
 Needs ffmpeg (brew install ffmpeg / apt install ffmpeg). It reports every minute ("ok") so the admin page can tell if the monitor itself
 stops. Silence = nothing louder than SILENCE_DB for DEAD_AIR_SECONDS. If ffmpeg cannot open the stream it reports "down".
-Keep it running with launchd (macOS), a systemd service (Linux) or Task Scheduler (Windows) set to restart on exit.
+Keep it running with launchd (macOS), a systemd service (Linux) or NSSM / Task Scheduler (Windows) set to restart on exit.
+As a service it reads its settings from tools/deadair.env (or the file named by DEADAIR_ENV), lines like STREAM_URL=...
+Windows install steps: tools/pc-worker/README.md, "Dead-air monitor".
 """
 import json, os, re, subprocess, sys, threading, time, urllib.request
+
+# Settings file for running as a service (values already in the environment win).
+_env = os.environ.get("DEADAIR_ENV") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "deadair.env")
+if os.path.exists(_env):
+    for _line in open(_env, encoding="utf-8"):
+        _m = re.match(r"^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*?)\s*$", _line)
+        if _m and _m.group(1) not in os.environ:
+            os.environ[_m.group(1)] = _m.group(2).strip("\"'")
 
 STREAM = os.environ.get("STREAM_URL", "")
 SITE = os.environ.get("SITE_URL", "https://babsonradio.com").rstrip("/")

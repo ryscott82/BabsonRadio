@@ -13,13 +13,24 @@ Covers come from the iTunes Search API, then Deezer if iTunes has nothing (both 
 Skipped: the Copyright Free playlist, songs still marked needs_review (add --include-review to include them),
 and songs that already have art in AzuraCast (add --redo to replace it).
 Step 3 uses the pictures already in tools/art/, so whatever you deleted stays skipped.
+
+Worker mode (tools/pc-worker runs these; dry run unless --apply):
+  python3 tools/fetch_album_art.py --json --find [--ids f.json] [--tags f.json] [--only-missing] [--limit N] [--resume f.json]
+      library.fetch_art: looks up a cover for each song and prints its link as a proposal. Uploads nothing.
+  python3 tools/fetch_album_art.py --json --plan plan.json [--apply]
+      library.apply / library.undo: plan = [{"songId": "12", "artUrl": "https://...", "undoOf"?: "..."}] or {"restore": "backup:<file>" | null}.
+      The current cover is saved to tools/art_backup/ first, so the change can be undone.
 """
 import argparse, csv, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request, uuid
+import azlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASE = os.environ.get('AZURACAST_URL', 'https://a12.asurahosting.com').rstrip('/')
 STATION = os.environ.get('AZURACAST_STATION', 'babson_radio')
 ART = os.path.join(HERE, 'art')
+BACKUP = os.environ.get('ART_BACKUP_DIR') or os.path.join(HERE, 'art_backup')
+BACKUP_RE = re.compile(r'^backup:([A-Za-z0-9-]{1,64}-\d{10,14}\.jpg)$')
+MAX_ART_BYTES = 8 * 1024 * 1024
 UA = {'User-Agent': 'BabsonRadio-art/2'}
 
 
@@ -74,11 +85,7 @@ def find_art(artist, title):
 
 
 def az(method, path, data=None, headers=None, raw=False):
-    req = urllib.request.Request(f'{BASE}/api/station/{STATION}/{path}', method=method, data=data,
-                                 headers={'X-API-Key': key(), 'Accept': 'application/json', **UA, **(headers or {})})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        body = r.read()
-        return body if raw else (json.loads(body) if body else {})
+    return azlib.request(method, path, data=data, headers=headers, raw=raw, timeout=60)
 
 
 def has_art_map():
@@ -107,8 +114,8 @@ def upload(row, img):
         try:
             az('POST', f'art/{ident}', body, {'Content-Type': f'multipart/form-data; boundary={boundary}'})
             return
-        except urllib.error.HTTPError as e:
-            last = f'HTTP {e.code} {e.read()[:200].decode("utf-8", "ignore")}'
+        except azlib.HttpFail as e:
+            last = str(e)
     raise RuntimeError(last or 'no id')
 
 
@@ -118,7 +125,14 @@ def main():
     ap.add_argument('--limit', type=int, default=0, help='only this many songs')
     ap.add_argument('--redo', action='store_true', help='also songs that already have art in AzuraCast')
     ap.add_argument('--include-review', action='store_true', help='also songs still marked needs_review')
+    ap.add_argument('--find', action='store_true', help='worker mode: look up covers and print them as proposals')
+    ap.add_argument('--only-missing', action='store_true', help='worker mode: only songs without art')
+    ap.add_argument('--tags', help='worker mode: JSON {songId: {artist, title}} to search with (e.g. approved metadata)')
+    ap.add_argument('--apply', action='store_true', help='worker mode: really upload (default: dry run)')
+    azlib.add_worker_args(ap)
     a = ap.parse_args()
+    if a.json:
+        return worker(a)
 
     os.makedirs(ART, exist_ok=True)
     rows = [r for r in csv.DictReader(open(os.path.join(HERE, 'metadata_cleanup.csv'), encoding='utf-8'))
@@ -163,6 +177,109 @@ def main():
     print(f'\nDone: {ok} {"uploaded" if a.upload else "downloaded"}, {misses} with no match. Report: tools/art_report.csv')
     if not a.upload:
         print('Look through tools/art/ and delete any wrong cover. Then: python3 tools/fetch_album_art.py --upload --limit 3')
+
+
+# ── worker mode ──
+def worker(a):
+    run = azlib.Run(a)
+    if a.find:
+        return find(run, a)
+    if a.plan:
+        return apply_plan(run)
+    sys.exit('Worker mode needs --find or --plan.')
+
+
+def find(run, a):
+    overrides = json.load(open(a.tags, encoding='utf-8')) if a.tags else {}
+    songs = [m for m in azlib.list_songs() if run.wanted(m.get('id'))]
+    if a.only_missing:
+        songs = [m for m in songs if not m.get('art_updated_at')]
+    if run.limit:
+        songs = songs[: run.limit]
+    total = len(songs)
+    run.progress(0, total, f'{total} songs to look up')
+    for n, m in enumerate(songs, 1):
+        sid = str(m.get('id'))
+        cur = azlib.tags(m)
+        o = overrides.get(sid) if isinstance(overrides.get(sid), dict) else {}
+        artist, title = str(o.get('artist') or cur['artist']), str(o.get('title') or cur['title'])
+        if not run.next(n, total, sid, f'{artist} - {title}'):
+            continue
+        try:
+            if artist and title:
+                url, album, source = find_art(artist, title)
+                time.sleep(3.2)  # iTunes allows about 20 requests a minute
+                if url and url.startswith('https://'):
+                    run.result({'id': sid, 'current': cur, 'artUrl': url, 'album': album, 'source': source,
+                                'confidence': 0.8 if source == 'itunes' else 0.7})
+            run.ok(sid)
+        except Exception as e:
+            run.fail(sid, e)
+        run.progress(n, total)
+    run.finish()
+
+
+def fetch_image(url):
+    if not url.startswith('https://'):
+        raise RuntimeError('cover link must be https')
+    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30) as r:
+        if not (r.headers.get('Content-Type') or '').startswith('image/'):
+            raise RuntimeError('that link is not a picture')
+        blob = r.read(MAX_ART_BYTES + 1)
+    if len(blob) > MAX_ART_BYTES:
+        raise RuntimeError('picture is too big')
+    return blob
+
+
+def backup_current(m):
+    """Saves the song's current cover (if it has one) and returns how to get it back: "backup:<file>" or None."""
+    if not m.get('art_updated_at'):
+        return None
+    link = m.get('art') or ''
+    blob = az('GET', link if link.startswith('http') else f"art/{m.get('unique_id') or m['id']}", raw=True)
+    os.makedirs(BACKUP, exist_ok=True)
+    name = f"{m['id']}-{int(time.time() * 1000)}.jpg"
+    with open(os.path.join(BACKUP, name), 'wb') as f:
+        f.write(blob)
+    return f'backup:{name}'
+
+
+def apply_plan(run):
+    items = run.plan()
+    total = len(items)
+    for n, item in enumerate(items, 1):
+        sid = str(item['songId'])
+        key = str(item.get('undoOf') or sid)
+        if not run.wanted(key) or not run.next(n, total, sid):
+            continue
+        try:
+            m = az('GET', f'file/{sid}')
+            restoring = 'restore' in item
+            if restoring:
+                target = item.get('restore')
+                if target is not None and not BACKUP_RE.match(str(target)):
+                    raise RuntimeError('bad backup reference')
+            else:
+                target = str(item.get('artUrl') or '')
+                if not target.startswith('https://'):
+                    raise RuntimeError('cover link must be https')
+            # Get the new picture first, so a change is only recorded when it can really be made.
+            img = None
+            if run.apply and target is not None:
+                img = open(os.path.join(BACKUP, BACKUP_RE.match(target).group(1)), 'rb').read() if restoring else fetch_image(target)
+            old = backup_current(m) if run.apply else ('backup:(made when applied)' if m.get('art_updated_at') else None)
+            change = {'field': 'art', 'old': old, 'new': target, **({'undoOf': item['undoOf']} if item.get('undoOf') else {})}
+            if run.change(sid, [change]):
+                if img is None:
+                    az('DELETE', f'art/{sid}')
+                else:
+                    upload({'id': sid, 'unique_id': m.get('unique_id')}, img)
+                run.emit({'t': 'applied', 'id': sid})
+            run.ok(key)
+        except Exception as e:
+            run.fail(sid, e)
+        run.progress(n, total)
+    run.finish()
 
 
 main()

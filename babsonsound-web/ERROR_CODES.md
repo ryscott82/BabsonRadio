@@ -199,3 +199,21 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | BR-BTH-002 | **Studio helper refused**: The helper on the studio PC rejected the control token (expired, or signed with another secret). | Sign out and sign in again on the studio PC. | Check the PC clock is right and the two STUDIO_PC_SECRET values match. |
 | BR-BTH-003 | **Studio session over**: The studio PC session this request belongs to ended or belongs to someone else. | Sign in again on the studio PC. | — |
 | BR-BTH-004 | **Studio PC not set up**: STUDIO_PC_SECRET is missing or too short on the website server. | Tell a station admin. | Add STUDIO_PC_SECRET (32+ random characters) in Vercel and redeploy. Use the same value in tools/studio-helper/.env. |
+
+## Library worker
+
+| Code | What it is | What the user should do | What staff check |
+|---|---|---|---|
+| BR-LIB-001 | **Library worker not set up**: WORKER_SECRET is missing or shorter than 32 characters on the website server. | Tell a station admin. | Add WORKER_SECRET (32+ random characters) in Vercel and redeploy. Use the same value on the studio PC. |
+| BR-LIB-002 | **Studio PC not accepted**: The worker's signature was wrong or expired, or its sign-in token is not the studio worker's. | Nothing to do on the website; check the studio PC. | The PC clock must be within 2 minutes. WORKER_SECRET must match on the PC and in Vercel. Each nonce works once. |
+| BR-LIB-003 | **Job type not allowed**: The job type is not one of the allowed library jobs. | Pick a job from the Library page. | Allowed: library.scan, fetch_metadata, fetch_art, analyze_beats, measure_loudness, apply, undo, schedule.reconcile. |
+| BR-LIB-004 | **Job parameters not valid**: The job's params do not fit its type (unknown key, too many ids, bad value). | Change the options and try again. | See LIBRARY_WORKER.md for the params of each job type. |
+| BR-LIB-005 | **Job already queued**: A job of this type is already queued or running. | Wait for it to finish, or cancel it first. | If the PC is off, cancel the queued job from the Library page. |
+| BR-LIB-006 | **Job not found**: No job with that id. | Refresh the Library page. | — |
+| BR-LIB-007 | **Job already finished**: Only queued or running jobs can be cancelled. | Nothing to do. | — |
+| BR-LIB-008 | **Proposal can't be changed**: The proposal does not exist, or it was already applied. | Refresh the list. | — |
+| BR-LIB-009 | **Proposal edit not valid**: An edited field is not allowed, empty, or the art link is not https. | Fix the field and save again. | Editable: title, artist, album, artUrl. |
+| BR-LIB-010 | **Request not valid**: A list was empty or too long (400 ids at most), an id was not valid, or a filter was unknown. | Select fewer rows and try again. | — |
+| BR-LIB-011 | **Change refused**: The PC reported a change the server will not record: the job is not running, it is the wrong kind of job, the song has no approved proposal, or the change was already undone. | Nothing to do on the website; tell the station team. | Apply jobs may only change songs whose proposal is approved. An undo can be recorded once per change. |
+| BR-LIB-012 | **Beats shard full**: One beats document would grow past the safe size. | Tell a station admin. | Split the shard (use two characters) in lib/worker.ts beatShard before adding more beats. |
+| BR-LIB-013 | **Too many tries**: Too many refused worker requests in a minute. | Wait a minute. | Check WORKER_SECRET and the PC clock. |

@@ -22,7 +22,7 @@ export const QUIZ: QuizQuestion[] = [
     why: 'Licensing rules limit how much listeners can choose what airs. Follow the station’s request rules and ask a director if unsure.' },
   { id: 'dead-air', q: 'The stream goes silent in the middle of your show. What do you do first?', options: ['Wait a minute to see if it fixes itself', 'Start talking louder', 'Check your mic and mixer, then tell a director right away if the stream is still silent', 'Leave and report it tomorrow'], answer: 2,
     why: 'Silence loses listeners fast. Check your own gear, then escalate immediately.' },
-  { id: 'private', q: 'A guest wants to read a classmate’s phone number and address on air for a joke. You should:', options: ['Allow it if the classmate is a friend', 'Stop it. We never share private information on air', 'Allow it if it is after 10 PM', 'Allow it if they only read half'], answer: 1,
+  { id: 'private', q: 'A guest wants to read a classmate’s phone number and address on air for a joke. You should:', options: ['Allow it if the classmate is a friend', 'Stop it. Do not share private information on air', 'Allow it if it is after 10 PM', 'Allow it if they only read half'], answer: 1,
     why: 'Private information stays off the air at all hours.' },
   { id: 'recording', q: 'Your show is being recorded. By default who can listen to the recording afterward?', options: ['Anyone on the internet', 'Only Babson students, unless you are 18 or older and sign to make it public', 'Only you', 'Only staff'], answer: 1,
     why: 'Recordings are for students by default. Public sharing needs a signed agreement from an adult host, and nothing with anyone under 18 can be public.' },

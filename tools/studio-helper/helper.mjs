@@ -10,6 +10,7 @@ import { execFile } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createRequire } from 'node:module'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const envFile = join(here, '.env')
@@ -26,7 +27,45 @@ const ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://babsonradio.com,https:/
 const BUTT = process.env.BUTT_PATH || (process.platform === 'win32' ? 'C:\\Program Files\\butt\\butt.exe' : 'butt')
 const BUTT_PORT = String(process.env.BUTT_COMMAND_PORT || 1256)
 const BUTT_SERVER = process.env.BUTT_SERVER_NAME || '' // name of the saved server in BUTT to connect to ('' = BUTT's default)
-const RECORD = process.env.RECORD_SHOWS === '1'
+// Every show is recorded in BUTT (to BUTT's recording folder) unless RECORD_SHOWS=0.
+const RECORD = process.env.RECORD_SHOWS !== '0'
+// Station music library (background music for talk shows). A limited AzuraCast API key: a user with only "Manage station media".
+const AZ_URL = (process.env.AZURACAST_URL || '').replace(/\/+$/, '')
+const AZ_KEY = process.env.AZURACAST_API_KEY || ''
+const AZ_STATION = encodeURIComponent(process.env.AZURACAST_STATION_ID || '1')
+const list = v => v.split(',').map(x => x.trim().toLowerCase()).filter(Boolean)
+const BED_LISTS = list(process.env.BED_PLAYLISTS || 'Beds,Podcast beds,Background')
+const ID_LISTS = list(process.env.ID_PLAYLISTS || 'Station IDs,Sweepers')
+const PAD_LISTS = list(process.env.SOUNDBOARD_PLAYLISTS || 'Soundboard,Jingles,Sound effects')
+const AD_LISTS = list(process.env.AD_PLAYLISTS || 'Ads,Advertisements,PSAs')
+
+// Auto level: BUTT's Master Gain can be moved by a MIDI CC (BUTT: Settings → MIDI). The helper sends that CC through a
+// virtual MIDI cable (loopMIDI on Windows). Optional: without it, the page just shows the level.
+const MIDI_PORT = (process.env.MIDI_PORT || 'loopMIDI').toLowerCase()
+const MIDI_CHANNEL = Math.min(16, Math.max(1, Number(process.env.MIDI_CHANNEL) || 1))
+const MIDI_GAIN_CC = Math.min(127, Math.max(0, Number(process.env.MIDI_GAIN_CC) || 7))
+let midiOut = null, midiError = '', gainDb = 0
+function midi() {
+  if (midiOut) return midiOut
+  try {
+    const { Output } = createRequire(import.meta.url)('@julusian/midi')
+    const out = new Output()
+    for (let i = 0; i < out.getPortCount(); i++) {
+      if (out.getPortName(i).toLowerCase().includes(MIDI_PORT)) { out.openPort(i); midiOut = out; midiError = ''; return out }
+    }
+    midiError = `No MIDI port named "${MIDI_PORT}". Open loopMIDI.`
+  } catch { midiError = 'Auto level needs the MIDI add-on (run "npm install" in the helper folder).' }
+  return null
+}
+/** BUTT maps CC 0..127 linearly onto -24..+24 dB of Master Gain. */
+const gainToCc = db => Math.round(((Math.max(-24, Math.min(24, db)) + 24) / 48) * 127)
+function setGain(db) {
+  const out = midi()
+  if (!out) throw new Error(midiError)
+  out.sendMessage([0xB0 | (MIDI_CHANNEL - 1), MIDI_GAIN_CC, gainToCc(db)])
+  gainDb = Math.round(Math.max(-24, Math.min(24, db)) * 10) / 10
+  return gainDb
+}
 
 if (SECRET.length < 24) { console.error('Set STUDIO_PC_SECRET in .env (same value as on the website, 32+ characters).'); process.exit(1) }
 
@@ -72,6 +111,56 @@ const serial = fn => (queue = queue.then(fn, fn))
 
 const log = (...a) => console.log(new Date().toLocaleString(), ...a)
 
+// ── Station music library (AzuraCast) ───────────────────────
+let lib = { at: 0, rows: [] }
+async function library() {
+  if (!AZ_URL || !AZ_KEY) throw new Error('The music library is not set up on this PC (AZURACAST_URL and AZURACAST_API_KEY in .env).')
+  if (Date.now() - lib.at < 10 * 60_000 && lib.rows.length) return lib.rows
+  const res = await fetch(`${AZ_URL}/api/station/${AZ_STATION}/files`, { headers: { 'X-API-Key': AZ_KEY }, signal: AbortSignal.timeout(20_000) })
+  if (!res.ok) throw new Error(`The station library answered ${res.status}.`)
+  const raw = await res.json()
+  const rows = (Array.isArray(raw) ? raw : raw.rows ?? []).map(m => {
+    const pls = (m.playlists ?? []).map(p => String(p.name ?? '')).filter(Boolean)
+    const low = pls.map(p => p.toLowerCase())
+    return {
+      id: String(m.unique_id || m.id), title: m.title || m.text || m.path?.split('/').pop() || 'Untitled', artist: m.artist || '',
+      length: Number(m.length) || 0, playlists: pls,
+      bed: low.some(p => BED_LISTS.includes(p)), stationId: low.some(p => ID_LISTS.includes(p)),
+      pad: low.some(p => PAD_LISTS.includes(p)), ad: low.some(p => AD_LISTS.includes(p)),
+    }
+  })
+  lib = { at: Date.now(), rows }
+  return rows
+}
+
+function searchLibrary(rows, q, kind) {
+  const pick = { beds: x => x.bed, ids: x => x.stationId, pads: x => x.pad || x.stationId, ads: x => x.ad, all: x => !x.stationId && !x.pad && !x.ad }
+  let r = rows.filter(pick[kind] ?? pick.all)
+  const words = String(q || '').toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length) r = r.filter(x => { const t = `${x.title} ${x.artist} ${x.playlists.join(' ')}`.toLowerCase(); return words.every(w => t.includes(w)) })
+  return r.sort((a, b) => a.title.localeCompare(b.title)).slice(0, 80)
+}
+
+/** Streams one file from AzuraCast to the page, passing Range through so the page can seek. */
+async function streamTrack(id, req, res, origin) {
+  if (!/^[A-Za-z0-9-]{1,64}$/.test(id)) return send(res, 400, { error: 'Bad track.' }, origin)
+  const headers = { 'X-API-Key': AZ_KEY }
+  if (req.headers.range) headers.Range = req.headers.range
+  const up = await fetch(`${AZ_URL}/api/station/${AZ_STATION}/file/${id}/play`, { headers, signal: AbortSignal.timeout(30_000) })
+  if (!up.ok && up.status !== 206) return send(res, 502, { error: `The station library answered ${up.status}.` }, origin)
+  const h = { 'access-control-allow-origin': origin, vary: 'Origin', 'cache-control': 'no-store', 'accept-ranges': 'bytes' }
+  for (const k of ['content-type', 'content-length', 'content-range']) { const v = up.headers.get(k); if (v) h[k] = v }
+  res.writeHead(up.status, h)
+  const reader = up.body.getReader()
+  req.on('close', () => reader.cancel().catch(() => {}))
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    if (!res.write(value)) await new Promise(r => res.once('drain', r))
+  }
+  res.end()
+}
+
 // ── HTTP ──────────────────────────────────────────────────────
 function send(res, code, body, origin) {
   const h = { 'content-type': 'application/json', 'cache-control': 'no-store' }
@@ -98,7 +187,7 @@ const server = createServer(async (req, res) => {
     res.writeHead(204, {
       'access-control-allow-origin': origin, vary: 'Origin',
       'access-control-allow-methods': 'GET, POST',
-      'access-control-allow-headers': 'content-type',
+      'access-control-allow-headers': 'content-type, range',
       'access-control-allow-private-network': 'true',
       'access-control-max-age': '600',
     })
@@ -117,12 +206,29 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname === '/status') return send(res, 200, await status(), origin)
+    if (req.method === 'GET' && url.pathname === '/gain') return send(res, 200, { available: !!midi(), db: gainDb, error: midiError }, origin)
+
+    const track = /^\/library\/play\/([^/]+)$/.exec(url.pathname)
+    if (req.method === 'GET' && track) {
+      if (!verifyToken(url.searchParams.get('token'))) return send(res, 401, { error: 'Sign in again on the studio PC.', code: 'BR-BTH-002' }, origin)
+      return await streamTrack(track[1], req, res, origin)
+    }
 
     if (req.method !== 'POST') return send(res, 404, { error: 'Not found.' }, origin)
     const b = await readBody(req)
     const c = verifyToken(b.token)
     if (!c) return send(res, 401, { error: 'Sign in again on the studio PC.', code: 'BR-BTH-002' }, origin)
 
+    if (url.pathname === '/gain') {
+      const db = Number(b.db)
+      if (!Number.isFinite(db)) return send(res, 400, { error: 'Bad gain.' }, origin)
+      return send(res, 200, { db: setGain(db) }, origin)
+    }
+    if (url.pathname === '/library') {
+      const kind = ['beds', 'ids', 'pads', 'ads', 'all'].includes(b.kind) ? b.kind : 'all'
+      const rows = await library()
+      return send(res, 200, { tracks: searchLibrary(rows, b.q, kind), total: rows.length }, origin)
+    }
     if (url.pathname === '/live/start') {
       if (!c.l) return send(res, 403, { error: "You can't go live right now." }, origin)
       const st = await serial(async () => {

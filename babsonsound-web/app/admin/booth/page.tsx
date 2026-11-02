@@ -4,12 +4,13 @@ import FilterBar, { MoreButton, useFilter, usePaged } from '@/components/admin/F
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { apiGet } from '@/lib/auth'
+import { api, apiGet } from '@/lib/auth'
+import type { AdPlan } from '@/lib/booth'
 import { ErrorText } from '@/components/AuthUI'
 
 interface Row {
   id: string; name: string; email: string; level: string; startedAt: number; lastSeenAt: number; endedAt: number
-  endReason: string; liveCount: number; songCount: number; onAirMs: number; live: boolean
+  endReason: string; liveCount: number; songCount: number; musicCount: number; onAirMs: number; live: boolean
 }
 interface Ev { id: string; kind: string; text: string; at: number }
 
@@ -17,13 +18,13 @@ const when = (ms: number) => new Date(ms).toLocaleString([], { month: 'short', d
 const time = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 const mins = (ms: number) => (ms < 60_000 ? (ms ? '<1 min' : '—') : `${Math.round(ms / 60_000)} min`)
 const KIND: Record<string, string> = {
-  sign_in: 'Signed in', live_start: 'Went live', live_stop: 'Ended stream', song: 'Song', sign_out: 'Signed out', idle_out: 'Signed out (idle)',
+  sign_in: 'Signed in', live_start: 'Went live', live_stop: 'Ended stream', song: 'Song', music: 'Background music', note: 'Left a note', sign_out: 'Signed out', idle_out: 'Signed out (idle)',
 }
 const ended = (r: Row) => r.endedAt ? `${time(r.endedAt)}${r.endReason === 'idle_out' ? ' (idle)' : ''}` : Date.now() - r.lastSeenAt < 6 * 60_000 ? 'Signed in now' : `Last seen ${time(r.lastSeenAt)}`
 const textOf = (r: Row) => `${r.name} ${r.email} ${r.level} ${when(r.startedAt)}`
 
 export default function AdminBoothPage() {
-  const { user, isDirector, loading } = useAuth()
+  const { user, isDirector, isAdmin, loading } = useAuth()
   const router = useRouter()
   const [rows, setRows] = useState<Row[]>([])
   const [open, setOpen] = useState<string | null>(null)
@@ -51,6 +52,7 @@ export default function AdminBoothPage() {
         <div className="flex-1 h-px bg-br-dk-border" />
         <button type="button" onClick={load} className="ops-btn">Refresh</button>
       </div>
+      {isAdmin && <AdBreaks />}
       <p className="text-sm text-br-dk-sub">Everyone who signed in on the studio PC, newest first. Click a row for what they did.</p>
       <ErrorText>{error}</ErrorText>
       <FilterBar f={f} total={rows.length} placeholder="Search name, email or date" />
@@ -65,7 +67,7 @@ export default function AdminBoothPage() {
               <span className="text-br-dk-sub tabular-nums">{when(r.startedAt)}</span>
               <span className="text-br-dk-sub tabular-nums">{ended(r)}</span>
               <span className="text-br-dk-sub tabular-nums">{mins(r.onAirMs)}</span>
-              <span className="text-br-dk-sub tabular-nums">{r.songCount || '—'}</span>
+              <span className="text-br-dk-sub tabular-nums">{r.songCount + r.musicCount || '—'}</span>
               <span className="text-br-dk-sub capitalize">{r.level}</span>
             </button>
             {open === r.id && (
@@ -84,6 +86,42 @@ export default function AdminBoothPage() {
         {!rows.length && !error && <p className="px-4 py-3 text-br-dk-sub">Nobody has signed in on the studio PC yet.</p>}
       </div>
       <MoreButton p={paged} />
+    </div>
+  )
+}
+
+/** Ad break times shown as a countdown on the studio PC. */
+function AdBreaks() {
+  const [plan, setPlan] = useState<AdPlan | null>(null)
+  const [minutes, setMinutes] = useState('')
+  const [length, setLength] = useState('')
+  const [msg, setMsg] = useState('')
+  useEffect(() => {
+    apiGet<{ ads: AdPlan }>('/api/admin/booth?ads=1').then(r => { setPlan(r.ads); setMinutes(r.ads.minutes.join(', ')); setLength(String(r.ads.lengthSec / 60)) }).catch(() => setMsg('Could not load ad breaks.'))
+  }, [])
+  if (!plan) return msg ? <p className="text-sm text-br-red">{msg}</p> : null
+  const save = async (enabled: boolean) => {
+    setMsg('')
+    try {
+      const r = await api<{ ads: AdPlan }>('/api/admin/booth', { ads: { enabled, minutes: minutes.split(/[\s,]+/).filter(Boolean).map(Number), lengthSec: Math.round(Number(length) * 60) } })
+      setPlan(r.ads); setMinutes(r.ads.minutes.join(', ')); setLength(String(r.ads.lengthSec / 60)); setMsg('Saved.')
+    } catch (e) { setMsg(e instanceof Error ? e.message : 'Could not save.') }
+  }
+  return (
+    <div className="sk-raised rounded-xl p-4 space-y-3 text-sm">
+      <div className="flex items-center gap-3">
+        <h2 className="text-lg text-br-dk-text">Ad breaks</h2>
+        <span className="text-br-dk-sub">{plan.enabled ? 'On: hosts see a countdown on the studio PC' : 'Off'}</span>
+      </div>
+      <div className="flex flex-wrap items-end gap-4">
+        <label className="space-y-1"><span className="block text-br-dk-sub">Minutes past each hour</span>
+          <input value={minutes} onChange={e => setMinutes(e.target.value)} placeholder="20, 50" className="sk-field rounded px-3 py-2 w-40" /></label>
+        <label className="space-y-1"><span className="block text-br-dk-sub">Length (minutes)</span>
+          <input value={length} onChange={e => setLength(e.target.value)} inputMode="decimal" className="sk-field rounded px-3 py-2 w-24" /></label>
+        <button type="button" className="ops-btn" onClick={() => save(plan.enabled)}>Save</button>
+        <button type="button" className="ops-btn" onClick={() => save(!plan.enabled)}>{plan.enabled ? 'Turn off' : 'Turn on'}</button>
+        {msg && <span className="text-br-dk-sub">{msg}</span>}
+      </div>
     </div>
   )
 }

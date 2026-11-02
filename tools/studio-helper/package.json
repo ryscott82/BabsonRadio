@@ -1,0 +1,9 @@
+{
+  "name": "babson-radio-studio-helper",
+  "private": true,
+  "type": "module",
+  "description": "Lets babsonradio.com/booth drive BUTT on the studio PC.",
+  "scripts": { "start": "node helper.mjs" },
+  "engines": { "node": ">=18" },
+  "optionalDependencies": { "@julusian/midi": "3.8.1" }
+}

@@ -1,7 +1,7 @@
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireUser, str } from '@/lib/server/http'
 import { accessOf } from '@/lib/server/access'
-import { boothPermit, boothSecret, touchSession } from '@/lib/server/booth'
+import { adPlan, boothPermit, boothSecret, latestNote, nextOnAir, touchSession } from '@/lib/server/booth'
 import { signToken, TOKEN_TTL_MS, verifyAttest } from '@/lib/booth'
 
 export const runtime = 'nodejs'
@@ -29,8 +29,11 @@ export async function POST(req: Request) {
       uid: t.uid, name, email: t.email ?? '', level: a.level, canGoLive: p.canGoLive,
     }, now)
     const tokenExp = now + TOKEN_TTL_MS
+    const [ads, note, next] = await Promise.all([
+      adPlan(db), latestNote(db, now).catch(() => null), nextOnAir(db, p.show?.endAt ?? now, now).catch(() => null),
+    ])
     return {
-      sessionId, name, level: a.level, ...p,
+      sessionId, name, firstName: String(u.get('firstName') ?? '') || name.split(' ')[0], level: a.level, ...p, ads, note, next,
       token: signToken(secret, { u: t.uid, n: name, s: sessionId, l: p.canGoLive, exp: tokenExp }),
       tokenExp,
     }

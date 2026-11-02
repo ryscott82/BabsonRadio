@@ -4,3 +4,8 @@ Windows Registry Editor Version 5.00
 [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome\LocalNetworkAccessAllowedForUrls]
 "1"="https://babsonradio.com"
 "2"="https://www.babsonradio.com"
+
+; Lets the go-live page read the mixer input for the level meter without asking (Chrome kiosk can't show the prompt well).
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome\AudioCaptureAllowedUrls]
+"1"="https://babsonradio.com"
+"2"="https://www.babsonradio.com"

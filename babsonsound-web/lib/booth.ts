@@ -48,3 +48,72 @@ export function verifyAttest(secret: string, nonce: string, sig: string, now = D
 
 export const liveWindowOpen = (s: { startAt: number; endAt: number }, now: number) =>
   now >= s.startAt - LIVE_EARLY_MS && now <= s.endAt + LIVE_LATE_MS
+
+// ── Level meter targets ──────────────────────────────────────
+/** The station's music is normalized to -14 LUFS (tools/normalize_loudness.py), so live shows aim for the same. */
+export const TARGET_LUFS = -14
+export const GOOD_LUFS: [number, number] = [-17, -11]
+/** Below this (short-term) a show is too quiet; above LOUD it is too loud. */
+export const QUIET_LUFS = -20
+export const LOUD_LUFS = -9
+/** Peak level (dBFS) treated as clipping, and below which the input counts as silent. */
+export const CLIP_DBFS = -0.5
+export const SILENT_DBFS = -55
+
+export type LevelState = 'off' | 'silent' | 'quiet' | 'good' | 'loud' | 'clip'
+
+/** One word for the host, from the short-term loudness, the recent peak, and whether anything clipped in the last 2 seconds. */
+export function levelState(shortLufs: number, peakDb: number, clippedRecently: boolean): LevelState {
+  if (!Number.isFinite(peakDb) || peakDb < SILENT_DBFS) return 'silent'
+  if (clippedRecently) return 'clip'
+  if (shortLufs > LOUD_LUFS) return 'loud'
+  if (shortLufs < QUIET_LUFS) return 'quiet'
+  return 'good'
+}
+
+/** BS.1770 loudness from a mean square of K-weighted samples. */
+export const lufsOf = (meanSquare: number) => (meanSquare > 0 ? -0.691 + 10 * Math.log10(meanSquare) : -Infinity)
+export const dbOf = (amp: number) => (amp > 0 ? 20 * Math.log10(amp) : -Infinity)
+
+// ── Ad breaks ───────────────────────────────────────────────
+/** Station-wide ad break times (minutes past every hour) and how long each lasts. Set in Admin Panel → Studio PC log. */
+export interface AdPlan { enabled: boolean; minutes: number[]; lengthSec: number }
+export const DEFAULT_ADS: AdPlan = { enabled: false, minutes: [20, 50], lengthSec: 120 }
+
+export function cleanAdPlan(v: unknown): AdPlan {
+  const o = (v && typeof v === 'object' ? v : {}) as Partial<AdPlan>
+  const minutes = [...new Set((Array.isArray(o.minutes) ? o.minutes : DEFAULT_ADS.minutes)
+    .map(Number).filter(m => Number.isInteger(m) && m >= 0 && m <= 59))].sort((a, b) => a - b).slice(0, 12)
+  const len = Math.round(Number(o.lengthSec))
+  return { enabled: o.enabled === true, minutes, lengthSec: Number.isFinite(len) && len >= 15 && len <= 900 ? len : DEFAULT_ADS.lengthSec }
+}
+
+/** The ad break that is on now, or the next one, by the studio PC's own clock. */
+export function adBreak(plan: AdPlan, now: number): { start: number; end: number; now: boolean } | null {
+  if (!plan.enabled || !plan.minutes.length) return null
+  const hour = new Date(now); hour.setMinutes(0, 0, 0)
+  const len = plan.lengthSec * 1000
+  for (let h = -1; h <= 1; h++) {
+    for (const m of plan.minutes) {
+      const start = hour.getTime() + h * 3_600_000 + m * 60_000
+      if (now < start + len) return { start, end: start + len, now: now >= start }
+    }
+  }
+  return null
+}
+
+// ── Auto level ──────────────────────────────────────────────
+// The meter hears the mixer before BUTT, so what goes out is (input + BUTT gain). Each second the page nudges BUTT's gain
+// toward the target: slowly (no pumping), only while there is sound (pauses don't push it up), and down fast on clipping.
+export const AUTO_GAIN_RANGE: [number, number] = [-12, 12]
+const STEP_UP_DB = 0.5, STEP_DOWN_DB = 1, DEADBAND_DB = 1, CLIP_DROP_DB = 3, SOUND_LUFS = -40
+
+export function nextGain(gainDb: number, shortLufs: number, momentaryLufs: number, clipped: boolean): number {
+  const clamp = (v: number) => Math.max(AUTO_GAIN_RANGE[0], Math.min(AUTO_GAIN_RANGE[1], v))
+  if (clipped) return clamp(gainDb - CLIP_DROP_DB)
+  if (!Number.isFinite(shortLufs) || !Number.isFinite(momentaryLufs) || momentaryLufs < SOUND_LUFS) return gainDb
+  const out = shortLufs + gainDb
+  const err = TARGET_LUFS - out
+  if (Math.abs(err) <= DEADBAND_DB) return gainDb
+  return clamp(gainDb + (err > 0 ? Math.min(err, STEP_UP_DB) : Math.max(err, -STEP_DOWN_DB)))
+}

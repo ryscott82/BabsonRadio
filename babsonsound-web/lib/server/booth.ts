@@ -4,7 +4,8 @@ import type { Access } from './access'
 import { hostShows, occurrenceId } from './host'
 import { currentOnAir } from './live'
 import { HttpError } from './http'
-import { liveWindowOpen } from '../booth'
+import { cleanAdPlan, liveWindowOpen, type AdPlan } from '../booth'
+import { buildScheduleFeed } from './scheduleFeed'
 
 // Studio PC (booth): who may go live from the studio, and the sign-in log. See tools/studio-helper/README.md.
 // Collections (admin SDK only): boothSessions/{id} one per sign-in on the studio PC, boothEvents/{id} what happened in it.
@@ -69,15 +70,17 @@ export async function touchSession(db: Firestore, sessionId: string, info: Sessi
   return ref.id
 }
 
-export const EVENT_KINDS = ['live_start', 'live_stop', 'song', 'sign_out', 'idle_out'] as const
-export type EventKind = (typeof EVENT_KINDS)[number] | 'sign_in'
+export const EVENT_KINDS = ['live_start', 'live_stop', 'song', 'music', 'sign_out', 'idle_out'] as const
+/** Logged by other routes, not sent by the page. */
+type OtherKind = 'note'
+export type EventKind = (typeof EVENT_KINDS)[number] | OtherKind | 'sign_in'
 
 export async function logEvent(db: Firestore, sessionId: string, uid: string, name: string, kind: EventKind, text: string, now = Date.now()) {
   await db.collection('boothEvents').add({ sessionId, uid, name, kind, text, at: Timestamp.fromMillis(now) })
 }
 
 /** Record one thing that happened in a session and keep the session's totals up to date. */
-export async function recordEvent(db: Firestore, sessionId: string, uid: string, kind: (typeof EVENT_KINDS)[number], text: string, now = Date.now()) {
+export async function recordEvent(db: Firestore, sessionId: string, uid: string, kind: (typeof EVENT_KINDS)[number] | OtherKind, text: string, now = Date.now()) {
   const ref = db.collection('boothSessions').doc(sessionId)
   const name = await db.runTransaction(async tx => {
     const d = await tx.get(ref)
@@ -93,6 +96,10 @@ export async function recordEvent(db: Firestore, sessionId: string, uid: string,
       stopClock()
     } else if (kind === 'song') {
       patch.songCount = FieldValue.increment(1)
+    } else if (kind === 'music') {
+      patch.musicCount = FieldValue.increment(1)
+    } else if (kind === 'note') {
+      // nothing to count
     } else {
       stopClock()
       if (!d.get('endedAt')) { patch.endedAt = Timestamp.fromMillis(now); patch.endReason = kind }
@@ -124,4 +131,31 @@ export async function boothSong(db: Firestore, now = Date.now()): Promise<{ titl
   if (!d.exists || now - at > SONG_MAX_AGE_MS) return null
   const title = String(d.get('title') ?? ''), artist = String(d.get('artist') ?? '')
   return title ? { title, artist } : null
+}
+
+// ── Ad breaks, handoff notes, who is on next ────────────────
+export async function adPlan(db: Firestore): Promise<AdPlan> {
+  const d = await db.collection('config').doc('booth').get()
+  return cleanAdPlan(d.get('ads'))
+}
+
+export interface NextOnAir { title: string; hosts: string[]; startAt: number }
+
+/** The next scheduled show (not music blocks) starting after the current one ends, within 12 hours. */
+export async function nextOnAir(db: Firestore, after: number, now = Date.now()): Promise<NextOnAir | null> {
+  const items = await buildScheduleFeed(db, { days: 1, showStudentHosts: false, now })
+  const n = items.filter(i => i.source !== 'auto' && i.startAt >= after - 60_000 && i.startAt < now + 12 * 3_600_000).sort((a, b) => a.startAt - b.startAt)[0]
+  return n ? { title: n.title, hosts: n.hosts ?? [], startAt: n.startAt } : null
+}
+
+export interface BoothNote { text: string; by: string; at: number }
+const NOTE_MAX_AGE_MS = 24 * 3_600_000
+
+/** The last note a host left on the studio PC for whoever comes next (shown for 24 hours). */
+export async function latestNote(db: Firestore, now = Date.now()): Promise<BoothNote | null> {
+  const s = await db.collection('boothNotes').orderBy('at', 'desc').limit(1).get()
+  const d = s.docs[0]
+  const at = (d?.get('at') as Timestamp | undefined)?.toMillis() ?? 0
+  if (!d || now - at > NOTE_MAX_AGE_MS) return null
+  return { text: String(d.get('text') ?? ''), by: String(d.get('byName') ?? ''), at }
 }

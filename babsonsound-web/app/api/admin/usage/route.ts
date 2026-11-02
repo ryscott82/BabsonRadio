@@ -1,7 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireStaff } from '@/lib/server/http'
-import { budgetState, loadUsageConfig, policyFor, resetBudgetCache } from '@/lib/server/usage'
+import { budgetState, loadUsageConfig, policyFor, resetBudgetCache, resetUsageConfigCache } from '@/lib/server/usage'
 import { forecastUsage } from '@/lib/server/forecastUsage'
 import { loadLimits } from '@/lib/server/listenLimits'
 
@@ -36,6 +36,7 @@ export async function POST(req: Request) {
     num('limitHours', 1, 100000); num('quietStart', 0, 23); num('quietEnd', 0, 23); num('guestAutoMin', 0, 600)
     if (typeof b.quietEnabled === 'boolean') out.quietEnabled = b.quietEnabled
     await adminDb().collection('usage').doc('config').set(out, { merge: true })
+    resetUsageConfigCache()
     resetBudgetCache()
     return { ok: true }
   })

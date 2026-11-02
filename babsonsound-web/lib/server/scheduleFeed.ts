@@ -1,5 +1,5 @@
 import 'server-only'
-import { Timestamp, type Firestore } from 'firebase-admin/firestore'
+import { Timestamp, type Firestore, type QueryDocumentSnapshot } from 'firebase-admin/firestore'
 import { clipInterval, endAfter, localParts, occursOn, parseClock, type Repeat } from '../autoschedule'
 import { loadConfig } from './autoschedule'
 import { isInterstitial } from './actualPlaylist'
@@ -51,6 +51,28 @@ export function buildScheduleFeed(db: Firestore, opts: FeedOpts): Promise<Schedu
   return items.then(a => a.map(i => ({ ...i })))
 }
 
+// The different feeds (1 day for the player, 28 days for the schedule page, 7 for requests...) all read the same collections: the
+// queries below have no upper time limit, so every feed used to pay for the whole set again. The documents are now fetched once
+// per 30 s per server instance and shared by every feed; each feed still filters them exactly as before.
+const RAW_TTL = 30_000
+const rawCache = new Map<string, { at: number; docs: Promise<QueryDocumentSnapshot[]> }>()
+function rawDocs(key: string, run: () => Promise<QueryDocumentSnapshot[]>): Promise<QueryDocumentSnapshot[]> {
+  const hit = rawCache.get(key)
+  if (hit && Date.now() - hit.at < RAW_TTL) return hit.docs
+  const docs = run()
+  const entry = { at: Date.now(), docs }
+  if (rawCache.size > 40) rawCache.clear()
+  rawCache.set(key, entry)
+  docs.catch(() => { if (rawCache.get(key) === entry) rawCache.delete(key) }) // a failed read must not stay cached
+  return docs
+}
+/** Documents of `col` that end after `since`. Fetched from the start of the hour, then cut to exactly `since`. */
+async function endingAfter(db: Firestore, col: string, since: number): Promise<QueryDocumentSnapshot[]> {
+  const from = Math.floor(since / 3_600_000) * 3_600_000
+  const docs = await rawDocs(`${col}|${from}`, async () => (await db.collection(col).where('endAt', '>', Timestamp.fromMillis(from)).get()).docs)
+  return docs.filter(d => (d.get('endAt') as Timestamp).toMillis() > since)
+}
+
 async function buildFeedUncached(db: Firestore, opts: FeedOpts): Promise<ScheduleItem[]> {
   const now = opts.now ?? Date.now()
   const until = now + opts.days * 86_400_000
@@ -60,8 +82,8 @@ async function buildFeedUncached(db: Firestore, opts: FeedOpts): Promise<Schedul
   const tz = cfg.timezone
   const items: ScheduleItem[] = []
 
-  const slots = await db.collection('airSlots').where('endAt', '>', Timestamp.fromMillis(since)).get()
-  for (const d of slots.docs) {
+  const slots = await endingAfter(db, 'airSlots', since)
+  for (const d of slots) {
     const startAt = d.get('startAt').toMillis() as number
     if (startAt >= until) continue
     items.push({
@@ -75,8 +97,8 @@ async function buildFeedUncached(db: Firestore, opts: FeedOpts): Promise<Schedul
   }
 
   const autoPieces: ScheduleItem[] = []
-  const autos = opts.includeAuto === false ? { docs: [] } : await db.collection('autoBlocks').where('endAt', '>', Timestamp.fromMillis(since)).get()
-  for (const d of autos.docs) {
+  const autos = opts.includeAuto === false ? [] : await endingAfter(db, 'autoBlocks', since)
+  for (const d of autos) {
     const startAt = d.get('startAt').toMillis() as number
     if (startAt >= until) continue
     autoPieces.push({
@@ -88,8 +110,8 @@ async function buildFeedUncached(db: Firestore, opts: FeedOpts): Promise<Schedul
 
   // What really played when it differed from the plan (see actualPlaylist.ts): it replaces the planned block for that time.
   if (opts.includeAuto !== false) {
-    const act = await db.collection('autoActual').where('endAt', '>', Timestamp.fromMillis(since)).get()
-    const raw = act.docs.map(d => ({ id: d.id, startMs: d.get('startAt').toMillis() as number, endMs: d.get('endAt').toMillis() as number, label: String(d.get('label') ?? '') }))
+    const act = await endingAfter(db, 'autoActual', since)
+    const raw = act.map(d => ({ id: d.id, startMs: d.get('startAt').toMillis() as number, endMs: d.get('endAt').toMillis() as number, label: String(d.get('label') ?? '') }))
       .filter(a => a.startMs < until && a.endMs > a.startMs && !isInterstitial(a.label))
       .sort((a, b) => a.startMs - b.startMs)
     // Tidy the records: same playlist back to back (gap under 20 min) becomes one block; when two overlap, the later one wins.
@@ -116,8 +138,8 @@ async function buildFeedUncached(db: Firestore, opts: FeedOpts): Promise<Schedul
   }
 
   // One-time events the station scheduled by hand.
-  const evs = await db.collection('events').where('endAt', '>', Timestamp.fromMillis(since)).get()
-  for (const d of evs.docs) {
+  const evs = await endingAfter(db, 'events', since)
+  for (const d of evs) {
     const startAt = d.get('startAt').toMillis() as number
     if (startAt >= until || d.get('isActive') === false) continue
     items.push({
@@ -129,7 +151,7 @@ async function buildFeedUncached(db: Firestore, opts: FeedOpts): Promise<Schedul
     })
   }
 
-  const weekly = await db.collection('schedule').where('isActive', '==', true).get()
+  const weekly = { docs: await rawDocs('schedule', async () => (await db.collection('schedule').where('isActive', '==', true).get()).docs) }
   for (let off = -back; off <= opts.days; off++) {
     const probe = now + off * 86_400_000
     const [y, m, dd] = localDate(probe, tz)

@@ -75,8 +75,10 @@ export async function POST(req: Request) {
     // Today's listening, by kind.
     const [y, m, d] = localDate(now, cfg.timezone)
     const dref = db.collection('listenDays').doc(`${t.uid}_${y}${m}${d}`)
-    const day = await dref.get()
-    let autoMin = Number(day.get('autoMin') ?? 0), liveMin = Number(day.get('liveMin') ?? 0)
+    // Today's totals are only looked at by the daily limits below; when none of them applies, the read is skipped.
+    const needDay = (!live && !staff && aud.dailyAutoMin > 0) || (guest && !live && !guestsOpen) || (!staff && !!policy.dailyCapMin && policy.dailyCapMin > 0)
+    const day = needDay ? await dref.get() : null
+    let autoMin = Number(day?.get('autoMin') ?? 0), liveMin = Number(day?.get('liveMin') ?? 0)
 
     if (action === 'beat') {
       const last = (s.get('lastBeat') as Timestamp | undefined)?.toMillis() ?? now

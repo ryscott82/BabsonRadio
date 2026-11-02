@@ -1,5 +1,5 @@
 import 'server-only'
-import { Timestamp, type Firestore } from 'firebase-admin/firestore'
+import { Timestamp, type Firestore, type QueryDocumentSnapshot } from 'firebase-admin/firestore'
 import type { DecodedIdToken } from 'firebase-admin/auth'
 import { endAfter, localParts, occursOn, parseClock, type Repeat } from '../autoschedule'
 import { loadConfig } from './autoschedule'
@@ -31,24 +31,45 @@ export function hostDayActive(shows: HostShow[], now: number, tz: string): boole
 export const showOpen = (s: HostShow, now: number) => now >= s.startAt - HOST_WINDOW_MS && now <= s.endAt + HOST_WINDOW_MS
 export const occurrenceId = (s: Pick<HostShow, 'key' | 'startAt'>) => `${s.key.replace(':', '-')}_${s.startAt}`
 
+// The Host tab check (Nav asks every minute, for everyone) can use a 90 s old copy of the person's slots and weekly shows;
+// the host controls themselves always read fresh (brief = false).
+const hostDocCache = new Map<string, { at: number; v: Promise<{ slots: QueryDocumentSnapshot[]; weekly: QueryDocumentSnapshot[] }> }>()
+function hostDocs(db: Firestore, uid: string, brief: boolean) {
+  const load = async () => {
+    const [slots, weekly] = await Promise.all([
+      db.collection('airSlots').where('requesterUid', '==', uid).get(),
+      db.collection('schedule').where('hostUids', 'array-contains', uid).get(),
+    ])
+    return { slots: slots.docs, weekly: weekly.docs }
+  }
+  if (!brief) return load()
+  const hit = hostDocCache.get(uid)
+  if (hit && Date.now() - hit.at < 90_000) return hit.v
+  const v = load()
+  const entry = { at: Date.now(), v }
+  if (hostDocCache.size > 2000) hostDocCache.clear()
+  hostDocCache.set(uid, entry)
+  v.catch(() => { if (hostDocCache.get(uid) === entry) hostDocCache.delete(uid) })
+  return v
+}
+
 /** This person's shows from yesterday through the next `days` days (weekly shows they host, and their approved student slots). */
-export async function hostShows(db: Firestore, uid: string, now: number, days = 7): Promise<HostShow[]> {
+export async function hostShows(db: Firestore, uid: string, now: number, days = 7, brief = false): Promise<HostShow[]> {
   const out: HostShow[] = []
   const tz = (await loadConfig(db)).timezone
 
-  const slots = await db.collection('airSlots').where('requesterUid', '==', uid).get()
-  for (const d of slots.docs) {
+  const { slots, weekly } = await hostDocs(db, uid, brief)
+  for (const d of slots) {
     const startAt = (d.get('startAt') as Timestamp).toMillis(), endAt = (d.get('endAt') as Timestamp).toMillis()
     if (endAt < now - 86_400_000 || startAt > now + days * 86_400_000) continue
     out.push({ key: `slot:${d.id}`, kind: 'slot', refId: d.id, title: d.get('title') ?? 'Your show', startAt, endAt })
   }
 
-  const weekly = await db.collection('schedule').where('hostUids', 'array-contains', uid).get()
   for (let off = -1; off <= days; off++) {
     const probe = now + off * 86_400_000
     const [y, m, dd] = localDate(probe, tz)
     const dow = localParts(probe, tz).dow
-    for (const w of weekly.docs) {
+    for (const w of weekly) {
       if (w.get('isActive') === false) continue
       if (!occursOn({ dayOfWeek: w.get('dayOfWeek'), repeat: w.get('repeat'), anchor: w.get('anchor'), weeks: w.get('weeks'), dates: w.get('dates') } as Repeat & { dayOfWeek?: number }, dow, y, m, dd)) continue
       const s = parseClock(String(w.get('startTime') ?? ''))
@@ -78,10 +99,10 @@ export async function canEditAnyShow(_db: Firestore, t: DecodedIdToken): Promise
 export interface HostContext { t: DecodedIdToken; staff: boolean; shows: HostShow[]; open: HostShow[] }
 
 /** Signed-in student or above (guests get 403). "Host" is not a role: it is whoever has a booked or approved show. With the list of their shows and which are inside the 4-hour window. */
-export async function hostContext(req: Request, db: Firestore, now = Date.now()): Promise<HostContext> {
+export async function hostContext(req: Request, db: Firestore, now = Date.now(), brief = false): Promise<HostContext> {
   const t = await requireUser(req)
   if ((await accessOf(t)).level === 'guest') throw new HttpError(403, 'This is for Babson, Olin and Wellesley students.', 'BR-PERM-001')
-  const [staff, shows] = await Promise.all([isStaffUser(db, t), hostShows(db, t.uid, now)])
+  const [staff, shows] = await Promise.all([isStaffUser(db, t), hostShows(db, t.uid, now, 7, brief)])
   return { t, staff, shows, open: shows.filter(s => showOpen(s, now)) }
 }
 

@@ -90,11 +90,11 @@ export interface VoteState {
   upNext: { blockStart: number; label: string } | null
 }
 
-// Everyone polling the vote card reads the same hour's votes, so they are fetched at most once every 5 s per server instance
+// Everyone polling the vote card reads the same hour's votes, so they are fetched at most once every 30 s per server instance
 // (and again right away after someone votes on this instance).
 let rowsCache: { blockMs: number; at: number; rows: { genre: string; uid: string }[] } | null = null
 async function voteRows(db: Firestore, blockMs: number) {
-  if (rowsCache && rowsCache.blockMs === blockMs && Date.now() - rowsCache.at < 5_000) return rowsCache.rows
+  if (rowsCache && rowsCache.blockMs === blockMs && Date.now() - rowsCache.at < 30_000) return rowsCache.rows
   const snap = await db.collection('songVotes').where('blockMs', '==', blockMs).get()
   const rows = snap.docs.map(d => ({ genre: String(d.get('genre')), uid: String(d.get('uid')) }))
   rowsCache = { blockMs, at: Date.now(), rows }

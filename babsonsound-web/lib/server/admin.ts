@@ -4,6 +4,7 @@ import { getAuth } from 'firebase-admin/auth'
 import { getAppCheck } from 'firebase-admin/app-check'
 import { getFirestore } from 'firebase-admin/firestore'
 import { getStorage } from 'firebase-admin/storage'
+import { installReadMeter } from './readMeter'
 
 // Set FIREBASE_SERVICE_ACCOUNT_JSON to the (single-line) service account key JSON.
 // Firebase console → Project settings → Service accounts → Generate new private key.
@@ -20,7 +21,7 @@ function app(): App {
 }
 
 export const adminAuth = () => getAuth(app())
-export const adminDb = () => getFirestore(app())
+export const adminDb = () => { const db = getFirestore(app()); installReadMeter(db); return db }
 export const adminAppCheck = () => getAppCheck(app())
 
 /** Firebase Storage bucket (images). Uses FIREBASE_STORAGE_BUCKET, else the public web config value. */

@@ -18,6 +18,19 @@ function check(occId: string, now: number) {
   if (startAt > now || startAt < now - 12 * 3_600_000) throw new HttpError(400, 'That show can not be rated now.')
 }
 
+// Everyone rating the same show reads the same ratings, so they are fetched at most once every 30 s per server instance per show
+// (and again right away after someone rates on this instance). Only the stars and who gave them are kept.
+const rated = new Map<string, { at: number; rows: { uid: string; stars: number }[] }>()
+async function ratingsOf(occId: string, now: number) {
+  const hit = rated.get(occId)
+  if (hit && now - hit.at < 30_000) return hit.rows
+  const snap = await adminDb().collection('ratings').where('occId', '==', occId).select('uid', 'stars').get()
+  const rows = snap.docs.map(d => ({ uid: String(d.get('uid')), stars: Number(d.get('stars')) }))
+  if (rated.size > 20) rated.clear()
+  rated.set(occId, { at: now, rows })
+  return rows
+}
+
 export async function GET(req: Request) {
   // Signed-out callers get the same answer as everyone else (no "mine"), so it can be cached at the edge for a few seconds,
   // like /api/presence. Requests with a sign-in header are never shared.
@@ -26,12 +39,12 @@ export async function GET(req: Request) {
     const occId = str(new URL(req.url).searchParams.get('occId'), 160)
     const now = Date.now()
     check(occId, now)
-    const snap = await adminDb().collection('ratings').where('occId', '==', occId).get()
-    const stars = snap.docs.map(d => d.get('stars') as number)
+    const rows = await ratingsOf(occId, now)
+    const stars = rows.map(r => r.stars)
     const uid = anon ? '' : await requireUser(req).then(t => t.uid, () => '')
     return {
       count: stars.length, avg: stars.length ? Math.round((stars.reduce((a, b) => a + b, 0) / stars.length) * 10) / 10 : 0,
-      mine: uid ? (snap.docs.find(d => d.get('uid') === uid)?.get('stars') ?? 0) : 0,
+      mine: uid ? (rows.find(r => r.uid === uid)?.stars ?? 0) : 0,
     }
   }, { 'Cache-Control': anon ? 'public, s-maxage=10, stale-while-revalidate=20' : 'private, no-store' })
 }
@@ -51,6 +64,7 @@ export async function POST(req: Request) {
       isShow: cur?.occId === occId ? cur.isShow : true, at: Timestamp.now(),
       ...(typeof b.comment === 'string' ? { comment: str(b.comment, 280) } : {}),
     }, { merge: true })
+    rated.delete(occId)
     await noteStars(db, t.uid, `h:${occId}`, stars).catch(() => {})
     await bump(db, t.uid)
     return { ok: true }

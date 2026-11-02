@@ -8,7 +8,11 @@ const MIN_GROUP = 3
 
 interface Row { uid: string; concentrations: string[]; gradYear: string; invisible: boolean }
 const cache = new Map<string, { at: number; row: Row }>()
-const TTL = 30_000
+const TTL = 120_000
+const MAX_CACHED = 5000
+// The caller's own concentrations and class year, kept briefly so every poll does not re-read their user doc.
+const meCache = new Map<string, { at: number; conc: string[]; year: string; exists: boolean }>()
+export function resetGroupCaches() { cache.clear(); meCache.clear() }
 
 async function rows(db: Firestore, uids: string[]): Promise<Row[]> {
   const now = Date.now()
@@ -18,13 +22,14 @@ async function rows(db: Firestore, uids: string[]): Promise<Row[]> {
     if (c && now - c.at < TTL) out.push(c.row); else need.push(u)
   }
   for (let i = 0; i < need.length; i += 300) {
-    for (const s of await db.getAll(...need.slice(i, i + 300).map(id => db.collection('users').doc(id)))) {
+    for (const s of await db.getAll(...need.slice(i, i + 300).map(id => db.collection('users').doc(id)), { fieldMask: ['concentrations', 'gradYear', 'invisible'] })) {
       if (!s.exists) continue
       const row: Row = {
         uid: s.id,
         concentrations: (s.get('concentrations') as string[] | undefined) ?? [], gradYear: s.get('gradYear') ?? '',
         invisible: s.get('invisible') === true,
       }
+      if (cache.size > MAX_CACHED) cache.clear()
       cache.set(s.id, { at: now, row }); out.push(row)
     }
   }
@@ -34,10 +39,16 @@ async function rows(db: Firestore, uids: string[]): Promise<Row[]> {
 export interface ListeningGroup { kind: 'concentration' | 'year'; label: string; count: number; text: string }
 
 export async function listeningGroups(db: Firestore, myUid: string, listening: Set<string>): Promise<ListeningGroup[]> {
-  const me = (await db.collection('users').doc(myUid).get())
-  if (!me.exists) return []
-  const myConc = ((me.get('concentrations') as string[] | undefined) ?? []).map(normText)
-  const myYear = String(me.get('gradYear') ?? '')
+  let mine = meCache.get(myUid)
+  if (!mine || Date.now() - mine.at >= TTL) {
+    const me = await db.collection('users').doc(myUid).get()
+    if (meCache.size > MAX_CACHED) meCache.clear()
+    mine = { at: Date.now(), exists: me.exists, conc: (me.get('concentrations') as string[] | undefined) ?? [], year: String(me.get('gradYear') ?? '') }
+    meCache.set(myUid, mine)
+  }
+  if (!mine.exists) return []
+  const myConc = mine.conc.map(normText)
+  const myYear = mine.year
   if (!myConc.length && !/^\d{4}$/.test(myYear)) return []
 
   const others = (await rows(db, [...listening].filter(u => u !== myUid))).filter(r => !r.invisible)

@@ -4,6 +4,7 @@ import type { DecodedIdToken } from 'firebase-admin/auth'
 import { adminAuth } from './admin'
 import { classifyServerError, codeForMessage } from '../errors'
 import { counted } from './cpuBudget'
+import { meterRequest, noteMeterPath } from './readMeter'
 import { lockedMayCall } from '../verifyClock'
 
 export class HttpError extends Error {
@@ -13,6 +14,7 @@ export class HttpError extends Error {
 }
 
 export async function requireUser(req: Request): Promise<DecodedIdToken> {
+  noteMeterPath(req)
   const m = (req.headers.get('authorization') ?? '').match(/^Bearer (.+)$/i)
   if (!m) throw new HttpError(401, 'Sign in required.')
   let t: DecodedIdToken
@@ -96,7 +98,7 @@ export function str(v: unknown, max = 200): string {
 
 export async function handle(fn: () => Promise<unknown>, headers?: Record<string, string>, bucket: 'reactions' | 'other' = 'other'): Promise<Response> {
   try {
-    return NextResponse.json(await counted(bucket, fn), headers ? { headers } : undefined)
+    return NextResponse.json(await meterRequest(() => counted(bucket, fn)), headers ? { headers } : undefined)
   } catch (e) {
     if (e instanceof HttpError) {
       const code = e.code ?? codeForMessage(e.status, e.message)

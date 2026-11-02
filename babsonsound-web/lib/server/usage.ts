@@ -22,7 +22,20 @@ export interface UsageConfig {
 }
 export const DEFAULT_USAGE: UsageConfig = { limitHours: 1500, quietEnabled: true, quietStart: 2, quietEnd: 6, guestAutoMin: 15 }
 
-export async function loadUsageConfig(db: Firestore): Promise<UsageConfig> {
+// Read on every listening check-in and by the budget, so kept for 30 s per server instance (the admin save clears it on this instance).
+let usageCfg: { at: number; v: Promise<UsageConfig> } | null = null
+export const resetUsageConfigCache = () => { usageCfg = null }
+
+export function loadUsageConfig(db: Firestore): Promise<UsageConfig> {
+  if (usageCfg && Date.now() - usageCfg.at < 30_000) return usageCfg.v
+  const v = readUsageConfig(db)
+  const entry = { at: Date.now(), v }
+  usageCfg = entry
+  v.catch(() => { if (usageCfg === entry) usageCfg = null })
+  return v
+}
+
+async function readUsageConfig(db: Firestore): Promise<UsageConfig> {
   const s = await db.collection('usage').doc('config').get()
   const d = s.data() ?? {}
   const n = (v: unknown, def: number, lo: number, hi: number) => (typeof v === 'number' && v >= lo && v <= hi ? v : def)

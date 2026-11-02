@@ -4,7 +4,6 @@ import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, str } from '@/lib/server/http'
 import { notifyAdmins } from '@/lib/server/push'
 import { escapeHtml, mailConfigured, sendMail } from '@/lib/server/mailer'
-import { refreshNowPlaying } from '@/lib/server/nowplaying'
 
 export const runtime = 'nodejs'
 
@@ -12,7 +11,6 @@ export const runtime = 'nodejs'
 //   POST { state: 'ok' | 'silent' | 'down', seconds?, detail? }  with header  x-monitor-key: <MONITOR_SECRET or CRON_SECRET>
 // A change from ok to silent/down alerts admins by push and email. Repeats every 15 minutes while it lasts. Recovery is announced once.
 const REALERT_MS = 15 * 60_000
-let lastRefresh = 0
 
 export async function POST(req: Request) {
   return handle(async () => {
@@ -23,10 +21,6 @@ export async function POST(req: Request) {
     if (!['ok', 'silent', 'down'].includes(state)) throw new HttpError(400, 'Unknown state.')
     const detail = str(b.detail, 200)
     const seconds = Math.max(0, Math.round(Number(b.seconds) || 0))
-
-    // The studio PC pings here every minute, so use it to keep the schedule's record of what is playing up to date.
-    // (At most every 5 minutes: the AzuraCast webhook handles song changes, and each check costs server time.)
-    if (Date.now() - lastRefresh > 300_000) { lastRefresh = Date.now(); after(() => refreshNowPlaying().catch(() => {})) }
 
     const db = adminDb()
     const ref = db.collection('ops').doc('deadair')

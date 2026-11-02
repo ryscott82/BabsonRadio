@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   return handle(async () => {
     const db = adminDb()
     const now = Date.now()
-    const c = await hostContext(req, db, now)
+    const c = await hostContext(req, db, now, true)
     const tz = (await loadConfig(db)).timezone
     if (c.shows.length > 0) await award(db, c.t.uid, '🎤').catch(() => {})
     return { host: c.staff || c.shows.length > 0, hosting: hostDayActive(c.shows, now, tz), controlsOpen: c.open.length > 0 }

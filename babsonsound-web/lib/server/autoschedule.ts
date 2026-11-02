@@ -10,14 +10,23 @@ import { genreWeights } from './taste'
 
 const CONFIG_DOC = ['config', 'autoScheduler'] as const
 
-export async function loadConfig(db: Firestore): Promise<AutoConfig> {
-  const snap = await db.collection(CONFIG_DOC[0]).doc(CONFIG_DOC[1]).get()
-  return snap.exists ? sanitizeConfig(snap.data()) : DEFAULT_CONFIG
+// Read by the schedule, the player and the vote card on almost every request, so kept for 20 s per server instance
+// (saveConfig below clears it on this instance at once).
+let configCache: { at: number; value: Promise<AutoConfig> } | null = null
+
+export function loadConfig(db: Firestore): Promise<AutoConfig> {
+  if (configCache && Date.now() - configCache.at < 20_000) return configCache.value.then(c => structuredClone(c))
+  const value = db.collection(CONFIG_DOC[0]).doc(CONFIG_DOC[1]).get().then(snap => (snap.exists ? sanitizeConfig(snap.data()) : DEFAULT_CONFIG))
+  const entry = { at: Date.now(), value }
+  configCache = entry
+  value.catch(() => { if (configCache === entry) configCache = null })
+  return value.then(c => structuredClone(c))
 }
 
 export async function saveConfig(db: Firestore, raw: unknown, uid: string): Promise<AutoConfig> {
   const cfg = sanitizeConfig(raw)
   await db.collection(CONFIG_DOC[0]).doc(CONFIG_DOC[1]).set({ ...cfg, updatedAt: Timestamp.now(), updatedBy: uid })
+  configCache = null
   return cfg
 }
 
@@ -40,7 +49,7 @@ export interface RunResult { blocks: PlannedBlock[]; kept: number; written: bool
  * Rebuild the auto-scheduled filler blocks for the next `horizonHours`.
  * Blocks that start within `lockMinutes` (or already started) are kept so what's playing never flips.
  */
-export async function rebuildAutoSchedule(db: Firestore, opts: { dryRun?: boolean; now?: number } = {}): Promise<RunResult> {
+export async function rebuildAutoSchedule(db: Firestore, opts: { dryRun?: boolean; now?: number; tasteMaxAgeMs?: number } = {}): Promise<RunResult> {
   const cfg = await loadConfig(db)
   const now = opts.now ?? Date.now()
   if (!cfg.enabled) return { blocks: [], kept: 0, written: false }
@@ -77,7 +86,7 @@ export async function rebuildAutoSchedule(db: Firestore, opts: { dryRun?: boolea
   const weekly = await loadWeekly(db)
 
   const fromMs = Math.max(now, kept.length ? kept[kept.length - 1].endMs : now)
-  const taste = cfg.learn ? await genreWeights(db, cfg.timezone) : { overall: {}, parts: {} }
+  const taste = cfg.learn ? await genreWeights(db, cfg.timezone, opts.tasteMaxAgeMs) : { overall: {}, parts: {} }
   const blocks = planAutoBlocks({ cfg, fromMs, untilMs: horizonEnd, busy, weekly, lastLabel: kept[kept.length - 1]?.label,
     weights: taste.overall, partWeights: taste.parts })
 

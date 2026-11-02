@@ -33,8 +33,29 @@ export async function listenerSample(db: Firestore, s: { listeners: number; labe
 
 let cache: { at: number; tz: string; v: LabelStats[] } | null = null
 
-export async function tasteStats(db: Firestore, now = Date.now(), tz = 'America/New_York'): Promise<LabelStats[]> {
-  if (cache && cache.tz === tz && now - cache.at < 10 * 60_000) return cache.v
+// The scan below reads four collections over 60 days (about 21,000 documents at the current rate), so its result is saved in
+// config/taste: the daily auto-scheduler run refreshes it, and everything else (Admin > Insights) reads that one document.
+const SAVED = ['config', 'taste'] as const
+const SAVED_MAX_AGE = 5 * 86_400_000 // default; the daily cron asks for a fresher copy (every third day), as 60-day averages move slowly
+
+/** Run the 60-day scan and save the result. Called by the daily auto-scheduler run. */
+export async function refreshTasteStats(db: Firestore, now = Date.now(), tz = 'America/New_York'): Promise<LabelStats[]> {
+  const v = await scanTaste(db, now, tz)
+  cache = { at: now, tz, v }
+  await db.collection(SAVED[0]).doc(SAVED[1]).set({ at: now, tz, stats: v }).catch(e => console.error('[taste save]', e))
+  return v
+}
+
+/** The saved result (1 read). Scans and saves only when nothing usable is saved yet (never run, other time zone, or older than `maxAgeMs`). */
+export async function tasteStats(db: Firestore, now = Date.now(), tz = 'America/New_York', maxAgeMs = SAVED_MAX_AGE): Promise<LabelStats[]> {
+  if (cache && cache.tz === tz && now - cache.at < Math.min(10 * 60_000, maxAgeMs)) return cache.v
+  const d = await db.collection(SAVED[0]).doc(SAVED[1]).get()
+  const at = Number(d.get('at')), stats = d.get('stats') as LabelStats[] | undefined
+  if (d.exists && d.get('tz') === tz && Array.isArray(stats) && now - at < maxAgeMs) { cache = { at: now, tz, v: stats }; return stats }
+  return refreshTasteStats(db, now, tz)
+}
+
+async function scanTaste(db: Firestore, now: number, tz: string): Promise<LabelStats[]> {
   const since = Timestamp.fromMillis(now - DAYS * 86_400_000)
   const [samples, songs, blocks, reacts] = await Promise.all([
     db.collection('listenerSamples').where('t', '>', since).get(),
@@ -99,14 +120,13 @@ export async function tasteStats(db: Firestore, now = Date.now(), tz = 'America/
     }
   }
   const v = all.map(x => ({ label: x.label, listeners: x.listeners, samples: x.samples, songStars: x.songStars, songRatings: x.songRatings, blockStars: x.blockStars, blockRatings: x.blockRatings, reactions: x.reactions, weight: x.weight, parts: x.parts })).sort((a, b) => b.weight - a.weight)
-  cache = { at: now, tz, v }
   return v
 }
 
 /** label (lowercase) → weight, for the auto-scheduler. */
-export async function genreWeights(db: Firestore, tz?: string): Promise<{ overall: Record<string, number>; parts: Record<string, Partial<Record<Daypart, number>>> }> {
+export async function genreWeights(db: Firestore, tz?: string, maxAgeMs?: number): Promise<{ overall: Record<string, number>; parts: Record<string, Partial<Record<Daypart, number>>> }> {
   try {
-    const st = await tasteStats(db, Date.now(), tz)
+    const st = await tasteStats(db, Date.now(), tz, maxAgeMs)
     return { overall: Object.fromEntries(st.map(x => [key(x.label), x.weight])), parts: Object.fromEntries(st.map(x => [key(x.label), x.parts])) }
   } catch { return { overall: {}, parts: {} } }
 }

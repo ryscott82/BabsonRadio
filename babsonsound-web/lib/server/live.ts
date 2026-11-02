@@ -66,13 +66,23 @@ export async function getColorChanging(db: Firestore, cur: OnAir, now = Date.now
 
 export interface RequestsStatus { open: boolean; occId: string; showTitle: string }
 
+// The vote card polls this for everyone; the host's on/off switch is read at most once every 5 s per server instance per airing.
+const reqDocs = new Map<string, { at: number; exists: boolean; open: boolean; exp: number }>()
+/** Call right after the host switches requests on or off, so this instance shows it at once. */
+export const forgetRequestsDoc = (occId: string) => { reqDocs.delete(occId) }
+
 export async function requestsStatus(db: Firestore, now = Date.now()): Promise<RequestsStatus> {
   const none = { open: false, occId: '', showTitle: '' }
   const cur = await currentOnAir(db, now)
   if (!cur || !cur.isShow) return none
-  const d = await db.collection('liveRequests').doc(cur.occId).get()
-  const exp = (d.get('expiresAt') as Timestamp | undefined)?.toMillis() ?? 0
-  if (!d.exists || d.get('open') !== true || exp < now) return none
+  let d = reqDocs.get(cur.occId)
+  if (!d || now - d.at >= 5_000) {
+    const snap = await db.collection('liveRequests').doc(cur.occId).get()
+    d = { at: now, exists: snap.exists, open: snap.get('open') === true, exp: (snap.get('expiresAt') as Timestamp | undefined)?.toMillis() ?? 0 }
+    if (reqDocs.size > 20) reqDocs.clear()
+    reqDocs.set(cur.occId, d)
+  }
+  if (!d.exists || !d.open || d.exp < now) return none
   return { open: true, occId: cur.occId, showTitle: cur.item.title }
 }
 

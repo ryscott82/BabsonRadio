@@ -8,11 +8,11 @@ export const runtime = 'nodejs'
 /** Keys on the main reaction row. */
 const SLOTS = 5
 
-async function allFor(uid: string) {
+async function allFor(uid: string, userDoc?: { get(f: string): unknown }) {
   const db = adminDb()
   const cur = await currentOnAir(db).catch(() => null)
   const mine = cur ? (await hostPrefsFor(db, cur)).emojis : []
-  return (await emojisFor(db, uid, mine.length ? mine : EMOJIS)).slice(0, MAX_REACTIONS)
+  return (await emojisFor(db, uid, mine.length ? mine : EMOJIS, userDoc)).slice(0, MAX_REACTIONS)
 }
 
 // The reactions this person can use right now: the host's own set for a show that picked one (otherwise the usual ones),
@@ -22,8 +22,8 @@ async function allFor(uid: string) {
 export async function GET(req: Request) {
   return handle(async () => {
     const t = await requireMember(req)
-    const all = await allFor(t.uid)
-    const d = await adminDb().collection('users').doc(t.uid).get()
+    const d = await adminDb().collection('users').doc(t.uid).get() // one read of the user doc, shared with the earned-emoji lookup
+    const all = await allFor(t.uid, d)
     const use = (d.get('emojiUse') ?? {}) as Record<string, number>
     const byUse = [...all].sort((a, b) => (use[b] ?? 0) - (use[a] ?? 0))
     const saved = ((d.get('reactionSlots') as string[] | undefined) ?? []).slice(0, SLOTS)

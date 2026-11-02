@@ -37,8 +37,8 @@ export async function award(db: Firestore, uid: string, emoji: string) {
 }
 
 /** The usual reactions plus whatever this person has earned. */
-export async function emojisFor(db: Firestore, uid: string, base: readonly string[] = EMOJIS): Promise<string[]> {
-  const got = ((await db.collection('users').doc(uid).get()).get('earnedEmojis') as string[] | undefined) ?? []
+export async function emojisFor(db: Firestore, uid: string, base: readonly string[] = EMOJIS, userDoc?: { get(f: string): unknown }): Promise<string[]> {
+  const got = ((userDoc ?? await db.collection('users').doc(uid).get()).get('earnedEmojis') as string[] | undefined) ?? []
   return [...base, ...EARNED_EMOJIS.filter(e => got.includes(e))]
 }
 

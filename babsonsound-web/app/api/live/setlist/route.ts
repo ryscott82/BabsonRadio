@@ -5,19 +5,29 @@ import { currentOnAir, parseSongs } from '@/lib/server/live'
 
 export const runtime = 'nodejs'
 
+// The set list and its votes are the same for everyone, so they are read at most once every 5 s per server instance per airing
+// (and again right away after someone votes on this instance).
+const lists = new Map<string, { at: number; songs: string; votes: Record<string, string[]> }>()
+
 // The set list the host entered for the show on air, with upvotes. Public to read; members can upvote.
 export async function GET(req: Request) {
   return handle(async () => {
     const db = adminDb()
     const cur = await currentOnAir(db)
     if (!cur || !cur.isShow) return { occId: '', title: '', songs: [] }
-    const [list, votes] = await Promise.all([
-      db.collection('setlists').doc(cur.occId).get(),
-      db.collection('setlistVotes').doc(cur.occId).get(),
-    ])
-    const v = (votes.get('votes') ?? {}) as Record<string, string[]>
+    let hit = lists.get(cur.occId)
+    if (!hit || Date.now() - hit.at >= 5_000) {
+      const [list, votes] = await Promise.all([
+        db.collection('setlists').doc(cur.occId).get(),
+        db.collection('setlistVotes').doc(cur.occId).get(),
+      ])
+      hit = { at: Date.now(), songs: String(list.get('songs') ?? ''), votes: (votes.get('votes') ?? {}) as Record<string, string[]> }
+      if (lists.size > 20) lists.clear()
+      lists.set(cur.occId, hit)
+    }
+    const v = hit.votes
     const uid = await requireUser(req).then(t => t.uid, () => '')
-    const songs = parseSongs(String(list.get('songs') ?? '')).map(s => ({
+    const songs = parseSongs(hit.songs).map(s => ({
       ...s, votes: v[s.id]?.length ?? 0, mine: !!uid && (v[s.id] ?? []).includes(uid),
     }))
     return { occId: cur.occId, title: cur.item.title, songs }
@@ -37,6 +47,7 @@ export async function POST(req: Request) {
     const ref = db.collection('setlistVotes').doc(cur.occId)
     const had = ((await ref.get()).get(`votes.${songId}`) as string[] | undefined)?.includes(t.uid) ?? false
     await ref.set({ votes: { [songId]: had ? FieldValue.arrayRemove(t.uid) : FieldValue.arrayUnion(t.uid) } }, { merge: true })
+    lists.delete(cur.occId)
     return { ok: true, mine: !had }
   })
 }

@@ -80,7 +80,7 @@ export async function GET(req: Request) {
     if (req.headers.get('authorization')) {
       const t = await requireUser(req).catch(() => null)
       if (t && (await accessOf(t)).level !== 'guest') {
-        const map = await visibleFriendProfiles(db, t.uid)
+        const map = await visibleFriendProfiles(db, t.uid, listening)
         friends = [...map].filter(([id]) => listening.has(id)).map(([uid, f]) => ({ uid, firstName: f.firstName, ...(f.instagram ? { instagram: f.instagram } : {}) }))
         groups = await listeningGroups(db, t.uid, listening).catch(() => [])
       }

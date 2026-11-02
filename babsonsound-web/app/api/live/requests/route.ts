@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, str } from '@/lib/server/http'
 import { canEditAnyShow, hostContext, showOpen } from '@/lib/server/host'
 import { buildScheduleFeed } from '@/lib/server/scheduleFeed'
-import { occIdOf } from '@/lib/server/live'
+import { forgetRequestsDoc, occIdOf } from '@/lib/server/live'
 
 export const runtime = 'nodejs'
 
@@ -34,6 +34,7 @@ export async function POST(req: Request) {
     await db.collection('liveRequests').doc(occId).set({
       open, showTitle: title, expiresAt: Timestamp.fromMillis(endAt), updatedAt: Timestamp.now(), by: c.t.uid,
     })
+    forgetRequestsDoc(occId)
     return { ok: true, open }
   })
 }

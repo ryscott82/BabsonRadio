@@ -2,7 +2,7 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, requireUser } from '@/lib/server/http'
 import { bump } from '@/lib/server/earnedEmojis'
-import { applySkipIfReady, azuraConfigured, skipState } from '@/lib/server/skipVotes'
+import { applySkipIfReady, azuraConfigured, forgetSkipDoc, skipState } from '@/lib/server/skipVotes'
 
 export const runtime = 'nodejs'
 
@@ -30,6 +30,7 @@ export async function POST(req: Request) {
     if (s.skipped) return { ...stripKey(s), skipped: true }
 
     await db.collection('skipVotes').doc(s.key).set({ voters: FieldValue.arrayUnion(t.uid), at: Timestamp.fromMillis(now) }, { merge: true })
+    forgetSkipDoc(s.key)
     await bump(db, t.uid)
     s = await skipState(db, t.uid, now)
     if (s.votes >= s.needed && !s.skipped && !azuraConfigured()) {

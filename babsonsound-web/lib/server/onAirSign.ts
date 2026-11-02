@@ -7,7 +7,7 @@ const REF = ['config', 'onAirSign'] as const
 let cache: { at: number; v: boolean } | null = null
 
 export async function getOnAirSign(db: Firestore, now = Date.now()): Promise<boolean> {
-  if (cache && now - cache.at < 5_000) return cache.v
+  if (cache && now - cache.at < 15_000) return cache.v
   const d = await db.collection(REF[0]).doc(REF[1]).get()
   const v = d.exists && d.get('on') === true
   cache = { at: now, v }

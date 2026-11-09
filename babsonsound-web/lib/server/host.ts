@@ -100,7 +100,11 @@ export interface HostContext { t: DecodedIdToken; staff: boolean; shows: HostSho
 
 /** Signed-in student or above (guests get 403). "Host" is not a role: it is whoever has a booked or approved show. With the list of their shows and which are inside the 4-hour window. */
 export async function hostContext(req: Request, db: Firestore, now = Date.now(), brief = false): Promise<HostContext> {
-  const t = await requireUser(req)
+  return hostContextFor(await requireUser(req), db, now, brief)
+}
+
+/** Same, for a caller that has already checked the sign-in (the live bundle). */
+export async function hostContextFor(t: DecodedIdToken, db: Firestore, now = Date.now(), brief = false): Promise<HostContext> {
   if ((await accessOf(t)).level === 'guest') throw new HttpError(403, 'This is for Babson, Olin and Wellesley students.', 'BR-PERM-001')
   const [staff, shows] = await Promise.all([isStaffUser(db, t), hostShows(db, t.uid, now, 7, brief)])
   return { t, staff, shows, open: shows.filter(s => showOpen(s, now)) }

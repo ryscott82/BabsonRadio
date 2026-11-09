@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { auth } from '@/lib/firebase'
 import { api } from '@/lib/auth'
+import { LISTEN_BEAT_MS } from '@/lib/liveBundle'
 
-// Keeps within the station's monthly listener hours. Asks the server before playing, checks in every minute while
+// Keeps within the station's monthly listener hours. Asks the server before playing, checks in every minute (LISTEN_BEAT_MS) while
 // playing, asks "still listening?" after a stretch with no activity, and stops the stream when told to.
 // See /api/listen. If the server can't be reached, listening carries on (the server is the stricter check, not a gate on a bad connection).
 
@@ -76,7 +77,7 @@ export function useListenGuard(playing: boolean, stop: () => void) {
       const idleFor = now - active.current
       if (!askedAt.current && idleFor >= idleMin.current * 60_000) { askedAt.current = now; setAsking(true) }
       if (askedAt.current && now - askedAt.current >= PROMPT_MS) { halt('Stopped because no one seemed to be listening. Tap play to start again.'); return }
-      if (now - lastBeat >= 30_000 && sid.current && auth.currentUser) {
+      if (now - lastBeat >= LISTEN_BEAT_MS && sid.current && auth.currentUser) { // keeps going in a hidden tab while audio plays: this is the one check-in that must not stop
         lastBeat = now
         try {
           const r = await api<Reply>('/api/listen', { action: 'beat', sessionId: sid.current, activeAgoSec: Math.round(idleFor / 1000) })

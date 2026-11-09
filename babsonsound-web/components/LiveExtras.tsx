@@ -6,6 +6,8 @@ import { useHeld } from '@/lib/settle'
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet, apiGetPublic } from '@/lib/auth'
+import { ratingView, songsView, type Section } from '@/lib/liveBundle'
+import { refreshAfterAction, refreshMe, useLiveBundle, useOverlay } from '@/lib/liveStore'
 import type { NowPlaying } from '@/lib/nowplaying'
 import EmojiRain, { rainBurst, rainFromOthers } from './EmojiRain'
 import { useArtMain } from '@/components/ArtTheme'
@@ -14,33 +16,37 @@ import { useArtMain } from '@/components/ArtTheme'
 // and star ratings for the show. Everyone can see them; students (and developers) can take part.
 
 const EMOJIS = ['🔥', '❤️', '🦫', '🤘']
-const poll = (fn: () => void, ms: number) => {
-  fn()
-  const t = setInterval(() => { if (!document.hidden) fn() }, ms)
-  return () => clearInterval(t)
-}
-
 // One reaction per 3s is sent to the server (it also allows at most 30 a minute per person). Extra taps inside that window still rain on your own screen, within the bucket in EmojiRain.
 let lastTap = 0
 const tooSoon = () => { const n = Date.now(); const r = n - lastTap < 3_000; if (!r) lastTap = n; return r }
 
-interface Song { id: string; text: string; votes: number; mine: boolean }
-
-
 function useLiveExtrasState(np: NowPlaying | null) {
   const { hasMemberAccess, user } = useAuth()
   const can = !!user && hasMemberAccess
-  // The reaction row: the usual ones plus any this person has earned (the server decides which).
-  const [emojis, setEmojis] = useState<string[]>(EMOJIS)
-  // Every reaction this person has unlocked (what a held key can be swapped for).
-  const [unlocked, setUnlocked] = useState<string[]>(EMOJIS)
+  // ── what is on screen to rate (the show on air, or the one that just ended) ──
+  const [last, setLast] = useState<{ occId: string; title: string; end: number; isShow: boolean } | null>(null)
   useEffect(() => {
-    if (!can) { queueMicrotask(() => { setEmojis(EMOJIS); setUnlocked(EMOJIS) }); return }
-    const load = () => apiGet<{ emojis: string[]; top?: string[] }>('/api/live/emojis').then(r => { setEmojis((r.top ?? r.emojis).slice(0, 5)); setUnlocked(r.emojis) }).catch(() => {})
-    load()
-    const t = setInterval(() => { if (!document.hidden) load() }, 60_000)
-    return () => clearInterval(t)
-  }, [can, user?.uid, np?.occId, np?.hostEmojis?.join('')])
+    if (np?.occId) queueMicrotask(() => setLast({ occId: np.occId, title: np.showTitle || np.blockTitle, end: np.showEnd, isShow: np.isShow }))
+  }, [np?.occId, np?.showTitle, np?.blockTitle, np?.showEnd, np?.isShow])
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t) }, [])
+  const rateable = np?.occId && np.showStart && now > np.showStart + 10 * 60_000
+    ? { occId: np.occId, title: np.showTitle || np.blockTitle, isShow: np.isShow }
+    : last && now < last.end + 45 * 60_000 && (!np?.occId || np.occId !== last.occId) ? { occId: last.occId, title: last.title, isShow: last.isShow } : null
+  const rid = rateable?.occId ?? ''
+
+  // Reactions, set list and ratings come with the rest of the live page in two shared calls (lib/liveStore.ts), not one call each.
+  const sections: Section[] = can ? ['emojis', 'setlist', 'rating'] : []
+  const live = useLiveBundle({ sections, occId: rid })
+
+  // The reaction row: the usual ones plus any this person has earned (the server decides which).
+  const em = live.me?.emojis
+  const [emojis, setEmojis] = useOverlay<string[]>(can && em ? (em.top ?? em.emojis).slice(0, 5) : EMOJIS, live.version)
+  // Every reaction this person has unlocked (what a held key can be swapped for).
+  const unlocked = can && em ? em.emojis : EMOJIS
+  // A show with its own reaction set (or a new show) changes the row: ask for your own half again when that happens.
+  const hostSet = np?.hostEmojis?.join('')
+  useEffect(() => { if (can) void refreshMe() }, [can, np?.occId, hostSet])
   // Hold a key, pick another unlocked reaction: it takes that key's place (and is remembered on the account).
   const swapKey = useCallback(async (index: number, to: string) => {
     const row = [...emojis]
@@ -48,8 +54,9 @@ function useLiveExtrasState(np: NowPlaying | null) {
     if (at >= 0) row[at] = row[index]
     row[index] = to
     setEmojis(row)
-    try { await api('/api/live/emojis', { slots: row }) } catch { /* the next refresh puts back what the server has */ }
-  }, [emojis])
+    try { await api('/api/live/emojis', { slots: row }) } catch { /* the refresh below puts back what the server has */ }
+    void refreshMe()
+  }, [emojis, setEmojis])
   const [eggs, setEggs] = useState<EggRule[]>([])
   useEffect(() => {
     apiGet<{ eggs: EggRule[] }>('/api/live/easter-eggs').then(r => setEggs(r.eggs)).catch(() => {})
@@ -99,46 +106,29 @@ function useLiveExtrasState(np: NowPlaying | null) {
   }
 
   // ── set list ──
-  const [songs, setSongs] = useState<Song[]>([])
-  const [listTitle, setListTitle] = useState('')
-  const loadSongs = useCallback(() =>
-    apiGet<{ title: string; songs: Song[] }>('/api/live/setlist').then(r => { setSongs(r.songs); setListTitle(r.title) }).catch(() => {}), [])
-  useEffect(() => poll(() => { void loadSongs() }, 20_000), [loadSongs, occId, user?.uid])
+  const view = songsView(live.shared, live.me)
+  const [songs, setSongs] = useOverlay<typeof view.songs>(view.songs, live.version)
+  const listTitle = view.title
   async function vote(id: string) {
     if (!can) { setMsg('Sign in with your school email to upvote.'); return }
-    setSongs(s => s.map(x => x.id === id ? { ...x, mine: !x.mine, votes: x.votes + (x.mine ? -1 : 1) } : x))
-    try { await api('/api/live/setlist', { songId: id }) } catch { void loadSongs() }
+    setSongs(songs.map(x => x.id === id ? { ...x, mine: !x.mine, votes: x.votes + (x.mine ? -1 : 1) } : x))
+    try { await api('/api/live/setlist', { songId: id }) } catch { setSongs(null) }
+    refreshAfterAction()
   }
 
   // ── rating (the show on air, or the one that just ended) ──
-  const [last, setLast] = useState<{ occId: string; title: string; end: number; isShow: boolean } | null>(null)
-  useEffect(() => {
-    if (np?.occId) queueMicrotask(() => setLast({ occId: np.occId, title: np.showTitle || np.blockTitle, end: np.showEnd, isShow: np.isShow }))
-  }, [np?.occId, np?.showTitle, np?.blockTitle, np?.showEnd, np?.isShow])
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t) }, [])
-  const rateable = np?.occId && np.showStart && now > np.showStart + 10 * 60_000
-    ? { occId: np.occId, title: np.showTitle || np.blockTitle, isShow: np.isShow }
-    : last && now < last.end + 45 * 60_000 && (!np?.occId || np.occId !== last.occId) ? { occId: last.occId, title: last.title, isShow: last.isShow } : null
-  const [rating, setRating] = useState<{ avg: number; count: number; mine: number }>({ avg: 0, count: 0, mine: 0 })
-  const rid = rateable?.occId ?? ''
-  useEffect(() => {
-    if (!rid) return
-    return poll(() => {
-      apiGet<{ avg: number; count: number; mine: number }>(`/api/live/rating?occId=${encodeURIComponent(rid)}`).then(setRating).catch(() => {})
-    }, 60_000)
-  }, [rid, user?.uid])
+  const [rating, setRating] = useOverlay(ratingView(live.shared, live.me, rid), live.version)
   // End-of-show feedback: from 5 minutes before the show ends until 45 minutes after, ask for stars.
   const endsAt = rateable ? (np?.occId === rateable.occId ? np.showEnd : last?.end ?? 0) : 0
   const closing = !!rateable && rateable.isShow && endsAt > 0 && now >= endsAt - 5 * 60_000
   async function rate(stars: number) {
     if (!can) { setMsg('Sign in with your school email to rate.'); return }
     if (!rateable) return
-    setRating(r => ({ ...r, mine: stars }))
+    setRating({ ...rating, mine: stars })
     try {
       await api('/api/live/rating', { occId: rateable.occId, stars, title: rateable.title })
-      setRating(await apiGet<{ avg: number; count: number; mine: number }>(`/api/live/rating?occId=${encodeURIComponent(rateable.occId)}`))
-    } catch (err) { setMsg(err instanceof Error ? err.message : 'Could not save your rating.') }
+      refreshAfterAction() // shows the new average right away (the shared copy is otherwise up to a minute old)
+    } catch (err) { setMsg(err instanceof Error ? err.message : 'Could not save your rating.'); setRating(null) }
   }
 
   // ── rate the song that is playing ──

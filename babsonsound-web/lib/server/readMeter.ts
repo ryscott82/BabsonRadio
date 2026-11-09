@@ -11,7 +11,7 @@ import { createMeter, wrapReads, type MinuteRow } from '../readMeterCore'
 
 const als = new AsyncLocalStorage<{ path?: string }>()
 
-function routeName(): string {
+export function routeName(): string {
   try {
     const r = workAsyncStorage.getStore()?.route
     if (r) return r

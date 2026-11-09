@@ -3,6 +3,7 @@ import type { Firestore, Query } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from './admin'
 import { phoneHashOf, releasePhoneIndex } from './phoneStore'
 import { removeContactGraph } from './contactGraph'
+import { forgetTokens } from './http'
 
 async function deleteQuery(db: Firestore, q: Query) {
   const snap = await q.get()
@@ -46,4 +47,5 @@ export async function deleteAccountData(uid: string) {
       userRef.delete(),
     ])
     await adminAuth().deleteUser(uid)
+    forgetTokens(uid) // a deleted account's remembered sign-ins stop working at once, not after 5 minutes
 }

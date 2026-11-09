@@ -3,7 +3,8 @@
 import SongLinks from '@/components/SongLinks'
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { fetchPresence, friendsLine, sendHeartbeat } from '@/lib/presence'
+import { friendsLine, sendHeartbeat } from '@/lib/presence'
+import { useLiveBundle } from '@/lib/liveStore'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNowPlaying } from '@/lib/nowplaying'
 import FitTitle from '@/components/FitTitle'
@@ -37,9 +38,12 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   }, [])
   const [isPlaying, setIsPlaying]     = useState(false)
   const [isBuffering, setIsBuffering] = useState(false)
-  const [listenerCount, setListenerCount] = useState(0)
-  const [friends, setFriends] = useState<{ firstName: string }[]>([])
-  const [groups, setGroups] = useState<{ text: string }[]>([])
+  // Listener count (everyone) and connected friends (names only for verified students, never invisible people) come with the rest of the
+  // live page in two shared calls (lib/liveStore.ts): the count from the cached shared half, friends and groups from your own half.
+  const live = useLiveBundle({ sections: ['presence'] })
+  const listenerCount = live.shared?.presence.count ?? 0
+  const friends = live.me?.presence?.friends ?? []
+  const groups = live.me?.presence?.groups ?? []
   const audioRef = useRef<HTMLAudioElement | null>(null)
   // The audio element outlives this component (it's shared at module level), so coming back to Live from another page
   // re-adopts the stream that's still playing instead of showing "paused".
@@ -161,22 +165,6 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
     }
   }, [loading, canListenLive])
 
-  const playingRef = useRef(false)
-  useEffect(() => { playingRef.current = isPlaying }, [isPlaying])
-  // Listener count + connected friends (names only for verified students, never invisible people).
-  useEffect(() => {
-    let alive = true
-    const load = () => fetchPresence().then(p => { if (alive) { setListenerCount(p.count); setFriends(p.friends); setGroups(p.groups ?? []) } })
-    load()
-    // Every 30 s while playing, every 90 s otherwise, and not at all while the tab is hidden (it refreshes when you come back).
-    let timer: ReturnType<typeof setTimeout>
-    const next = () => { timer = setTimeout(() => { if (!document.hidden) load(); next() }, playingRef.current ? 30_000 : 90_000) }
-    const back = () => { if (!document.hidden) load() }
-    next()
-    document.addEventListener('visibilitychange', back)
-    return () => { alive = false; clearTimeout(timer); document.removeEventListener('visibilitychange', back) }
-  }, [user?.uid])
-
   // Every 5 minutes of listening while signed out, invite them to make an account (the audio keeps playing).
   useEffect(() => {
     if (!isPlaying || !previewing) return
@@ -190,12 +178,11 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   }, [isPlaying, previewing, stopPlayback])
   useEffect(() => { if (user) queueMicrotask(() => setPrompt(false)) }, [user])
 
-  // Heartbeat while playing so the server knows we're tuned in.
+  // Tell the server when we start and stop listening. In between, the listening check-in (/api/listen, every minute) keeps us counted as tuned in.
   useEffect(() => {
     if (!isPlaying) return
     sendHeartbeat(true)
-    const t = setInterval(() => sendHeartbeat(true), 120_000)
-    return () => { clearInterval(t); sendHeartbeat(false) }
+    return () => { sendHeartbeat(false) }
   }, [isPlaying])
 
   // Adding ?eqdebug=1 to the address shows a one-line readout of the equalizer's state (for finding out why the bars look fake on a phone).

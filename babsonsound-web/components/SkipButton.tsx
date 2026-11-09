@@ -1,28 +1,23 @@
 'use client'
 
 import { openSignIn } from '@/lib/signInPrompt'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { api, apiGet, signOut } from '@/lib/auth'
+import { api, signOut } from '@/lib/auth'
 import type { NowPlaying } from '@/lib/nowplaying'
-
-interface Skip { votes: number; needed: number; mine: boolean; eligible: boolean }
+import { skipView, type SkipView as Skip } from '@/lib/liveBundle'
+import { refreshAfterAction, useLiveBundle, useOverlay } from '@/lib/liveStore'
 
 /** Next-track button beside play/pause. Only shows when the station is playing its own music; shows "X/Y requested". */
 export default function SkipButton({ np }: { np: NowPlaying | null }) {
   const { user, isGuest } = useAuth()
   const autoPlay = !!np?.title && !np.isLive && !np.isShow
-  const [skip, setSkip] = useState<Skip | null>(null)
+  // The tally comes with the rest of the live page (lib/liveStore.ts); which skip is yours is in your own half, refreshed after you act.
+  const live = useLiveBundle({ sections: user && !isGuest ? ['skip'] : [] })
+  const [shown, setSkip] = useOverlay<Skip | null>(skipView(live.shared, live.me), live.version)
+  const skip = user && !isGuest && autoPlay ? shown : null
   const [err, setErr] = useState('')
   const pending = useRef(false)
-
-  useEffect(() => {
-    if (!user || isGuest || !autoPlay) { queueMicrotask(() => setSkip(null)); return }
-    const load = () => { if (!document.hidden) apiGet<Skip>('/api/skip').then(v => { if (!pending.current) setSkip(v) }).catch(() => {}) }
-    load()
-    const t = setInterval(load, 20_000)
-    return () => clearInterval(t)
-  }, [user, isGuest, autoPlay, np?.playedAt, np?.title])
 
   // Optimistic: the button and count change the instant it is pressed; the server's answer replaces them, and an error puts them back.
   async function ask() {
@@ -31,7 +26,7 @@ export default function SkipButton({ np }: { np: NowPlaying | null }) {
     const before = skip
     pending.current = true
     setSkip({ ...skip, mine: true, votes: Math.min(skip.needed, skip.votes + 1) })
-    try { setSkip(await api<Skip>('/api/skip', {})) }
+    try { setSkip(await api<Skip>('/api/skip', {})); refreshAfterAction() }
     catch (e) { setSkip(before); setErr(e instanceof Error ? e.message : 'Could not send your skip.') }
     finally { pending.current = false }
   }

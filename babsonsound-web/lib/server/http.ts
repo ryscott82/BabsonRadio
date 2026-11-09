@@ -5,6 +5,8 @@ import { adminAuth } from './admin'
 import { classifyServerError, codeForMessage } from '../errors'
 import { counted } from './cpuBudget'
 import { meterRequest, noteMeterPath } from './readMeter'
+import { cpuMeterRequest } from './cpuMeter'
+import { createTokenCache } from '../tokenCache'
 import { lockedMayCall } from '../verifyClock'
 
 export class HttpError extends Error {
@@ -13,15 +15,26 @@ export class HttpError extends Error {
   }
 }
 
+// Signed-in people call us every minute or so with the same token. A token that was already checked is remembered for up to 5 minutes
+// on this server instance (and never past its own expiry, see lib/tokenCache.ts), so the signature check runs once, not on every call.
+// Everything after it (verified-email rule, access level) still runs on every request.
+const verified = createTokenCache<DecodedIdToken>()
+/** Forget a person's remembered tokens (call when their account is deleted or their sign-in is revoked). */
+export const forgetTokens = (uid: string) => verified.forgetUid(uid)
+export const tokenCacheStats = () => verified.stats()
+
 export async function requireUser(req: Request): Promise<DecodedIdToken> {
   noteMeterPath(req)
   const m = (req.headers.get('authorization') ?? '').match(/^Bearer (.+)$/i)
   if (!m) throw new HttpError(401, 'Sign in required.')
-  let t: DecodedIdToken
-  try {
-    t = await adminAuth().verifyIdToken(m[1])
-  } catch {
-    throw new HttpError(401, 'Your session expired. Please sign in again.')
+  let t = verified.get(m[1])
+  if (!t) {
+    try {
+      t = await adminAuth().verifyIdToken(m[1])
+    } catch {
+      throw new HttpError(401, 'Your session expired. Please sign in again.')
+    }
+    verified.set(m[1], t)
   }
   await enforceVerified(req, t)
   return t
@@ -98,7 +111,7 @@ export function str(v: unknown, max = 200): string {
 
 export async function handle(fn: () => Promise<unknown>, headers?: Record<string, string>, bucket: 'reactions' | 'other' = 'other'): Promise<Response> {
   try {
-    return NextResponse.json(await meterRequest(() => counted(bucket, fn)), headers ? { headers } : undefined)
+    return NextResponse.json(await meterRequest(() => cpuMeterRequest(() => counted(bucket, fn))), headers ? { headers } : undefined)
   } catch (e) {
     if (e instanceof HttpError) {
       const code = e.code ?? codeForMessage(e.status, e.message)

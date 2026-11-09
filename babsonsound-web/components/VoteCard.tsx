@@ -1,44 +1,31 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { api, apiGet } from '@/lib/auth'
+import { api } from '@/lib/auth'
 import { RatingsBlock } from '@/components/LiveExtras'
+import { voteView, type VoteView as State } from '@/lib/liveBundle'
+import { refreshAfterAction, useLiveBundle, useOverlay } from '@/lib/liveStore'
 import Link from 'next/link'
 import FeedbackBox from '@/components/FeedbackBox'
-
-interface State {
-  blockStart: number; blockEnd: number; threshold: number
-  options: { label: string; count: number }[]
-  myVote: string | null; winner: string | null; upNext?: { blockStart: number; label: string } | null; canVote: boolean; requestsOpen?: boolean; requestsShow?: string
-}
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
 /** "What would you like to hear": live votes for the next hour. Shown to signed-in people only. */
 export default function VoteCard() {
   const { user, loading } = useAuth()
-  const [s, setS] = useState<State | null>(null)
+  // The tally comes with the rest of the live page (lib/liveStore.ts); what you picked and whether you may vote are yours.
+  const live = useLiveBundle({ sections: ['vote'] })
+  const [s, setS] = useOverlay<State | null>(voteView(live.shared, live.me), live.version)
   const [text, setText] = useState('')
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
-
-  const load = useCallback(async () => {
-    try { setS(await apiGet<State>('/api/vote')) } catch { /* keep the last tally */ }
-  }, [])
-
-  useEffect(() => {
-    if (!user) return
-    queueMicrotask(load)
-    const t = setInterval(() => { if (!document.hidden) load() }, 30_000) // paused in background tabs; your own vote updates instantly
-    return () => clearInterval(t)
-  }, [user, load])
 
   if (loading || !user || !s) return null
 
   async function vote(genre: string) {
     setBusy(true); setMsg('')
-    try { setS(await api<State>('/api/vote', { genre })) } catch (e) { setMsg(e instanceof Error ? e.message : 'Try again.') }
+    try { setS(await api<State>('/api/vote', { genre })); refreshAfterAction() } catch (e) { setMsg(e instanceof Error ? e.message : 'Try again.') }
     setBusy(false)
   }
   async function sendRequest(e: React.FormEvent) {

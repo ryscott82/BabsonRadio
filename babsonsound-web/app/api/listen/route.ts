@@ -10,6 +10,7 @@ import { loadLimits } from '@/lib/server/listenLimits'
 import { effectiveLimits, hourLabel, isQuiet } from '@/lib/listenLimits'
 import { localParts } from '@/lib/autoschedule'
 import { FieldValue } from 'firebase-admin/firestore'
+import { recordPresence } from '@/lib/server/liveData'
 
 export const runtime = 'nodejs'
 
@@ -19,6 +20,9 @@ export const runtime = 'nodejs'
 //   POST { action: 'start' | 'beat' | 'stop', sessionId, device?, deviceId?, takeOver?, activeAgoSec? }
 //   start while another device of the same account is playing -> { ok: false, reason: 'elsewhere', device } unless takeOver is true.
 //   -> { ok: true, idleMin, sessionMaxMin, level } or { ok: false, reason, message }
+
+/** Presence (tuned in) counts for 4 minutes after its last refresh; this keeps it comfortably inside that. */
+const PRESENCE_EVERY_MS = 100_000
 
 type Deny = { ok: false; reason: string; message: string }
 
@@ -53,7 +57,7 @@ export async function POST(req: Request) {
     const policy = { ...effectiveLimits(aud, bp), liveOnly: !!bp?.liveOnly }
     const guestsOpen = !limits.budgetEnabled || budget.guestsOpen
 
-    // One device at a time. Someone else's stream (a different device, playing within the last 90 s) stops a new start
+    // One device at a time. Someone else's stream (a different device, playing within the last 150 s: two and a half check-ins) stops a new start
     // unless the person chooses to switch; after a switch the old device is stopped at its next check-in.
     const deviceId = str(b.deviceId, 64), device = str(b.device, 12)
     const other = s.exists && s.get('sessionId') !== sessionId
@@ -61,7 +65,7 @@ export async function POST(req: Request) {
     if (action === 'start' && other && b.takeOver !== true) {
       const age = now - ((s.get('lastBeat') as Timestamp | undefined)?.toMillis() ?? 0)
       const sameDevice = !!deviceId && s.get('deviceId') === deviceId
-      if (age < 90_000 && !sameDevice) {
+      if (age < 150_000 && !sameDevice) {
         const where = s.get('device') === 'ios' ? 'the app on your phone or tablet' : 'a web browser'
         return { ...deny('elsewhere', `You are already listening on ${where}. Switch to this device?`), device: s.get('device') ?? '' }
       }
@@ -100,8 +104,14 @@ export async function POST(req: Request) {
     if (guest && !live && !guestsOpen && autoMin >= uc.guestAutoMin) return deny('guestAuto', 'Listening is busy this month, so guests can hear live shows plus a few minutes of the playlist each day. Add your school email for the rest.')
     if (!staff && policy.dailyCapMin > 0 && autoMin + liveMin >= policy.dailyCapMin) return deny('daily', 'You have reached today\'s listening limit. It resets at midnight.')
 
-    if (action === 'start') await sref.set({ sessionId, uid: t.uid, startedAt: Timestamp.fromMillis(now), lastBeat: Timestamp.fromMillis(now), device, deviceId })
-    else await sref.update({ lastBeat: Timestamp.fromMillis(now) })
+    if (action === 'start') await sref.set({ sessionId, uid: t.uid, startedAt: Timestamp.fromMillis(now), lastBeat: Timestamp.fromMillis(now), device, deviceId, presenceAt: Timestamp.fromMillis(now) })
+    else {
+      // Tuned-in presence (the listener count, friends, the listening log) is refreshed from here every ~2 minutes, so the page no
+      // longer sends a separate heartbeat. The page still says so when it starts and stops playing.
+      const presenceDue = now - ((s.get('presenceAt') as Timestamp | undefined)?.toMillis() ?? 0) >= PRESENCE_EVERY_MS
+      await sref.update({ lastBeat: Timestamp.fromMillis(now), ...(presenceDue ? { presenceAt: Timestamp.fromMillis(now) } : {}) })
+      if (presenceDue) await recordPresence(db, t.uid, true, s.get('device') === 'ios' ? 'ios' : 'web', now).catch(() => {})
+    }
     return { ok: true, idleMin: policy.idleMin, sessionMaxMin: policy.sessionMaxMin, level: limits.budgetEnabled ? budget.level : 'normal' }
   })
 }

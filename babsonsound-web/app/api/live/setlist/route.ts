@@ -2,35 +2,24 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireMember, requireUser, str } from '@/lib/server/http'
 import { currentOnAir, parseSongs } from '@/lib/server/live'
+import { forgetSetlist, setlistData } from '@/lib/server/liveData'
 
 export const runtime = 'nodejs'
 
-// The set list and its votes are the same for everyone, so they are read at most once every 5 s per server instance per airing
-// (and again right away after someone votes on this instance).
-const lists = new Map<string, { at: number; songs: string; votes: Record<string, string[]> }>()
-
 // The set list the host entered for the show on air, with upvotes. Public to read; members can upvote.
+// (The web page now gets this from /api/live/bundle; this route stays for older app builds.)
 export async function GET(req: Request) {
   return handle(async () => {
     const db = adminDb()
     const cur = await currentOnAir(db)
-    if (!cur || !cur.isShow) return { occId: '', title: '', songs: [] }
-    let hit = lists.get(cur.occId)
-    if (!hit || Date.now() - hit.at >= 5_000) {
-      const [list, votes] = await Promise.all([
-        db.collection('setlists').doc(cur.occId).get(),
-        db.collection('setlistVotes').doc(cur.occId).get(),
-      ])
-      hit = { at: Date.now(), songs: String(list.get('songs') ?? ''), votes: (votes.get('votes') ?? {}) as Record<string, string[]> }
-      if (lists.size > 20) lists.clear()
-      lists.set(cur.occId, hit)
-    }
+    const hit = await setlistData(db, cur)
+    if (!hit.occId) return { occId: '', title: '', songs: [] }
     const v = hit.votes
     const uid = await requireUser(req).then(t => t.uid, () => '')
-    const songs = parseSongs(hit.songs).map(s => ({
+    const songs = hit.songs.map(s => ({
       ...s, votes: v[s.id]?.length ?? 0, mine: !!uid && (v[s.id] ?? []).includes(uid),
     }))
-    return { occId: cur.occId, title: cur.item.title, songs }
+    return { occId: hit.occId, title: hit.title, songs }
   }, { 'Cache-Control': req.headers.get('authorization') ? 'private, no-store' : 'public, s-maxage=5, stale-while-revalidate=10' }) // signed-out copy has no "mine" marks
 }
 
@@ -47,7 +36,7 @@ export async function POST(req: Request) {
     const ref = db.collection('setlistVotes').doc(cur.occId)
     const had = ((await ref.get()).get(`votes.${songId}`) as string[] | undefined)?.includes(t.uid) ?? false
     await ref.set({ votes: { [songId]: had ? FieldValue.arrayRemove(t.uid) : FieldValue.arrayUnion(t.uid) } }, { merge: true })
-    lists.delete(cur.occId)
+    forgetSetlist(cur.occId)
     return { ok: true, mine: !had }
   })
 }

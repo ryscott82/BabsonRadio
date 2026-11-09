@@ -71,9 +71,9 @@ const reqDocs = new Map<string, { at: number; exists: boolean; open: boolean; ex
 /** Call right after the host switches requests on or off, so this instance shows it at once. */
 export const forgetRequestsDoc = (occId: string) => { reqDocs.delete(occId) }
 
-export async function requestsStatus(db: Firestore, now = Date.now()): Promise<RequestsStatus> {
+export async function requestsStatus(db: Firestore, now = Date.now(), onAir?: OnAir | null): Promise<RequestsStatus> {
   const none = { open: false, occId: '', showTitle: '' }
-  const cur = await currentOnAir(db, now)
+  const cur = onAir === undefined ? await currentOnAir(db, now) : onAir // callers that already looked up what is on air pass it in
   if (!cur || !cur.isShow) return none
   let d = reqDocs.get(cur.occId)
   if (!d || now - d.at >= 5_000) {

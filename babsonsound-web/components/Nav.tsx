@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { signOut } from '@/lib/auth'
-import { useEffect, useState } from 'react'
-import { apiGet } from '@/lib/auth'
+import { useState } from 'react'
+import { useLiveBundle } from '@/lib/liveStore'
 import ThemeToggle from './ThemeToggle'
 import { LINKS } from '@/lib/links'
 
@@ -25,14 +25,9 @@ export default function Nav() {
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)      // profile menu
   const [mobileOpen, setMobileOpen] = useState(false)  // hamburger menu on phones
-  const [hosting, setHosting] = useState(false) // a show of theirs is on air or about to be (controls window is open)
-  useEffect(() => {
-    if (!user || !isBabson) { queueMicrotask(() => setHosting(false)); return }
-    const load = () => apiGet<{ hosting: boolean }>('/api/host/access').then(r => setHosting(r.hosting)).catch(() => setHosting(false))
-    load()
-    const t = setInterval(() => { if (!document.hidden) load() }, 60_000)
-    return () => clearInterval(t)
-  }, [user, isBabson])
+  // Whether they host anything comes from their own half of the live bundle (lib/liveStore.ts), only that piece, every 2 minutes. No shared data is fetched here.
+  const live = useLiveBundle({ shared: false, sections: user && isBabson ? ['host'] : [] })
+  const hosting = !!user && isBabson && !!live.me?.host?.hosting // a show of theirs is on today
   const avatarId = typeof userDoc?.avatarColor === 'string' ? userDoc.avatarColor : undefined
   const initials = (() => {
     const first = (userDoc?.firstName ?? userDoc?.displayName ?? user?.displayName ?? user?.email ?? 'U').trim()

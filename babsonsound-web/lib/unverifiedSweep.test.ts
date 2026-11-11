@@ -7,7 +7,7 @@ const NOW = Date.UTC(2026, 10, 20)
 /** An account whose grace ended `daysPastGrace` days ago. */
 const user = (uid: string, daysPastGrace: number, over: Partial<SweepUser> = {}): SweepUser => ({
   uid, email: `${uid}@example.com`, emailVerified: false, createdMs: NOW - (daysPastGrace + 7) * DAY,
-  graceUntil: NOW - daysPastGrace * DAY, apple: false, ...over,
+  graceUntil: NOW - daysPastGrace * DAY, ...over,
 })
 
 function run(users: SweepUser[], over: Partial<SweepDeps> = {}, profiles: Record<string, object> = {}) {
@@ -51,13 +51,12 @@ test('reminder goes out once around day 10, only when mail works', async () => {
   assert.equal(out.reminded, 0)
 })
 
-test('Apple accounts with no school email, and accounts with no email, are skipped; a set school email follows the clock', async () => {
+test('accounts with no email are skipped; an account with no claim follows 7 days from creation', async () => {
   const { calls } = await run([
-    user('apple-none', 30, { apple: true, graceUntil: null, createdMs: NOW - 90 * DAY }),
     user('no-email', 30, { email: null }),
-    user('apple-school', 8, { apple: true, createdMs: NOW - 90 * DAY }),
+    user('no-claim', 8, { graceUntil: null, createdMs: NOW - 22 * DAY }),
   ])
-  assert.deepEqual(calls.removed, ['apple-school'])
+  assert.deepEqual(calls.removed, ['no-claim'])
 })
 
 test('one failing account does not stop the rest, and the cap limits deletes per run', async () => {

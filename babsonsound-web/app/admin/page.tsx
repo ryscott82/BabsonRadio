@@ -95,7 +95,7 @@ export default function AdminPage() {
     ] },
     { id: 'tools', title: 'Data and help', icon: 'stats', tiles: [
       { href: '/admin/stats', icon: 'stats', title: 'Stats', text: 'Listeners, hours and logs' },
-      { href: '/admin/server-load', icon: 'stats', title: 'Server load', text: 'Which routes use the most Vercel server time and Firestore reads', admin: true },
+      { href: '/admin/server-load', icon: 'stats', title: 'Server load', text: 'Vercel server time: readings, charts, forecast, limits and what each feature costs', admin: true },
       { href: '/admin/tests', icon: 'tests', title: 'Tests', text: 'Preview features safely', admin: true },
       { href: '/admin/docs', icon: 'docs', title: 'Information and documentation', text: 'Features, setup guides and reference', admin: true },
     ] },

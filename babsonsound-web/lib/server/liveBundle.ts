@@ -7,6 +7,8 @@ import { emojiRow, hostAccess, presenceFriends, ratingRows, ratingSummary, setli
 import { hostContextFor } from './host'
 import { applySkipIfReady, listeningIds, skipState } from './skipVotes'
 import { voteState } from './votes'
+import { mayRun } from './tierGate'
+import type { Feature } from '../cpuTiers'
 import { occRateable, type MeBundle, type Section, type SharedBundle } from '../liveBundle'
 
 // What /api/live/bundle sends. Every piece comes from the same caches the old routes used, so the answers match them.
@@ -35,8 +37,10 @@ export async function buildShared(db: Firestore, occId: string, now = Date.now()
   }
 }
 
-async function section<T>(name: string, fn: () => Promise<T>): Promise<T | null> {
-  try { return await fn() } catch (e) { console.error(`[live bundle] ${name}`, e); return null } // one piece failing must not blank the rest
+// `feature` ties a section to a tier (lib/cpuTiers.ts): when the site is short of server time the section is left out like a failed one,
+// and the page keeps what it already shows.
+async function section<T>(name: string, fn: () => Promise<T>, gate?: { feature: Feature; uid: string }): Promise<T | null> {
+  try { if (gate && !(await mayRun(gate.feature, gate.uid))) return null; return await fn() } catch (e) { console.error(`[live bundle] ${name}`, e); return null } // one piece failing must not blank the rest
 }
 
 /** The half that depends on who is asking. Only the sections asked for are worked out. Guests get the pieces that apply to them. */
@@ -46,15 +50,15 @@ export async function buildMe(db: Firestore, t: DecodedIdToken, want: Section[],
   const needCur = has('setlist') || has('emojis')
   const cur = needCur ? await currentOnAir(db, now).catch(() => null) : null
   const [presence, skip, vote, setlist, rating, emojis, host] = await Promise.all([
-    has('presence') ? section('presence', async () => (guest ? { friends: [], groups: [] } : presenceFriends(db, t, await listeningIds(db, now)))) : undefined,
-    has('skip') ? section('skip', async () => ({ mine: guest ? false : (await skipState(db, t.uid, now)).mine })) : undefined,
-    has('vote') ? section('vote', async () => ({ myVote: (await voteState(db, t.uid, now)).myVote, canVote: !guest })) : undefined,
+    has('presence') ? section('presence', async () => (guest ? { friends: [], groups: [] } : presenceFriends(db, t, await listeningIds(db, now))), { feature: 'presence', uid: t.uid }) : undefined,
+    has('skip') ? section('skip', async () => ({ mine: guest ? false : (await skipState(db, t.uid, now)).mine }), { feature: 'skip', uid: t.uid }) : undefined,
+    has('vote') ? section('vote', async () => ({ myVote: (await voteState(db, t.uid, now)).myVote, canVote: !guest }), { feature: 'vote', uid: t.uid }) : undefined,
     has('setlist') ? section('setlist', async () => {
       const l = await setlistData(db, cur)
       return { occId: l.occId, mine: l.songs.filter(s => (l.votes[s.id] ?? []).includes(t.uid)).map(s => s.id) }
-    }) : undefined,
-    has('rating') && occId && occRateable(occId, now) ? section('rating', async () => ({ occId, mine: (await ratingRows(db, occId, now)).find(r => r.uid === t.uid)?.stars ?? 0 })) : undefined,
-    has('emojis') && !guest ? section('emojis', () => emojiRow(db, t.uid, cur)) : undefined,
+    }, { feature: 'setlist', uid: t.uid }) : undefined,
+    has('rating') && occId && occRateable(occId, now) ? section('rating', async () => ({ occId, mine: (await ratingRows(db, occId, now)).find(r => r.uid === t.uid)?.stars ?? 0 }), { feature: 'rating', uid: t.uid }) : undefined,
+    has('emojis') && !guest ? section('emojis', () => emojiRow(db, t.uid, cur), { feature: 'emojis', uid: t.uid }) : undefined,
     has('host') && !guest ? section('host', async () => hostAccess(db, await hostContextFor(t, db, now, true), now)) : undefined,
   ])
   const out: MeBundle = { at: now }

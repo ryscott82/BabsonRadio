@@ -24,7 +24,7 @@ export async function POST(req: Request) {
       const email = String(d.get('email') ?? '')
       if (!email || (want && !want.has(email))) continue
       if (now - ((d.get('mailedAt') as number | undefined) ?? 0) < GAP) { skipped++; continue }
-      if (await sendMail(email, m.subject, m.text, m.html)) { await d.ref.update({ mailedAt: now }); sent++ } else failed++
+      if (await sendMail(email, m.subject, m.text, m.html, { bulk: true })) { await d.ref.update({ mailedAt: now }); sent++ } else failed++
     }
     return { ok: true, sent, skipped, failed }
   }, { 'Cache-Control': 'no-store' })

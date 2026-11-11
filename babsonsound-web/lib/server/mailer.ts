@@ -1,4 +1,6 @@
 import 'server-only'
+import { listUnsubscribeHeaders } from '../mailHeaders'
+import { supportEmail } from '../contactEmail'
 
 // Email from babsonradio.com through Resend (https://resend.com). Set in Vercel:
 //   RESEND_API_KEY   the key from your Resend dashboard
@@ -8,7 +10,8 @@ export const mailConfigured = () => !!process.env.RESEND_API_KEY
 
 export const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-export async function sendMail(to: string, subject: string, text: string, html: string): Promise<boolean> {
+/** `bulk: true` is for mail sent to a list of people who did not just ask for it: adds List-Unsubscribe (a mailto to the station address). */
+export async function sendMail(to: string, subject: string, text: string, html: string, opts: { bulk?: boolean } = {}): Promise<boolean> {
   if (!mailConfigured()) return false
   try {
     const res = await fetch('https://api.resend.com/emails', {
@@ -18,6 +21,7 @@ export async function sendMail(to: string, subject: string, text: string, html: 
         from: process.env.MAIL_FROM || 'Babson Radio <hello@babsonradio.com>',
         to: [to], subject, text, html,
         ...(process.env.MAIL_REPLY_TO ? { reply_to: process.env.MAIL_REPLY_TO } : {}),
+        ...(opts.bulk ? { headers: listUnsubscribeHeaders({ mailto: supportEmail() }) } : {}),
       }),
       signal: AbortSignal.timeout(15_000),
     })
@@ -114,10 +118,10 @@ export function studioInviteMail(o: { link: string }) {
     'You are on the Babson Radio Studio trained list, but you have not set up your account yet.',
     'Enter your email on this page to open the Studio form and get a link to set a password:',
   ]
-  const text = ['Hi,', '', ...lines, '', o.link, '', 'If this does not look right, you can ignore this email.', '', 'Babson Radio'].join('\n')
+  const text = ['Hi,', '', ...lines, '', o.link, '', 'If this does not look right, you can ignore this email. To stop these emails, reply with "unsubscribe".', '', 'Babson Radio'].join('\n')
   const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1710;line-height:1.5">
 <p>Hi,</p>${lines.map(l => `<p>${escapeHtml(l)}</p>`).join('')}
 <p style="margin:28px 0"><a href="${escapeHtml(o.link)}" style="background:#006644;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;display:inline-block;font-weight:600">Set up my account</a></p>
-<p>If this does not look right, you can ignore this email.</p><p>Babson Radio</p></div>`
+<p>If this does not look right, you can ignore this email. To stop these emails, reply with &ldquo;unsubscribe&rdquo;.</p><p>Babson Radio</p></div>`
   return { subject, text, html }
 }

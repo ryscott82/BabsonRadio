@@ -8,11 +8,11 @@ import { api, apiGet } from '@/lib/auth'
 import { ErrorText } from '@/components/AuthUI'
 
 interface Item {
-  id: string; type: 'bug' | 'feature'; message: string; name: string; email: string
+  id: string; type: 'bug' | 'feature' | 'report'; target: { kind: string; id: string; label: string } | null; message: string; name: string; email: string
   platform: 'web' | 'ios'; appVersion: string; page: string; status: 'new' | 'done'; createdAt: number
 }
 
-const textOf = (i: Item) => `${i.message} ${i.name} ${i.email} ${i.page} ${i.platform} ${i.type}`
+const textOf = (i: Item) => `${i.message} ${i.name} ${i.email} ${i.page} ${i.platform} ${i.type} ${i.target?.label ?? ''} ${i.target?.id ?? ''}`
 
 export default function AdminFeedbackPage() {
   const { user, isAdmin, loading } = useAuth()
@@ -50,7 +50,7 @@ export default function AdminFeedbackPage() {
         </div>
       </div>
       <FilterBar f={f} total={items.length} shown={listAll.length} placeholder="Search reports, names, emails">
-        <Pick value={kind} onChange={setKind} label="Type" options={[['', 'All types'], ['bug', 'Bugs'], ['feature', 'Ideas']]} />
+        <Pick value={kind} onChange={setKind} label="Type" options={[['', 'All types'], ['bug', 'Bugs'], ['feature', 'Ideas'], ['report', 'Reports']]} />
         <Pick value={plat} onChange={setPlat} label="Platform" options={[['', 'Web + iOS'], ['web', 'Web'], ['ios', 'iOS']]} />
       </FilterBar>
       <ErrorText>{error}</ErrorText>
@@ -58,11 +58,14 @@ export default function AdminFeedbackPage() {
       {shown.map(i => (
         <div key={i.id} className={`sk-raised rounded-xl p-4 space-y-2 ${i.status === 'done' ? 'opacity-60' : ''}`}>
           <div className="flex items-center justify-between gap-4">
-            <span className={`font-display tracking-widest text-xs ${i.type === 'bug' ? 'text-br-red' : 'text-br-gold'}`}>
-              {i.type === 'bug' ? 'BUG' : 'FEATURE IDEA'} · {i.platform.toUpperCase()}{i.appVersion ? ` ${i.appVersion}` : ''}
+            <span className={`font-display tracking-widest text-xs ${i.type === 'feature' ? 'text-br-gold' : 'text-br-red'}`}>
+              {i.type === 'bug' ? 'BUG' : i.type === 'report' ? (i.target?.kind === 'person' ? 'REPORT: PERSON' : 'REPORT: CONTENT') : 'FEATURE IDEA'} · {i.platform.toUpperCase()}{i.appVersion ? ` ${i.appVersion}` : ''}
             </span>
             <span className="text-xs text-br-dk-sub">{new Date(i.createdAt).toLocaleString()}</span>
           </div>
+          {i.target && (i.target.label || i.target.id) && (
+            <p className="text-xs text-br-dk-sub">About: {i.target.label || i.target.id}{i.target.label && i.target.id ? ` (${i.target.id})` : ''}</p>
+          )}
           <p className="text-sm text-br-dk-text whitespace-pre-wrap">{i.message}</p>
           <div className="flex items-center justify-between gap-4">
             <p className="text-xs text-br-dk-sub truncate">{i.name}{i.email ? ` · ${i.email}` : ''}{i.page ? ` · ${i.page}` : ''}</p>

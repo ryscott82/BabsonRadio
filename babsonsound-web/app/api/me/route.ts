@@ -12,16 +12,20 @@ import { HttpError, handle, readJson, requireUser, str } from '@/lib/server/http
 import { accessOf, forgetAccess } from '@/lib/server/access'
 import { setupFor } from '@/lib/server/setup'
 import { hasPhone } from '@/lib/server/phoneStore'
+import { throttled } from '@/lib/server/tierGate'
 
 export const runtime = 'nodejs'
 
 export async function GET(req: Request) {
   return handle(async () => {
     const t = await requireUser(req)
+    // Tier 1: only at the very last step of a month that is running out of server time, someone who asks again within 30 s gets the profile
+    // this server gave them last. Nothing is skipped when there is none (sign-in must always work).
+    return throttled('me', t.uid, undefined, async () => {
     // A guest who just signed in with their confirmed school email becomes a student here.
     if (t.email_verified === true && await finishSchoolUpgrade(adminDb(), t).catch(() => false)) forgetAccess(t.uid)
     const a = await accessOf(t)
-    // Sign in with Apple can arrive before its profile exists: make it now.
+    // A signed-in account whose profile was never made (a sign-up that stopped half way): make it now.
     let u = await adminDb().collection('users').doc(t.uid).get()
     if (!u.exists && await ensureProfile(t)) u = await adminDb().collection('users').doc(t.uid).get()
     if (!u.exists) throw new HttpError(404, 'Profile not found.')
@@ -60,6 +64,7 @@ export async function GET(req: Request) {
       // record that it was shown (then `next` is null for 30 minutes); every other caller just looks.
       setup: await setupFor(t, a, u, new URL(req.url).searchParams.get('prompt') === '1'),
     }
+    })
   })
 }
 

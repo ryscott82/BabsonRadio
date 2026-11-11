@@ -36,7 +36,6 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | BR-ACC-017 | **Last name missing**: Sign-up needs both a first and last name. | Enter your last name. | No longer used: sign-up does not ask for a last name. |
 | BR-ACC-018 | **Graduation year missing**: Sign-up needs a graduation year (or Alumni / Faculty or staff). | Pick your graduation year from the list and try again. | No longer used at sign-up. Graduation year is optional and asked later in About you. |
 | BR-ACC-019 | **Terms not accepted**: Creating an account requires agreeing to the Terms of Use and Privacy Policy. | Tick the box that says you agree to the Terms of Use and Privacy Policy, then try again. | None needed. Acceptance time and version are saved on the user's profile (termsAcceptedAt, termsVersion). |
-| BR-ACC-020 | **That school email can't be used here**: An Apple account tried to set a school email that is on the owner list. Owner accounts have to sign up with the email directly. | Use a different school email. | If it is really the owner, they should sign up or sign in with that email and verify it. Check OWNER_EMAILS in Vercel. |
 | BR-ACC-021 | **Verify your email to keep using Babson Radio**: The account is more than 7 days old and its email is still not verified, so the server only allows sign-in and verification calls. After 14 days an unverified account is deleted. | Open the verification email and click the link (check spam), or use Resend email on the verify screen. If the address is wrong, sign out and sign up again with the right one. | Firebase Console → Authentication → check the Email verified column. The demo reviewer account is never locked. The nightly cleanup deletes unverified accounts after day 14 and logs them in accountDeletions. |
 | BR-ACC-022 | **Quick check needed**: Sign-up looks busy or unusual right now (several sign-ups from one network, a burst across the site, or repeated failures), so the server asks for a Cloudflare Turnstile check. The iOS app passes with App Check instead. | Complete the check shown under the password box, then tap Create account again. | Normal on launch day on campus Wi-Fi. If the check never appears, NEXT_PUBLIC_TURNSTILE_SITE_KEY is missing in Vercel; if it always fails, check TURNSTILE_SECRET_KEY and the widget hostname in Cloudflare. |
 | BR-ACC-023 | **Too many sign-ups right now**: Sign-up hit a hard limit: a very large burst from one IP, one email domain, or the whole site in a minute, or a very large number of failures from one IP. | Wait a few minutes and try again. | Look for [signup blocked] in the Vercel logs: the reason says which limit (ip burst, ip day, ip failures, domain flood, site flood). Limits are in lib/signupLimits.ts. |
@@ -113,12 +112,6 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | BR-SET-008 | **Avatar color not valid**: The color is not one of the profile colors. | Pick one of the colors shown. | Valid ids are in lib/profile.ts (AVATAR_COLORS). |
 | BR-SET-009 | **Babson campus line**: The number is one of Babson's own lines (781-239), not a personal number. Nothing was saved. | Enter your own mobile number, or skip this step. | The blocked prefixes are BLOCKED_NUMBER_PREFIXES in lib/phone.ts (kept in step with blockedNumberPrefixes in ProfileView.swift). Contact lists drop these hashes too. |
 | BR-SET-010 | **Instagram handle not valid**: The text is not an Instagram handle or an instagram.com profile link. A handle is 1 to 30 letters, numbers, periods or underscores. Nothing was saved. | Type your handle like @name, or paste your profile link. Or skip this step. | Rules are in lib/instagram.ts (cleanInstagram). Handles are never checked against Instagram and need not be unique. An admin can clear one in Admin > People (logged in instagramClears). |
-
-## Sign in with Apple
-
-| Code | What it is | What the user should do | What staff check |
-|---|---|---|---|
-| BR-APL-001 | **Not an Apple sign-in**: This step is only for accounts that signed in with Apple. | Sign out and sign in with Apple, or use the email sign-in. | Firebase Console → Authentication → Users: check the provider column shows Apple. |
 
 ## Host training
 
@@ -199,3 +192,21 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | BR-BTH-002 | **Studio helper refused**: The helper on the studio PC rejected the control token (expired, or signed with another secret). | Sign out and sign in again on the studio PC. | Check the PC clock is right and the two STUDIO_PC_SECRET values match. |
 | BR-BTH-003 | **Studio session over**: The studio PC session this request belongs to ended or belongs to someone else. | Sign in again on the studio PC. | — |
 | BR-BTH-004 | **Studio PC not set up**: STUDIO_PC_SECRET is missing or too short on the website server. | Tell a station admin. | Add STUDIO_PC_SECRET (32+ random characters) in Vercel and redeploy. Use the same value in tools/studio-helper/.env. |
+
+## Library worker
+
+| Code | What it is | What the user should do | What staff check |
+|---|---|---|---|
+| BR-LIB-001 | **Library worker not set up**: WORKER_SECRET is missing or shorter than 32 characters on the website server. | Tell a station admin. | Add WORKER_SECRET (32+ random characters) in Vercel and redeploy. Use the same value on the studio PC. |
+| BR-LIB-002 | **Studio PC not accepted**: The worker's signature was wrong or expired, or its sign-in token is not the studio worker's. | Nothing to do on the website; check the studio PC. | The PC clock must be within 2 minutes. WORKER_SECRET must match on the PC and in Vercel. Each nonce works once. |
+| BR-LIB-003 | **Job type not allowed**: The job type is not one of the allowed library jobs. | Pick a job from the Library page. | Allowed: library.scan, fetch_metadata, fetch_art, analyze_beats, measure_loudness, apply, undo, schedule.reconcile. |
+| BR-LIB-004 | **Job parameters not valid**: The job's params do not fit its type (unknown key, too many ids, bad value). | Change the options and try again. | See LIBRARY_WORKER.md for the params of each job type. |
+| BR-LIB-005 | **Job already queued**: A job of this type is already queued or running. | Wait for it to finish, or cancel it first. | If the PC is off, cancel the queued job from the Library page. |
+| BR-LIB-006 | **Job not found**: No job with that id. | Refresh the Library page. | — |
+| BR-LIB-007 | **Job already finished**: Only queued or running jobs can be cancelled. | Nothing to do. | — |
+| BR-LIB-008 | **Proposal can't be changed**: The proposal does not exist, or it was already applied. | Refresh the list. | — |
+| BR-LIB-009 | **Proposal edit not valid**: An edited field is not allowed, empty, or the art link is not https. | Fix the field and save again. | Editable: title, artist, album, artUrl. |
+| BR-LIB-010 | **Request not valid**: A list was empty or too long (400 ids at most), an id was not valid, or a filter was unknown. | Select fewer rows and try again. | — |
+| BR-LIB-011 | **Change refused**: The PC reported a change the server will not record: the job is not running, it is the wrong kind of job, the song has no approved proposal, or the change was already undone. | Nothing to do on the website; tell the station team. | Apply jobs may only change songs whose proposal is approved. An undo can be recorded once per change. |
+| BR-LIB-012 | **Beats shard full**: One beats document would grow past the safe size. | Tell a station admin. | Split the shard (use two characters) in lib/worker.ts beatShard before adding more beats. |
+| BR-LIB-013 | **Too many tries**: Too many refused worker requests in a minute. | Wait a minute. | Check WORKER_SECRET and the PC clock. |

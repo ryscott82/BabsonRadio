@@ -144,7 +144,7 @@ export async function sendPasswordReset(email: string) {
 }
 
 /** Permanently deletes the signed-in account and its data. Re-checks the password first. */
-/** True when this account has a password (accounts made with Sign in with Apple do not). */
+/** True when this account has a password (every account made here does). */
 export const hasPassword = () => !!auth.currentUser?.providerData.some(p => p.providerId === 'password')
 
 export async function deleteMyAccount(password = '') {
@@ -158,8 +158,10 @@ export async function deleteMyAccount(password = '') {
     }
     await u.getIdToken(true)
   }
-  // Apple accounts have no password to check. The server still needs a sign-in from the last 5 minutes.
-  await api('/api/me/delete', { confirm: 'DELETE' })
+  // The server needs a sign-in from the last 5 minutes (the check above just made one).
+  const r = await api<{ kept?: boolean; message?: string }>('/api/me/delete', { confirm: 'DELETE' })
+  // The App Review demo account is never deleted: show the friendly message and stay signed in.
+  if (r.kept) throw new Error(r.message || 'This is a demo account, so nothing was deleted.')
   await firebaseSignOut(auth).catch(() => {})
 }
 

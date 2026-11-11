@@ -5,8 +5,7 @@
 //   day 10      one reminder email
 //   day 14      the account and its data are deleted, which also frees the email for its real owner
 //
-// "Day 7" is the account's `graceUntil` claim. Apple accounts get that claim when they set a school email, so they follow
-// the same clock from that moment. The demo / App Store reviewer account is never touched (callers pass `exempt`).
+// "Day 7" is the account's `graceUntil` claim (or 7 days after the account was made when there is none). The demo / App Store reviewer account is never touched (callers pass `exempt`).
 import { VERIFY_GRACE_MS } from './verify-grace.ts'
 
 const DAY = 24 * 60 * 60 * 1000

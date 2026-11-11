@@ -67,6 +67,18 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Pushed live tallies (skip votes, hour vote, set list of what is on air). The server writes it (at most once every 45 s, only when
+    // something changed); every signed-in page may read it, and nobody can write it. It holds no listener count and no names.
+    match /liveState/{id} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // Server-time log, alerts and tier changes: admin pages read these through the API only.
+    match /serverUsage/{id} { allow read, write: if false; }
+    match /usageAlerts/{id} { allow read, write: if false; }
+    match /cpuTierLog/{id} { allow read, write: if false; }
+
     // Episode likes: server-only so "your friend liked this" can respect invisible mode.
     match /likes/{id} {
       allow read, write: if false;

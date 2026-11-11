@@ -14,7 +14,7 @@ export function usernameOf(email: string): string {
 }
 
 /**
- * Makes sure the signed-in person has a profile (users/{uid}). Used by Sign in with Apple, where no sign-up form ran.
+ * Makes sure the signed-in person has a profile (users/{uid}). A safety net for a sign-up that stopped before its profile was written.
  * A school email makes them a student, anything else a guest. Name, phone, grad year and birthday are asked later, one at a time (lib/setup.ts).
  * Safe to call again: an existing profile is never changed. Returns true when it created one.
  */
@@ -23,7 +23,7 @@ export async function ensureProfile(t: DecodedIdToken, opts: { agreed?: boolean;
   if (!email) return false
   const ref = adminDb().collection('users').doc(t.uid)
   const school = isSchoolEmail(email)
-  // A name from the sign-in token (Apple, Google) is only a starting point: it skips our forms, so it goes through the word filter.
+  // A name from the sign-in token (a sign-in provider) is only a starting point: it skips our forms, so it goes through the word filter.
   const first = await cleanOr(adminDb(), (opts.firstName ?? '').trim().slice(0, 40) || (t.name ?? '').split(' ')[0] || '')
   try {
     await ref.create({

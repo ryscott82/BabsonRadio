@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { api } from '@/lib/auth'
 import { RatingsBlock } from '@/components/LiveExtras'
 import { voteView, type VoteView as State } from '@/lib/liveBundle'
-import { refreshAfterAction, useLiveBundle, useOverlay } from '@/lib/liveStore'
+import { noteMine, useLiveBundle, useOverlay } from '@/lib/liveStore'
 import Link from 'next/link'
 import FeedbackBox from '@/components/FeedbackBox'
 
@@ -25,7 +25,7 @@ export default function VoteCard() {
 
   async function vote(genre: string) {
     setBusy(true); setMsg('')
-    try { setS(await api<State>('/api/vote', { genre })); refreshAfterAction() } catch (e) { setMsg(e instanceof Error ? e.message : 'Try again.') }
+    try { setS(await api<State>('/api/vote', { genre })); noteMine({ vote: { myVote: genre, canVote: true } }) } catch (e) { setMsg(e instanceof Error ? e.message : 'Try again.') }
     setBusy(false)
   }
   async function sendRequest(e: React.FormEvent) {

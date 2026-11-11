@@ -19,7 +19,7 @@ test('matching ignores case and spaces, and other emails are never owners', () =
   assert.equal(isVerifiedOwner('boss@babson.edu', true, []), false)
 })
 
-test('the Apple school-email step can tell an owner address even when unverified', () => {
+test('an owner address is recognised from the list alone, even when unverified', () => {
   assert.equal(isListedOwner('BOSS@babson.edu', owners), true)
   assert.equal(isListedOwner('x@babson.edu', owners), false)
   assert.equal(isListedOwner(undefined, owners), false)

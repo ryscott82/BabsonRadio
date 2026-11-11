@@ -33,8 +33,7 @@ export default function TermsPage() {
 
       <p className="text-sm text-br-dk-sub leading-relaxed">
         These terms are an agreement between you and Babson Sound, a student organization at Babson College that runs Babson Radio.
-        Ryan Edward Media Group, LLC (&ldquo;REMG&rdquo;) holds the Apple Developer account through which the iPhone app is distributed.
-        REMG is not the operator of Babson Radio and is not a party to these terms. By creating an
+        By creating an
         account or using the Babson Radio website or app, you agree to these terms and to our{' '}
         <Link href="/privacy" className={a}>Privacy Policy</Link>. If you do not agree, do not use Babson Radio.
         Please read the sections on disclaimers, limits on liability, release, and resolving disputes.
@@ -117,7 +116,7 @@ export default function TermsPage() {
       </Section>
 
       <Section title="13. Disclaimers">
-        <Loud>Babson Radio is provided &ldquo;as is&rdquo; and &ldquo;as available,&rdquo; and your use is at your own risk. Babson Sound; its officers, members, advisors, hosts, DJs and volunteers; Babson College and its trustees, officers, employees and students; REMG and its owners, contractors and affiliates; our licensors and service providers; and their affiliates (together, the &ldquo;Babson Radio parties&rdquo;) make no promises or warranties of any kind, express or implied, including about quality, accuracy, completeness, reliability, availability, security, merchantability, fitness for a particular purpose, and non-infringement, except where required by law.</Loud>
+        <Loud>Babson Radio is provided &ldquo;as is&rdquo; and &ldquo;as available,&rdquo; and your use is at your own risk. Babson Sound; its officers, members, advisors, hosts, DJs and volunteers; Babson College and its trustees, officers, employees and students; our licensors and service providers; and their affiliates (together, the &ldquo;Babson Radio parties&rdquo;) make no promises or warranties of any kind, express or implied, including about quality, accuracy, completeness, reliability, availability, security, merchantability, fitness for a particular purpose, and non-infringement, except where required by law.</Loud>
         <Loud>We do not promise that the stream, website or app will be uninterrupted, timely, secure or error free, that content or schedules are accurate, that any data will be kept, or that the service is free of viruses or harmful components. The service is not a way to reach emergency services and must not be relied on for emergency, safety or time-critical information, except where required by law.</Loud>
       </Section>
 
@@ -156,7 +155,7 @@ export default function TermsPage() {
 
       <Section title="20. Contact">
         <p>
-          Send a bug report or idea from your profile, or reach us on{' '}
+          Visit our <Link href="/support" className={a}>support page</Link>, send a bug report or idea from your profile, or reach us on{' '}
           {INSTAGRAM_URL ? <a className={a} href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer">Instagram</a> : 'Instagram'}
           {email ? <>, or email {email}</> : ''}.
         </p>

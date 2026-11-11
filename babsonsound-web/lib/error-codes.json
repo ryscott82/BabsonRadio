@@ -448,13 +448,6 @@
     "staffCheck": "None needed. Acceptance time and version are saved on the user's profile (termsAcceptedAt, termsVersion)."
   },
   {
-    "code": "BR-ACC-020",
-    "title": "That school email can't be used here",
-    "meaning": "An Apple account tried to set a school email that is on the owner list. Owner accounts have to sign up with the email directly.",
-    "userFix": "Use a different school email.",
-    "staffCheck": "If it is really the owner, they should sign up or sign in with that email and verify it. Check OWNER_EMAILS in Vercel."
-  },
-  {
     "code": "BR-ACC-021",
     "title": "Verify your email to keep using Babson Radio",
     "meaning": "The account is more than 7 days old and its email is still not verified, so the server only allows sign-in and verification calls. After 14 days an unverified account is deleted.",
@@ -579,13 +572,6 @@
     "meaning": "The text is not an Instagram handle or an instagram.com profile link. A handle is 1 to 30 letters, numbers, periods or underscores. Nothing was saved.",
     "userFix": "Type your handle like @name, or paste your profile link. Or skip this step.",
     "staffCheck": "Rules are in lib/instagram.ts (cleanInstagram). Handles are never checked against Instagram and need not be unique. An admin can clear one in Admin > People (logged in instagramClears)."
-  },
-  {
-    "code": "BR-APL-001",
-    "title": "Not an Apple sign-in",
-    "meaning": "This step is only for accounts that signed in with Apple.",
-    "userFix": "Sign out and sign in with Apple, or use the email sign-in.",
-    "staffCheck": "Firebase Console → Authentication → Users: check the provider column shows Apple."
   },
   {
     "code": "BR-SRV-009",

@@ -42,7 +42,7 @@ export async function requireUser(req: Request): Promise<DecodedIdToken> {
 
 /**
  * Verify within 7 days: after the grace period an unverified account can reach only /api/me, /api/auth and a few account
- * routes (lib/verifyClock.ts). The demo / reviewer account is exempt. Accounts with no email (Apple "no email") are not
+ * routes (lib/verifyClock.ts). The demo / reviewer account is exempt. Accounts with no email are not
  * locked, since there is nothing to verify. Verified accounts (nearly everyone) skip this with no extra work.
  */
 async function enforceVerified(req: Request, t: DecodedIdToken) {

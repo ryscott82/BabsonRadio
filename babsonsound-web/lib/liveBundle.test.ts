@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  LISTEN_BEAT_MS, OCC, PERSONAL_MS, PRIVATE_CACHE, RESUME_MIN_AGE_MS, SECTIONS, SHARED_CACHE, SHARED_MS,
-  cacheControlFor, cleanOcc, dueFor, newerShared, occRateable, pollAllowed, ratingView, sectionsOf, skipView, songsView, voteView, wantOf,
+  DEFAULT_REFRESH_SEC, OCC, PRESENCE_TTL_MS, PRIVATE_CACHE, REFRESH_MS, RESUME_MIN_AGE_MS, SECTIONS, SHARED_CACHE, SLOW_SECTIONS,
+  cacheControlFor, cleanOcc, dueFor, mergeMe, newerShared, occRateable, pollAllowed, ratingView, refreshSecOf, sectionsForRefresh, sectionsOf, skipView, songsView, voteView, wantOf,
   type MeBundle, type SharedBundle,
 } from './liveBundle.ts'
 
@@ -25,9 +25,9 @@ const me = (over: Partial<MeBundle> = {}): MeBundle => ({
   at: NOW, skip: { mine: true }, vote: { myVote: 'Pop Hits', canVote: true }, setlist: { occId: OCC_ID, mine: ['b'] }, rating: { occId: OCC_ID, mine: 4 }, ...over,
 })
 
-test('the shared half is public and cached for 10 to 30 s with stale-while-revalidate; your half is never cached', () => {
+test('the shared half is public and cached for a minute with stale-while-revalidate; your half is never cached', () => {
   const m = /s-maxage=(\d+)/.exec(SHARED_CACHE)
-  assert.ok(m && Number(m[1]) >= 10 && Number(m[1]) <= 30)
+  assert.ok(m && Number(m[1]) >= 60 && Number(m[1]) <= 120)
   assert.match(SHARED_CACHE, /^public/)
   assert.match(SHARED_CACHE, /stale-while-revalidate=\d+/)
   assert.equal(PRIVATE_CACHE, 'private, no-store')
@@ -104,31 +104,60 @@ test('rating view: average and count from the shared half, your stars from yours
   assert.deepEqual(ratingView(null, null, OCC_ID), { avg: 0, count: 0, mine: 0 })
 })
 
-test('timing: listening check-in every 60 s, shared half every 30 s, your half every 2 minutes', () => {
-  assert.equal(LISTEN_BEAT_MS, 60_000)
-  assert.ok(SHARED_MS >= 30_000)
-  assert.ok(PERSONAL_MS >= 2 * SHARED_MS)
-  assert.ok(RESUME_MIN_AGE_MS < SHARED_MS)
+test('timing: one check-in about every 12 minutes, presence lasts longer than one missed check-in, a returning tab waits 2 minutes', () => {
+  assert.equal(DEFAULT_REFRESH_SEC, 720)
+  assert.equal(REFRESH_MS, 12 * 60_000)
+  assert.ok(PRESENCE_TTL_MS >= 15 * 60_000 && PRESENCE_TTL_MS <= 20 * 60_000)
+  assert.ok(PRESENCE_TTL_MS > REFRESH_MS) // one slow check-in does not drop a listener
+  assert.equal(RESUME_MIN_AGE_MS, 120_000)
 })
 
-test('hidden tabs do not poll; the listening check-in is the one thing that goes on, and only while audio plays', () => {
+test('the interval the server sends is kept between 2 and 60 minutes, otherwise the default', () => {
+  assert.equal(refreshSecOf(720), 720)
+  assert.equal(refreshSecOf(120), 120)
+  assert.equal(refreshSecOf(3600), 3600)
+  for (const bad of [119, 3601, 0, -5, NaN, Infinity, '720', null, undefined]) assert.equal(refreshSecOf(bad), DEFAULT_REFRESH_SEC)
+  assert.equal(refreshSecOf(300.4), 300)
+})
+
+test('hidden tabs do not ask; the listening check-in is the one thing that goes on, and only while audio plays', () => {
   assert.equal(pollAllowed({ hidden: false, playing: false, kind: 'poll' }), true)
   assert.equal(pollAllowed({ hidden: false, playing: true, kind: 'beat' }), true)
   assert.equal(pollAllowed({ hidden: true, playing: false, kind: 'poll' }), false)
-  assert.equal(pollAllowed({ hidden: true, playing: true, kind: 'poll' }), false) // playing does not make the page polls resume
+  assert.equal(pollAllowed({ hidden: true, playing: true, kind: 'poll' }), false)
   assert.equal(pollAllowed({ hidden: true, playing: true, kind: 'beat' }), true)
   assert.equal(pollAllowed({ hidden: true, playing: false, kind: 'beat' }), false)
 })
 
-test('when a part is due: never while hidden; after its interval; a returning tab refreshes after 10 s', () => {
-  assert.equal(dueFor(Infinity, SHARED_MS, { hidden: true }), false)
-  assert.equal(dueFor(29_999, SHARED_MS, { hidden: false }), false)
-  assert.equal(dueFor(30_000, SHARED_MS, { hidden: false }), true)
-  assert.equal(dueFor(Infinity, PERSONAL_MS, { hidden: false }), true)
-  assert.equal(dueFor(60_000, PERSONAL_MS, { hidden: false }), false)
-  assert.equal(dueFor(60_000, PERSONAL_MS, { hidden: false, resumed: true }), true) // back after a minute away
-  assert.equal(dueFor(5_000, PERSONAL_MS, { hidden: false, resumed: true }), false) // but not if it just refreshed
-  assert.equal(dueFor(60_000, PERSONAL_MS, { hidden: true, resumed: true }), false)
+test('when a part is due: never while hidden; after the 12-minute interval; a returning tab refreshes only after 2 minutes away', () => {
+  assert.equal(dueFor(Infinity, REFRESH_MS, { hidden: true }), false)
+  assert.equal(dueFor(REFRESH_MS - 1, REFRESH_MS, { hidden: false }), false)
+  assert.equal(dueFor(REFRESH_MS, REFRESH_MS, { hidden: false }), true)
+  assert.equal(dueFor(Infinity, REFRESH_MS, { hidden: false }), true)
+  assert.equal(dueFor(5 * 60_000, REFRESH_MS, { hidden: false, resumed: true }), true) // back after five minutes away
+  assert.equal(dueFor(30_000, REFRESH_MS, { hidden: false, resumed: true }), false) // but not if it just refreshed
+  assert.equal(dueFor(5 * 60_000, REFRESH_MS, { hidden: true, resumed: true }), false)
+})
+
+test('slow-changing sections (host access, reactions palette, your stars) are left out of a refresh and asked on first load and for a new show', () => {
+  assert.deepEqual([...SLOW_SECTIONS].sort(), ['emojis', 'host', 'rating'])
+  const all = sectionsOf(null)
+  assert.deepEqual(sectionsForRefresh(all, { first: true }), all)
+  assert.deepEqual(sectionsForRefresh(all, { first: false }), ['presence', 'skip', 'vote', 'setlist'])
+  assert.deepEqual(sectionsForRefresh(['host'], { first: false }), [])
+})
+
+test('a partial personal reply is laid over the old one; a failed section does not wipe a good copy, a new value replaces it', () => {
+  const cur = me({ emojis: { emojis: ['🔥'], top: ['🔥'], customized: false }, host: { host: true, hosting: false, controlsOpen: false } })
+  const inc: MeBundle = { at: NOW + 1, skip: { mine: false }, vote: null, rating: undefined }
+  const out = mergeMe(cur, inc)
+  assert.equal(out.at, NOW + 1)
+  assert.deepEqual(out.skip, { mine: false }) // replaced
+  assert.deepEqual(out.vote, cur.vote) // null (failed) keeps the old one
+  assert.deepEqual(out.emojis, cur.emojis) // not asked for: kept
+  assert.deepEqual(out.host, cur.host)
+  assert.equal(mergeMe(null, inc).vote, null) // nothing to keep
+  assert.equal(mergeMe(null, { at: 1 }).skip, undefined)
 })
 
 test('a late cached copy of the shared half never replaces a fresher one', () => {

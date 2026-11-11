@@ -6,7 +6,7 @@
 //   admin  level admin. The server only honors an admin or director who has a school email, so for an address
 //          that is not babson.edu, olin.edu or wellesley.edu, add it to OWNER_EMAILS in Vercel as well.
 //   demo   level student with demo: true (the one hidden reviewer account: treated as school-verified, skips the
-//          phone/birthday step, not listed in /admin/users, never emailed). Give Apple its email and password.
+//          phone/birthday step, not listed in /admin/users, never emailed). Give App Review its email and password.
 //
 // (optional) ACCOUNT_PASSWORD=... to choose the password; otherwise a random one is printed once.
 // Needs FIREBASE_SERVICE_ACCOUNT_JSON in the environment (see .env.example).

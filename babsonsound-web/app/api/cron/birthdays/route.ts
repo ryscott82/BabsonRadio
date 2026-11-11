@@ -4,13 +4,15 @@ import { birthdaysToday } from '@/lib/server/birthdays'
 import { notifyUsers } from '@/lib/server/push'
 import { runUnverifiedSweep } from '@/lib/server/unverified'
 import { runStudioExpiryNotices } from '@/lib/server/studioNotices'
+import { runUsageReminder } from '@/lib/server/serverUsage'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 // Called once a morning by Vercel Cron (see vercel.json): a happy-birthday notification to people who have it turned on.
 // The same run also reminds and deletes accounts that never verified their email (lib/server/unverified.ts) and sends Studio training
-// expiry notices (lib/server/studioNotices.ts), so no extra cron is needed.
+// expiry notices (lib/server/studioNotices.ts), and, on Mondays (Eastern), the weekly "enter this week's Vercel usage" email to the owners
+// (lib/server/serverUsage.ts, skipped if an entry was made in the last 6 days). Vercel's free plan allows two cron jobs, so nothing new is added.
 export async function GET(req: Request) {
   return handle(async () => {
     const secret = process.env.CRON_SECRET
@@ -19,6 +21,7 @@ export async function GET(req: Request) {
     const sent = await notifyUsers('birthday', today.map(p => p.uid), { title: 'Happy birthday! 🎂', body: 'From everyone at Babson Radio. Tune in and we might play something for you.' })
     const cleanup = await runUnverifiedSweep().catch(e => { console.error('[unverified sweep]', e); return null })
     const training = await runStudioExpiryNotices().catch(e => { console.error('[studio notices]', e); return null })
-    return { ok: true, birthdays: today.length, sent, cleanup, training }
+    const reminder = await runUsageReminder().catch(e => { console.error('[usage reminder]', e); return null })
+    return { ok: true, birthdays: today.length, sent, cleanup, training, reminder }
   })
 }

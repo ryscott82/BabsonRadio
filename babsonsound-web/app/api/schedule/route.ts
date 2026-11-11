@@ -17,5 +17,5 @@ export async function GET(req: Request) {
       items: (await buildScheduleFeed(db, { days, showStudentHosts: member, back })).map(({ hostUids: _h, ...i }) => i),
       timezone: (await loadConfig(db)).timezone, // station time zone (the app uses it for weekly reminders)
     }
-  }, { 'Cache-Control': req.headers.get('authorization') ? 'private, no-store' : 'public, s-maxage=15, stale-while-revalidate=45' }) // signed-out copy has no student names, so it is the same for everyone
+  }, { 'Cache-Control': req.headers.get('authorization') ? 'private, max-age=120' : 'public, s-maxage=300, stale-while-revalidate=600' }) // signed-out copy has no student names, so it is the same for everyone: the edge keeps it 5 minutes (Tier 0). A signed-in browser keeps its own copy 2 minutes.
 }

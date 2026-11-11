@@ -30,6 +30,8 @@ export interface NowPlaying {
   /** Staff switched the ON AIR sign on by hand. */
   onAirManual?: boolean
   updatedAt: number
+  /** Set only when the backup way is on: watch this public AzuraCast feed for changes and ask our route only when the song, show or live status changed. */
+  direct?: { url: string } | null
   /** client clock (ms) when this was fetched, for the progress bar */
   receivedAt: number
 }
@@ -42,6 +44,19 @@ const COVER_RETRY_MS = [2_000, 6_000, 12_000]
 const HEAR_DELAY_MS = 5_000
 /** How long the previous cover stays up when the next one hasn't arrived. */
 const LINGER_MS = 90_000
+/** While the backup way is on, our own route is asked on a slow timer (show names, notes and the like) and AzuraCast's feed is watched for changes. */
+const DIRECT_SLOW_MS = 60_000
+
+/** What the page needs to notice from AzuraCast's feed: when the song started, whether someone is live, and who. Pure, so it can be tested. */
+export interface FeedMark { playedAt: number; isLive: boolean; streamer: string }
+export function feedMark(raw: unknown): FeedMark | null {
+  const r = (raw && typeof raw === 'object' ? raw : null) as { now_playing?: { played_at?: unknown }; live?: { is_live?: unknown; streamer_name?: unknown } } | null
+  if (!r || !r.now_playing) return null
+  return { playedAt: Number(r.now_playing.played_at) || 0, isLive: r.live?.is_live === true, streamer: typeof r.live?.streamer_name === 'string' ? r.live.streamer_name : '' }
+}
+/** True when the feed shows something different from what we last showed, so our route should be asked now. */
+export const feedChanged = (m: FeedMark, np: Pick<NowPlaying, 'playedAt' | 'isLive' | 'streamer'>) =>
+  (m.playedAt > 0 && np.playedAt > 0 && m.playedAt !== np.playedAt) || m.isLive !== np.isLive || (m.isLive && m.streamer !== np.streamer)
 
 /**
  * Polls /api/nowplaying while the tab is visible. When the current song's end time passes, it swaps in the next
@@ -51,6 +66,9 @@ export function useNowPlaying(everyMs = 12_000): NowPlaying | null {
   const [np, setNp] = useState<NowPlaying | null>(null)
   const [advanced, setAdvanced] = useState('') // which song we have already moved past
   const load = useRef<(fresh?: boolean) => void>(() => {})
+  const npRef = useRef<NowPlaying | null>(null)
+  const directRef = useRef<{ url: string } | null>(null)
+  useEffect(() => { npRef.current = np; directRef.current = np?.direct ?? null }, [np])
   useEffect(() => {
     let alive = true
     load.current = (fresh = false) => {
@@ -58,11 +76,26 @@ export function useNowPlaying(everyMs = 12_000): NowPlaying | null {
       // At a song change, skip the edge cache so the new song shows as soon as the server has it. The 2 s buckets mean everyone asking in the same moment shares one answer.
       fetch(fresh ? `/api/nowplaying?t=${Math.floor(Date.now() / 2000)}` : '/api/nowplaying').then(r => (r.ok ? r.json() : null)).then(d => { if (alive && d) setNp({ ...d, receivedAt: Date.now() }) }).catch(() => {})
     }
-    const poll = () => load.current()
+    // Normal way: ask our route every `everyMs` (the edge answers most of them). Backup way (the route says `direct`): ask it only every minute, and in between
+    // watch AzuraCast's public feed, which costs us nothing, and ask our route right away when it shows a new song or a change of live status.
+    let lastOurs = 0, directBad = 0
+    const ours = (fresh = false) => { lastOurs = Date.now(); load.current(fresh) }
+    const poll = () => { if (!(directRef.current && directBad < 2 && Date.now() - lastOurs < DIRECT_SLOW_MS)) ours() }
+    const watch = () => {
+      const d = directRef.current
+      if (!d || directBad >= 2 || document.hidden) return
+      fetch(d.url, { cache: 'no-store', credentials: 'omit' }).then(r => (r.ok ? r.json() : Promise.reject(new Error('feed')))).then(raw => {
+        const m = feedMark(raw), cur = npRef.current
+        if (!m) throw new Error('feed')
+        directBad = 0
+        if (alive && cur && feedChanged(m, cur)) ours(true)
+      }).catch(() => { directBad++ }) // the feed cannot be read from here (blocked, down): go back to the normal way
+    }
     poll()
-    const t = setInterval(poll, everyMs)
-    document.addEventListener('visibilitychange', poll)
-    return () => { alive = false; clearInterval(t); document.removeEventListener('visibilitychange', poll) }
+    const t = setInterval(() => { poll(); watch() }, everyMs)
+    const onVisible = () => { poll(); watch() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { alive = false; clearInterval(t); document.removeEventListener('visibilitychange', onVisible) }
   }, [everyMs])
 
   const key = np ? `${np.playedAt}|${np.title}` : ''

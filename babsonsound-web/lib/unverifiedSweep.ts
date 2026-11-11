@@ -8,7 +8,6 @@ export type SweepUser = {
   emailVerified: boolean
   createdMs: number
   graceUntil: number | null
-  apple: boolean
 }
 
 export type SweepDeps = {
@@ -37,9 +36,8 @@ export async function sweepUnverified(d: SweepDeps) {
     token = page.next
     for (const u of page.users) {
       out.scanned++
-      // Nothing to verify without an email. Apple accounts that never set a school email have no clock either.
+      // Nothing to verify without an email.
       if (u.emailVerified || !u.email) continue
-      if (u.apple && u.graceUntil === null) continue
       const stage = verifyStage({ emailVerified: false, graceUntil: u.graceUntil, createdMs: u.createdMs, now: d.now })
       if (stage !== 'remind' && stage !== 'delete') continue
       try {

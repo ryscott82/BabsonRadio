@@ -46,7 +46,7 @@ export default async function AboutPage() {
         <ul className="text-lg text-br-dk-text space-y-2">
           <li><ContactEmail className={a} /></li>
           {INSTAGRAM_URL && <li><a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className={a}>Instagram</a></li>}
-          <li className="text-base"><Link href="/terms" className={a}>Terms</Link> · <Link href="/privacy" className={a}>Privacy</Link></li>
+          <li className="text-base"><Link href="/terms" className={a}>Terms</Link> · <Link href="/privacy" className={a}>Privacy</Link> · <Link href="/support" className={a}>Support</Link></li>
         </ul>
       </section>
     </div>

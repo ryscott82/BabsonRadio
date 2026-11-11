@@ -3,7 +3,7 @@
 import SongLinks from '@/components/SongLinks'
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { friendsLine, sendHeartbeat } from '@/lib/presence'
+import { friendsLine } from '@/lib/presence'
 import { useLiveBundle } from '@/lib/liveStore'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNowPlaying } from '@/lib/nowplaying'
@@ -178,12 +178,7 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   }, [isPlaying, previewing, stopPlayback])
   useEffect(() => { if (user) queueMicrotask(() => setPrompt(false)) }, [user])
 
-  // Tell the server when we start and stop listening. In between, the listening check-in (/api/listen, every minute) keeps us counted as tuned in.
-  useEffect(() => {
-    if (!isPlaying) return
-    sendHeartbeat(true)
-    return () => { sendHeartbeat(false) }
-  }, [isPlaying])
+  // Being counted as tuned in is part of the listening check-in (lib/listenGuard.ts): one call at play, one about every 12 minutes, one at stop.
 
   // Adding ?eqdebug=1 to the address shows a one-line readout of the equalizer's state (for finding out why the bars look fake on a phone).
   useEffect(() => {

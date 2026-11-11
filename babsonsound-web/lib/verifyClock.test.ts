@@ -38,8 +38,8 @@ test('with no claim, grace is 7 days from creation', () => {
   assert.equal(at(15, { graceUntil: undefined }), 'delete')
 })
 
-test('an Apple account that sets a school email starts its clock then', () => {
-  const setAt = T0 + 40 * DAY // account made long ago, school email set on day 40
+test('a claim set long after creation starts the clock from the claim, not from creation', () => {
+  const setAt = T0 + 40 * DAY // account made long ago, claim set on day 40
   const stage = (d: number) => verifyStage({ emailVerified: false, graceUntil: setAt + 7 * DAY, createdMs: T0, now: setAt + d * DAY })
   assert.equal(stage(1), 'grace')
   assert.equal(stage(8), 'locked')
@@ -47,7 +47,7 @@ test('an Apple account that sets a school email starts its clock then', () => {
 })
 
 test('locked accounts reach only /api/me, /api/auth and the account routes', () => {
-  for (const p of ['/api/me', '/api/auth/signup', '/api/auth/apple/school-email', '/api/me/delete', '/api/me/school-email', '/api/guest/status'])
+  for (const p of ['/api/me', '/api/auth/signup', '/api/me/delete', '/api/me/school-email', '/api/guest/status'])
     assert.equal(lockedMayCall(p), true, p)
   for (const p of ['/api/me/phone', '/api/me/setup', '/api/contacts/match', '/api/presence', '/api/live/rating', '/api/menu', '/api/mex', '/api/me/'])
     assert.equal(lockedMayCall(p), false, p)

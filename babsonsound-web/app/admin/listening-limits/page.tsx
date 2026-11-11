@@ -11,8 +11,8 @@ interface Info { limits: Limits; updatedAt: number | null }
 const NUMBERS: { key: 'idleMin' | 'sessionMaxMin' | 'dailyCapMin' | 'dailyAutoMin'; label: string; help: string }[] = [
   { key: 'idleMin', label: 'Ask "still listening?" after (minutes)', help: 'Minutes with no tap or key press. 0 means never ask.' },
   { key: 'sessionMaxMin', label: 'Stop listening after (minutes in a row)', help: '0 means no limit.' },
-  { key: 'dailyCapMin', label: 'Daily listening limit (minutes)', help: 'Live shows and playlists together. 0 means no limit.' },
-  { key: 'dailyAutoMin', label: 'Daily playlist limit (minutes)', help: 'Time with no live show. Live shows still play. 0 means no limit.' },
+  { key: 'dailyCapMin', label: 'Daily listening limit (minutes)', help: 'Not enforced right now: the server no longer counts listening minutes, to save server time.' },
+  { key: 'dailyAutoMin', label: 'Daily playlist limit (minutes)', help: 'Not enforced right now: the server no longer counts listening minutes, to save server time.' },
 ]
 const HOURS = Array.from({ length: 24 }, (_, h) => h)
 const field = 'w-full rounded-lg px-3 py-2 text-base bg-black/30 text-white'

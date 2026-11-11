@@ -19,7 +19,6 @@ export function runUnverifiedSweep(now = Date.now()) {
         users: r.users.map(u => ({
           uid: u.uid, email: u.email, emailVerified: u.emailVerified, createdMs: Date.parse(u.metadata.creationTime) || now,
           graceUntil: typeof u.customClaims?.graceUntil === 'number' ? (u.customClaims.graceUntil as number) : null,
-          apple: u.providerData.some(p => p.providerId === 'apple.com'),
         })),
       }
     },

@@ -8,6 +8,7 @@ import { hostDayActive, type HostContext } from './host'
 import { loadConfig } from './autoschedule'
 import { visibleFriendProfiles } from './friends'
 import { listeningGroups } from './groups'
+import { PRESENCE_TTL_MS } from '../liveBundle'
 
 // Pieces of the live page that more than one route needs. They moved here from the old routes (set list, ratings, reactions, host
 // access, presence) so /api/live/bundle and the old routes give the same answers from the same caches.
@@ -90,7 +91,7 @@ export async function hostAccess(db: Firestore, c: HostContext, now: number) {
 }
 
 // ── presence ──
-const FRESH_MS = 240_000 // a listener counts for 4 minutes after their last heartbeat
+const FRESH_MS = PRESENCE_TTL_MS // a listener counts for 18 minutes after their last check-in
 const YEAR_MS = 366 * 86_400_000
 
 /**

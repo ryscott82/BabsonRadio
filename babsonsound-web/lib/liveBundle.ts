@@ -6,20 +6,27 @@
 //   me       what depends on who is asking (friends, your skip / vote / stars, your reactions, host access). Never cached,
 //            and asked for much less often.
 // Clients that cannot split the calls (older apps) can send the sign-in header with no `part`: they get both halves.
+// While someone is playing, the personal half arrives with the listening check-in (POST /api/listen) instead of a separate call.
 
-export const SHARED_CACHE = 'public, s-maxage=15, stale-while-revalidate=30'
+// The shared half is the "who is tuned in" snapshot plus the show rating and the tallies as first loaded. Edge cached for a minute (then
+// refreshed in the background), so a crowd costs one function run a minute at most. Tallies after the first load are pushed (liveState).
+export const SHARED_CACHE = 'public, s-maxage=60, stale-while-revalidate=120'
 export const PRIVATE_CACHE = 'private, no-store'
 
-/** How often the web page asks (visible tab). Hidden tabs ask for nothing: see pollAllowed. */
-export const SHARED_MS = 30_000
-export const PERSONAL_MS = 120_000
-/** Listening check-in while audio plays (the server clamps gaps to 2 minutes and still stops other devices). */
-export const LISTEN_BEAT_MS = 60_000
-/** A tab that comes back to the front refreshes at once, but not if it just did. */
-export const RESUME_MIN_AGE_MS = 10_000
+/** How often a listening page checks in (one call: one-device rule, presence, personal data). The server can change it: see refreshSecOf. */
+export const DEFAULT_REFRESH_SEC = 720
+export const REFRESH_MS = DEFAULT_REFRESH_SEC * 1000
+/** The server may set the interval between 2 and 60 minutes; anything else falls back to the default. */
+export const refreshSecOf = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v >= 120 && v <= 3600 ? Math.round(v) : DEFAULT_REFRESH_SEC)
+/** Someone counts as tuned in this long after their last check-in (the check-in is every 12 minutes, so one missed beat is still covered). */
+export const PRESENCE_TTL_MS = 18 * 60_000
+/** A tab that comes back to the front refreshes at once, but not if it refreshed in the last 2 minutes. */
+export const RESUME_MIN_AGE_MS = 120_000
 
 export const SECTIONS = ['presence', 'skip', 'vote', 'setlist', 'rating', 'emojis', 'host'] as const
 export type Section = (typeof SECTIONS)[number]
+/** Slow-changing sections: asked once on page load and once per show, never on the refresh timer. */
+export const SLOW_SECTIONS: readonly Section[] = ['emojis', 'host', 'rating']
 
 /** Same pattern as /api/live/rating: weekly-<id>_<start>, slot-, event-, genre-. Anything else is ignored, not an error, so junk never makes new cache entries that do work. */
 export const OCC = /^(weekly|slot|event|genre)-([^/]{1,100})_(\d{10,14})$/
@@ -110,8 +117,8 @@ export function ratingView(s: SharedBundle | null, me: MeBundle | null, occId: s
 
 export type PollKind = 'poll' | 'beat'
 /**
- * Hidden tabs do not poll. The one exception is the listening check-in while audio is playing (`beat`): without it the station would
- * think the listener left. A paused hidden tab sends nothing at all.
+ * Hidden tabs do not ask for anything. The one exception is the listening check-in while audio is playing (`beat`, every 12 minutes):
+ * without it the station would think the listener left. A paused hidden tab sends nothing at all.
  */
 export function pollAllowed(o: { hidden: boolean; playing: boolean; kind: PollKind }): boolean {
   if (!o.hidden) return true
@@ -132,3 +139,23 @@ export function occRateable(occId: string, now: number): boolean {
   const startAt = Number(m[3])
   return !(startAt > now || startAt < now - 12 * 3_600_000)
 }
+
+/**
+ * Put a (possibly partial) personal reply on top of what the page already has: sections that were not asked for stay as they were,
+ * and a section that failed or was throttled on the server (null) does not wipe a good copy.
+ */
+export function mergeMe(cur: MeBundle | null, inc: MeBundle): MeBundle {
+  const out: Record<string, unknown> = { ...(cur ?? {}), at: inc.at }
+  const c = (cur ?? {}) as Record<string, unknown>
+  const i = inc as unknown as Record<string, unknown>
+  for (const k of SECTIONS) {
+    const v = i[k]
+    if (v === undefined) continue
+    if (v === null && c[k]) continue
+    out[k] = v
+  }
+  return out as unknown as MeBundle
+}
+
+/** The sections a refresh asks for: everything the page shows on a first load or a new show, otherwise without the slow-changing ones. */
+export const sectionsForRefresh = (needed: Section[], o: { first: boolean }): Section[] => (o.first ? needed : needed.filter(s => !SLOW_SECTIONS.includes(s)))

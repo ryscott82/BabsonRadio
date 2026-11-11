@@ -7,7 +7,7 @@ import { createContext, useCallback, useContext, useEffect, useId, useRef, useSt
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet, apiGetPublic } from '@/lib/auth'
 import { ratingView, songsView, type Section } from '@/lib/liveBundle'
-import { refreshAfterAction, refreshMe, useLiveBundle, useOverlay } from '@/lib/liveStore'
+import { noteMine, refreshMe, refreshShared, useLiveBundle, useOverlay } from '@/lib/liveStore'
 import type { NowPlaying } from '@/lib/nowplaying'
 import EmojiRain, { rainBurst, rainFromOthers } from './EmojiRain'
 import { useArtMain } from '@/components/ArtTheme'
@@ -111,9 +111,12 @@ function useLiveExtrasState(np: NowPlaying | null) {
   const listTitle = view.title
   async function vote(id: string) {
     if (!can) { setMsg('Sign in with your school email to upvote.'); return }
-    setSongs(songs.map(x => x.id === id ? { ...x, mine: !x.mine, votes: x.votes + (x.mine ? -1 : 1) } : x))
-    try { await api('/api/live/setlist', { songId: id }) } catch { setSongs(null) }
-    refreshAfterAction()
+    const next = songs.map(x => x.id === id ? { ...x, mine: !x.mine, votes: x.votes + (x.mine ? -1 : 1) } : x)
+    setSongs(next)
+    try {
+      await api('/api/live/setlist', { songId: id })
+      noteMine({ setlist: { occId: live.shared?.setlist.occId ?? '', mine: next.filter(x => x.mine).map(x => x.id) } }) // the new counts reach everyone through the pushed document
+    } catch { setSongs(null) }
   }
 
   // ── rating (the show on air, or the one that just ended) ──
@@ -127,7 +130,8 @@ function useLiveExtrasState(np: NowPlaying | null) {
     setRating({ ...rating, mine: stars })
     try {
       await api('/api/live/rating', { occId: rateable.occId, stars, title: rateable.title })
-      refreshAfterAction() // shows the new average right away (the shared copy is otherwise up to a minute old)
+      noteMine({ rating: { occId: rateable.occId, mine: stars } })
+      void refreshShared(true) // shows the new average right away (the shared copy is otherwise up to a minute old)
     } catch (err) { setMsg(err instanceof Error ? err.message : 'Could not save your rating.'); setRating(null) }
   }
 

@@ -1,8 +1,8 @@
 [
   { "id": "features", "group": "Overview", "title": "Features by role", "about": "What each kind of account can do, on the site and in the app.", "source": "FEATURES.md" },
   { "id": "security", "group": "Setup", "title": "Security setup", "about": "Accounts, keys and the protections that are switched on.", "source": "babsonsound-web/SECURITY_SETUP.md" },
+  { "id": "appreview", "group": "Setup", "title": "App Review checklist", "about": "Support page, reporting, account emails, the demo account and App Check, in order.", "source": "babsonsound-web/APP_REVIEW.md" },
   { "id": "push", "group": "Setup", "title": "Push notifications", "about": "How phone notifications are set up.", "source": "docs/PUSH_SETUP.md" },
-  { "id": "apple", "group": "Setup", "title": "Sign in with Apple", "about": "Setting up Apple sign-in for the app.", "source": "docs/APPLE_SIGNIN_SETUP.md" },
   { "id": "metadata", "group": "Setup", "title": "DJ metadata setup", "about": "Getting song and show details from the DJ software to the site.", "source": "docs/DJ_METADATA_SETUP.md" },
   { "id": "studio", "group": "Studio and people", "title": "Studio training", "about": "How training check-in and studio access work.", "source": "babsonsound-web/STUDIO.md" },
   { "id": "helper", "group": "Studio and people", "title": "Studio PC helper", "about": "The small program on the studio computer.", "source": "tools/studio-helper/README.md" },

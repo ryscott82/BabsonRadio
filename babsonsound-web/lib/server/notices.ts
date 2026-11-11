@@ -1,10 +1,11 @@
 import 'server-only'
 import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore'
+import { alertsFor } from './usageAlerts'
 
 /** One thing on the admin Notifications card. Built fresh from live data each time; only the dismissals are stored. */
 export type Notice = {
   key: string
-  kind: 'deadair' | 'monitor' | 'request' | 'report' | 'cancel' | 'contacts'
+  kind: 'deadair' | 'monitor' | 'request' | 'report' | 'cancel' | 'contacts' | 'usage'
   title: string
   /** Extra lines shown when the row is opened. */
   detail: string[]
@@ -71,10 +72,20 @@ export async function buildNotices(db: Firestore, admin: boolean): Promise<Notic
     const reports = await db.collection('feedback').where('status', '==', 'new').get()
     for (const d of reports.docs.slice(0, 40)) {
       out.push({
-        key: `report-${d.id}`, kind: 'report', title: `${d.get('type') === 'feature' ? 'Idea' : 'Bug report'}: ${clip(d.get('message'), 70)}`,
+        key: `report-${d.id}`, kind: 'report', title: `${d.get('type') === 'feature' ? 'Idea' : d.get('type') === 'report' ? (d.get('target')?.kind === 'person' ? 'Report about a person' : 'Content report') : 'Bug report'}: ${clip(d.get('message'), 70)}`,
         at: d.get('createdAt')?.toMillis?.() ?? 0,
-        detail: [clip(d.get('message'), 600), `From ${d.get('name') || 'someone'}${d.get('email') ? ` (${d.get('email')})` : ''} on ${d.get('platform') === 'ios' ? 'the iPhone app' : 'the website'}${d.get('page') ? `, page ${d.get('page')}` : ''}.`],
+        detail: [clip(d.get('message'), 600), ...(d.get('target')?.label || d.get('target')?.id ? [`About: ${clip(d.get('target').label || d.get('target').id, 120)}`] : []), `From ${d.get('name') || 'someone'}${d.get('email') ? ` (${d.get('email')})` : ''} on ${d.get('platform') === 'ios' ? 'the iPhone app' : 'the website'}${d.get('page') ? `, page ${d.get('page')}` : ''}.`],
         href: '/admin/feedback', hrefLabel: 'Open',
+      })
+    }
+    // Server-time alerts (50 / 75 / 90 / 100% of the allowance, or on track to pass it): one notice each, created once a month by lib/server/usageAlerts.ts.
+    const month = new Date(now).toISOString().slice(0, 7)
+    for (const a of (await alertsFor(db, month).catch(() => [])).filter(x => !x.silent)) {
+      const projected = a.kind === 'projected'
+      out.push({
+        key: `usage-${a.id}`, kind: 'usage', title: projected ? 'Server time is on track to run out this month' : `Server time is at ${a.pct}% of the monthly allowance`, at: a.at,
+        detail: [projected ? `About ${Math.round(a.hours * 10) / 10} server hours projected for the month, against ${a.allowance}.` : `${Math.round(a.hours * 100) / 100} of ${a.allowance} hours (${a.source === 'entry' ? 'from the latest entered number' : 'from our own meter'}).`],
+        href: '/admin/server-load', hrefLabel: 'Open',
       })
     }
     // Contact syncs that looked like a scrape are paused until an admin clears them (Phone lookup page).

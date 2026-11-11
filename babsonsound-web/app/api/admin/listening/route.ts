@@ -11,16 +11,19 @@ export async function GET(req: Request) {
     const db = adminDb()
     const days = Math.min(30, Math.max(1, Number(new URL(req.url).searchParams.get('days')) || 7))
     const since = Date.now() - days * 86_400_000
-    const snap = await db.collection('listenSessions').where('start', '>', Timestamp.fromMillis(since)).orderBy('start', 'desc').limit(1500).get()
-    const uids = [...new Set(snap.docs.map(d => String(d.get('uid'))))]
+    const all = await db.collection('listenSessions').where('start', '>', Timestamp.fromMillis(since)).orderBy('start', 'desc').limit(1500).get()
     const names = new Map<string, string>()
+    const hidden = new Set<string>() // the App Review demo account is kept out of every admin list
+    const uids = [...new Set(all.docs.map(d => String(d.get('uid'))))]
     for (let i = 0; i < uids.length; i += 100) {
       const docs = await db.getAll(...uids.slice(i, i + 100).map(u => db.collection('users').doc(u)))
       for (const u of docs) {
+        if (u.get('demo') === true) { hidden.add(u.id); continue }
         const n = [u.get('firstName') ?? u.get('displayName'), u.get('lastName')].filter(Boolean).join(' ')
         names.set(u.id, n || String(u.get('email') ?? u.id))
       }
     }
+    const snap = { docs: all.docs.filter(d => !hidden.has(String(d.get('uid')))), size: all.size }
     const sessions = snap.docs.map(d => {
       const start = (d.get('start') as Timestamp).toMillis()
       const end = (d.get('end') as Timestamp).toMillis()
@@ -33,7 +36,7 @@ export async function GET(req: Request) {
     for (const s of sessions) for (let t = s.start; t < s.end; t += 600_000) hours[new Date(t).getUTCHours()] += Math.min(10, (s.end - t) / 60_000)
     return {
       days, truncated: snap.size >= 1500,
-      uniqueListeners: uids.length, sessions: sessions.length,
+      uniqueListeners: uids.length - hidden.size, sessions: sessions.length,
       totalHours: Math.round(sessions.reduce((a, s) => a + s.minutes, 0) / 6) / 10,
       hoursUtc: hours.map(Math.round),
       list: sessions.slice(0, 500),

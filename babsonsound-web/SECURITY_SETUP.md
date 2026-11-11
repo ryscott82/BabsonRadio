@@ -34,6 +34,7 @@ dash.cloudflare.com → Turnstile → Add widget. Hostnames: `babsonradio.com` (
 4. The Swift changes were not compiled here; build once and fix anything the compiler says.
 
 ## 5. Rolling out
+For the order with the new bundle ID and Team ID, and what to test first, see `APP_REVIEW.md` section 5. Keep it off through App Review.
 1. Deploy the site. Nothing changes for normal users.
 2. Ship the iOS build (App Check, contacts matching with names, Keychain, locked-account screen for guests).
 3. After most people are on that build, set `APPCHECK_ENFORCE=1`.

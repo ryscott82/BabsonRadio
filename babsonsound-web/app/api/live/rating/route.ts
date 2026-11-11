@@ -5,6 +5,8 @@ import { HttpError, handle, readJson, requireMember, requireUser, str } from '@/
 import { bump, noteStars } from '@/lib/server/earnedEmojis'
 import { assertClean } from '@/lib/server/wordFilter'
 import { forgetRatings, ratingRows, ratingSummary } from '@/lib/server/liveData'
+import { forgetOld, oldPoll } from '@/lib/server/oldRoute'
+import { throttled } from '@/lib/server/tierGate'
 
 export const runtime = 'nodejs'
 
@@ -27,10 +29,14 @@ export async function GET(req: Request) {
     const occId = str(new URL(req.url).searchParams.get('occId'), 160)
     const now = Date.now()
     check(occId, now)
-    const rows = await ratingRows(adminDb(), occId, now)
     const uid = anon ? '' : await requireUser(req).then(t => t.uid, () => '')
-    return { ...ratingSummary(rows), mine: uid ? (rows.find(r => r.uid === uid)?.stars ?? 0) : 0 }
-  }, { 'Cache-Control': anon ? 'public, s-maxage=10, stale-while-revalidate=20' : 'private, no-store' })
+    const read = async () => {
+      const rows = await ratingRows(adminDb(), occId, now)
+      return { ...ratingSummary(rows), mine: uid ? (rows.find(r => r.uid === uid)?.stars ?? 0) : 0 }
+    }
+    // Signed-in readers are older apps: the last answer for a minute (lib/server/oldRoute.ts). Signed-out readers share an edge copy.
+    return uid ? throttled('rating', uid, { count: 0, avg: 0, mine: 0 }, () => oldPoll('rating', uid, read)) : read()
+  }, { 'Cache-Control': anon ? 'public, s-maxage=60, stale-while-revalidate=120' : 'private, max-age=15' })
 }
 
 export async function POST(req: Request) {
@@ -40,6 +46,13 @@ export async function POST(req: Request) {
     const occId = str(b.occId, 160), stars = Number(b.stars)
     check(occId, Date.now())
     if (!Number.isInteger(stars) || stars < 1 || stars > 5) throw new HttpError(400, 'Pick 1 to 5 stars.')
+    return throttled('rating', t.uid, { ok: true }, () => rate(t.uid, occId, stars, b), 'w')
+  })
+}
+
+async function rate(uid: string, occId: string, stars: number, b: Record<string, unknown>) {
+  {
+    const t = { uid }
     const db = adminDb()
     await assertClean(db, ...(typeof b.comment === 'string' ? [str(b.comment, 280)] : []), str(b.title, 80))
     const cur = await currentOnAir(db).catch(() => null)
@@ -51,6 +64,7 @@ export async function POST(req: Request) {
     forgetRatings(occId)
     await noteStars(db, t.uid, `h:${occId}`, stars).catch(() => {})
     await bump(db, t.uid)
+    forgetOld('rating', uid)
     return { ok: true }
-  })
+  }
 }

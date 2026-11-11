@@ -2,17 +2,18 @@ import 'server-only'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 import { azSkip, azuraConfigured } from './azuracast'
 import { getNowPlaying } from './nowplaying'
+import { PRESENCE_TTL_MS } from '../liveBundle'
 
 // Skip a song during the auto DJ: any signed-in listener can ask, and when at least 90% of the people listening have,
 // the song skips. A vote only counts while that person is still tuned in. Live shows can't be skipped by listeners.
 
 export const SKIP_SHARE = 0.9
-const FRESH_MS = 240_000 // same freshness as the presence heartbeat
+const FRESH_MS = PRESENCE_TTL_MS // a listener counts for 18 minutes after their last check-in (they check in every 12)
 
-const LISTEN_TTL = 45_000
+const LISTEN_TTL = 60_000
 let listenCache: { at: number; ids: Promise<Set<string>> } | null = null
 /**
- * Who is tuned in right now (shared by the skip vote, the listener count and the friends list). Looked up at most once every 45 s
+ * Who is tuned in right now (shared by the skip vote, the listener count and the friends list). Looked up at most once a minute
  * per server instance, and callers that arrive while a lookup is running share it instead of starting their own.
  */
 export function listeningIds(db: Firestore, now: number): Promise<Set<string>> {

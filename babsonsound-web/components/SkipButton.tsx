@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { api, signOut } from '@/lib/auth'
 import type { NowPlaying } from '@/lib/nowplaying'
 import { skipView, type SkipView as Skip } from '@/lib/liveBundle'
-import { refreshAfterAction, useLiveBundle, useOverlay } from '@/lib/liveStore'
+import { noteMine, useLiveBundle, useOverlay } from '@/lib/liveStore'
 
 /** Next-track button beside play/pause. Only shows when the station is playing its own music; shows "X/Y requested". */
 export default function SkipButton({ np }: { np: NowPlaying | null }) {
@@ -26,7 +26,7 @@ export default function SkipButton({ np }: { np: NowPlaying | null }) {
     const before = skip
     pending.current = true
     setSkip({ ...skip, mine: true, votes: Math.min(skip.needed, skip.votes + 1) })
-    try { setSkip(await api<Skip>('/api/skip', {})); refreshAfterAction() }
+    try { setSkip(await api<Skip>('/api/skip', {})); noteMine({ skip: { mine: true } }) }
     catch (e) { setSkip(before); setErr(e instanceof Error ? e.message : 'Could not send your skip.') }
     finally { pending.current = false }
   }

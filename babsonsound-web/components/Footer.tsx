@@ -25,6 +25,7 @@ export default function Footer() {
           <a href={LINKS.join} {...ext} className={link}>Join Babson Sound</a>
           <a href="/privacy" className={link}>Privacy</a>
           <a href="/terms" className={link}>Terms</a>
+          <a href="/support" className={link}>Support</a>
           <span className="text-br-dk-sub">Contact: <ContactEmail className="text-br-dk-sub hover:text-br-dk-text underline underline-offset-4" /></span>
           {INSTAGRAM_URL && <a href={INSTAGRAM_URL} {...ext} className={`${link} inline-flex items-center gap-1.5`}>
             <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">

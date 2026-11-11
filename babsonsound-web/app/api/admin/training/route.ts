@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     ])
     const byUid = new Map(tr.docs.map(d => [d.id, d]))
     const ms = (v: unknown) => (v as { toMillis?: () => number } | null | undefined)?.toMillis?.() ?? null
-    const rows = users.docs.filter(d => d.id !== 'preview-developer' && /@(babson|olin|wellesley)\.edu$/i.test(String(d.get('email') ?? ''))).map(d => {
+    const rows = users.docs.filter(d => d.id !== 'preview-developer' && d.get('demo') !== true && /@(babson|olin|wellesley)\.edu$/i.test(String(d.get('email') ?? ''))).map(d => {
       const t = byUid.get(d.id)
       const certifiedAt = ms(t?.get('certifiedAt'))
       return {

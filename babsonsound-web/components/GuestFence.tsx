@@ -7,14 +7,14 @@ import { useAuth } from '@/contexts/AuthContext'
 import { signOut } from '@/lib/auth'
 
 // Guests (any email that is not Babson, Olin or Wellesley) only get the Live page. These stay reachable for everyone.
-const ALLOWED = ['/', '/auth', '/about', '/privacy', '/terms', '/unsubscribe', '/delete-account', '/booth']
+const ALLOWED = ['/', '/auth', '/about', '/privacy', '/terms', '/support', '/unsubscribe', '/delete-account', '/booth']
 
 // Pages a guest is sent to sign in for (they sign out first, so the sign-in page opens instead of bouncing back).
 const SIGN_IN_PAGES = ['/schedule', '/library', '/browse', '/shows']
 const under = (path: string, p: string) => path === p || path.startsWith(`${p}/`)
 
 // An account past its 7 days without a verified email sees only the verify screen (the server refuses the rest too).
-const LOCKED_OK = ['/auth', '/privacy', '/terms', '/delete-account', '/unsubscribe', '/booth']
+const LOCKED_OK = ['/auth', '/privacy', '/terms', '/support', '/delete-account', '/unsubscribe', '/booth']
 
 /** Sends a guest who opens any other page back to Live, and a locked (unverified) account to the verify screen. The server refuses those calls too. */
 export default function GuestFence() {

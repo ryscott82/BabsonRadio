@@ -1,10 +1,12 @@
+import { DEFAULT_REFRESH_SEC } from './liveBundle.ts'
+
 // Listening limits, set separately for students (directors and admins use the student settings) and guests. Pure, so the server, the admin
 // page and the tests share it. 0 means "no limit" for every number except the quiet hours, which have their own on/off switch.
 
 export interface Audience {
-  /** Ask "still listening?" after this many minutes without any activity. 0 = never ask. */
+  /** Ask "still listening?" after this many minutes without any activity (the page or app does it, not the server). 0 = never ask. */
   idleMin: number
-  /** Stop a listening session after this many minutes in a row. 0 = no limit. */
+  /** Stop a listening session after this many minutes in a row (the page or app does it, not the server). Default 6 hours. 0 = no limit. */
   sessionMaxMin: number
   /** Most minutes of listening a day (live shows and playlists together). 0 = no limit. */
   dailyCapMin: number
@@ -18,12 +20,14 @@ export interface Audience {
 export interface Limits {
   /** Also apply the old monthly listener-hours budget (it tightens the numbers above as the month fills up). Off now that hosting has no hour limit. */
   budgetEnabled: boolean
+  /** Seconds between a listening page's check-ins (2 to 60 minutes; default 12). Sent back by the check-in, so it changes without an app update. */
+  refreshSec: number
   student: Audience
   guest: Audience
 }
 
-export const DEFAULT_AUDIENCE: Audience = { idleMin: 60, sessionMaxMin: 180, dailyCapMin: 0, dailyAutoMin: 0, quietEnabled: true, quietStart: 2, quietEnd: 6 }
-export const DEFAULT_LIMITS: Limits = { budgetEnabled: false, student: DEFAULT_AUDIENCE, guest: DEFAULT_AUDIENCE }
+export const DEFAULT_AUDIENCE: Audience = { idleMin: 60, sessionMaxMin: 360, dailyCapMin: 0, dailyAutoMin: 0, quietEnabled: true, quietStart: 2, quietEnd: 6 }
+export const DEFAULT_LIMITS: Limits = { budgetEnabled: false, refreshSec: DEFAULT_REFRESH_SEC, student: DEFAULT_AUDIENCE, guest: DEFAULT_AUDIENCE }
 
 /** What the apps are told when "still listening?" is off. */
 export const NEVER_MIN = 100_000

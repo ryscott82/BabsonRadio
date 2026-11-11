@@ -2,6 +2,8 @@ import { adminDb } from '@/lib/server/admin'
 import { handle } from '@/lib/server/http'
 import { hostContext } from '@/lib/server/host'
 import { hostAccess } from '@/lib/server/liveData'
+import { requireUser } from '@/lib/server/http'
+import { oldPoll } from '@/lib/server/oldRoute'
 
 export const runtime = 'nodejs'
 
@@ -12,6 +14,8 @@ export async function GET(req: Request) {
   return handle(async () => {
     const db = adminDb()
     const now = Date.now()
-    return hostAccess(db, await hostContext(req, db, now, true), now)
-  })
+    const t = await requireUser(req)
+    // Older apps ask often: the last answer for 5 minutes (lib/server/oldRoute.ts). The web page gets this once, with the check-in.
+    return oldPoll('host', t.uid, async () => hostAccess(db, await hostContext(req, db, now, true), now))
+  }, { 'Cache-Control': 'private, max-age=60' })
 }

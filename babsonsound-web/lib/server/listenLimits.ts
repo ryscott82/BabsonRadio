@@ -2,6 +2,7 @@ import 'server-only'
 import type { Firestore } from 'firebase-admin/firestore'
 import { adminDb } from './admin'
 import { DEFAULT_AUDIENCE, DEFAULT_LIMITS, audienceErrors, cleanAudience, type Limits } from '../listenLimits'
+import { refreshSecOf } from '../liveBundle'
 
 // Listening limits for students and guests: usage/limits (set in Admin > Listening limits). Until something is saved there, the old overnight quiet
 // hours in usage/config carry over to both, so nothing changes by itself.
@@ -15,19 +16,21 @@ export async function loadLimits(db: Firestore = adminDb()): Promise<Limits> {
     const [s, c] = await Promise.all([REF(db).get(), db.collection('usage').doc('config').get()])
     const old = c.data() ?? {}
     const base = cleanAudience({ quietEnabled: old.quietEnabled, quietStart: old.quietStart, quietEnd: old.quietEnd }, DEFAULT_AUDIENCE)
-    v = { budgetEnabled: s.get('budgetEnabled') === true, student: cleanAudience(s.get('student'), base), guest: cleanAudience(s.get('guest'), base) }
+    v = { budgetEnabled: s.get('budgetEnabled') === true, refreshSec: refreshSecOf(s.get('refreshSec')), student: cleanAudience(s.get('student'), base), guest: cleanAudience(s.get('guest'), base) }
   } catch { /* defaults */ }
   memo = { at: Date.now(), v }
   return v
 }
 
-export async function saveLimits(input: { budgetEnabled?: unknown; student?: unknown; guest?: unknown }, uid: string): Promise<Limits> {
+export async function saveLimits(input: { budgetEnabled?: unknown; refreshSec?: unknown; student?: unknown; guest?: unknown }, uid: string): Promise<Limits> {
+  if (input.refreshSec !== undefined && refreshSecOf(input.refreshSec) !== input.refreshSec) throw new Error('Check-in interval must be 120 to 3600 seconds.')
   const bad = [...audienceErrors(input.student).map(k => `student ${k}`), ...audienceErrors(input.guest).map(k => `guest ${k}`)]
   if (bad.length) throw new Error(`Out of range: ${bad.join(', ')}.`)
   const db = adminDb()
   const cur = await loadLimits(db)
   const next: Limits = {
     budgetEnabled: typeof input.budgetEnabled === 'boolean' ? input.budgetEnabled : cur.budgetEnabled,
+    refreshSec: input.refreshSec === undefined ? cur.refreshSec : refreshSecOf(input.refreshSec),
     student: cleanAudience(input.student, cur.student), guest: cleanAudience(input.guest, cur.guest),
   }
   await REF(db).set({ ...next, updatedAt: Date.now(), updatedBy: uid })

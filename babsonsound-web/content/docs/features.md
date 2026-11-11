@@ -71,23 +71,28 @@ Access levels: guest, student, director, admin. Badges: radioTrained (live shows
 - [x] Auto-scheduler learns from listeners (listener counts, song and show ratings, reactions); toggle on the scheduler page
 - [x] Listener Insights page (/admin/insights, directors too)
 - [x] Review bug reports
+- [x] Admin > Server load (web, admins only, `/admin/server-load`; the Vercel server-time page): how to read Vercel's Usage page (steps and a link; wording can change), a form to enter readings (date, Active CPU hours, edge requests, function invocations, fast data transfer, optional top routes, note; accepts what Vercel shows like `1h 30m`, `1.2M`, `800 MB`; saves, edits and deletes; shows who entered each one), status (share of the allowance used, forecast month end and days left, the entered number next to our meter's estimate, the level of each tier with a lock per tier: Automatic, Normal, Slowed, Off), charts (Active CPU through the month with the allowance line, and server seconds per listener-hour over time), a history table with the meter and the gap beside each reading, what each feature costs with a what-if box (listeners x hours -> server hours), the alert and email history (last 3 months) and the per-route table of the server that answers (kept from before). It loads once in one call (`/api/admin/server-usage/overview`) and again only on Refresh or after a save: no polling. A banner on every admin page shows at 50, 75, 90 and 100% or when the forecast passes the allowance (hide it until the next step); the Admin screen on iOS shows the same banner and the current level (`/api/admin/server-usage/status`, kept 5 minutes per server)
+- [x] Server-time tiers, usage log, forecast and alerts (API: /api/admin/cpu tierLocks, /api/admin/server-usage, /forecast; the page is Admin > Server load above). Listening check-in is one call at play and one every 12 minutes; tallies are pushed through liveState/current
+- [x] Library worker (needs WORKER_SECRET, see babsonsound-web/LIBRARY_WORKER.md): admins queue jobs (scan, fetch metadata and art, find beats, measure loudness, apply, undo, schedule check), the studio PC picks them up, admins approve or reject proposals, and every AzuraCast change is logged so it can be undone. Nothing listener-facing depends on the PC
+- [x] Admin > Music library (web, admins only; tile in the Music section, `/admin/music-library`): a status line (studio PC online or offline with last seen, current job and progress; read on open and after actions, and every 10 seconds only while a job is running and the page is visible), run buttons (scan, fetch metadata, fetch covers, analyze beats, measure loudness, apply approved, undo last apply; each disabled while that job type is queued or running; undo asks first and says how many songs), a Review queue (old to new title, artist and album, cover thumbnail, confidence, beat and loudness; filters for status, search and low confidence under 70%; select rows to approve or reject, edit inline, "Approve all above N%"; 50 per page) and an Activity list (recent jobs, progress, errors, cancel). Cover thumbnails load from iTunes and Deezer image hosts (added to the page's image rules). The old "Library" tile for episodes is now called Episodes.
+- [x] PC worker (`tools/pc-worker`, Windows service on the studio PC; install: `tools/pc-worker/README.md`, overview: `docs/LIBRARY_WORKER_PC.md`): signs in with a one-hour token from the site (no service-account key on the PC), listens for queued jobs, runs one at a time with the Python tools at low priority, pauses before each job and between songs while a show is live, about one AzuraCast call a second with back-off, stops a job after 20 failures in a row, dry run unless `ALLOW_APPLY=1`, apply only for approved proposals with each change logged before it is made, resumes after a restart, heartbeat every 5 minutes (admin shows online for 11 minutes), queues a scan hourly when new media appears, schedule check every 15 minutes, rotating log with keys removed. `npm run e2e` tests it end to end with 3 songs
 
 ## Demo account (App Store review)
 - [x] One hidden student account (demo flag), treated as school-verified, not listed in admin Users, never emailed
 
 ## Sign-in and account setup
-- [x] Sign-in splash with Sign in with Apple or email (iOS); Apple accounts add a school email and verify it within 7 days
+- [x] Sign-in splash with email and password, or "Just listen for now" as a guest (iOS). Sign in with Apple was removed Nov 11, 2026: email and password is the only sign-in
 - [x] One-time "About you" step: name, phone, graduation year, birthday or "use age range instead" (encrypted; under 13 deleted; 13 to 17 need a parent/guardian box)
 - [x] New email sign-ups get 7 days (was 3) to verify
 - [ ] Show age/birthday in the admin users list (stored encrypted, decrypt there)
 - [ ] Ask guests for a birthday or age range too
-- [ ] Website: Sign in with Apple, and the About you step
-- Setup: docs/APPLE_SIGNIN_SETUP.md
+- [ ] Website: the About you step
 
 ## Not built yet
 - iOS: set list upvotes, ratings list on the profile
 
 ## Setup still needed
+- Studio PC worker: set `WORKER_SECRET` in Vercel and the PC's `tools/pc-worker/.env`, make a media-only AzuraCast key, install the service and run the 3-song test (`tools/pc-worker/README.md`). Same PC: dead-air monitor service with `tools/deadair.env`
 - Optional: Firestore TTL policies on `exp` for collection groups `rxEvents` (reaction events, 1 day) and `listenSessions` (listening log, 1 year)
 - Add the listening log to the privacy policy before launch
 - Shared-contact suggestions need `PHONE_HASH_PEPPER` set in Vercel (already used for contact matching), and App Store privacy answers should list Contacts as collected (phone numbers, scrambled, linked to the account, used for app functionality)
@@ -157,8 +162,8 @@ Access levels: guest, student, director, admin. Badges: radioTrained (live shows
 
 ## Security hardening (Oct 2026)
 - [x] Next.js 16.4.3 and firebase-admin 14.5.0 (clears the critical image-optimizer and `use cache` advisories and the google-gax, gaxios, uuid and teeny-request ones). `npm audit --omit=dev` still lists the browser `firebase` package's Node-only gRPC dependency; the site never runs it on the server
-- [x] Owner accounts (OWNER_EMAILS) only count once the email is verified; the Apple "add a school email" step refuses an owner address (BR-ACC-020)
-- [x] Sign-up limits (email sign-up and the Apple profile step): per IP, per email domain, and whole site per minute. Normal sign-ups see nothing. Several from one IP in 10 minutes, a busy minute, or repeated failures ask for a Cloudflare Turnstile check (BR-ACC-022); the iOS app passes with App Check instead. Only clearly abusive levels return 429 (BR-ACC-023). IPs are stored as a keyed hash; counters expire on their own
+- [x] Owner accounts (OWNER_EMAILS) only count once the email is verified
+- [x] Sign-up limits (email sign-up): per IP, per email domain, and whole site per minute. Normal sign-ups see nothing. Several from one IP in 10 minutes, a busy minute, or repeated failures ask for a Cloudflare Turnstile check (BR-ACC-022); the iOS app passes with App Check instead. Only clearly abusive levels return 429 (BR-ACC-023). IPs are stored as a keyed hash; counters expire on their own
 - [x] Verify within 7 days or be locked, deleted after 14 days (guests too; the demo account is exempt). Locked accounts reach only `/api/me`, `/api/auth/*`, delete, add-school-email and guest status; web and iOS show only "Verify your email". One reminder email around day 10 (needs Resend). Deletions run inside the daily birthdays cron, are logged to `accountDeletions` as "unverified after 14 days", and free the email
 - [x] Contacts can't be used as a reverse phone lookup: verified school email only (BR-CON-004), App Check on iOS, one sync a day per route, a cap of about 5,000 new numbers per rolling 30 days (one doc per member of 8-byte tags), and a sync that looks like a scrape (500+ matches, or 70% of a big list) pauses that account (BR-CON-007) and shows under Notifications
 - [x] `/api/contacts/match` returns only the matched hashes and whether the connection is mutual: no uid, no first name

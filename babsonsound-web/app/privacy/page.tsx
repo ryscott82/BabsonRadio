@@ -27,7 +27,6 @@ export default function PrivacyPage() {
 
       <p className="text-sm text-br-dk-sub leading-relaxed">
         Babson Radio is a student-run internet radio station run by Babson Sound, a student organization at Babson College, with a website and an iPhone app.
-        The iPhone app is distributed through an Apple Developer account held by Ryan Edward Media Group, LLC (&ldquo;REMG&rdquo;), which is not the operator of Babson Radio.
         This page describes information we may collect and how we may use it. Babson College&apos;s{' '}
         <a className={a} href={LINKS.babsonPrivacy} target="_blank" rel="noopener noreferrer">privacy policy</a> may also apply
         to your use of Babson Radio.
@@ -35,7 +34,7 @@ export default function PrivacyPage() {
 
       <Section title="What we collect">
         <p>We may collect the following, and other information you give us or that our systems record when you use Babson Radio.</p>
-        <p><strong className="text-br-dk-text">Account details:</strong> your name, email, username and password. Guests give an email and a name. If you sign in with Apple, we receive the details Apple shares with us.</p>
+        <p><strong className="text-br-dk-text">Account details:</strong> your name, email, username and password. Guests give an email and a name.</p>
         <p><strong className="text-br-dk-text">Optional details:</strong> a profile color, graduation year, phone number, Instagram handle, and birthday or age range. Some of this may be shown to other members now or in a later update. Friends might be able to see this information.</p>
         <p><strong className="text-br-dk-text">Activity:</strong> shows you set reminders for, shows and songs you like, reactions, ratings, votes, song suggestions, show requests, set lists and show update requests, messages, and listening activity and logs, including when and how long you listen, which show was on, the device type, and the account it came from. Friends might be able to see this information where it is shown in the app.</p>
         <p><strong className="text-br-dk-text">Reports:</strong> if you send a bug report or feature idea, we may keep your message, name, email, the page you were on and your browser or app version.</p>

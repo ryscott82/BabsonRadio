@@ -1,6 +1,9 @@
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireMember } from '@/lib/server/http'
 import { SLOTS, allEmojisFor, emojiRow } from '@/lib/server/liveData'
+import { EMOJIS } from '@/lib/server/live'
+import { oldPoll } from '@/lib/server/oldRoute'
+import { throttled } from '@/lib/server/tierGate'
 
 export const runtime = 'nodejs'
 
@@ -12,8 +15,9 @@ export const runtime = 'nodejs'
 export async function GET(req: Request) {
   return handle(async () => {
     const t = await requireMember(req)
-    return emojiRow(adminDb(), t.uid)
-  })
+    // Tier 3: the first thing eased off when server time is short (the usual reactions are still on offer). Older apps get the last answer for 5 minutes.
+    return throttled('emojis', t.uid, { emojis: [...EMOJIS], top: EMOJIS.slice(0, 5), customized: false }, () => oldPoll('emojis', t.uid, () => emojiRow(adminDb(), t.uid)))
+  }, { 'Cache-Control': 'private, max-age=60' })
 }
 
 // Swap a key: send the whole main row (up to 5 reactions this person has unlocked). Send an empty list to go back to most used.

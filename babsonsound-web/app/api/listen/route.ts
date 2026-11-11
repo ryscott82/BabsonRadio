@@ -3,115 +3,128 @@ import { adminDb } from '@/lib/server/admin'
 import { handle, readJson, requireUser, str } from '@/lib/server/http'
 import { accessOf } from '@/lib/server/access'
 import { loadConfig } from '@/lib/server/autoschedule'
-import { localDate } from '@/lib/server/tz'
 import { getNowPlaying } from '@/lib/server/nowplaying'
-import { budgetState, loadUsageConfig, policyFor } from '@/lib/server/usage'
+import { budgetState, policyFor } from '@/lib/server/usage'
 import { loadLimits } from '@/lib/server/listenLimits'
 import { effectiveLimits, hourLabel, isQuiet } from '@/lib/listenLimits'
 import { localParts } from '@/lib/autoschedule'
-import { FieldValue } from 'firebase-admin/firestore'
 import { recordPresence } from '@/lib/server/liveData'
+import { buildMe } from '@/lib/server/liveBundle'
+import { throttled } from '@/lib/server/tierGate'
+import { createLastKnown } from '@/lib/lastKnown'
+import { DEFAULT_REFRESH_SEC, PRESENCE_TTL_MS, cleanOcc, sectionsOf, type MeBundle } from '@/lib/liveBundle'
 
 export const runtime = 'nodejs'
 
-// Listening sessions. The apps ask here before playing and check in every minute while playing, so the station can
-// keep within its monthly listener hours: one stream per account, no endless sessions, no idle streams, quiet hours,
-// guest limits, and a daily cap only when the month is on track to run over.
-//   POST { action: 'start' | 'beat' | 'stop', sessionId, device?, deviceId?, takeOver?, activeAgoSec? }
-//   start while another device of the same account is playing -> { ok: false, reason: 'elsewhere', device } unless takeOver is true.
-//   -> { ok: true, idleMin, sessionMaxMin, level } or { ok: false, reason, message }
+// The listening check-in. ONE call when playing starts, then one about every 12 minutes while it plays, and one best-effort call when it stops.
+//   POST { action: 'start' | 'refresh' | 'stop', sessionId, device?, deviceId?, takeOver?, sections?, occId? }
+//     sections / occId   which of the person's own data to send back (same names as /api/live/bundle?part=me&sections=…). Leave them out for none.
+//   -> { ok: true, refreshSec, idleMin, sessionMaxMin, level, access: { level }, me?: MeBundle }
+//   -> { ok: false, reason, message }   reason: 'elsewhere' (start while another device plays: send takeOver: true to switch),
+//                                                'otherDevice' (refresh from a device that was switched away from), 'quiet', 'budget'
+// What one check-in does: the one-device rule, presence (the "tuned in" list and the listening log), and the personal data. Nothing else.
+//   - Idle ("still listening?") and the longest session are the page's / app's own timers (idleMin and sessionMaxMin tell them the numbers).
+//     The server no longer checks idle time, session length or daily minutes, and keeps no per-day counters.
+//   - refreshSec is how long to wait before the next check-in (default 12 minutes). Admin > Listening limits sets it (usage/limits.refreshSec), so
+//     it changes without an app update.
+//   - Someone stays on the "tuned in" list for 18 minutes after their last check-in (PRESENCE_TTL_MS).
+//   - Quiet hours and the budget's live-only rule are decided at the start call (they cost no extra reads).
+//   - 'beat' is what older apps send every minute: it still works, but a beat from a session this server already looked at in the last 5
+//     minutes is answered from memory with no Firestore work. Their idle / session limits stop being enforced by the server.
 
-/** Presence (tuned in) counts for 4 minutes after its last refresh; this keeps it comfortably inside that. */
-const PRESENCE_EVERY_MS = 100_000
-
-type Deny = { ok: false; reason: string; message: string }
-
+type Deny = { ok: false; reason: string; message: string; device?: string }
 const deny = (reason: string, message: string): Deny => ({ ok: false, reason, message })
+
+interface Reply { ok: true; refreshSec: number; idleMin: number; sessionMaxMin: number; level: string; access: { level: string }; me?: MeBundle }
+
+/** What a throttled-off check-in answers: the person can listen, nothing is recorded. */
+const EMPTY: Reply = { ok: true, refreshSec: DEFAULT_REFRESH_SEC, idleMin: 60, sessionMaxMin: 360, level: 'normal', access: { level: 'student' } }
+
+const known = createLastKnown<{ sessionId: string; reply: Reply }>(4000)
+const OLD_BEAT_GAP_MS = 5 * 60_000 // an older app's per-minute beat reaches Firestore at most this often
+const REFRESH_GAP_MS = 60_000 // a refresh right after another one (several tabs, a page coming back) gets the last answer
 
 export async function POST(req: Request) {
   return handle(async () => {
     const t = await requireUser(req)
     const b = await readJson(req)
     const action = str(b.action, 8), sessionId = str(b.sessionId, 64)
-    if (!sessionId || !['start', 'beat', 'stop'].includes(action)) return { ok: true }
+    if (!sessionId || !['start', 'refresh', 'beat', 'stop'].includes(action)) return { ok: true }
     const db = adminDb()
     const now = Date.now()
     const sref = db.collection('listenGuard').doc(t.uid)
 
     if (action === 'stop') {
+      known.forget(t.uid)
       const s = await sref.get()
-      if (s.get('sessionId') === sessionId) await sref.delete()
+      if (s.get('sessionId') === sessionId) {
+        await sref.delete()
+        await recordPresence(db, t.uid, false, s.get('device') === 'ios' ? 'ios' : 'web', now).catch(() => {}) // "no longer tuned in" at once, when the stop arrives
+      }
       return { ok: true }
     }
 
-    const [cfg, uc, budget, np, access, s, limits] = await Promise.all([
-      loadConfig(db), loadUsageConfig(db), budgetState(db, now), getNowPlaying(), accessOf(t), sref.get(), loadLimits(db),
-    ])
-    const live = !!(np.isShow || np.isLive)
-    const guest = access.level === 'guest'
-    const staff = access.level === 'director' || access.level === 'admin'
-    // Students (and directors and admins) and guests have their own limits (Admin > Listening limits). The monthly-hours budget only
-    // tightens them while it is switched on there.
-    const aud = guest ? limits.guest : limits.student
-    const bp = limits.budgetEnabled ? policyFor(budget) : null
-    const policy = { ...effectiveLimits(aud, bp), liveOnly: !!bp?.liveOnly }
-    const guestsOpen = !limits.budgetEnabled || budget.guestsOpen
+    // A check-in from a session we already looked at a moment ago: same answer, no work.
+    const mem = known.peek(t.uid)
+    if (mem && mem.value.sessionId === sessionId && action !== 'start') {
+      const age = now - mem.at
+      if (action === 'beat' && age < OLD_BEAT_GAP_MS) return mem.value.reply
+      if (action === 'refresh' && age < REFRESH_GAP_MS) return mem.value.reply
+    }
 
-    // One device at a time. Someone else's stream (a different device, playing within the last 150 s: two and a half check-ins) stops a new start
-    // unless the person chooses to switch; after a switch the old device is stopped at its next check-in.
-    const deviceId = str(b.deviceId, 64), device = str(b.device, 12)
-    const other = s.exists && s.get('sessionId') !== sessionId
-    if (action === 'beat' && other) return deny('otherDevice', 'Now playing on another device.')
-    if (action === 'start' && other && b.takeOver !== true) {
-      const age = now - ((s.get('lastBeat') as Timestamp | undefined)?.toMillis() ?? 0)
-      const sameDevice = !!deviceId && s.get('deviceId') === deviceId
-      if (age < 150_000 && !sameDevice) {
-        const where = s.get('device') === 'ios' ? 'the app on your phone or tablet' : 'a web browser'
-        return { ...deny('elsewhere', `You are already listening on ${where}. Switch to this device?`), device: s.get('device') ?? '' }
+    const checkIn = async (): Promise<Reply | Deny> => {
+      const [cfg, limits, np, access, s] = await Promise.all([loadConfig(db), loadLimits(db), getNowPlaying(), accessOf(t), sref.get()])
+      const live = !!(np.isShow || np.isLive)
+      const guest = access.level === 'guest'
+      const staff = access.level === 'director' || access.level === 'admin'
+      // Students (and directors and admins) and guests have their own numbers (Admin > Listening limits). The monthly-hours budget only
+      // tightens them while it is switched on there, and costs a read only then.
+      const aud = guest ? limits.guest : limits.student
+      const budget = limits.budgetEnabled ? await budgetState(db, now) : null
+      const bp = budget ? policyFor(budget) : null
+      const policy = { ...effectiveLimits(aud, bp), liveOnly: !!bp?.liveOnly }
+
+      // One device at a time. Someone else's stream (a different device that checked in within the last 18 minutes) stops a new start unless the
+      // person chooses to switch; after a switch the old device finds out at its next check-in (within 12 minutes).
+      const deviceId = str(b.deviceId, 64), device = str(b.device, 12)
+      const other = s.exists && s.get('sessionId') !== sessionId
+      if (action !== 'start' && other) return deny('otherDevice', 'Now playing on another device.')
+      if (action === 'start' && other && b.takeOver !== true) {
+        const age = now - ((s.get('lastBeat') as Timestamp | undefined)?.toMillis() ?? 0)
+        const sameDevice = !!deviceId && s.get('deviceId') === deviceId
+        if (age < PRESENCE_TTL_MS && !sameDevice) {
+          const where = s.get('device') === 'ios' ? 'the app on your phone or tablet' : 'a web browser'
+          return { ...deny('elsewhere', `You are already listening on ${where}. Switch to this device?`), device: s.get('device') ?? '' }
+        }
       }
-    }
 
-    if (!live && !staff) {
-      if (isQuiet(aud, localParts(now, cfg.timezone).minutes / 60)) return deny('quiet', `Quiet hours. The station is back at ${hourLabel(aud.quietEnd)}.`)
-      if (policy.liveOnly) return deny('budget', 'The station is saving listening time this month. Live shows are still on.')
-    }
-
-    // Today's listening, by kind.
-    const [y, m, d] = localDate(now, cfg.timezone)
-    const dref = db.collection('listenDays').doc(`${t.uid}_${y}${m}${d}`)
-    // Today's totals are only looked at by the daily limits below; when none of them applies, the read is skipped.
-    const needDay = (!live && !staff && aud.dailyAutoMin > 0) || (guest && !live && !guestsOpen) || (!staff && !!policy.dailyCapMin && policy.dailyCapMin > 0)
-    const day = needDay ? await dref.get() : null
-    let autoMin = Number(day?.get('autoMin') ?? 0), liveMin = Number(day?.get('liveMin') ?? 0)
-
-    if (action === 'beat') {
-      const last = (s.get('lastBeat') as Timestamp | undefined)?.toMillis() ?? now
-      const dt = Math.min(Math.max(0, now - last), 120_000) / 60_000
-      if (dt > 0) {
-        await dref.set({ uid: t.uid, [live ? 'liveMin' : 'autoMin']: FieldValue.increment(dt), at: Timestamp.fromMillis(now) }, { merge: true })
-        if (live) liveMin += dt; else autoMin += dt
+      if (action === 'start' && !live && !staff) {
+        if (isQuiet(aud, localParts(now, cfg.timezone).minutes / 60)) return deny('quiet', `Quiet hours. The station is back at ${hourLabel(aud.quietEnd)}.`)
+        if (policy.liveOnly) return deny('budget', 'The station is saving listening time this month. Live shows are still on.')
       }
-      const started = (s.get('startedAt') as Timestamp).toMillis()
-      if (policy.sessionMaxMin > 0 && now - started > policy.sessionMaxMin * 60_000) { await sref.delete(); return deny('session', `Stopped after ${Math.round(policy.sessionMaxMin / 60 * 10) / 10} hours. Tap play to keep listening.`) }
-      const idleMs = Math.max(0, Number(b.activeAgoSec) || 0) * 1000
-      if (idleMs > (policy.idleMin + 3) * 60_000) { await sref.delete(); return deny('idle', 'Stopped because no one seemed to be listening. Tap play to start again.') }
+
+      const platform = (action === 'start' ? device : String(s.get('device') ?? '')) === 'ios' ? 'ios' : 'web'
+      if (action === 'start' || !s.exists) {
+        await sref.set({ sessionId, uid: t.uid, startedAt: Timestamp.fromMillis(now), lastBeat: Timestamp.fromMillis(now), device, deviceId, presenceAt: Timestamp.fromMillis(now) })
+      } else {
+        await sref.update({ lastBeat: Timestamp.fromMillis(now), presenceAt: Timestamp.fromMillis(now) })
+      }
+      await recordPresence(db, t.uid, true, platform, now).catch(() => {}) // the tuned-in list and the listening log
+
+      const reply: Reply = {
+        ok: true, refreshSec: limits.refreshSec,
+        idleMin: policy.idleMin, sessionMaxMin: policy.sessionMaxMin, level: budget ? budget.level : 'normal', access: { level: access.level },
+      }
+      // The person's own data comes back in the same call (nothing else is asked while playing). Only for the new actions: an older app's beat has no use for it.
+      if (action !== 'beat' && typeof b.sections === 'string') {
+        reply.me = await buildMe(db, t, sectionsOf(str(b.sections, 120)), cleanOcc(b.occId), now)
+      }
+      known.remember(t.uid, { sessionId, reply }, now)
+      return reply
     }
 
-    // Guests hear everything while the month is comfortably under the limit; otherwise live shows plus a few playlist minutes a day.
-    if (!live && !staff && aud.dailyAutoMin > 0 && autoMin >= aud.dailyAutoMin) return deny('autoDaily', guest
-      ? 'You have used today\'s playlist time. Live shows are still on. Add your school email for more.'
-      : 'You have used today\'s playlist time. Live shows are still on. It resets at midnight.')
-    if (guest && !live && !guestsOpen && autoMin >= uc.guestAutoMin) return deny('guestAuto', 'Listening is busy this month, so guests can hear live shows plus a few minutes of the playlist each day. Add your school email for the rest.')
-    if (!staff && policy.dailyCapMin > 0 && autoMin + liveMin >= policy.dailyCapMin) return deny('daily', 'You have reached today\'s listening limit. It resets at midnight.')
-
-    if (action === 'start') await sref.set({ sessionId, uid: t.uid, startedAt: Timestamp.fromMillis(now), lastBeat: Timestamp.fromMillis(now), device, deviceId, presenceAt: Timestamp.fromMillis(now) })
-    else {
-      // Tuned-in presence (the listener count, friends, the listening log) is refreshed from here every ~2 minutes, so the page no
-      // longer sends a separate heartbeat. The page still says so when it starts and stops playing.
-      const presenceDue = now - ((s.get('presenceAt') as Timestamp | undefined)?.toMillis() ?? 0) >= PRESENCE_EVERY_MS
-      await sref.update({ lastBeat: Timestamp.fromMillis(now), ...(presenceDue ? { presenceAt: Timestamp.fromMillis(now) } : {}) })
-      if (presenceDue) await recordPresence(db, t.uid, true, s.get('device') === 'ios' ? 'ios' : 'web', now).catch(() => {})
-    }
-    return { ok: true, idleMin: policy.idleMin, sessionMaxMin: policy.sessionMaxMin, level: limits.budgetEnabled ? budget.level : 'normal' }
+    // Switching devices must always reach the check (a remembered "elsewhere" answer would trap the person), so it skips the throttle.
+    if (action === 'start' && b.takeOver === true) return checkIn()
+    return throttled<Reply | Deny>('listen', t.uid, EMPTY, checkIn, '')
   })
 }

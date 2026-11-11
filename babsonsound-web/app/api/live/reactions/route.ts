@@ -4,6 +4,7 @@ import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/ht
 import { EMOJIS, bucketMinute, currentOnAir, hostPrefsFor } from '@/lib/server/live'
 import { themedEmojis } from '@/lib/server/easterEggs'
 import { reactionsLocked } from '@/lib/server/cpuBudget'
+import { levelOf, mayRun } from '@/lib/server/tierGate'
 import { EARNED_EMOJIS, bump, emojisFor } from '@/lib/server/earnedEmojis'
 
 export const runtime = 'nodejs'
@@ -43,6 +44,8 @@ async function prefsCached(db: Firestore, cur: NonNullable<Awaited<ReturnType<ty
 }
 
 export async function GET() {
+  // Tier 3 (lib/cpuTiers.ts): tight = the edge keeps the answer longer, critical = no work at all and the edge keeps it longer still.
+  const level = await levelOf('reactions')
   return handle(async () => {
     // Over the server-time budget: do no work. The edge keeps this answer for 30 s, so even a crowd costs almost nothing.
     if (await reactionsLocked()) return { occId: '', emojis: EMOJIS, events: [], now: Date.now(), paused: true }
@@ -52,7 +55,7 @@ export async function GET() {
     if (!cur) return { occId: '', emojis: EMOJIS, events: [], now }
     const mine = (await prefsCached(db, cur))?.emojis ?? []
     return { occId: cur.occId, emojis: mine.length ? mine : EMOJIS, events: await recentEvents(db, cur.occId, now), now }
-  }, { 'Cache-Control': 'public, s-maxage=2, stale-while-revalidate=4' }, 'reactions')
+  }, { 'Cache-Control': level === 'critical' ? 'public, s-maxage=30, stale-while-revalidate=60' : level === 'tight' ? 'public, s-maxage=10, stale-while-revalidate=20' : 'public, s-maxage=2, stale-while-revalidate=4' }, 'reactions')
 }
 
 const sent = new Map<string, number[]>() // best effort, per server instance
@@ -71,6 +74,7 @@ export async function POST(req: Request) {
     // Paused for server time: say OK so nobody sees an error. Their own screen still rains.
     if (await reactionsLocked()) return { ok: true, paused: true }
     const t = await requireMember(req)
+    if (!(await mayRun('reactions', t.uid))) return { ok: true, paused: true } // tight: one reaction every few seconds per person is stored, the rest only rain on their own screen
     const b = await readJson(req)
     const emoji = str(b.emoji, 24)
     const cid = str(b.cid, 24).replace(/[^A-Za-z0-9]/g, '')

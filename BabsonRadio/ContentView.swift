@@ -11,6 +11,7 @@ struct ContentView: View {
     @ObservedObject private var auth = AuthManager.shared
     @ObservedObject private var profile = ProfileStore.shared
     @ObservedObject private var listen = ListenGuard.shared
+    @ObservedObject private var push = PushManager.shared
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var theme = ArtTheme.shared
     @State private var tab = 0
@@ -153,6 +154,12 @@ struct ContentView: View {
             .background(pageBackground)
             .overlay(alignment: .top) { statusBlur }
             .task(id: auth.isSignedIn) { ContactsManager.shared.promptOnFirstOpen() }
+            .alert("Turn on notifications?", isPresented: Binding(get: { push.showExplainer }, set: { if !$0 && push.showExplainer { push.answerExplainer(false) } })) {
+                Button("Continue") { PushManager.shared.answerExplainer(true) }
+                Button("Not now", role: .cancel) { PushManager.shared.answerExplainer(false) }
+            } message: {
+                Text("You chose a notification, so iPhone will ask next. Babson Radio only sends what you turned on: show reminders, your birthday message or station news. They never include personal details, and you can turn them off here or in Settings.")
+            }
             .onAppear { ActivityMonitor.install() }
             .onChange(of: scenePhase) { _, p in if p == .active { listen.markActive() } }
             // The profile circle in the corner needs the chosen color from the start.
@@ -205,12 +212,10 @@ struct ContentView: View {
         EmptyView()
     }
 
-    /// After the launch splash: the sign-in splash, or the step an Apple / unverified account is stuck on.
+    /// After the launch splash: the sign-in splash, or the step an unverified account is stuck on.
     @ViewBuilder private var gateOverlay: some View {
         if splashDone && auth.hasResolvedAuth {
-            if auth.needsSchoolEmail {
-                AppleSchoolEmailView().transition(.opacity).zIndex(2)
-            } else if auth.needsEmailVerification {
+            if auth.needsEmailVerification {
                 VerifyEmailView().transition(.opacity).zIndex(2)
             } else if !auth.isSignedIn && !welcomeSkipped {
                 WelcomeView(onSkip: { withAnimation { welcomeSkipped = true } }).transition(.opacity).zIndex(2)
@@ -245,7 +250,7 @@ struct ContentView: View {
 extension ContentView {
     private var showHostWelcome: Bool {
         guard splashDone, auth.isSignedIn, profile.hosting else { return false }
-        guard !auth.needsOnboarding, !auth.needsSchoolEmail, !auth.needsEmailVerification else { return false }
+        guard !auth.needsOnboarding, !auth.needsEmailVerification else { return false }
         return hostWelcomeDay != HostWelcome.todayKey
     }
 

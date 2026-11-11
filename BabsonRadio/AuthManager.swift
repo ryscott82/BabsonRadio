@@ -1,6 +1,5 @@
 import SwiftUI
 import Combine
-import AuthenticationServices
 #if canImport(FirebaseCore)
 import FirebaseCore
 #endif
@@ -49,14 +48,8 @@ class AuthManager: ObservableObject {
     @Published var hasResolvedAuth = false
     /// On the beta tester list.
     @Published var isTester = false
-    /// Signed in with Apple but no school email yet: the app asks for one (verified within 7 days).
-    @Published var needsSchoolEmail = false
     /// A student account that hasn't done the one-time "about you" step (name, phone, birthday or age range).
     @Published var needsOnboarding = false
-    /// Signed in with Apple (they have no password, so deleting the account re-confirms with Apple).
-    @Published var isAppleUser = false
-    private var appleFirstName = ""
-    private var appleLastName = ""
 
     func setInvisible(_ value: Bool) {
         let previous = isInvisible
@@ -171,9 +164,7 @@ class AuthManager: ObservableObject {
             currentUser = nil
             isSignedIn = false
             needsEmailVerification = false
-            needsSchoolEmail = false
             needsOnboarding = false
-            isAppleUser = false
             guestStatus = nil
             isTester = false
             enforceAccess()
@@ -183,21 +174,6 @@ class AuthManager: ObservableObject {
         let email = user.email ?? ""
         let claims = try? await user.getIDTokenResult()
         let isDev = (claims?.claims["developer"] as? Bool) == true
-        let isApple = user.providerData.contains { $0.providerID == "apple.com" }
-        isAppleUser = isApple
-        // Sign in with Apple still needs a school email. Until they add one they are not a guest and not signed in.
-        if !isDev && isApple && !Self.isBabsonEmail(email) {
-            needsSchoolEmail = true
-            needsEmailVerification = false
-            needsOnboarding = false
-            isSignedIn = false
-            currentUser = nil
-            guestStatus = nil
-            isTester = false
-            return
-        }
-        needsSchoolEmail = false
-
         // Non-Babson, non-developer accounts are guests: live radio for everyone signed in; the Library needs a sponsor's pass or a student connection.
         if !isDev && !Self.isBabsonEmail(email) {
             // Guests are on the same clock as students: 7 days, then the app shows only "Verify your email".
@@ -601,60 +577,6 @@ class AuthManager: ObservableObject {
         }
     }
 
-    // MARK: - Sign in with Apple
-
-    /// Finishes the Apple button: signs in to Firebase with Apple's token. The name only arrives the first time.
-    func signInWithApple(_ result: Result<ASAuthorization, Error>, rawNonce: String) {
-        errorMessage = nil; infoMessage = nil
-        guard Self.firebaseReady else { errorMessage = Self.setupMessage; return }
-        switch result {
-        case .failure(let error):
-            if (error as? ASAuthorizationError)?.code == .canceled { return }
-            errorMessage = "Apple sign-in didn't finish. Try again, or continue with email. (BR-AUTH-007)"
-        case .success(let authorization):
-            guard let cred = authorization.credential as? ASAuthorizationAppleIDCredential,
-                  let tokenData = cred.identityToken, let idToken = String(data: tokenData, encoding: .utf8) else {
-                errorMessage = "Apple didn't send what we need. Try again. (BR-AUTH-007)"
-                return
-            }
-            appleFirstName = cred.fullName?.givenName ?? ""
-            appleLastName = cred.fullName?.familyName ?? ""
-            let credential = OAuthProvider.appleCredential(withIDToken: idToken, rawNonce: rawNonce, fullName: cred.fullName)
-            isLoading = true
-            Task {
-                defer { isLoading = false }
-                do { _ = try await Auth.auth().signIn(with: credential) }
-                catch { errorMessage = Self.authMessage(error) }
-            }
-        }
-    }
-
-    /// Apple accounts give their school email here. The server makes it the account's email and starts the 7 days;
-    /// then Firebase emails the verification link to it.
-    func submitAppleSchoolEmail(email: String, agreed: Bool) {
-        errorMessage = nil; infoMessage = nil
-        guard Self.isBabsonEmail(email) else { errorMessage = "Use your Babson, Olin or Wellesley email. (BR-ACC-001)"; return }
-        guard agreed else { errorMessage = "Agree to the Terms of Use and Privacy Policy to continue. (BR-ACC-019)"; return }
-        guard let user = Auth.auth().currentUser else { return }
-        isLoading = true
-        Task {
-            defer { isLoading = false }
-            do {
-                let _: EmptyResponse = try await BackendAPI.post("/api/auth/apple/school-email", [
-                    "email": Self.cleaned(email), "agreed": agreed,
-                    "firstName": appleFirstName, "lastName": appleLastName,
-                ])
-                try await user.reload()
-                _ = try await user.getIDToken(forcingRefresh: true)
-                try? await user.sendEmailVerification()
-                await apply(Auth.auth().currentUser)
-                infoMessage = "We sent a link to \(Self.cleaned(email)). Open it within 7 days."
-            } catch {
-                errorMessage = (error as? BackendError)?.message ?? Self.authMessage(error)
-            }
-        }
-    }
-
     /// The one-time "about you" step. Under 13: the server deletes the account and we sign out.
     @discardableResult
     func submitOnboarding(firstName: String, lastName: String, phone: String, gradYear: String,
@@ -684,34 +606,6 @@ class AuthManager: ObservableObject {
         }
     }
 
-    /// Delete-my-account for Apple accounts: confirm with Apple, revoke the Apple link, then delete.
-    func deleteAccountWithApple(_ result: Result<ASAuthorization, Error>, rawNonce: String) {
-        errorMessage = nil; infoMessage = nil
-        guard let user = Auth.auth().currentUser else { return }
-        guard case .success(let authorization) = result,
-              let cred = authorization.credential as? ASAuthorizationAppleIDCredential,
-              let tokenData = cred.identityToken, let idToken = String(data: tokenData, encoding: .utf8),
-              let codeData = cred.authorizationCode, let code = String(data: codeData, encoding: .utf8) else {
-            if case .failure(let e) = result, (e as? ASAuthorizationError)?.code == .canceled { return }
-            errorMessage = "Apple didn't confirm. Nothing was deleted. (BR-AUTH-007)"
-            return
-        }
-        isLoading = true
-        Task {
-            defer { isLoading = false }
-            do {
-                let credential = OAuthProvider.appleCredential(withIDToken: idToken, rawNonce: rawNonce, fullName: nil)
-                try await user.reauthenticate(with: credential)
-                try await Auth.auth().revokeToken(withAuthorizationCode: code)   // Apple requires this when deleting
-                _ = try await user.getIDToken(forcingRefresh: true)
-                let _: EmptyResponse = try await BackendAPI.post("/api/me/delete", ["confirm": "DELETE"])
-                signOut()
-            } catch {
-                errorMessage = (error as? BackendError)?.message ?? Self.authMessage(error)
-            }
-        }
-    }
-
     // MARK: - Token for the backend
 
     func idToken() async -> String? {
@@ -727,9 +621,7 @@ class AuthManager: ObservableObject {
         currentUser = nil
         isSignedIn = false
         needsEmailVerification = false
-        needsSchoolEmail = false
         needsOnboarding = false
-        isAppleUser = false
         verifyDeadline = nil
         guestStatus = nil
         enforceAccess()
@@ -769,12 +661,9 @@ class AuthManager: ObservableObject {
     func addSchoolEmail(email: String, firstName: String, lastName: String, gradYear: String, password: String) { errorMessage = Self.setupMessage }
     func deleteAccount(password: String) { errorMessage = Self.setupMessage }
 
-    func signInWithApple(_ result: Result<ASAuthorization, Error>, rawNonce: String) { errorMessage = Self.setupMessage }
-    func submitAppleSchoolEmail(email: String, agreed: Bool) { errorMessage = Self.setupMessage }
     @discardableResult
     func submitOnboarding(firstName: String, lastName: String, phone: String, gradYear: String,
                           birthdate: DateComponents?, ageRange: String?, parentalConsent: Bool) async -> Bool { errorMessage = Self.setupMessage; return false }
-    func deleteAccountWithApple(_ result: Result<ASAuthorization, Error>, rawNonce: String) { errorMessage = Self.setupMessage }
 
     func resendVerification() {}
     func checkVerification() {}

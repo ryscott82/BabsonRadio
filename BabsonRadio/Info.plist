@@ -13,9 +13,12 @@
 		<string>BarlowCondensed-SemiBold.ttf</string>
 		<string>BarlowCondensed-Bold.ttf</string>
 	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
+		<string>remote-notification</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict>

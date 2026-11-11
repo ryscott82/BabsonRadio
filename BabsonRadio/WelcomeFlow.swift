@@ -1,48 +1,10 @@
 import SwiftUI
-import AuthenticationServices
-import CryptoKit
 
-// MARK: - Sign-in splash, school email step and "about you" step
+// MARK: - Sign-in splash and "about you" step
 //
-// Flow: launch splash -> WelcomeView (Sign in with Apple or email) -> for Apple accounts, AppleSchoolEmailView
-// (a Babson, Olin or Wellesley email, verified within 7 days) -> OnboardingView (name, phone, grad year,
-// birthday or age range). ContentView decides which one to show from AuthManager's flags.
-
-// MARK: Apple sign-in pieces
-
-enum AppleNonce {
-    /// Random string sent to Apple (hashed) and to Firebase (raw), so the sign-in can't be replayed.
-    static func random(length: Int = 32) -> String {
-        let chars = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
-        return String((0..<length).map { _ in chars.randomElement()! })
-    }
-    static func sha256(_ input: String) -> String {
-        SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
-    }
-}
-
-struct AppleSignInButton: View {
-    enum Purpose { case signIn, confirmDelete }
-    var purpose: Purpose = .signIn
-    @Environment(\.colorScheme) private var scheme
-    @State private var nonce = ""
-
-    var body: some View {
-        SignInWithAppleButton(.continue) { request in
-            nonce = AppleNonce.random()
-            request.requestedScopes = purpose == .signIn ? [.fullName, .email] : []
-            request.nonce = AppleNonce.sha256(nonce)
-        } onCompletion: { result in
-            switch purpose {
-            case .signIn: AuthManager.shared.signInWithApple(result, rawNonce: nonce)
-            case .confirmDelete: AuthManager.shared.deleteAccountWithApple(result, rawNonce: nonce)
-            }
-        }
-        .signInWithAppleButtonStyle(scheme == .dark ? .white : .black)
-        .frame(height: 50)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-}
+// Flow: launch splash -> WelcomeView (Continue with email, or Just listen for now as a guest) -> OnboardingView (name, phone,
+// grad year, birthday or age range). Email and password is the only way to sign in. ContentView decides which step to show
+// from AuthManager's flags.
 
 // MARK: Shared look (green accent, no yellow)
 
@@ -110,25 +72,24 @@ struct WelcomeView: View {
                     .font(BRFont.body(14, .regular)).foregroundColor(style.sub).padding(.top, 6)
                 Spacer()
 
+                // Two options, the same size: sign in or sign up with email, or listen without an account.
                 VStack(spacing: 12) {
-                    AppleSignInButton()
-                    Button { showEmail = true } label: {
-                        Text("Continue with email").font(BRFont.display(16)).kerning(3)
-                            .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    PrimaryButton(title: "CONTINUE WITH EMAIL", style: style) { showEmail = true }
+                    Button(action: onSkip) {
+                        Text("JUST LISTEN FOR NOW").font(BRFont.display(18)).kerning(3)
+                            .frame(maxWidth: .infinity).padding(.vertical, 15)
                             .foregroundColor(style.text)
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(style.border, lineWidth: 1.5))
+                            .contentShape(RoundedRectangle(cornerRadius: 12))
                     }
                     .buttonStyle(.plain)
 
                     if let error = auth.errorMessage {
                         Text(error).font(BRFont.body(13, .regular)).foregroundColor(.brRed).multilineTextAlignment(.center)
                     }
-                    Text("Students: add your school email and verify it within 7 days.")
+                    Text("No account needed to listen. Students: add your school email and verify it within 7 days.")
                         .font(BRFont.body(12, .regular)).foregroundColor(style.sub).multilineTextAlignment(.center)
                         .padding(.top, 4)
-                    Button("Just listen for now", action: onSkip)
-                        .font(BRFont.body(12, .regular)).foregroundColor(style.sub).underline()
-                        .padding(.top, 6)
                 }
                 .padding(.horizontal, 28)
                 .padding(.bottom, 28)
@@ -137,68 +98,6 @@ struct WelcomeView: View {
         }
         .hwSplash()
         .sheet(isPresented: $showEmail) { AuthView() }
-    }
-}
-
-// MARK: - School email for Sign in with Apple accounts
-
-struct AppleSchoolEmailView: View {
-    @ObservedObject private var auth = AuthManager.shared
-    @Environment(\.colorScheme) private var scheme
-    @State private var username = ""
-    @State private var domain = AuthManager.schoolDomains[0]
-    @State private var agreed = false
-    private var style: FlowStyle { FlowStyle(scheme: scheme) }
-    private var fullEmail: String { username.trimmingCharacters(in: .whitespaces).lowercased() + domain }
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 18) {
-                Image(systemName: "graduationcap").font(.system(size: 38)).foregroundColor(style.accent).padding(.top, 70)
-                Text("Add your school email").font(BRFont.display(30)).kerning(3).foregroundColor(style.text)
-                Text("Add your school email and verify it within 7 days.")
-                    .font(BRFont.body(14, .regular)).foregroundColor(style.sub).multilineTextAlignment(.center)
-
-                HStack(spacing: 6) {
-                    TextField("", text: $username, prompt: Text("username").foregroundColor(.brPlaceholder))
-                        .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.emailAddress)
-                    Menu {
-                        ForEach(AuthManager.schoolDomains, id: \.self) { d in Button(d) { domain = d } }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(domain).foregroundColor(style.accent)
-                            Image(systemName: "chevron.up.chevron.down").font(.system(size: 11)).foregroundColor(style.accent)
-                        }
-                    }
-                }
-                .font(BRFont.body(16, .regular)).foregroundColor(style.text)
-                .modifier(fieldBox(style))
-
-                Toggle(isOn: $agreed) {
-                    (Text("I agree to the ") + Text("[Terms of Use](https://babsonradio.com/terms)") + Text(" and ")
-                     + Text("[Privacy Policy](https://babsonradio.com/privacy)") + Text("."))
-                        .font(BRFont.body(12, .regular)).foregroundColor(style.sub)
-                }
-                .tint(style.accent)
-
-                PrimaryButton(title: auth.isLoading ? "SENDING…" : "SEND VERIFICATION LINK", style: style,
-                              enabled: !username.trimmingCharacters(in: .whitespaces).isEmpty && agreed && !auth.isLoading) {
-                    auth.submitAppleSchoolEmail(email: fullEmail, agreed: agreed)
-                }
-
-                if let info = auth.infoMessage {
-                    Text(info).font(BRFont.body(13, .regular)).foregroundColor(style.sub).multilineTextAlignment(.center)
-                }
-                if let error = auth.errorMessage {
-                    Text(error).font(BRFont.body(13, .regular)).foregroundColor(.brRed).multilineTextAlignment(.center)
-                }
-                Button("Sign out") { auth.signOut() }
-                    .font(BRFont.body(13, .regular)).foregroundColor(style.sub)
-            }
-            .padding(.horizontal, 28)
-        }
-        .scrollDismissesKeyboard(.interactively)
-        .hwSplash()
     }
 }
 
@@ -314,7 +213,7 @@ struct OnboardingView: View {
         .hwSplash()
         .interactiveDismissDisabled()
         .task {
-            // Fill in whatever we already have (a name from Apple, or details from an email sign-up).
+            // Fill in whatever we already have (details from the email sign-up).
             if let u = auth.currentUser {
                 if firstName.isEmpty { firstName = u.displayName }
                 if lastName.isEmpty { lastName = u.lastName }

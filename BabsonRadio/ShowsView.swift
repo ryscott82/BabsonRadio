@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 // MARK: - Shows tab
 // The station's shows with their description and hosts, the same list as the website's Shows page. Tap one to see its episodes.
@@ -139,6 +140,10 @@ struct ShowDetailView: View {
                 }
                 Text(show.longDescription.isEmpty ? show.description : show.longDescription)
                     .font(BRFont.body(14, .regular)).foregroundColor(sub)
+                if AuthManager.shared.isSignedIn {
+                    ReportContentButton(what: "Show page: \(show.name)", text: show.longDescription.isEmpty ? show.description : show.longDescription)
+                        .foregroundColor(sub)
+                }
                 BRSectionHeader(title: "Episodes")
                 if episodes.isEmpty {
                     Text(lib.loaded ? "No episodes yet." : "Loading…").font(BRFont.body(14, .regular)).foregroundColor(sub)

@@ -173,6 +173,9 @@ struct LivePlayerView: View {
                 VStack(spacing: 3) {
                     if !note.headline.isEmpty { Text(note.headline).font(BRFont.body(14, .bold)) }
                     if !note.message.isEmpty { Text(note.message).font(BRFont.body(13)) }
+                    if auth.isSignedIn {
+                        ReportContentButton(what: "Pinned note", text: [note.headline, note.message].filter { !$0.isEmpty }.joined(separator: " - "))
+                    }
                 }
                 .foregroundStyle(Color.hwInk)
                 .multilineTextAlignment(.center)

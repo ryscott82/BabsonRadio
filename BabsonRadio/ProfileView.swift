@@ -12,8 +12,6 @@ struct ProfileView: View {
     var body: some View {
         if auth.isSignedIn, let user = auth.currentUser {
             if user.isGuest { GuestProfileView(user: user) } else { SignedInProfileView(user: user) }
-        } else if auth.needsSchoolEmail {
-            AppleSchoolEmailView()
         } else if auth.needsEmailVerification {
             VerifyEmailView()
         } else {
@@ -38,10 +36,12 @@ private struct SignedInProfileView: View {
     // Single sheet driven by enum — never stack two .sheet modifiers
     enum ActiveSheet: Identifiable {
         case contactPicker
+        case contactsExplainer
         case messageComposer(String)   // phone number
         var id: String {
             switch self {
             case .contactPicker:        return "picker"
+            case .contactsExplainer:    return "contacts-explainer"
             case .messageComposer(let n): return "composer-\(n)"
             }
         }
@@ -126,6 +126,10 @@ private struct SignedInProfileView: View {
                         .padding(.horizontal, 20)
                         .padding(.bottom, 16)
 
+                    ProfileDisclosure(title: "Help") { HelpLinksSection() }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 16)
+
                     if user.isAdmin {
                         adminRow
                             .padding(.horizontal, 20)
@@ -189,6 +193,11 @@ private struct SignedInProfileView: View {
                     guestEmail = ""
                     activeSheet = nil
                 }
+            case .contactsExplainer:
+                ContactsExplainerView(
+                    onContinue: { activeSheet = nil; contacts.requestAccess() },
+                    onNotNow: { activeSheet = nil }
+                )
             case .messageComposer(let number):
                 MessageComposer(
                     recipients: [number],
@@ -483,7 +492,7 @@ private struct SignedInProfileView: View {
                     }
                     .buttonStyle(.plain)
                 } else {
-                    Button(action: { contacts.requestAccess() }) {
+                    Button(action: { activeSheet = .contactsExplainer }) {
                         HStack(spacing: 12) {
                             Image(systemName: "person.crop.circle.badge.plus")
                                 .font(.system(size: 18))
@@ -1040,20 +1049,13 @@ class ContactsManager: ObservableObject {
         }
     }
 
-    /// Asks for contacts once, the first time a signed-in student opens the app. If they say no, the button in Profile
-    /// is still there. Guests never get this (the friends network is for students).
+    /// Never shows the system prompt. If access was already granted (from the explainer in Profile), it just loads.
+    /// The first request only ever happens after the person taps Continue on ContactsExplainerView.
     func promptOnFirstOpen() {
         let auth = AuthManager.shared
         guard auth.isSignedIn, auth.currentUser?.isGuest != true else { return }
-        switch CNContactStore.authorizationStatus(for: .contacts) {
-        case .notDetermined:
-            guard !UserDefaults.standard.bool(forKey: "br_contacts_asked") else { return }
-            UserDefaults.standard.set(true, forKey: "br_contacts_asked")
-            requestAccess()
-        case .authorized:
+        if CNContactStore.authorizationStatus(for: .contacts) == .authorized {
             Task { await requestAccessIfNeeded() }
-        default:
-            break
         }
     }
 
@@ -1866,5 +1868,140 @@ struct HostRulesSheet: View {
         .background(HWDesk())
         .presentationDetents([.medium])
         .interactiveDismissDisabled()
+    }
+}
+
+
+// MARK: - Contacts explainer (shown before the system permission prompt)
+
+struct ContactsExplainerView: View {
+    let onContinue: () -> Void
+    let onNotNow: () -> Void
+    @Environment(\.colorScheme) private var scheme
+
+    private var text: Color { scheme == .dark ? .brDkText : .brLtText }
+    private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
+
+    private func point(_ icon: String, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon).font(.system(size: 20))
+                .foregroundColor(scheme == .dark ? .brGold : .brGreen).frame(width: 28)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(BRFont.body(15, .semibold)).foregroundColor(text)
+                Text(detail).font(BRFont.body(13, .regular)).foregroundColor(sub)
+            }
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            Text("Find friends on Babson Radio")
+                .font(BRFont.display(22)).foregroundColor(text)
+            point("person.crop.circle.badge.questionmark", "What we read",
+                  "Names, phone numbers and emails in your contacts, only while the app finds matches.")
+            point("lock.shield", "Scrambled before they leave your phone",
+                  "Numbers and emails are turned into one-way codes on your phone. We never receive them in plain form.")
+            point("person.2", "Only finds people already here",
+                  "We use the codes to see who in your contacts already uses Babson Radio. Nobody is messaged or invited unless you tap their name.")
+            point("hand.raised", "Optional, and you stay in control",
+                  "Babson Radio works the same if you skip this. Turn it off any time in iPhone Settings > Babson Radio > Contacts, or turn on Invisible mode in Profile. Delete your account to remove saved data.")
+            Spacer()
+            Button(action: onContinue) {
+                Text("CONTINUE").font(BRFont.body(15, .semibold))
+                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    .foregroundColor(scheme == .dark ? Color.brDkBg : .white)
+                    .background(scheme == .dark ? Color.brGold : Color.brGreen)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            Button("Not now", action: onNotNow)
+                .font(BRFont.body(14, .medium)).foregroundColor(sub)
+                .frame(maxWidth: .infinity)
+        }
+        .padding(24)
+        .background(scheme == .dark ? Color.brDkBg : Color.brLtBg)
+        .presentationDetents([.large])
+    }
+}
+
+
+// MARK: - Help (Profile > Help): live pages and contact route
+
+struct HelpLinksSection: View {
+    @Environment(\.colorScheme) private var scheme
+    @State private var showReport = false
+
+    private func row(_ title: String, _ icon: String, _ url: String) -> some View {
+        Link(destination: URL(string: url)!) {
+            HStack(spacing: 12) {
+                Image(systemName: icon).frame(width: 24)
+                Text(title).font(BRFont.body(15, .medium))
+                Spacer()
+                Image(systemName: "arrow.up.right").font(.system(size: 12))
+            }
+            .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+            .padding(.vertical, 10)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            row("Privacy Policy", "hand.raised", "https://babsonradio.com/privacy")
+            row("Terms of Use", "doc.text", "https://babsonradio.com/terms")
+            row("Support and error codes", "questionmark.circle", "https://babsonradio.com/support/errors")
+            row("Delete my account", "trash", "https://babsonradio.com/delete-account")
+            Button { showReport = true } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "envelope").frame(width: 24)
+                    Text("Contact the station").font(BRFont.body(15, .medium))
+                    Spacer()
+                }
+                .foregroundColor(scheme == .dark ? .brGold : .brGreen)
+                .padding(.vertical, 10)
+            }
+            Text("Messages go to the Babson Radio staff, who read every one. To report something another listener or host posted, use Report next to it.")
+                .font(BRFont.body(12, .regular))
+                .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+        }
+        .sheet(isPresented: $showReport) { FeedbackView() }
+    }
+}
+
+// MARK: - Report a piece of content (guideline 1.2)
+// Sends to the existing /api/feedback route that staff read at Admin > Reports. The message starts with
+// "[Content report]" and quotes what was reported.
+
+struct ReportContentButton: View {
+    let what: String      // e.g. "Pinned note"
+    let text: String      // the content being reported
+    @State private var confirming = false
+    @State private var done = false
+    @State private var failure: String? = nil
+
+    var body: some View {
+        Button(done ? "Reported" : "Report") { confirming = true }
+            .font(BRFont.body(11, .medium))
+            .disabled(done)
+            .confirmationDialog("Report this to the station staff?", isPresented: $confirming, titleVisibility: .visible) {
+                Button("Report", role: .destructive) { send() }
+                Button("Cancel", role: .cancel) {}
+            }
+            .alert("Couldn't send the report", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: { Text(failure ?? "") }
+    }
+
+    private func send() {
+        Task {
+            do {
+                let _: EmptyResponse = try await BackendAPI.post("/api/feedback", [
+                    "type": "bug",
+                    "message": "[Content report] \(what): \(text.prefix(1500))",
+                    "platform": "ios", "appVersion": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "",
+                ])
+                done = true
+            } catch {
+                failure = (error as? BackendError)?.message ?? error.localizedDescription
+            }
+        }
     }
 }

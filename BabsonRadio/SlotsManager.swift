@@ -116,7 +116,7 @@ final class ReminderManager: NSObject, ObservableObject, UNUserNotificationCente
         let key = entry.reminderKey
         let on = !keys.contains(key)
         if on {
-            let granted = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) ?? false
+            let granted = await PushManager.shared.authorizeAfterExplaining(options: [.alert, .sound])
             if !granted {
                 notice = "Turn on notifications for Babson Radio in Settings to get reminders."
                 return

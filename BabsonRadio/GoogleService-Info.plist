@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.ryanscottpersonalteam.BabsonRadio</string>
+	<string>com.babsonradio.app</string>
 	<key>PROJECT_ID</key>
 	<string>babson-radio</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:59924433878:ios:9996a61068a26c036df277</string>
+	<string>1:59924433878:ios:1cb5bfe77d5a895a6df277</string>
 </dict>
 </plist>

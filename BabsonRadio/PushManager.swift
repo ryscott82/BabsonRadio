@@ -49,6 +49,34 @@ final class PushManager: ObservableObject {
 
     private var token = ""
 
+    // ── Our own explanation, shown before the iOS permission prompt ──
+    @Published var showExplainer = false
+    private var explainerContinuation: CheckedContinuation<Bool, Never>?
+
+    /// True when notifications are allowed. If iOS has not asked yet, our own explanation comes first and the system
+    /// prompt only appears after the person taps Continue. Nothing here runs unless the person turned on a notification.
+    func authorizeAfterExplaining(options: UNAuthorizationOptions = [.alert, .sound, .badge]) async -> Bool {
+        let center = UNUserNotificationCenter.current()
+        let current = await center.notificationSettings().authorizationStatus
+        switch current {
+        case .authorized, .provisional, .ephemeral: return true
+        case .denied: return false
+        default: break
+        }
+        let agreed = await withCheckedContinuation { (c: CheckedContinuation<Bool, Never>) in
+            explainerContinuation = c
+            showExplainer = true
+        }
+        guard agreed else { return false }
+        return (try? await center.requestAuthorization(options: options)) ?? false
+    }
+
+    func answerExplainer(_ agreed: Bool) {
+        showExplainer = false
+        explainerContinuation?.resume(returning: agreed)
+        explainerContinuation = nil
+    }
+
     // ── Personal choices (everyone): the happy-birthday message and station announcements ──
     @Published var birthdayOn = false
     @Published var announcementsOn = false
@@ -70,7 +98,7 @@ final class PushManager: ObservableObject {
         busy = true; status = ""
         defer { busy = false }
         if birthday == true || announcements == true {
-            let granted = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+            let granted = await authorizeAfterExplaining()
             guard granted else { status = "Turn on notifications in Settings."; return }
             UIApplication.shared.registerForRemoteNotifications()
         }
@@ -112,7 +140,7 @@ final class PushManager: ObservableObject {
         busy = true; status = ""
         defer { busy = false }
         if !next.isEmpty {
-            let granted = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+            let granted = await authorizeAfterExplaining()
             guard granted else { status = "Turn on notifications in Settings."; return }
             UIApplication.shared.registerForRemoteNotifications()
         }

@@ -508,7 +508,7 @@ nonisolated private struct Egg: Codable, Identifiable {
     var id: String; var name: String; var enabled: Bool
     var artist: [String]; var title: [String]; var show: [String]; var emojis: [String]
 }
-nonisolated private struct EggList: Codable { let eggs: [Egg] }
+nonisolated private struct AdminEggList: Codable { let eggs: [Egg] }
 
 struct EasterEggsAdminView: View {
     @State private var eggs: [Egg] = []
@@ -553,7 +553,7 @@ struct EasterEggsAdminView: View {
         .task { await load() }
     }
     private func load() async {
-        do { let r: EggList = try await BackendAPI.get("/api/admin/easter-eggs"); eggs = r.eggs; message = nil }
+        do { let r: AdminEggList = try await BackendAPI.get("/api/admin/easter-eggs"); eggs = r.eggs; message = nil }
         catch { message = adminErrText(error) }
         loaded = true
     }
@@ -561,7 +561,7 @@ struct EasterEggsAdminView: View {
         do {
             let data = try JSONEncoder().encode(eggs)
             let arr = try JSONSerialization.jsonObject(with: data)
-            let r: EggList = try await BackendAPI.post("/api/admin/easter-eggs", ["eggs": arr])
+            let r: AdminEggList = try await BackendAPI.post("/api/admin/easter-eggs", ["eggs": arr])
             eggs = r.eggs; message = "Saved. Takes about a minute to show everywhere."
         } catch { message = adminErrText(error) }
     }

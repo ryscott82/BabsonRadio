@@ -39,6 +39,40 @@ nonisolated private struct TesterRequest: Decodable, Identifiable {
     var id: String { uid }
 }
 nonisolated private struct FxState: Decodable { let onAirSign: Bool?; let audioFx: Bool? }
+
+/// The month's server time (Vercel Active CPU) from /api/admin/server-usage/status. The same numbers the website's admin banner uses.
+nonisolated private struct AdminUsage: Decodable {
+    struct Tier: Decodable { let level: String; let locked: Bool }
+    let month: String
+    let allowanceHours: Double
+    let hours: Double
+    let pct: Double
+    let projectedMonthEnd: Double
+    let projectedOver: Bool
+    let daysUntilExhausted: Double?
+    let tiers: [String: Tier]
+    let overall: String
+
+    /// Plain words for what a listener notices.
+    var levelWord: String { overall == "critical" ? "Off" : overall == "tight" ? "Slowed" : "Normal" }
+    private func h(_ v: Double) -> String { (v * 10).rounded() / 10 == v.rounded() ? String(Int(v.rounded())) : String((v * 10).rounded() / 10) }
+
+    /// The banner: nil below 50% unless the forecast says the month will pass the allowance. `rank` goes 1 (forecast only), 2 to 5 for 50, 75, 90, 100%.
+    /// Hiding it lasts until the rank goes up (the same rule as the website).
+    var banner: (rank: Int, title: String, text: String)? {
+        let step = pct >= 100 ? 100 : pct >= 90 ? 90 : pct >= 75 ? 75 : pct >= 50 ? 50 : 0
+        if step == 0 && !projectedOver { return nil }
+        var rate = "At this rate the month ends at about \(h(projectedMonthEnd)) of \(h(allowanceHours)) hours"
+        if let left = daysUntilExhausted, left > 0, left < 60 { let d = max(1, Int(left.rounded())); rate += ", with about \(d) day\(d == 1 ? "" : "s") left" }
+        rate += "."
+        let base = "\(h(hours)) of \(h(allowanceHours)) hours used this month (\(Int(pct.rounded()))%)."
+        if step == 0 { return (1, "Server time is on track to pass the allowance", "\(rate) \(base)") }
+        let rank = [50: 2, 75: 3, 90: 4, 100: 5][step] ?? 2
+        let title = step == 100 ? "Server time has reached the monthly allowance" : "Server time is at \(step)% of the monthly allowance"
+        let extra = step == 100 ? "Vercel may pause the site until the next period." : projectedOver ? rate : ""
+        return (rank, title, extra.isEmpty ? base : "\(base) \(extra)")
+    }
+}
 nonisolated private struct TesterList: Decodable { let requests: [TesterRequest] }
 
 @MainActor
@@ -48,6 +82,7 @@ private final class AdminModel: ObservableObject {
     @Published var reports: [Report] = []
     @Published var testers: [TesterRequest] = []
     @Published var fx: FxState?
+    @Published var usage: AdminUsage?
     @Published var message = ""
     @Published var busy = false
     @Published var error: String?
@@ -59,6 +94,11 @@ private final class AdminModel: ObservableObject {
         if let t: TesterList = try? await BackendAPI.get("/api/admin/testers") { testers = t.requests }
         do { let r: ReportList = try await BackendAPI.get("/api/admin/feedback"); reports = r.items; error = nil }
         catch { self.error = (error as? BackendError)?.message ?? error.localizedDescription }
+    }
+
+    /// Read when the screen opens and on pull to refresh only (not in the 30-second refresh): it is a count of server time, and reading it costs some.
+    func loadUsage() async {
+        if let u: AdminUsage = try? await BackendAPI.get("/api/admin/server-usage/status") { usage = u }
     }
 
     func decide(_ t: TesterRequest, approve: Bool) async {
@@ -94,6 +134,7 @@ struct AdminView: View {
     @State private var announce = ""
     @State private var minutes = 60
     @State private var confirm: String?
+    @AppStorage("usageBannerDismissed") private var hiddenBanner = "" // "month:rank", like the website
 
     private var text: Color { Color.white }
     private var sub: Color { Color.white.opacity(0.85) }
@@ -109,7 +150,9 @@ struct AdminView: View {
             VStack(alignment: .leading, spacing: 24) {
                 header
                 if let e = model.error { Text(e).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
+                usageBanner
                 attention
+                serverTime
                 status
                 station
                 AdminToolLinks()
@@ -122,9 +165,10 @@ struct AdminView: View {
         }
         .adminPage()
         .toolbar(.hidden, for: .navigationBar)
-        .refreshable { await model.load() }
+        .refreshable { await model.load(); await model.loadUsage() }
         .task {
             await model.load()
+            await model.loadUsage()
             await push.load()
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(30))
@@ -165,6 +209,42 @@ struct AdminView: View {
                 Text(d.nowPlaying.song.isEmpty ? "Nothing reported" : (d.nowPlaying.isLive ? "LIVE · " : "") + d.nowPlaying.song)
                     .font(BRFont.body(14, .regular)).foregroundColor(sub)
                 Text("\(d.nowPlaying.listeners) listening · last 24 hours: \(d.last24h.sessions) sessions, \(d.last24h.hours.formatted()) h")
+                    .font(BRFont.body(12, .regular)).foregroundColor(sub)
+            } else { ProgressView() }
+        }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading).adminCard()
+    }
+
+    /// Shows when the month is at 50, 75, 90 or 100% of the allowance, or the forecast says it will pass. Colour goes with the level, and the words say it too.
+    @ViewBuilder private var usageBanner: some View {
+        if let u = model.usage, let b = u.banner, !isHidden(u.month, b.rank) {
+            let fill = b.rank >= 5 ? Color(hex: "B3261F") : b.rank == 4 ? Color(hex: "9A4300") : b.rank == 3 ? Color(hex: "7A5800") : Color.black.opacity(0.4)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(b.title).font(BRFont.body(17, .regular)).foregroundColor(.white)
+                Text(b.text).font(BRFont.body(14, .regular)).foregroundColor(.white.opacity(0.95))
+                Button { hiddenBanner = "\(u.month):\(b.rank)" } label: {
+                    Text("Hide for now").font(BRFont.body(14, .regular)).foregroundColor(.white)
+                        .padding(.horizontal, 14).padding(.vertical, 8).overlay(Rectangle().stroke(Color.white.opacity(0.6), lineWidth: 1))
+                }
+            }
+            .padding(16).frame(maxWidth: .infinity, alignment: .leading).background(fill).overlay(Rectangle().stroke(Color.white.opacity(0.7), lineWidth: 2))
+        }
+    }
+
+    private func isHidden(_ month: String, _ rank: Int) -> Bool {
+        let parts = hiddenBanner.split(separator: ":")
+        return parts.count == 2 && String(parts[0]) == month && (Int(parts[1]) ?? 0) >= rank
+    }
+
+    /// The current level only. The entry form, charts and tier locks are on the website (Admin, Server load).
+    private var serverTime: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            AdminHeader("SERVER TIME")
+            if let u = model.usage {
+                Text("Features: \(u.levelWord)").font(BRFont.body(16, .regular)).foregroundColor(text)
+                Text("\(Int(u.pct.rounded()))% of this month's allowance used (\(u.hours.formatted(.number.precision(.fractionLength(0...1)))) of \(u.allowanceHours.formatted(.number.precision(.fractionLength(0...1)))) hours).")
+                    .font(BRFont.body(14, .regular)).foregroundColor(sub)
+                Text("Slowed means people get fresh answers less often. Off means they get the last answer. Enter readings and change locks on the website under Server load.")
                     .font(BRFont.body(12, .regular)).foregroundColor(sub)
             } else { ProgressView() }
         }

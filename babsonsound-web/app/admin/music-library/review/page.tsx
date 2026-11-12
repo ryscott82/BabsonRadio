@@ -104,7 +104,7 @@ export default function ReviewPage() {
   const field = 'ops-field w-full', btn = 'ops-btn px-4 py-2 disabled:opacity-50'
   return (
     <div className="ops-hub">
-      <div className="max-w-[1400px] mx-auto px-5 lg:px-10 py-8 space-y-6">
+      <div className="px-5 lg:px-8 py-8 space-y-6">
         <header>
           <h1 className="text-4xl font-light leading-tight">Review queue</h1>
           <p className="text-base opacity-90 mt-1">Proposed changes from the studio PC. Nothing changes on the radio until you approve and apply.</p>

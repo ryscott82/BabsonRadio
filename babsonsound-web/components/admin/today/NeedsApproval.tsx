@@ -35,15 +35,15 @@ export default function NeedsApproval({ rows, total, onChanged }: { rows: Pendin
 
   const extra = rows ? moreWaiting(total, rows.length) : 0
   return (
-    <section className="ops-card p-5 space-y-3 min-h-[10rem] min-w-0" aria-label="Needs approval" aria-busy={!rows}>
-      <div className="flex flex-wrap items-center gap-3">
+    <section className="ops-card p-5 space-y-3 min-h-[10rem] min-w-0 xl:h-screen xl:flex xl:flex-col xl:!rounded-none" aria-label="Needs approval" aria-busy={!rows}>
+      <div className="flex flex-wrap items-center gap-3 shrink-0">
         <h2 className="text-2xl font-light flex-1">Needs approval{rows && rows.length > 0 ? ` (${total})` : ''}</h2>
         {rows && rows.length > 1 && <button type="button" className="ops-btn px-4 min-h-11" onClick={() => { setShown(rows); setResults(null); setAsking(true) }}>Approve all</button>}
       </div>
       {!rows && <div className="space-y-3"><div className="h-6 w-full bg-white/25 motion-safe:animate-pulse" aria-hidden /><div className="h-6 w-2/3 bg-white/25 motion-safe:animate-pulse" aria-hidden /></div>}
       {rows && rows.length === 0 && <p className="text-base">Nothing is waiting.</p>}
       {err && <p role="alert" className="text-base font-semibold bg-white text-[#9d1c14] px-3 py-1">{err}</p>}
-      <ul className="divide-y divide-white/25">
+      <ul className="divide-y divide-white/25 xl:flex-1 xl:min-h-0 xl:overflow-y-auto">
         {rows?.map(r => (
           <li key={r.id} className="py-3 space-y-2">
             <p className="text-lg leading-snug">{r.title}</p>

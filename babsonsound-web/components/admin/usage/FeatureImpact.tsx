@@ -20,7 +20,7 @@ export default function FeatureImpact({ d }: { d: Overview }) {
   const w = basis === null ? null : whatIf({ listeners: Number(listeners), hours: Number(hours), secondsPerListenerHour: basis, allowanceHours: d.allowanceHours, usedHours: d.status.hours })
   const field = 'ops-field w-full'
   return (
-    <section className="space-y-3" aria-label="What each feature costs">
+    <section className="space-y-2" aria-label="What each feature costs">
       <h2 className="text-2xl font-light">What each feature costs</h2>
       <div className="ops-card overflow-x-auto">
         <table className="w-full min-w-[680px]">
@@ -28,26 +28,26 @@ export default function FeatureImpact({ d }: { d: Overview }) {
           <tbody>
             {rows.map(r => (
               <tr key={r.id} className="border-b border-white/25 last:border-0 align-top">
-                <td className="px-3 py-2"><span className="block text-lg">{r.name}</span><span className="block text-sm opacity-90">{r.note}</span></td>
+                <td className="px-3 py-2"><span className="block text-lg">{r.name}</span><span className="block text-base opacity-90">{r.note}</span></td>
                 <td className="px-3 py-2">{TIER(r.tier)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtInt(r.callsPerHour)}<span className="block text-sm opacity-90">{r.kind === 'per-listener' ? 'per listener' : 'whole site, at most'}</span></td>
+                <td className="px-3 py-2 text-right tabular-nums">{fmtInt(r.callsPerHour)}<span className="block text-base opacity-90">{r.kind === 'per-listener' ? 'per listener' : 'whole site, at most'}</span></td>
                 <td className="px-3 py-2 text-right tabular-nums">{r.avgMs === null ? 'not seen' : `${Math.round(r.avgMs * 10) / 10} ms`}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{r.secondsPerHour === null ? '' : fmtH(r.secondsPerHour)}<span className="block text-sm opacity-90">{r.secondsPerHour === null ? '' : r.kind === 'per-listener' ? 'per listener' : 'whole site'}</span></td>
+                <td className="px-3 py-2 text-right tabular-nums">{r.secondsPerHour === null ? '' : fmtH(r.secondsPerHour)}<span className="block text-base opacity-90">{r.secondsPerHour === null ? '' : r.kind === 'per-listener' ? 'per listener' : 'whole site'}</span></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="text-sm opacity-90">Calls an hour are from the backend report and are estimates. Server time per call is from this one server over the last hour, so it is blank until that route has run here. Calls that Vercel answers from its cache never reach a server. Shared work does not grow with the number of listeners; per-listener work does, so the first rows move the limit as the audience grows and the shared rows set the floor.</p>
+      <p className="text-base opacity-90">Calls an hour are from the backend report and are estimates. Server time per call is from this one server over the last hour, so it is blank until that route has run here. Calls that Vercel answers from its cache never reach a server. Shared work does not grow with the number of listeners; per-listener work does, so the first rows move the limit as the audience grows and the shared rows set the floor.</p>
 
-      <div className="ops-card p-4 space-y-3">
+      <div className="ops-card p-3 space-y-3">
         <h3 className="text-xl">What if</h3>
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="block">Listeners at once<input className={field} inputMode="numeric" value={listeners} onChange={e => setListeners(e.target.value)} /></label>
           <label className="block">Hours on air<input className={field} inputMode="numeric" value={hours} onChange={e => setHours(e.target.value)} /></label>
           <label className="block">Server seconds per listener-hour<input className={field} inputMode="decimal" placeholder={measured === null ? 'needs a number' : String(Math.round(measured))} value={secs} onChange={e => setSecs(e.target.value)} /></label>
         </div>
-        <p className="text-sm opacity-90">{secs.trim() !== '' ? 'Using the number you typed.' : measured !== null ? `Using ${Math.round(measured)} seconds, measured from your last readings (it includes the shared work).` : `No measurement yet. Per-listener calls alone come to about ${fmtH(guess)} seconds from our meter; type a number to try it.`}</p>
+        <p className="text-base opacity-90">{secs.trim() !== '' ? 'Using the number you typed.' : measured !== null ? `Using ${Math.round(measured)} seconds, measured from your last readings (it includes the shared work).` : `No measurement yet. Per-listener calls alone come to about ${fmtH(guess)} seconds from our meter; type a number to try it.`}</p>
         <div aria-live="polite" className="min-h-[3.5rem]">
           {w ? (
             <p className="text-lg">About {fmtH(w.cpuHours)} hours of server time, {Math.round(w.pctOfAllowance)}% of the {fmtH(d.allowanceHours)} hour allowance.

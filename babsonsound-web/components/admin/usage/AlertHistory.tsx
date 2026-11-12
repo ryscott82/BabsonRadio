@@ -9,7 +9,7 @@ const how = (a: A) => (a.silent ? 'Counted, no email (a higher step was announce
 export default function AlertHistory({ alerts }: { alerts: A[] }) {
   const rows = [...alerts].sort((a, b) => b.at - a.at)
   return (
-    <section className="space-y-3" aria-label="Alert history">
+    <section className="space-y-2" aria-label="Alert history">
       <h2 className="text-2xl font-light">Alerts and emails</h2>
       <ul className="ops-card divide-y divide-white/25">
         {rows.map(a => (
@@ -21,7 +21,7 @@ export default function AlertHistory({ alerts }: { alerts: A[] }) {
         ))}
         {rows.length === 0 && <li className="p-4">No alerts in the last 3 months.</li>}
       </ul>
-      <p className="text-sm opacity-90">Each step (50, 75, 90 and 100%) is announced once a month. Emails go to the owners and every admin.</p>
+      <p className="text-base opacity-90">Each step (50, 75, 90 and 100%) is announced once a month. Emails go to the owners and every admin.</p>
     </section>
   )
 }

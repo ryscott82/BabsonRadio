@@ -12,7 +12,7 @@ export default function StatsPage() {
     ...(isAdmin ? ([['/admin/usage', 'Listening hours'], ['/admin/listening', 'Listening log'], ['/admin/playlog', 'Play log (export)'], ['/admin/network', 'Friends web']] as [string, string][]) : []),
   ]
   return (
-    <div className="max-w-[1800px] mx-auto px-5 lg:px-10 py-6 space-y-4">
+    <div className="px-5 lg:px-8 py-6 space-y-4">
       <div className="flex items-center gap-3 border-b border-br-dk-border pb-3">
         <Link href="/admin" className="text-br-dk-sub text-sm">Settings</Link>
         <span className="text-br-dk-muted">/</span>

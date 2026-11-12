@@ -55,7 +55,7 @@ export default function ExpertSettingsPage() {
   const field = 'ops-field w-full sm:w-80 min-h-11'
 
   return (
-    <div className="max-w-[1100px] mx-auto px-5 lg:px-10 py-8 space-y-6">
+    <div className="px-5 lg:px-8 py-8 space-y-6">
       <header className="flex flex-wrap items-end gap-x-4 gap-y-2">
         <div className="flex-1 min-w-[240px]">
           <h1 className="text-4xl font-light leading-tight">Expert settings</h1>

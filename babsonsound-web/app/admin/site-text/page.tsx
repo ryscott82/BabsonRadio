@@ -39,7 +39,7 @@ export default function SiteTextPage() {
 
   if (loading || !isAdmin) return null
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+    <div className="px-5 lg:px-8 py-8 space-y-8">
       <h1 className="text-4xl font-light">Page text</h1>
       <p className="text-base opacity-90">Change the words on a page. Links go in like [this](/schedule). Reset puts the original words back.</p>
       {err && <p role="alert" className="text-base">{err}</p>}

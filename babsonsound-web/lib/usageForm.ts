@@ -116,3 +116,12 @@ export function formFromEntry(e: Pick<UsageEntry, 'date' | 'activeCpuHours' | 'e
     routes: (e.topRoutes ?? []).map(r => ({ route: r.route, hours: String(Math.round(r.cpuHours * 1000) / 1000) })), note: e.note,
   }
 }
+
+/** The four numbers the quick entry asks for. The date is today unless changed. It is the same form as the long one, so the same checks run. */
+export interface QuickForm { date: string; cpu: string; edge: string; invocations: string; gb: string }
+/** What one press of Save sends: exactly one add, built by the same validation as the full form. Never sent when anything is wrong. */
+export function quickSave(q: QuickForm, today: string, others: Parameters<typeof parseForm>[2] = []) {
+  const f: UsageForm = { ...emptyForm(q.date), cpu: q.cpu, edge: q.edge, invocations: q.invocations, gb: q.gb }
+  const r = parseForm(f, today, others)
+  return r.ok && r.entry ? { ok: true as const, body: { action: 'add' as const, ...r.entry }, warnings: r.warnings, errors: r.errors } : { ok: false as const, errors: r.errors, warnings: r.warnings }
+}

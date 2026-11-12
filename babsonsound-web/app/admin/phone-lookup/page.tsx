@@ -47,7 +47,7 @@ export default function AdminPhoneLookupPage() {
 
   if (loading || !user || !isAdmin) return <div className="min-h-[60vh]" />
   return (
-    <div className="max-w-[1800px] mx-auto px-5 lg:px-10 py-8 space-y-6">
+    <div className="px-5 lg:px-8 py-8 space-y-6">
       <div className="flex items-center gap-4">
         <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Phone lookup</h1>
         <div className="flex-1 h-px bg-br-dk-border" />

@@ -73,7 +73,7 @@ export default function Notifications({ items, dismissedCount, reload, title = '
                     <button type="button" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : n.key)}
                       className={`text-left min-w-0 flex-1 ${n.kind === 'deadair' ? 'font-semibold' : ''}`}>
                       <span className="block truncate">{n.title}</span>
-                      <span className="block text-sm opacity-80">{when(n.at)} · {isOpen ? 'Hide details' : 'Show details'}</span>
+                      <span className="block text-base opacity-80">{when(n.at)} · {isOpen ? 'Hide details' : 'Show details'}</span>
                     </button>
                     <button type="button" onClick={() => dismiss([n.key])} className="ops-btn px-4 py-1.5 shrink-0" aria-label={`Dismiss: ${n.title}`}>Dismiss</button>
                   </div>
@@ -95,7 +95,7 @@ export default function Notifications({ items, dismissedCount, reload, title = '
 
       {tab === 'log' && (
         <>
-          <p className="text-sm opacity-90 pb-1">Everything that has been dismissed, newest first. Restore brings one back to New.</p>
+          <p className="text-base opacity-90 pb-1">Everything that has been dismissed, newest first. Restore brings one back to New.</p>
           {log === null && !err && <p className="text-base py-1">Loading…</p>}
           {log?.length === 0 && <p className="text-base py-1">Nothing dismissed yet.</p>}
           <ul className="divide-y divide-white/25">
@@ -106,7 +106,7 @@ export default function Notifications({ items, dismissedCount, reload, title = '
                   <div className="flex items-center gap-3">
                     <button type="button" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : `log-${e.key}`)} className="text-left min-w-0 flex-1">
                       <span className="block truncate">{e.title}</span>
-                      <span className="block text-sm opacity-80">
+                      <span className="block text-base opacity-80">
                         {e.restored ? 'Restored' : `Dismissed ${when(e.dismissedAt)}${e.dismissedByName ? ` by ${e.dismissedByName}` : ''}`} · {isOpen ? 'Hide details' : 'Show details'}
                       </span>
                     </button>
@@ -115,7 +115,7 @@ export default function Notifications({ items, dismissedCount, reload, title = '
                   {isOpen && (
                     <div className="mt-2 pl-1 space-y-1 text-base">
                       {e.detail.map((d, i) => <p key={i} className="whitespace-pre-wrap break-words">{d}</p>)}
-                      <p className="text-sm opacity-80">Happened {new Date(e.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                      <p className="text-base opacity-80">Happened {new Date(e.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
                       {e.href && <Link href={e.href} className="inline-block ops-btn px-4 py-1.5 mt-1">Open</Link>}
                     </div>
                   )}

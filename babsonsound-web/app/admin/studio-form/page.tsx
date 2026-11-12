@@ -34,7 +34,7 @@ export default function StudioFormPage() {
 
   if (loading || !isAdmin) return null
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <div className="px-5 lg:px-8 py-8 space-y-6">
       <h1 className="text-4xl font-light">Studio form</h1>
       <p className="text-base opacity-90">The Microsoft Form people open after they enter their email at babsonradio.com/studioaccess. Paste the form&apos;s link.</p>
       {err && <p role="alert" className="text-base">{err}</p>}

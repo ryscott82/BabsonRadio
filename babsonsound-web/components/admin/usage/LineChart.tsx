@@ -64,7 +64,7 @@ export default function LineChart({ series, xDomain, xTicks, yMax, yTicks, yForm
         ))}
         {!any && <text x={w / 2} y={M.t + ih / 2} textAnchor="middle" fontSize="14" fill="#fff">{empty ?? 'No data yet.'}</text>}
       </svg>
-      <ul className="flex flex-wrap gap-x-5 gap-y-1 mt-1 text-sm" aria-label="Chart key">
+      <ul className="flex flex-wrap gap-x-5 gap-y-1 mt-1 text-base" aria-label="Chart key">
         {series.map(s => (
           <li key={s.name} className="flex items-center gap-2">
             <svg width="28" height="10" aria-hidden><line x1="1" x2="27" y1="5" y2="5" stroke={s.color} strokeWidth={s.width ?? 2.5} strokeDasharray={s.dash} />{s.marker && <circle cx="14" cy="5" r="3.5" fill={s.color} />}</svg>

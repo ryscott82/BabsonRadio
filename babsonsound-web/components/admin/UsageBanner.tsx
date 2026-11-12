@@ -30,7 +30,7 @@ export default function UsageBanner() {
   const t = TONE[b.tone]
   const hide = () => { const v = dismissValue(s.month, b.rank); setHidden(v); try { localStorage.setItem(DISMISS_KEY, v) } catch { /* private window */ } }
   return (
-    <div className="max-w-[1800px] mx-auto px-5 lg:px-10 pt-5">
+    <div className="px-5 lg:px-8 pt-5">
       <div role={b.rank >= 4 ? 'alert' : 'status'} className={`border-2 ${t.box} text-white p-4 flex flex-wrap items-center gap-x-4 gap-y-2`}>
         <span aria-hidden className="text-xl">{t.mark}</span>
         <div className="flex-1 min-w-[220px]">

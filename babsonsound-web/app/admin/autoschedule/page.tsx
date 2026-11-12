@@ -115,7 +115,7 @@ export default function AutoSchedulePage() {
   const btn = 'sk-key rounded-lg px-4 py-2 text-base text-br-dk-text disabled:opacity-50 min-h-11'
 
   return (
-    <div className="max-w-[1800px] mx-auto px-5 lg:px-10 py-8 space-y-8">
+    <div className="px-5 lg:px-8 py-8 space-y-8">
       <div className="flex items-center gap-4">
         <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Auto DJ</h1>
         <div className="flex-1 h-px bg-br-dk-border" />

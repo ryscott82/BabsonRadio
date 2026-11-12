@@ -19,13 +19,21 @@ const P: Record<string, string> = {
   stats: 'M4 20V10M10 20V4M16 20v-8M22 20H2',
   tests: 'M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3M8 15h8',
   docs: 'M6 3h9l4 4v14H6V3zM15 3v4h4M9 12h7M9 16h7M9 8h3',
+  skip: 'M5 5l10 7-10 7V5zM19 5v14',
+  stop: 'M8 3h8l5 5v8l-5 5H8l-5-5V8l5-5zM9 9h6v6H9V9z',
+  resume: 'M7 4l13 8-13 8V4z',
+  sign: 'M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9V16h7v-2.1A6 6 0 0012 3z',
+  color: 'M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2 1.5-2h2a4 4 0 004-4c0-5-4.5-10-9-10zM7.5 11.5h.01M10 7.5h.01M15 7.5h.01',
+  announce: 'M3 10v4h4l7 4V6L7 10H3zM17 9a4 4 0 010 6M19.5 6.5a8 8 0 010 11',
+  next: 'M4 6h11M4 12h11M4 18h6M17 14l5 3-5 3v-6z',
+  more: 'M5 10.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM12 10.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM19 10.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3z',
   radio: 'M5 8h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2zM3 8l14-4M8 14a2 2 0 100 .01M13 12h5M13 16h5',
 }
 export type OpsIcon = keyof typeof P
 
-export default function OpsIcon({ name, size = 48 }: { name: OpsIcon; size?: number }) {
+export default function OpsIcon({ name, size = 48, filled = false }: { name: OpsIcon; size?: number; filled?: boolean }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} fillOpacity={filled ? 0.4 : undefined} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d={P[name]} />
     </svg>
   )

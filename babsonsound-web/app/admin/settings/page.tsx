@@ -13,5 +13,5 @@ export default function OldSettingsRedirect() {
     try { focus = new URLSearchParams(window.location.search).get('focus') } catch { /* no address */ }
     router.replace(oldSettingsTarget(focus))
   }, [router])
-  return <p className="max-w-[1100px] mx-auto px-5 py-8 text-base">Taking you to Settings…</p>
+  return <p className="px-5 lg:px-8 py-8 text-base">Taking you to Settings…</p>
 }

@@ -8,7 +8,7 @@ export default function RouteTable({ d }: { d: Overview }) {
   const max = Math.max(1, ...per.map(m => m.totalCpuMs))
   const asked = r.tokenCache.hits + r.tokenCache.misses
   return (
-    <details className="ops-card p-4">
+    <details className="ops-card p-3">
       <summary className="cursor-pointer text-xl min-h-[44px] flex items-center">This server, last hour: by route</summary>
       <div className="space-y-4 pt-3">
         <p className="opacity-90">{r.note} The bill itself is on Vercel: Usage, Fluid Active CPU, by route.</p>
@@ -36,7 +36,7 @@ export default function RouteTable({ d }: { d: Overview }) {
             ))}
           </div>
         )}
-        <p className="text-sm opacity-90">Sign-in checks remembered by this instance: {r.tokenCache.hits} of {asked} calls{asked ? ` (${Math.round((r.tokenCache.hits / asked) * 100)}%)` : ''} skipped the signature check. Calls that Vercel answers from its cache never reach a server, so they are not counted here.</p>
+        <p className="text-base opacity-90">Sign-in checks remembered by this instance: {r.tokenCache.hits} of {asked} calls{asked ? ` (${Math.round((r.tokenCache.hits / asked) * 100)}%)` : ''} skipped the signature check. Calls that Vercel answers from its cache never reach a server, so they are not counted here.</p>
       </div>
     </details>
   )

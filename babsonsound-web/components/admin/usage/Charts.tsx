@@ -53,7 +53,7 @@ export default function Charts({ d }: { d: Overview }) {
   const days = (v: number | null) => (v === null ? 'no end in sight at this rate' : v <= 0 ? 'already at the allowance' : `about ${Math.max(1, Math.round(v))} day${Math.round(v) === 1 ? '' : 's'} left`)
 
   return (
-    <section className="space-y-3" aria-label="Charts">
+    <section className="space-y-2" aria-label="Charts">
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-2xl font-light">Charts</h2>
         {months.length > 1 && (
@@ -63,7 +63,8 @@ export default function Charts({ d }: { d: Overview }) {
         )}
       </div>
 
-      <div className="ops-card p-4 space-y-2">
+      <div className="grid xl:grid-cols-2 gap-3 items-start">
+      <div className="ops-card p-3 space-y-2 min-w-0">
         <h3 className="text-xl">Active CPU hours in {fmtMonth(month)}</h3>
         <p className="opacity-90">Each reading adds up through the month. The line is the allowance.</p>
         <LineChart series={series} xDomain={[1, dim]} xTicks={xt} yMax={yMax} yTicks={ticks(yMax)} yFormat={v => fmtH(v)} refLine={{ y: allowance, label: `Allowance ${fmtH(allowance)} h` }}
@@ -76,13 +77,14 @@ export default function Charts({ d }: { d: Overview }) {
         )}
       </div>
 
-      <div className="ops-card p-4 space-y-2">
+      <div className="ops-card p-3 space-y-2">
         <h3 className="text-xl">Server time per listener-hour</h3>
         <p className="opacity-90">Each point is the Active CPU added since the reading before it, divided by the hours people listened in that stretch. Lower is better.</p>
         <LineChart series={costSeries} xDomain={dom} xTicks={cxt} yMax={cy} yTicks={ticks(cy)} yFormat={v => `${Math.round(v * 10) / 10}s`}
           aria={last ? `Server seconds per listener-hour over time. Latest ${Math.round(last.cpuSecondsPerListenerHour)} seconds.` : 'Server seconds per listener-hour over time. No points yet.'}
           empty="Needs two readings with listening between them." />
         {last && <p>Latest: {Math.round(last.cpuSecondsPerListenerHour)} seconds ({(last.cpuHours / last.listenerHours).toFixed(4)} hours) of server time per listener-hour, {fmtDay(last.fromDate)} to {fmtDay(last.toDate)}.</p>}
+      </div>
       </div>
     </section>
   )

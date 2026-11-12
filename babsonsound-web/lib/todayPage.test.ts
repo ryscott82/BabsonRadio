@@ -89,27 +89,32 @@ test('no phone number is rendered or even read anywhere on Today', () => {
   for (const f of todayFiles) assert.doesNotMatch(read(f), /phone/i, f)
 })
 
-test('Today makes one data call on load: the dashboard (plus the Admin-only bug badge), no polling of anything else', () => {
+test('Settings home makes one data call on load: the dashboard, plus one read of the alerts for the tab numbers; nothing else is polled', () => {
   const page = read('../app/admin/page.tsx')
   assert.match(page, /apiGet<Dash>\(DASHBOARD_URL\)/)
   assert.equal(DASHBOARD_URL, '/api/admin/dashboard')
-  assert.equal((page.match(/apiGet</g) ?? []).length, 2) // dashboard, and the one-time bug badge read
-  assert.match(page, /if \(!user \|\| !isAdmin\) return\s+apiGet<\{ newReports/) // that second read is Admin only and not polled
+  assert.equal((page.match(/apiGet</g) ?? []).length, 2) // dashboard, and the one-time alerts read for the badges
   assert.equal((page.match(/setInterval/g) ?? []).length, 1) // only inside startPolling's env
   for (const f of todayFiles.filter(f => f.includes('today/'))) assert.doesNotMatch(read(f), /setInterval/, f)
-  assert.doesNotMatch(page, /Notifications|StationPanel/)
+  assert.doesNotMatch(page, /StationPanel/)
 })
 
-test('the controls read nothing until a panel is opened, and More controls is drawn for Admins only', () => {
+test('the three "now" cards are gone: nothing on the home page shows on air, now playing or listener numbers', () => {
+  const page = read('../app/admin/page.tsx')
+  for (const w of ['On air now', 'Listeners now', 'nowPlaying', 'onAir']) assert.ok(!page.includes(w), w)
+})
+
+test('the controls read the switch state once when the row appears (never polled), and More is drawn for Admins only', () => {
   const c = read('../components/admin/today/Controls.tsx')
-  assert.match(c, /if \(needState && !d\)/)
-  assert.match(c, /\{admin && \(/)
+  assert.match(c, /useEffect\(\(\) => \{ queueMicrotask\(load\) \}, \[load\]\)/)
+  assert.match(c, /role === 'admin' && panel === 'more'/)
+  assert.match(c, /buttonsFor\(role\)/)
   assert.match(c, /audio-fx/); assert.match(c, /maintenance/)
   assert.doesNotMatch(c, /setInterval/)
 })
 
 test('Emergency stop asks first and the box says who is affected', () => {
   const c = read('../components/admin/today/Controls.tsx')
-  assert.match(c, /setAsk\('emergency-stop'\)/)
+  assert.match(c, /return setAsk\(id\)/); assert.match(c, /ask === 'emergency-stop'/)
   assert.match(c, /Every listener on the site and in the app loses the stream/)
 })

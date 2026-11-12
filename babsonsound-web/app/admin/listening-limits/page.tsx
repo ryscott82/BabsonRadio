@@ -17,7 +17,7 @@ export default function ListeningPage() {
   useEffect(() => { if (!loading && (!user || !isAdmin)) router.replace('/') }, [loading, user, isAdmin, router])
   if (loading || !user || !isAdmin) return <div className="min-h-[60vh]" />
   return (
-    <div className="max-w-[1100px] mx-auto px-5 lg:px-10 py-8 space-y-6">
+    <div className="px-5 lg:px-8 py-8 space-y-6">
       <header>
         <h1 className="text-4xl font-light leading-tight">Listening</h1>
         <p className="text-base opacity-90 mt-1">Limits for listeners. E-board and Admins are not stopped by them. People already listening get a new number within a minute.</p>

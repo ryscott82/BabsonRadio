@@ -10,5 +10,5 @@ export function settingPage(key: string): string {
 
 export const settingHref = (key: string) => `${settingPage(key)}?focus=${encodeURIComponent(key)}`
 
-/** The old /admin/settings address: a setting link goes to that setting's page, a bare link goes to the System heading of the menu. */
-export const oldSettingsTarget = (focus: string | null) => (focus ? settingHref(focus) : '/admin#system')
+/** The old /admin/settings address: a setting link goes to that setting's page, a bare link goes to the Advanced tab of the menu. */
+export const oldSettingsTarget = (focus: string | null) => (focus ? settingHref(focus) : '/admin#advanced')

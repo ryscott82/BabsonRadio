@@ -268,3 +268,28 @@ test('each row says where it shows (main or expert) and whether the server uses 
   assert.equal(BY_KEY.get('cpu.protection')!.virtual, true); assert.equal(BY_KEY.get('cpu.protection')!.default, 'normal')
   assert.match(src('app/api/admin/settings/route.ts'), /requireAdmin/, 'settings stay Admin only')
 })
+
+test('E-board can message the site but cannot send push notifications', async () => {
+  const { readFileSync } = await import('node:fs')
+  const src = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')
+  // Push to a person's own phone and the ops pushes stay Admin only (requireStaff is requireAdmin). The station announcement (broadcast) is E-board and Admin.
+  const push = src('app/api/admin/push/route.ts')
+  assert.ok(push.includes('requireStaff') && !push.includes('requireDirector'))
+  const bc = src('app/api/admin/broadcast/route.ts')
+  assert.ok(bc.includes('requireDirector') && !bc.includes('requireStaff'))
+  // The announcement banner is a site message: E-board allowed, and it sends no push.
+  const c = src('app/api/admin/controls/route.ts')
+  assert.ok(c.includes('requireDirector'))
+  assert.equal(controlAccess('director', 'announce'), 'ok')
+  assert.equal(controlAccess('director', 'clear-announcement'), 'ok')
+  assert.ok(!/notifyAnnouncements/.test(c))
+  assert.ok(!/notifyAnnouncements/.test(src('lib/server/announcement.ts')))
+})
+
+test('site messages are written to the audit log with who, what and when', () => {
+  const c = src('app/api/admin/controls/route.ts')
+  assert.match(c, /action: String\(action\)[^\n]*detail:/)
+  const n = src('app/api/live/note/route.ts')
+  assert.ok(n.includes("logNote('show-message'") && n.includes("logNote('show-message-clear'"))
+  assert.ok(n.includes('uid: c.t.uid'))
+})

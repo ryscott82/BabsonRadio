@@ -43,7 +43,7 @@ export default function DocsPage() {
   if (loading || !isAdmin) return <div className="min-h-[60vh]" />
   return (
     <div className="ops-hub">
-      <div className="max-w-[1800px] mx-auto px-5 lg:px-10 py-8 space-y-6">
+      <div className="px-5 lg:px-8 py-8 space-y-6">
         <header>
           <h1 className="text-4xl font-light leading-tight">Information and documentation</h1>
           <p className="text-base opacity-90 mt-1">The project guides, kept with the code. They refresh each time the site is built.</p>

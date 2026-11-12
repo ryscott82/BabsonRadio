@@ -29,9 +29,9 @@ export default function TierPanel({ d, onChanged }: { d: Overview; onChanged: (m
   const pick = (tier: Tier, value: Level | 'auto') => (tier === 1 && value === 'critical' ? setConfirm({ tier, value }) : set(tier, value))
 
   return (
-    <section className="space-y-3" aria-label="Status">
+    <section className="space-y-2" aria-label="Status">
       <h2 className="text-2xl font-light">Status</h2>
-      <div className="ops-card p-4 space-y-3">
+      <div className="ops-card p-3 space-y-3">
         <p className="text-3xl tabular-nums">{fmtH(s.hours)} <span className="text-lg opacity-90">of {fmtH(s.allowanceHours)} hours used ({Math.round(s.pct)}%)</span></p>
         <div className="h-3 bg-black/35 rounded-full overflow-hidden" role="progressbar" aria-label="Share of the monthly allowance used" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
           <div className="h-full bg-white" style={{ width: `${pct}%` }} />
@@ -44,7 +44,7 @@ export default function TierPanel({ d, onChanged }: { d: Overview; onChanged: (m
         </ul>
       </div>
 
-      <div className="ops-card p-4 space-y-3">
+      <div className="ops-card p-3 space-y-3">
         <p className="text-lg">Features right now: <span className="text-xl">{LEVEL_WORD[s.overall]}</span></p>
         <p className="opacity-90">Slowed means a person gets a fresh answer less often. Off means they get the last answer without a request to the server. Nothing shows an error.</p>
         <div aria-live="polite" className="min-h-[1.5rem]">{fail && <p role="alert" className="bg-black/35 px-2 py-1">{fail}</p>}</div>
@@ -60,7 +60,7 @@ export default function TierPanel({ d, onChanged }: { d: Overview; onChanged: (m
                   <span className="text-lg flex-1 min-w-[220px]">{TIER_NAME[t]}</span>
                   <span className="text-lg">{LEVEL_WORD[st.level]}{admin ? ' (set by an admin)' : other ? ' (held off by the reactions rules)' : ' (automatic)'}</span>
                 </div>
-                <p className="text-sm opacity-90">{featuresOf(t).join(', ')}.{admin ? '' : ` ${other ? 'Reactions used their share of server time, or the older reactions lock is on.' : st.reason}`}</p>
+                <p className="text-base opacity-90">{featuresOf(t).join(', ')}.{admin ? '' : ` ${other ? 'Reactions used their share of server time, or the older reactions lock is on.' : st.reason}`}</p>
                 <div className="flex flex-wrap gap-2" role="group" aria-label={`Lock for tier ${t}`}>
                   {CHOICES.map(c => <button key={c.value} type="button" className="ops-btn px-3 py-1.5" aria-pressed={cur === c.value} disabled={busy === `${t}`} onClick={() => pick(t, c.value)}>{c.label}</button>)}
                 </div>
@@ -74,8 +74,8 @@ export default function TierPanel({ d, onChanged }: { d: Overview; onChanged: (m
             )
           })}
         </ul>
-        {d.control.reactionsLocked && <p className="text-sm">Reactions are also held off by the older &quot;Lock reactions&quot; switch on the Usage page.</p>}
-        <p className="text-sm opacity-90">Automatic steps up when the month is about {Math.round(d.control.thresholds[3].tight * 100)}% (Tier 3), {Math.round(d.control.thresholds[2].tight * 100)}% (Tier 2) and {Math.round(d.control.thresholds[1].critical * 100)}% (Tier 1) of the allowance, used or on track. Now at {Math.round(d.pressure * 100)}%. Every change is logged.</p>
+        {d.control.reactionsLocked && <p className="text-base">Reactions are also held off by the older &quot;Lock reactions&quot; switch on the Usage page.</p>}
+        <p className="text-base opacity-90">Automatic steps up when the month is about {Math.round(d.control.thresholds[3].tight * 100)}% (Tier 3), {Math.round(d.control.thresholds[2].tight * 100)}% (Tier 2) and {Math.round(d.control.thresholds[1].critical * 100)}% (Tier 1) of the allowance, used or on track. Now at {Math.round(d.pressure * 100)}%. Every change is logged.</p>
       </div>
     </section>
   )

@@ -139,7 +139,7 @@ export default function MediaPage() {
 
   return (
     <div className="ops-hub">
-      <div className="max-w-[1800px] mx-auto px-5 lg:px-10 py-8 space-y-6">
+      <div className="px-5 lg:px-8 py-8 space-y-6">
         <header>
           <h1 className="text-4xl font-light leading-tight">Music uploads</h1>
           <p className="text-base opacity-90 mt-1">Add .mp3 files to the radio library, choose their folder and playlists, and keep an eye on the site&apos;s allowance.</p>

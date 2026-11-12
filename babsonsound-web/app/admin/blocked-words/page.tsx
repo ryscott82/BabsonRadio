@@ -53,7 +53,7 @@ export default function BlockedWordsPage() {
   if (loading || !isDirector) return null
   const opt = 'flex gap-3 items-start text-base text-br-dk-text'
   return (
-    <div className="max-w-xl mx-auto px-4 py-8 space-y-6">
+    <div className="px-5 lg:px-8 py-8 space-y-6">
       <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Blocked words</h1>
       <p className="text-base text-br-dk-sub">
         Hosts cannot send these words to listeners or staff from the Host tab. Capital letters, look-alike characters (like $ for s),

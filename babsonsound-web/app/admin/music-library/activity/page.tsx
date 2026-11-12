@@ -34,7 +34,7 @@ export default function ActivityPage() {
 
   return (
     <div className="ops-hub">
-      <div className="max-w-[1100px] mx-auto px-5 lg:px-10 py-8 space-y-6">
+      <div className="px-5 lg:px-8 py-8 space-y-6">
         <header>
           <h1 className="text-4xl font-light leading-tight">Activity</h1>
           <p className="text-base opacity-90 mt-1">Recent library jobs, newest first.</p>

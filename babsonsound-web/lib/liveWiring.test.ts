@@ -105,7 +105,7 @@ test('the admin pages for the CPU meter exist and are admin only', () => {
   assert.match(src('app/admin/server-load/page.tsx'), /\/api\/admin\/server-usage\/overview/)
   assert.match(src('app/api/admin/server-usage/overview/route.ts'), /requireAdmin\(req\)/)
   assert.match(src('app/api/admin/server-usage/status/route.ts'), /requireAdmin\(req\)/)
-  assert.match(src('app/admin/page.tsx'), /\/admin\/server-load/)
+  assert.match(src('lib/adminMenu.ts'), /\/admin\/server-load/) // the menu (lib/adminMenu.ts, Admin only) links to it
 })
 
 test('every tiered route asks the gate, and Tier 0 (stream, now playing, schedule) never does', () => {

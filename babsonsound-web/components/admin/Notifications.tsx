@@ -18,7 +18,7 @@ const when = (ms: number) => {
 
 // The Notifications card on the admin home. Click a row for details, dismiss it when it has been dealt with.
 // Dismissed ones move to the second tab, which keeps a log of who cleared what and when.
-export default function Notifications({ items, dismissedCount, reload }: { items: Notice[]; dismissedCount: number; reload: () => void }) {
+export default function Notifications({ items, dismissedCount, reload, title = 'Notifications', emptyText = 'Nothing needs attention.' }: { items: Notice[]; dismissedCount: number; reload: () => void; title?: string; emptyText?: string }) {
   const [tab, setTab] = useState<'new' | 'log'>('new')
   const [open, setOpen] = useState<string | null>(null)
   const [gone, setGone] = useState<Set<string>>(new Set()) // hidden right away, before the server round trip finishes
@@ -51,9 +51,9 @@ export default function Notifications({ items, dismissedCount, reload }: { items
   )
 
   return (
-    <section className="ops-card p-5" aria-label="Notifications">
+    <section className="ops-card p-5" aria-label={title}>
       <div className="flex flex-wrap items-center gap-3 mb-2">
-        <h2 className="text-2xl font-light mr-auto">Notifications</h2>
+        <h2 className="text-2xl font-light mr-auto">{title}</h2>
         <div role="group" aria-label="Notification lists" className="flex gap-2">
           {tabBtn('new', `New${shown.length ? ` (${shown.length})` : ''}`)}
           {tabBtn('log', `Dismissed${dismissedCount ? ` (${dismissedCount})` : ''}`)}
@@ -63,7 +63,7 @@ export default function Notifications({ items, dismissedCount, reload }: { items
 
       {tab === 'new' && (
         <>
-          {shown.length === 0 && <p className="text-base py-1">Nothing needs attention.</p>}
+          {shown.length === 0 && <p className="text-base py-1">{emptyText}</p>}
           <ul className="divide-y divide-white/25">
             {shown.map(n => {
               const isOpen = open === n.key

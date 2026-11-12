@@ -98,7 +98,7 @@ export default function AdminPage() {
   const more = eboardExtras()
   return (
     <div className="ops-hub">
-      <div className="px-5 lg:px-8 py-6 grid gap-x-8 gap-y-6 items-start xl:grid-cols-[minmax(0,1fr)_26rem] xl:!pr-0 xl:!py-0">
+      <div className="px-5 lg:px-8 py-6 grid gap-x-8 gap-y-6 items-start xl:grid-cols-[minmax(0,1fr)_30rem] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_30rem] xl:!pr-0 xl:!py-0">
         <div className="space-y-6 min-w-0 xl:col-start-1 xl:row-start-1 xl:pt-6" data-testid="home-main">
           <header className="flex flex-wrap items-center gap-4">
             <span className="ops-tile-icon !w-14 !h-14 shrink-0"><OpsIcon name="radio" size={34} /></span>
@@ -111,10 +111,10 @@ export default function AdminPage() {
           {failed && !dash && <p role="alert" className="ops-card p-4 text-base">Could not load. It will try again in a minute.</p>}
           <Controls role={role} />
         </div>
-        <aside aria-label="Needs approval column" className="min-w-0 xl:col-start-2 xl:row-start-1 xl:row-span-2 xl:sticky xl:top-0 xl:self-start">
+        <aside aria-label="Needs approval column" className="min-w-0 xl:col-start-2 2xl:col-start-3 xl:row-start-1 xl:row-span-2 xl:sticky xl:top-0 xl:self-start">
           <NeedsApproval rows={dash ? dash.pending : null} total={dash?.pendingTotal ?? 0} onChanged={load} />
         </aside>
-        <div className="min-w-0 space-y-6 xl:col-start-1 xl:row-start-2 xl:pb-6">
+        <div className="min-w-0 space-y-6 xl:col-start-1 xl:row-start-2 2xl:col-start-2 2xl:row-start-1 2xl:pt-6 xl:pb-6">
           <ComingUp rows={dash ? dash.next : null} />
           {more.length > 0 && (
             <nav aria-label="More" className="flex flex-wrap items-center gap-3">

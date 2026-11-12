@@ -14,7 +14,7 @@ export default function ComingUp({ rows: all }: { rows: NextRow[] | null }) {
     catch { setCopied('Could not copy. Select it and copy by hand.') }
   }
   return (
-    <section className="ops-card p-5 min-h-[10rem] min-w-0" aria-label="Coming up" aria-busy={!rows}>
+    <section className="ops-card p-5 min-h-[10rem] min-w-0 2xl:min-h-[20rem]" aria-label="Coming up" aria-busy={!rows}>
       <h2 className="text-2xl font-light mb-2">Coming up</h2>
       {!rows && <div className="space-y-3 py-1" aria-hidden><div className="h-6 w-full bg-white/25 motion-safe:animate-pulse" /><div className="h-6 w-5/6 bg-white/25 motion-safe:animate-pulse" /></div>}
       {rows && (

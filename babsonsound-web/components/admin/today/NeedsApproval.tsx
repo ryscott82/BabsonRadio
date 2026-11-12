@@ -1,9 +1,11 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import { api } from '@/lib/auth'
 import ConfirmDialog from '../ConfirmDialog'
-import { approveAllBody, approveAllLabel, flagWords, isFlagged, moreWaiting, resultLines, whyWaiting, type ApproveResultRow, type PendingRow } from '@/lib/todayPage'
+import { holdBody, holdLabel } from '@/lib/slotWording'
+import { approveAllBody, approveAllLabel, flagWords, isFlagged, moreWaiting, noteLine, resultLines, waitingFor, type ApproveResultRow, type PendingRow } from '@/lib/todayPage'
 
 const when = (ms: number) => new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
 
@@ -17,6 +19,12 @@ export default function NeedsApproval({ rows, total, onChanged }: { rows: Pendin
   const [results, setResults] = useState<ApproveResultRow[] | null>(null)
   const [now] = useState(() => Date.now())
 
+  async function hold(r: PendingRow) {
+    setBusy(r.id); setErr('')
+    try { await api('/api/slots/hold', holdBody(r.id, !r.held)); onChanged() }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Could not save that.') }
+    setBusy('')
+  }
   async function decide(r: PendingRow, action: 'approve' | 'decline') {
     setBusy(r.id); setErr('')
     try { await api('/api/slots/decision', { requestId: r.id, action, note: action === 'decline' ? note : '', connectionInfo: '' }); setDeclining(null); setNote(''); onChanged() }
@@ -47,8 +55,9 @@ export default function NeedsApproval({ rows, total, onChanged }: { rows: Pendin
         {rows?.map(r => (
           <li key={r.id} className="py-3 space-y-2">
             <p className="text-lg leading-snug">{r.title}</p>
-            <p className="text-base opacity-90">{r.hostName} · {when(r.startAt)} · {r.durationMin} min</p>
-            <p className={`text-base ${isFlagged(r) ? 'font-semibold' : 'opacity-90'}`}>{whyWaiting(r, now, when)}</p>
+            <p className="text-base opacity-90">{r.hostUid ? <Link href={`/admin/users/${encodeURIComponent(r.hostUid)}`} className="underline underline-offset-2">{r.hostName}</Link> : r.hostName} · {when(r.startAt)} · {r.durationMin} min</p>
+            <p className={`text-base ${waitingFor(r, now).auto ? 'opacity-90' : 'font-semibold'}`}>{waitingFor(r, now).text}</p>
+            {noteLine(r) && <p className="text-base font-semibold">{noteLine(r)}</p>}
             {declining === r.id ? (
               <div className="space-y-2">
                 <label className="block text-base">Note to the host (optional)
@@ -62,7 +71,8 @@ export default function NeedsApproval({ rows, total, onChanged }: { rows: Pendin
             ) : (
               <div className="flex flex-wrap gap-2">
                 <button type="button" className="ops-btn px-4 min-h-11 disabled:opacity-50" disabled={!!busy} onClick={() => decide(r, 'approve')}>{busy === r.id ? 'Working…' : 'Approve'}</button>
-                <button type="button" className="ops-btn px-4 min-h-11 disabled:opacity-50" disabled={!!busy} onClick={() => { setDeclining(r.id); setNote('') }}>Decline</button>
+                <button type="button" className="ops-btn-red px-4 min-h-11 disabled:opacity-50" disabled={!!busy} onClick={() => { setDeclining(r.id); setNote('') }}>Decline</button>
+                <button type="button" className="ops-btn px-4 min-h-11 disabled:opacity-50" disabled={!!busy} onClick={() => hold(r)}>{holdLabel(!!r.held)}</button>
               </div>
             )}
           </li>

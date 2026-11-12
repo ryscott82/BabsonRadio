@@ -5,7 +5,7 @@ import { autoLine, type AutoInfo } from './slotWording.ts'
 
 export type PendingFlag = 'explicit' | 'minor' | 'cleanHours' | 'agreementUnsigned' | 'conflict'
 export interface PendingRow extends AutoInfo {
-  id: string; title: string; hostName: string; startAt: number; durationMin: number; type: string; flags: PendingFlag[]
+  id: string; title: string; hostName: string; hostUid?: string; startAt: number; durationMin: number; type: string; flags: PendingFlag[]
 }
 export interface NextRow { title: string; startAt: number; endAt: number; source: string; hostName?: string; hostEmail?: string }
 export interface Critical { siteDown: boolean; deadAir: boolean; serverTime: 'ok' | 'critical' | 'over' }
@@ -46,13 +46,38 @@ export const FLAG_WORDS: Record<PendingFlag, string> = {
 }
 export const flagWords = (flags: PendingFlag[]) => flags.map(f => FLAG_WORDS[f])
 
-/** Why this request is still waiting: a person must look at it, or when it approves itself. */
-export function whyWaiting(r: PendingRow, now: number, fmt: (ms: number) => string): string {
-  if (r.flags.length) return `Needs hand review: ${flagWords(r.flags).join(', ')}`
-  if (r.held) return 'Held: needs hand review'
-  const line = autoLine(r, now, fmt)
-  return line.startsWith('Approves automatically on ') ? `Approves itself ${line.slice('Approves automatically on '.length)}` : line === 'Approves automatically soon' ? 'Approves itself soon' : line
+/** Only these flags stop a request approving itself. The others (explicit words, a minor, clean hours) are things to look at, not blocks. */
+const BLOCKING: PendingFlag[] = ['agreementUnsigned', 'conflict']
+export const blockingFlags = (flags: PendingFlag[]) => flags.filter(f => BLOCKING.includes(f))
+export const noteFlags = (flags: PendingFlag[]) => flags.filter(f => !BLOCKING.includes(f))
+
+/** "3 hours", "40 minutes", "2 days". */
+export function inWords(ms: number): string {
+  const min = Math.max(1, Math.round(ms / 60_000))
+  if (min < 60) return `${min} minute${min === 1 ? '' : 's'}`
+  const h = Math.round(min / 60)
+  if (h < 48) return `${h} hour${h === 1 ? '' : 's'}`
+  const d = Math.round(h / 24)
+  return `${d} days`
 }
+
+export interface Waiting { auto: boolean; text: string }
+/**
+ * What a pending request is waiting for. `auto: true` means it will approve itself ("Auto approved in 5 hours"); nothing to do unless you want to
+ * decide first. `auto: false` means a person has to decide: it is held, or something blocks automatic approval (and the reason is in words).
+ */
+export function waitingFor(r: PendingRow, now: number): Waiting {
+  if (r.held) return { auto: false, text: 'Held: it will not approve itself' }
+  const block = blockingFlags(r.flags)
+  if (block.length) return { auto: false, text: `Needs hand review: ${flagWords(block).join(', ')}` }
+  if (r.autoBlockedReason || typeof r.autoApproveAt !== 'number') {
+    const line = autoLine(r, now, () => '')
+    return { auto: false, text: line.startsWith('Waiting for staff') ? `Needs hand review${line.slice('Waiting for staff'.length)}` : 'Needs hand review' }
+  }
+  return r.autoApproveAt > now ? { auto: true, text: `Auto approved in ${inWords(r.autoApproveAt - now)}` } : { auto: true, text: 'Auto approved soon' }
+}
+/** The "check this" note for flags that do not block automatic approval, or an empty string. */
+export const noteLine = (r: PendingRow) => (noteFlags(r.flags).length ? `Check: ${flagWords(noteFlags(r.flags)).join(', ')}` : '')
 export const isFlagged = (r: PendingRow) => r.flags.length > 0
 
 /** What Approve all sends: exactly the ids that were listed in the confirm box, in the order shown. Nothing else. */

@@ -119,7 +119,7 @@ test('pending rows: the listed fields only, soonest first, at most 20, flags for
   const rows = Array.from({ length: 25 }, (_, i) => pend({ id: `r${i}`, startAt: (25 - i) * HOUR }))
   const out = shapePending(rows, () => false, () => false)
   assert.equal(out.rows.length, PENDING_MAX); assert.equal(out.total, 25); assert.equal(out.rows[0].id, 'r24')
-  assert.deepEqual(Object.keys(out.rows[0]).sort(), ['autoApproveAt', 'autoBlockedReason', 'durationMin', 'flags', 'held', 'hostName', 'id', 'startAt', 'title', 'type'])
+  assert.deepEqual(Object.keys(out.rows[0]).sort(), ['autoApproveAt', 'autoBlockedReason', 'durationMin', 'flags', 'held', 'hostName', 'hostUid', 'id', 'startAt', 'title', 'type'])
   const f = pendingFlags({ explicit: true, minor: true, cleanHours: true, conductSigned: false, autoBlockedReason: 'conflict' })
   assert.deepEqual(f, ['explicit', 'minor', 'cleanHours', 'agreementUnsigned', 'conflict'])
   assert.deepEqual(pendingFlags({ explicit: false, minor: false, cleanHours: false, conductSigned: true, autoBlockedReason: '' }), [])

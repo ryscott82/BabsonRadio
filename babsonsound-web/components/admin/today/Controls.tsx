@@ -66,7 +66,7 @@ export default function Controls({ role }: { role: 'director' | 'admin' }) {
 
   return (
     <section aria-label="Controls" className="space-y-4">
-      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 2xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
         {buttonsFor(role).map(b => (
           <IconButton key={b.id} label={b.label} tip={b.tip} icon={b.icon} red={b.red} on={on(b.id)}
                       pressed={panelOf[b.id] ? panel === panelOf[b.id] : undefined} expanded={panelOf[b.id] ? panel === panelOf[b.id] : undefined}

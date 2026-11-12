@@ -1,10 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
-import { POLL_MS, DASHBOARD_URL, approveAllBody, approveAllLabel, canCopyEmail, criticalLines, flagWords, hostLine, isFlagged, moreWaiting, resultLines, startPolling, whyWaiting, type PendingRow } from './todayPage.ts'
+import { POLL_MS, DASHBOARD_URL, approveAllBody, approveAllLabel, canCopyEmail, criticalLines, flagWords, hostLine, isFlagged, moreWaiting, resultLines, startPolling, waitingFor, inWords, noteLine, type PendingRow } from './todayPage.ts'
 
 const NOW = 1_800_000_000_000
-const fmt = (ms: number) => `T+${ms - NOW}`
 const row = (id: string, over: Partial<PendingRow> = {}): PendingRow => ({ id, title: `Show ${id}`, hostName: 'Sam', startAt: NOW + 1000, durationMin: 60, type: 'live', flags: [], held: false, autoApproveAt: NOW + 5000, autoBlockedReason: '', ...over })
 
 test('the critical strip shows nothing when everything is ok', () => {
@@ -21,12 +20,22 @@ test('the critical strip has one line per problem, and links to Server load only
   assert.match(criticalLines({ siteDown: false, deadAir: false, serverTime: 'critical' }, 'admin')[0].text, /almost used up/)
 })
 
-test('why a request is waiting: hand review with the flag in words, or when it approves itself', () => {
-  assert.equal(whyWaiting(row('a', { flags: ['explicit'] }), NOW, fmt), 'Needs hand review: explicit words')
-  assert.equal(whyWaiting(row('a', { flags: ['minor', 'conflict'] }), NOW, fmt), 'Needs hand review: host is a minor, time conflict')
-  assert.equal(whyWaiting(row('a', { held: true }), NOW, fmt), 'Held: needs hand review')
-  assert.equal(whyWaiting(row('a'), NOW, fmt), 'Approves itself T+5000')
-  assert.equal(whyWaiting(row('a', { autoBlockedReason: 'week-limit', autoApproveAt: null }), NOW, fmt), 'Waiting for staff (week limit)')
+test('why a request is waiting: it approves itself (with how long), or a person must decide and the reason is in words', () => {
+  assert.equal(waitingFor(row('a'), NOW).text, 'Auto approved in 1 minute'.replace('1 minute', inWords(5000)))
+  assert.equal(waitingFor(row('a', { autoApproveAt: NOW + 5 * 3_600_000 }), NOW).text, 'Auto approved in 5 hours')
+  assert.equal(waitingFor(row('a', { autoApproveAt: NOW + 40 * 60_000 }), NOW).text, 'Auto approved in 40 minutes')
+  assert.equal(waitingFor(row('a', { autoApproveAt: NOW - 1 }), NOW).text, 'Auto approved soon')
+  assert.equal(waitingFor(row('a'), NOW).auto, true)
+  // flags that do not stop automatic approval never say "Needs hand review"
+  for (const f of ['explicit', 'minor', 'cleanHours'] as const) { const w = waitingFor(row('a', { flags: [f], autoApproveAt: NOW + 3_600_000 }), NOW); assert.equal(w.auto, true, f); assert.ok(!/hand review/.test(w.text), f) }
+  assert.equal(noteLine(row('a', { flags: ['explicit', 'minor'] })), 'Check: explicit words, host is a minor')
+  assert.equal(noteLine(row('a')), '')
+  // things that do stop it
+  assert.equal(waitingFor(row('a', { flags: ['conflict'] }), NOW).text, 'Needs hand review: time conflict')
+  assert.equal(waitingFor(row('a', { flags: ['agreementUnsigned'] }), NOW).auto, false)
+  assert.equal(waitingFor(row('a', { held: true }), NOW).text, 'Held: it will not approve itself')
+  assert.equal(waitingFor(row('a', { autoBlockedReason: 'week-limit', autoApproveAt: null }), NOW).text, 'Needs hand review (week limit)')
+  assert.equal(waitingFor(row('a', { autoApproveAt: null }), NOW).text, 'Needs hand review')
   assert.deepEqual(flagWords(['agreementUnsigned', 'cleanHours']), ['agreement not signed', 'clean-hours show'])
   assert.equal(isFlagged(row('a', { flags: ['explicit'] })), true); assert.equal(isFlagged(row('a')), false)
 })

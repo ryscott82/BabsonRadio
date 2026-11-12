@@ -11,7 +11,7 @@ export interface PendingSource {
   cleanHours: boolean; conductSigned: boolean | null
 }
 export interface PendingRow {
-  id: string; title: string; hostName: string; startAt: number; durationMin: number; type: string
+  id: string; title: string; hostName: string; hostUid: string; startAt: number; durationMin: number; type: string
   autoApproveAt: number | null; autoBlockedReason: string; held: boolean; flags: PendingFlag[]
 }
 
@@ -31,7 +31,7 @@ export function pendingFlags(i: { explicit: boolean; minor: boolean; cleanHours:
 /** Soonest first, at most PENDING_MAX rows, each with only the listed fields. `explicitOf` and `minorOf` look at the text and the requester. */
 export function shapePending(src: PendingSource[], explicitOf: (text: string) => boolean, minorOf: (uid: string) => boolean): { rows: PendingRow[]; total: number } {
   const rows = [...src].sort((a, b) => a.startAt - b.startAt).slice(0, PENDING_MAX).map(s => ({
-    id: s.id, title: s.title, hostName: s.requesterName, startAt: s.startAt, durationMin: s.durationMin, type: s.type,
+    id: s.id, title: s.title, hostName: s.requesterName, hostUid: s.requesterUid, startAt: s.startAt, durationMin: s.durationMin, type: s.type,
     autoApproveAt: s.autoApproveAt, autoBlockedReason: s.autoBlockedReason, held: s.held,
     flags: pendingFlags({ explicit: explicitOf(`${s.title} ${s.description} ${s.location}`), minor: minorOf(s.requesterUid), cleanHours: s.cleanHours, conductSigned: s.conductSigned, autoBlockedReason: s.autoBlockedReason }),
   }))

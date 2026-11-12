@@ -5,6 +5,7 @@ import { CONTROL_BUTTONS, MORE_SWITCHES, buttonsFor } from './controlButtons.ts'
 import { BROADCAST_GAP_MS, broadcastAudit, broadcastWait } from './broadcastGuard.ts'
 import { ALL_CLEAR, canSend, clip, confirmBody, goesTo, unreadCount } from './notificationsPage.ts'
 import { studentShows } from './todayPage.ts'
+import { shapeProfile, trainingOf } from './userProfile.ts'
 import { emptyForm, quickSave } from './usageForm.ts'
 
 const src = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')
@@ -43,8 +44,8 @@ test('Controls renders every button through IconButton, and Emergency stop and R
 // ── home layout ──
 test('wide screens: Needs approval is the whole right column, sticky and scrolling inside itself; phones: below the controls', () => {
   const page = src('app/admin/page.tsx'), na = src('components/admin/today/NeedsApproval.tsx')
-  assert.match(page, /xl:grid-cols-\[minmax\(0,1fr\)_26rem\]/)
-  assert.match(page, /<aside aria-label="Needs approval column"[^>]*xl:col-start-2 xl:row-start-1 xl:row-span-2 xl:sticky xl:top-0/)
+  assert.match(page, /xl:grid-cols-\[minmax\(0,1fr\)_30rem\] 2xl:grid-cols-\[minmax\(0,1fr\)_minmax\(0,1fr\)_30rem\]/)
+  assert.match(page, /<aside aria-label="Needs approval column"[^>]*xl:col-start-2 2xl:col-start-3 xl:row-start-1 xl:row-span-2 xl:sticky xl:top-0/)
   assert.match(na, /xl:h-screen xl:flex xl:flex-col/); assert.match(na, /xl:overflow-y-auto/)
   assert.ok(na.indexOf('Approve all</button>') < na.indexOf('<ul className="divide-y'), 'Approve all sits at the top, above the list')
   const iControls = page.indexOf('<Controls role={role} />'), iNeeds = page.indexOf('<NeedsApproval'), iComing = page.indexOf('<ComingUp')
@@ -134,4 +135,33 @@ test('broadcast audit: each send writes a hostActions line with uid, action, tit
   const at = { t: 1 }
   assert.deepEqual(broadcastAudit('u1', 'Live at six', 412, at), { uid: 'u1', action: 'broadcast', title: 'Live at six', recipients: 412, show: '(station)', at })
   assert.match(src('app/api/admin/broadcast/route.ts'), /collection\('hostActions'\)\.add\(broadcastAudit\(t\.uid, title, sent, Timestamp\.now\(\)\)\)/)
+})
+
+// ── Needs approval: buttons and the requester's profile ──
+test('every request has Approve, a red Decline and Hold (Release hold when held), and says when it auto approves', () => {
+  const na = src('components/admin/today/NeedsApproval.tsx')
+  assert.match(na, />\{busy === r\.id \? 'Working…' : 'Approve'\}<\/button>/)
+  assert.match(na, /className="ops-btn-red[^"]*"[^\n]*>Decline<\/button>/)
+  assert.match(na, /\{holdLabel\(!!r\.held\)\}/); assert.match(na, /api\('\/api\/slots\/hold', holdBody\(r\.id, !r\.held\)\)/)
+  assert.match(na, /waitingFor\(r, now\)/)
+  assert.doesNotMatch(na, /whyWaiting/)
+})
+test('the requester name links to their profile, which E-board and Admin can open', () => {
+  assert.match(src('components/admin/today/NeedsApproval.tsx'), /href=\{`\/admin\/users\/\$\{encodeURIComponent\(r\.hostUid\)\}`\}/)
+  const page = src('app/admin/users/[uid]/page.tsx'), route = src('app/api/admin/users/profile/route.ts')
+  assert.match(page, /isDirector/); assert.doesNotMatch(page, /isAdmin/)
+  assert.match(route, /requireDirector\(req\)/); assert.doesNotMatch(route, /requireAdmin|requireStaff/)
+  assert.match(page, /Show history/); assert.match(page, /Training/)
+})
+test('the profile shows training and show history, newest first, and never an email, phone or Instagram handle', () => {
+  const NOW = 1_800_000_000_000
+  const p = shapeProfile({ firstName: 'Sam', lastName: 'Lee', gradYear: '2027', level: 'student', radioTrained: true, radioExpiresAt: NOW + 1000, studioTrained: false, email: 'sam@babson.edu', phone: '123', instagram: '@sam' } as never,
+    [{ id: 'a', title: 'Old', startAt: 1, type: 'live', status: 'approved' }, { id: 'b', title: 'New', startAt: 9, type: 'live', status: 'declined' }, { id: 'c', title: 'Next', startAt: 20, type: 'recorded', status: 'pending' }], NOW)
+  assert.equal(p.name, 'Sam Lee'); assert.equal(p.radio.trained, true); assert.equal(p.studio.trained, false)
+  assert.deepEqual(p.shows.map(s => s.id), ['c', 'b', 'a'])
+  assert.deepEqual(p.counts, { total: 3, approved: 1, declined: 1, pending: 1 })
+  const json = JSON.stringify(p)
+  for (const w of ['sam@babson.edu', '123', '@sam', 'email', 'phone', 'instagram']) assert.ok(!json.includes(w), w)
+  assert.deepEqual(trainingOf(true, NOW - 1, NOW), { trained: false, expired: true, until: NOW - 1 })
+  assert.equal(shapeProfile({ level: 'director' }, [], NOW).radio.trained, true) // E-board and Admins always count as trained
 })

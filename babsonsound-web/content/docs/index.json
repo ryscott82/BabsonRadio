@@ -1,15 +1,156 @@
 [
-  { "id": "features", "group": "Overview", "title": "Features by role", "about": "What each kind of account can do, on the site and in the app.", "source": "FEATURES.md" },
-  { "id": "security", "group": "Setup", "title": "Security setup", "about": "Accounts, keys and the protections that are switched on.", "source": "babsonsound-web/SECURITY_SETUP.md" },
-  { "id": "appreview", "group": "Setup", "title": "App Review checklist", "about": "Support page, reporting, account emails, the demo account and App Check, in order.", "source": "babsonsound-web/APP_REVIEW.md" },
-  { "id": "push", "group": "Setup", "title": "Push notifications", "about": "How phone notifications are set up.", "source": "docs/PUSH_SETUP.md" },
-  { "id": "metadata", "group": "Setup", "title": "DJ metadata setup", "about": "Getting song and show details from the DJ software to the site.", "source": "docs/DJ_METADATA_SETUP.md" },
-  { "id": "studio", "group": "Studio and people", "title": "Studio training", "about": "How training check-in and studio access work.", "source": "babsonsound-web/STUDIO.md" },
-  { "id": "helper", "group": "Studio and people", "title": "Studio PC helper", "about": "The small program on the studio computer.", "source": "tools/studio-helper/README.md" },
-  { "id": "contacts", "group": "Studio and people", "title": "Contacts and guests", "about": "Friends, contacts and what guests can see.", "source": "babsonsound-web/CONTACTS_AND_GUESTS.md" },
-  { "id": "copy-friends", "group": "Studio and people", "title": "Friends and contacts wording", "about": "The words used for friends and contacts across the site.", "source": "docs/COPY_FRIENDS_AND_CONTACTS.md" },
-  { "id": "errors", "group": "Reference", "title": "Error codes", "about": "What each BR error code means and what to do about it.", "source": "babsonsound-web/ERROR_CODES.md" },
-  { "id": "style", "group": "Reference", "title": "Style guide", "about": "Colors, type and the hardware look.", "source": "design/STYLE_GUIDE.md" },
-  { "id": "components", "group": "Reference", "title": "Design components", "about": "The reusable pieces of the design.", "source": "design/COMPONENTS.md" },
-  { "id": "ios", "group": "Reference", "title": "Website to iOS mapping", "about": "Which website piece matches which part of the app.", "source": "design/IOS_MAPPING.md" }
+  {
+    "id": "map",
+    "group": "Start here",
+    "title": "Documentation map",
+    "about": "Where everything lives, what to read first, how to keep it current.",
+    "source": "docs/DOCS_MAP.md"
+  },
+  {
+    "id": "features",
+    "group": "Overview",
+    "title": "Features by role",
+    "about": "What each kind of account can do, on the site and in the app.",
+    "source": "FEATURES.md"
+  },
+  {
+    "id": "deploy",
+    "group": "Operations",
+    "title": "Deploy and launch runbook",
+    "about": "The order of a deploy, settings, weekly routine and what to do if Vercel pauses the site.",
+    "source": "docs/DEPLOY_RUNBOOK.md"
+  },
+  {
+    "id": "serverload",
+    "group": "Operations",
+    "title": "Server load and CPU",
+    "about": "Why the site limits its server time, how a listener costs, tiers, alerts and what to do when usage is high.",
+    "source": "docs/SERVER_LOAD.md"
+  },
+  {
+    "id": "livebundle",
+    "group": "Operations",
+    "title": "Live bundle (iOS notes)",
+    "about": "How the live page and the apps talk to the server, with notes for the iOS app.",
+    "source": "babsonsound-web/LIVE_BUNDLE.md"
+  },
+  {
+    "id": "readcosts",
+    "group": "Operations",
+    "title": "Firestore read costs",
+    "about": "Where database reads come from, the read meter and what was cached.",
+    "source": "babsonsound-web/READ_COSTS.md"
+  },
+  {
+    "id": "libraryworker",
+    "group": "Operations",
+    "title": "Library worker API",
+    "about": "The job queue the studio PC picks up: setup, login and the job types.",
+    "source": "babsonsound-web/LIBRARY_WORKER.md"
+  },
+  {
+    "id": "pcworker",
+    "group": "Operations",
+    "title": "Studio PC worker install",
+    "about": "Installing and testing the always-on studio PC worker.",
+    "source": "tools/pc-worker/README.md"
+  },
+  {
+    "id": "libraryworkerpc",
+    "group": "Operations",
+    "title": "Library worker overview",
+    "about": "What the studio PC worker does and its safety rules.",
+    "source": "docs/LIBRARY_WORKER_PC.md"
+  },
+  {
+    "id": "push",
+    "group": "Operations",
+    "title": "Push notifications",
+    "about": "How phone notifications are set up.",
+    "source": "docs/PUSH_SETUP.md"
+  },
+  {
+    "id": "metadata",
+    "group": "Operations",
+    "title": "DJ metadata setup",
+    "about": "Getting song and show details from the DJ software to the site.",
+    "source": "docs/DJ_METADATA_SETUP.md"
+  },
+  {
+    "id": "security",
+    "group": "Operations",
+    "title": "Security setup",
+    "about": "Accounts, keys and the protections that are switched on.",
+    "source": "babsonsound-web/SECURITY_SETUP.md"
+  },
+  {
+    "id": "appstore",
+    "group": "App Store",
+    "title": "App Store submission",
+    "about": "The Apple account, the bundle ID, what Apple checks and the steps left.",
+    "source": "docs/APP_STORE.md"
+  },
+  {
+    "id": "appreview",
+    "group": "App Store",
+    "title": "App Review checklist",
+    "about": "Support page, reporting, account emails, the demo account and App Check, in order.",
+    "source": "babsonsound-web/APP_REVIEW.md"
+  },
+  {
+    "id": "studio",
+    "group": "Studio and people",
+    "title": "Studio training",
+    "about": "How training check-in and studio access work.",
+    "source": "babsonsound-web/STUDIO.md"
+  },
+  {
+    "id": "helper",
+    "group": "Studio and people",
+    "title": "Studio PC helper",
+    "about": "The small program on the studio computer.",
+    "source": "tools/studio-helper/README.md"
+  },
+  {
+    "id": "contacts",
+    "group": "Studio and people",
+    "title": "Contacts and guests",
+    "about": "Friends, contacts and what guests can see.",
+    "source": "babsonsound-web/CONTACTS_AND_GUESTS.md"
+  },
+  {
+    "id": "copy-friends",
+    "group": "Studio and people",
+    "title": "Friends and contacts wording",
+    "about": "The words used for friends and contacts across the site.",
+    "source": "docs/COPY_FRIENDS_AND_CONTACTS.md"
+  },
+  {
+    "id": "errors",
+    "group": "Reference",
+    "title": "Error codes",
+    "about": "What each BR error code means and what to do about it.",
+    "source": "babsonsound-web/ERROR_CODES.md"
+  },
+  {
+    "id": "style",
+    "group": "Reference",
+    "title": "Style guide",
+    "about": "Colors, type and the hardware look.",
+    "source": "design/STYLE_GUIDE.md"
+  },
+  {
+    "id": "components",
+    "group": "Reference",
+    "title": "Design components",
+    "about": "The reusable pieces of the design.",
+    "source": "design/COMPONENTS.md"
+  },
+  {
+    "id": "ios",
+    "group": "Reference",
+    "title": "Website to iOS mapping",
+    "about": "Which website piece matches which part of the app.",
+    "source": "design/IOS_MAPPING.md"
+  }
 ]

@@ -2,6 +2,7 @@ import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle } from '@/lib/server/http'
 import { rebuildAutoSchedule } from '@/lib/server/autoschedule'
 import { refreshNowPlaying } from '@/lib/server/nowplaying'
+import { runAutoApprove } from '@/lib/server/autoApprove'
 
 export const runtime = 'nodejs'
 
@@ -14,6 +15,8 @@ export async function GET(req: Request) {
     const r = await rebuildAutoSchedule(adminDb(), { tasteMaxAgeMs: 60 * 3_600_000 })
     // Fallback for the studio PC's 15-minute schedule check (POST /api/worker/reconcile): once a day, in case the PC is off.
     await refreshNowPlaying().catch(() => {})
-    return { ok: true, planned: r.blocks.length, kept: r.kept }
+    // Show requests whose 24-hour wait is over (also run by the birthdays cron, the studio PC check and the site itself; see lib/server/autoApprove.ts).
+    const slots = await runAutoApprove(adminDb()).catch(e => { console.error('[auto approve]', e); return null })
+    return { ok: true, planned: r.blocks.length, kept: r.kept, slots }
   })
 }

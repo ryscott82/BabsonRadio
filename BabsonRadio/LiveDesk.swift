@@ -197,7 +197,7 @@ struct HWEQ: View {
         TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: (reduceMotion && !playing) || power.lowPower)) { tl in
             let still = power.lowPower
             let e = still ? 0 : energy.step(playing: playing, at: tl.date)
-            let c = color, bc = beat, d = tl.date
+            let bc = beat, d = tl.date
             let z = HWEQ.zones(base: color)
             let live = playing && !still ? AudioSpectrum.shared.snapshot(at: d) : nil     // real bands from the audio; nil falls back to the beat motion
             Canvas { ctx, size in HWEQ.draw(&ctx, size, d, z, e, bc, live) }

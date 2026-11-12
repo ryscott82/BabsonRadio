@@ -399,11 +399,11 @@ class AuthManager: ObservableObject {
         resetTimer?.invalidate()
         resetCooldown = Self.resetSecondsLeft()
         guard resetCooldown > 0 else { return }
-        resetTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] t in
+        resetTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                guard let self else { t.invalidate(); return }
+                guard let self else { return }
                 self.resetCooldown = Self.resetSecondsLeft()
-                if self.resetCooldown == 0 { t.invalidate() }
+                if self.resetCooldown == 0 { self.resetTimer?.invalidate(); self.resetTimer = nil }
             }
         }
     }

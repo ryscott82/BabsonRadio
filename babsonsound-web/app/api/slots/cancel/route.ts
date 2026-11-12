@@ -1,10 +1,10 @@
-import { Timestamp } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { after } from 'next/server'
 import { notifyAdmins } from '@/lib/server/push'
 import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/http'
 import { rebuildAutoSchedule } from '@/lib/server/autoschedule'
-import { deleteImage } from '@/lib/server/images'
+import { releaseImage } from '@/lib/server/slots'
 
 export const runtime = 'nodejs'
 
@@ -23,12 +23,12 @@ export async function POST(req: Request) {
       const status = r.get('status')
       if (status !== 'pending' && status !== 'approved') throw new HttpError(409, 'This request can no longer be cancelled.')
       if (r.get('startAt').toMillis() < Date.now()) throw new HttpError(400, 'That slot has already started.')
-      tx.update(ref, { status: 'cancelled', cancelledAt: Timestamp.now(), cancelReason: reason, cancelledFrom: status })
+      tx.update(ref, { status: 'cancelled', cancelledAt: Timestamp.now(), cancelReason: reason, cancelledFrom: status, autoApproveAt: FieldValue.delete(), autoBlockedReason: FieldValue.delete(), autoCheckedAt: FieldValue.delete() })
       if (status === 'approved') tx.delete(db.collection('airSlots').doc(requestId))
       return { ok: true, imagePath: r.get('imagePath') as string | undefined, title: String(r.get('title') ?? 'A show'), was: String(status) }
     })
     after(() => notifyAdmins('cancellations', { title: result.was === 'approved' ? 'Approved show cancelled' : 'Show request cancelled', body: `${result.title}${reason ? `: ${reason}` : ''}` }, t.uid))
-    await deleteImage(result.imagePath)
+    await releaseImage(db, result.imagePath, requestId) // not while a repeat of the same show still uses the picture
     // A freed slot gets filler again.
     await rebuildAutoSchedule(db).catch(e => console.error('[autoschedule]', e))
     return result

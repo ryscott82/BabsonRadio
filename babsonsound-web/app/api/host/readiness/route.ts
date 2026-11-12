@@ -1,6 +1,8 @@
 import { adminDb } from '@/lib/server/admin'
 import { handle, readJson, requireMember } from '@/lib/server/http'
+import { FieldValue } from 'firebase-admin/firestore'
 import { readiness, signConduct } from '@/lib/server/conduct'
+import { autoEligible } from '@/lib/slotAuto'
 
 export const runtime = 'nodejs'
 
@@ -18,7 +20,12 @@ export async function POST(req: Request) {
     await signConduct(db, t, b)
     // Their pending requests were sent before they signed; mark them signed now.
     const pending = await db.collection('slotRequests').where('requesterUid', '==', t.uid).where('status', '==', 'pending').get()
-    await Promise.all(pending.docs.map(d => d.ref.update({ conductSigned: true })))
-    return readiness(db, t)
+    const ready = await readiness(db, t)
+    // Signing can free a request the auto-approver was waiting on: mark it eligible again and clear the "needs the agreement" note.
+    await Promise.all(pending.docs.map(d => d.ref.update({
+      conductSigned: true, autoEligible: autoEligible({ type: String(d.get('type')), conductSigned: true, radioTrained: ready.trained }),
+      autoBlockedReason: FieldValue.delete(), autoCheckedAt: FieldValue.delete(),
+    })))
+    return ready
   })
 }

@@ -1,6 +1,8 @@
 import { handle } from '@/lib/server/http'
 import { refreshNowPlaying } from '@/lib/server/nowplaying'
 import { requireWorker } from '@/lib/server/worker'
+import { adminDb } from '@/lib/server/admin'
+import { runAutoApprove } from '@/lib/server/autoApprove'
 
 export const runtime = 'nodejs'
 
@@ -10,6 +12,8 @@ export async function POST(req: Request) {
   return handle(async () => {
     await requireWorker(req)
     await refreshNowPlaying()
-    return { ok: true, at: Date.now() }
+    // Every 15 minutes, so show requests whose 24-hour wait is over are approved close to on time while the studio PC is on.
+    const slots = await runAutoApprove(adminDb()).catch(e => { console.error('[auto approve]', e); return null })
+    return { ok: true, at: Date.now(), slots }
   })
 }

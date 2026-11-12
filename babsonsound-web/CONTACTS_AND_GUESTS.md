@@ -38,7 +38,7 @@ Why it can't be used as a reverse phone lookup (`lib/contactLimits.ts`, `lib/ser
   characters (8 bytes of an HMAC of the hash) plus 4 base-36 characters for the day it was first sent. Re-syncing the same contacts adds nothing;
   a sweep of arbitrary numbers hits the cap and the rest is ignored. One read and one write per sync.
 - A sync with 500+ matches, or 70%+ of 300+ numbers matching, is treated as a scrape: nothing is returned, `contactSyncs/{uid}.flagged` is set,
-  the account's syncing stays paused (BR-CON-007) and an admin notification appears. Admin Panel → Phone lookup → Paused accounts → Clear.
+  the account's syncing stays paused (BR-CON-007) and an admin notification appears. Settings → Phone lookup → Paused accounts → Clear.
 
 ### Names from your own contacts (`POST /api/contacts/labels`)
 Body `{ labels: [{ hash, name }] }` (≤ 300), for contacts that **matched a member** only. The name is stored encrypted (`PII_KEY`) at

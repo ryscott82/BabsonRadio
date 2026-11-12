@@ -1,4 +1,5 @@
 import 'server-only'
+import { STAFF_ONLY } from '../roleLabel'
 import { NextResponse } from 'next/server'
 import type { DecodedIdToken } from 'firebase-admin/auth'
 import { adminAuth } from './admin'
@@ -92,7 +93,7 @@ export const requireRadioTrained = (req: Request) =>
   need(req, a => a.level !== 'guest' && a.radio, 'Finish radio training to go live.')
 /** Director or admin. */
 export const requireDirector = (req: Request) =>
-  need(req, a => a.level === 'director' || a.level === 'admin', 'Directors and admins only.')
+  need(req, a => a.level === 'director' || a.level === 'admin', STAFF_ONLY)
 /** Admin only. */
 export const requireAdmin = (req: Request) => need(req, a => a.level === 'admin', 'Admins only.')
 export const requireStaff = requireAdmin

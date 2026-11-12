@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     const b = await readJson(req)
     const answers = (b.answers && typeof b.answers === 'object' ? b.answers : {}) as Record<string, unknown>
     const db = adminDb()
-    if (!(await readiness(db, t)).quizUnlocked) throw new HttpError(403, 'Check in at your training first. A director confirms it and the quiz opens.', 'BR-TRN-004')
+    if (!(await readiness(db, t)).quizUnlocked) throw new HttpError(403, 'Check in at your training first. Someone from the E-board confirms it and the quiz opens.', 'BR-TRN-004')
     const ref = db.collection('training').doc(t.uid)
     const prev = await ref.get()
     const last = prev.get('lastAttemptAt')?.toMillis?.() ?? 0

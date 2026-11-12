@@ -4,6 +4,7 @@ import { readiness } from '@/lib/server/conduct'
 import { accessOf } from '@/lib/server/access'
 import { SLOT_RULES } from '@/lib/slots'
 import { AUTO, nyWeekKey, weekKeysFrom } from '@/lib/slotAuto'
+import { loadSlotRules } from '@/lib/server/slotRules'
 
 export const runtime = 'nodejs'
 
@@ -15,6 +16,7 @@ export async function GET(req: Request) {
     const t = await requireMember(req)
     const db = adminDb()
     const now = Date.now()
+    const sr = await loadSlotRules(db)
     const [ready, a, mine] = await Promise.all([
       readiness(db, t), accessOf(t),
       db.collection('slotRequests').where('requesterUid', '==', t.uid).get(),
@@ -38,7 +40,7 @@ export async function GET(req: Request) {
         audioURL: String(last.get('audioURL') ?? ''), imageUrl: String(last.get('imageUrl') ?? ''), receiveRatings: last.get('receiveRatings') !== false,
         startAt: last.get('startAt').toMillis() as number, status: String(last.get('status') ?? ''),
       } : null,
-      rules: { ...SLOT_RULES, autoApproveHours: AUTO.afterHours, autoApproveBeforeStartHours: AUTO.beforeStartHours, weekLimit: AUTO.weekLimit, maxRepeatWeeks: AUTO.maxRepeatWeeks },
+      rules: { ...SLOT_RULES, minLeadHours: sr.minLeadHours, autoApproveHours: sr.afterHours, autoApproveBeforeStartHours: sr.beforeStartHours, weekLimit: sr.weekLimit, maxRepeatWeeks: sr.maxRepeatWeeks },
       weekHasShow,
     }
   }, { 'Cache-Control': 'private, no-store' })

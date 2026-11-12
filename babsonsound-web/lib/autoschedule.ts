@@ -23,6 +23,8 @@ export interface AutoRule {
   blockMinutes?: number
   /** One genre for the whole window each day (e.g. a whole evening of lofi), changing from day to day. */
   oneGenre?: boolean
+  /** `false` switches this rule off without deleting it. Missing means on. */
+  enabled?: boolean
 }
 
 export interface AutoConfig {
@@ -240,7 +242,7 @@ export function planAutoBlocks(opts: {
     if (taken(t, t + step)) continue
     const p = localParts(t, cfg.timezone)
     const rule = cfg.rules
-      .filter(r => ruleMatches(r, p.dow, p.minutes))
+      .filter(r => r.enabled !== false && ruleMatches(r, p.dow, p.minutes))
       .sort((a, b) => b.priority - a.priority)[0]
     if (rule?.quiet) continue // nothing scheduled here: the default playlist plays
     const ruleId = rule?.id ?? 'default'
@@ -334,6 +336,7 @@ export function sanitizeConfig(input: unknown): AutoConfig {
       days: [...new Set(days)].sort(), start, end, fillers,
       priority: clamp(x.priority, 0, 100, 10),
       ...(quiet ? { quiet: true } : {}),
+      ...(x.enabled === false ? { enabled: false } : {}),
       ...(!quiet && x.oneGenre === true ? { oneGenre: true } : {}),
       ...(!quiet && Number(x.blockMinutes) > 0 ? { blockMinutes: clamp(x.blockMinutes, 30, 720, 60) } : {}),
     }]
@@ -357,4 +360,39 @@ export function sanitizeConfig(input: unknown): AutoConfig {
     defaultFillers: list(o.defaultFillers).length ? list(o.defaultFillers) : d.defaultFillers,
     rules,
   }
+}
+
+
+// ── Who may read and change what ────────────────────────────────
+// Directors run the station day to day; Admins protect the machinery. The server (app/api/admin/autoschedule) and the Auto DJ page both
+// use these lists. A per-rule on/off is part of `rules`, so it is a Director field.
+
+/** What a Director may change (and read). */
+export const DIRECTOR_FIELDS = ['rules', 'defaultFillers'] as const
+/** What only an Admin may change. `enabled` (the master switch) is also shown to Directors, read-only. */
+export const ADMIN_FIELDS = [
+  'enabled', 'timezone', 'horizonHours', 'stepMinutes', 'maxBlockMinutes', 'lockMinutes', 'learn', 'colorChanging', 'weightOverrides', 'syncToAzuraCast', 'playlistMap',
+] as const
+/** Read by Admins only, not part of the saved config: the calendar feed link. */
+export const ADMIN_EXTRAS = ['calendarUrl'] as const
+/** The only part of the Admin fields a Director can see, read-only. */
+export const DIRECTOR_READ_ONLY = ['enabled'] as const
+
+export type DirectorView = Pick<AutoConfig, (typeof DIRECTOR_FIELDS)[number]> & { enabled: boolean }
+
+/** What a Director is sent: the rules and default fillers, and whether Auto DJ is on. Nothing else. */
+export const directorView = (cfg: AutoConfig): DirectorView => ({ enabled: cfg.enabled, rules: cfg.rules, defaultFillers: cfg.defaultFillers })
+
+/** Fields in a Director's request that they may not set (any key that is not a Director field, even if the value is unchanged). */
+export const forbiddenForDirector = (posted: unknown): string[] =>
+  Object.keys((posted && typeof posted === 'object' ? posted : {}) as object).filter(k => !(DIRECTOR_FIELDS as readonly string[]).includes(k))
+
+/** A Director's save applied to the saved config as it is right now: only rules and defaultFillers come from the request. */
+export function applyDirectorSave(current: AutoConfig, posted: unknown): AutoConfig {
+  const o = (posted ?? {}) as Record<string, unknown>
+  return sanitizeConfig({
+    ...current,
+    rules: o.rules === undefined ? current.rules : o.rules,
+    defaultFillers: o.defaultFillers === undefined ? current.defaultFillers : o.defaultFillers,
+  })
 }

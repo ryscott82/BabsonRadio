@@ -76,7 +76,7 @@ export const lufsOf = (meanSquare: number) => (meanSquare > 0 ? -0.691 + 10 * Ma
 export const dbOf = (amp: number) => (amp > 0 ? 20 * Math.log10(amp) : -Infinity)
 
 // ── Ad breaks ───────────────────────────────────────────────
-/** Station-wide ad break times (minutes past every hour) and how long each lasts. Set in Admin Panel → Studio PC log. */
+/** Station-wide ad break times (minutes past every hour) and how long each lasts. Set in Settings → Studio PC log. */
 export interface AdPlan { enabled: boolean; minutes: number[]; lengthSec: number }
 export const DEFAULT_ADS: AdPlan = { enabled: false, minutes: [20, 50], lengthSec: 120 }
 

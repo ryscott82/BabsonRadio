@@ -1,6 +1,7 @@
 import 'server-only'
 import type { Firestore } from 'firebase-admin/firestore'
 import { HttpError } from './http'
+import { directorWordsPlan, levelChanges, normalizeWords } from '../wordFilterAccess'
 import { BANNED, CRUDE, EMBED, EXPLICIT, PHRASES } from './wordLists'
 
 // Words that may not go out to listeners or staff in a host's message. Three built-in levels (lib/server/wordLists.ts):
@@ -196,11 +197,31 @@ export async function loadConfig(db: Firestore): Promise<Config> {
 export const loadBlocked = async (db: Firestore) => (await loadConfig(db)).custom
 
 export async function saveBlocked(db: Firestore, input: unknown, uid: string, level?: unknown): Promise<Config> {
-  const custom = [...new Set((Array.isArray(input) ? input : []).map(w => String(w).trim().toLowerCase().slice(0, 40)).filter(w => w.length >= 2))].slice(0, 500)
+  const custom = normalizeWords(input)
   const lv: Level = level === 'crude' ? 'crude' : level === 'explicit' ? 'explicit' : (await loadConfig(db)).level
   await db.collection('config').doc('blockedWords').set({ words: custom, level: lv, updatedBy: uid, updatedAt: new Date() })
   cache = null
   return { custom, level: lv }
+}
+
+/**
+ * A Director's save: words can be added, never removed, and the strictness stays as it is. The saved list is read again inside the save, so the check
+ * is against what is stored right now. Refused with a 403 (nothing written) when a saved word is missing from the request or the level would change.
+ */
+export async function addBlockedWords(db: Firestore, input: unknown, uid: string, level?: unknown): Promise<Config> {
+  const ref = db.collection('config').doc('blockedWords')
+  const r = await db.runTransaction(async tx => {
+    const d = await tx.get(ref)
+    const saved = Array.isArray(d.get('words')) ? (d.get('words') as unknown[]).map(w => String(w).trim().toLowerCase()).filter(Boolean) : []
+    const savedLevel: Level = d.get('level') === 'crude' ? 'crude' : 'explicit'
+    if (levelChanges(savedLevel, level)) throw new HttpError(403, 'Only admins can change how strict the filter is.', 'BR-PERM-002')
+    const plan = directorWordsPlan(saved, input)
+    if (!plan.ok) throw new HttpError(403, `Only admins can remove words (${plan.removed.slice(0, 5).join(', ')}${plan.removed.length > 5 ? ', ...' : ''}). Reload the list and add yours again.`, 'BR-PERM-002')
+    tx.set(ref, { words: plan.words, level: savedLevel, updatedBy: uid, updatedAt: new Date() })
+    return { custom: plan.words, level: savedLevel }
+  })
+  cache = null
+  return r
 }
 
 export const builtInCounts = () => { build(); const c = { crude: 0, explicit: 0, banned: 0, phrases: PHR.length }; for (const t of WORDS.values()) c[t]++; return c }

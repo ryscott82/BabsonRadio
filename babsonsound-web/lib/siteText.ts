@@ -1,4 +1,4 @@
-// Words on the site that an admin can change (Admin Panel > Page text). No server imports here, so pages and the admin screen share it.
+// Words on the site that an admin can change (Settings > Page text). No server imports here, so pages and the admin screen share it.
 //
 // To make more text editable: add a line to SITE_TEXT with its default, then show it on the page with
 //   const t = await loadSiteText()  (server pages)   and   <Rich text={txt(t, 'page.key')} />  or  {lines(t, 'page.key').map(...)}

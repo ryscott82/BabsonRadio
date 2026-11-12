@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useId, useRef, useState } from 'react'
+import ConfirmDialog from './ConfirmDialog'
 import {
-  canReset, confirmText, formatValue, fromInput, isChanged, needsConfirm, resetValue, toInput, validate,
+  canReset, confirmText, formatValue, fromInput, isChanged, needsConfirm, toInput, validate, valueToSend,
   type SettingDef, type SettingValue,
 } from '@/lib/settingRow'
 
@@ -11,15 +12,17 @@ const HOURS = Array.from({ length: 24 }, (_, h) => h)
 /**
  * One setting: its name, a plain-language help line, the value now and the default, a Changed badge, Reset to default,
  * and (for values that can hurt every listener) a confirm step that says who is affected. `value` is what the server has stored;
- * `onSave` saves one value and throws the server's message when it refuses. Nothing is saved until Save (or Reset) is pressed.
+ * `onSave` saves one value and throws the server's message when it refuses. Reset to default calls `onSave(null)` (the server puts the
+ * default back). Nothing is saved until Save (or Reset) is pressed. `meta` says who last changed it and when.
  */
-export default function SettingRow({ def, value, onSave, highlight = false }: {
-  def: SettingDef; value: SettingValue | undefined; onSave: (next: SettingValue) => Promise<void>; highlight?: boolean
+export default function SettingRow({ def, value, onSave, highlight = false, meta }: {
+  def: SettingDef; value: SettingValue | undefined; onSave: (next: SettingValue | null) => Promise<void>; highlight?: boolean
+  meta?: { changedAt: number | null; changedBy: string | null }
 }) {
   const uid = useId()
   const rowRef = useRef<HTMLElement>(null)
   const [draft, setDraft] = useState<SettingValue | string | null>(null) // null: not being edited, the box shows the stored value
-  const [asking, setAsking] = useState<SettingValue | null>(null)        // the value waiting for a yes in the confirm step
+  const [asking, setAsking] = useState<{ value: SettingValue | null } | null>(null) // what waits for a yes in the confirm step (null inside = Reset)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
@@ -33,19 +36,19 @@ export default function SettingRow({ def, value, onSave, highlight = false }: {
   const dirty = draft !== null && next !== null && next !== value
   const changed = isChanged(def, value)
 
-  async function commit(v: SettingValue) {
+  async function commit(v: SettingValue | null) {
     setBusy(true); setErr(''); setMsg('')
     try { await onSave(v); setDraft(null); setMsg('Saved.') }
     catch (e) { setErr(e instanceof Error ? e.message : 'Could not save.') }
     setBusy(false); setAsking(null)
   }
-  function request(v: SettingValue) {
+  function request(v: SettingValue | null) {
     setErr(''); setMsg('')
-    if (needsConfirm(def)) setAsking(v); else void commit(v)
+    if (needsConfirm(def)) setAsking({ value: v }); else void commit(v)
   }
 
   const field = 'ops-field w-full sm:w-64 min-h-11'
-  const q = asking === null ? null : confirmText(def, asking, value)
+  const q = asking === null ? null : confirmText(def, asking.value ?? def.default, value)
   return (
     <section ref={rowRef} id={`setting-${def.id}`} aria-labelledby={`${uid}-l`} className={`ops-card p-4 space-y-3 min-w-0 ${highlight ? 'outline outline-2 outline-white' : ''}`}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -53,7 +56,9 @@ export default function SettingRow({ def, value, onSave, highlight = false }: {
         {changed && <span className="px-2 py-0.5 text-base font-semibold bg-white text-[#0f5233]">Changed</span>}
       </div>
       <p className="text-base opacity-90">{def.help}</p>
-      <p className="text-base"><span className="opacity-90">Now:</span> <strong className="font-semibold">{formatValue(def, value)}</strong><span className="opacity-90"> · Default: </span>{formatValue(def, def.default)}</p>
+      {def.notEnforced && <p className="text-base font-semibold">Not enforced right now. Changing it does nothing today.</p>}
+      {changed && meta?.changedAt ? <p className="text-base opacity-90">Changed{meta.changedBy ? ` by ${meta.changedBy}` : ''} on {new Date(meta.changedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p> : null}
+      <p className="text-base"><span className="opacity-90">Now:</span> <strong className="font-semibold">{formatValue(def, value)}</strong><span className="opacity-90"> · Recommended: </span>{formatValue(def, def.default)}</p>
 
       <div className="flex flex-wrap items-center gap-3">
         {def.kind === 'number' && (
@@ -80,13 +85,13 @@ export default function SettingRow({ def, value, onSave, highlight = false }: {
         )}
         {def.kind === 'choice' && (
           <select aria-label={def.label} className={field} value={String(shown)} disabled={!loaded || busy} onChange={e => { setDraft(e.target.value); setMsg(''); setErr('') }}>
-            {def.choices?.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+            {def.choices?.filter(c => c.value !== 'custom' || value === 'custom').map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
         )}
         <button type="button" className="ops-btn px-4 min-h-11 disabled:opacity-50" disabled={busy || !dirty || !!problem}
-                onClick={() => next !== null && request(next)}>{busy ? 'Saving…' : 'Save'}</button>
+                onClick={() => next !== null && request(valueToSend(next, false))}>{busy ? 'Saving…' : 'Save'}</button>
         {draft !== null && <button type="button" className="ops-btn px-4 min-h-11" disabled={busy} onClick={() => { setDraft(null); setErr('') }}>Undo</button>}
-        {canReset(def, value) && <button type="button" className="ops-btn px-4 min-h-11 disabled:opacity-50" disabled={busy} onClick={() => request(resetValue(def))}>Reset to default</button>}
+        {canReset(def, value) && <button type="button" className="ops-btn px-4 min-h-11 disabled:opacity-50" disabled={busy} onClick={() => request(valueToSend(def.default, true))}>Reset to recommended</button>}
       </div>
 
       <div className="min-h-6" aria-live="polite">
@@ -95,26 +100,7 @@ export default function SettingRow({ def, value, onSave, highlight = false }: {
         {msg && !err && <p role="status" className="text-base font-semibold">{msg}</p>}
       </div>
 
-      {q && <ConfirmDialog title={q.title} body={q.body} action={q.action} busy={busy} onNo={() => setAsking(null)} onYes={() => void commit(asking as SettingValue)} />}
+      {q && <ConfirmDialog title={q.title} body={q.body} action={q.action} busy={busy} onNo={() => setAsking(null)} onYes={() => void commit(asking?.value ?? null)} />}
     </section>
-  )
-}
-
-/** The "are you sure" box for Level 3 values. Escape or Cancel closes it; focus starts on Cancel so Enter does not confirm by accident. */
-function ConfirmDialog({ title, body, action, busy, onNo, onYes }: { title: string; body: string; action: string; busy: boolean; onNo: () => void; onYes: () => void }) {
-  const id = useId()
-  const no = useRef<HTMLButtonElement>(null)
-  useEffect(() => { no.current?.focus() }, [])
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onKeyDown={e => { if (e.key === 'Escape') onNo() }}>
-      <div role="dialog" aria-modal="true" aria-labelledby={`${id}-t`} aria-describedby={`${id}-b`} className="ops-card !bg-[#0f5233] p-5 w-full max-w-md space-y-4">
-        <h4 id={`${id}-t`} className="text-2xl font-light">{title}</h4>
-        <p id={`${id}-b`} className="text-base">{body}</p>
-        <div className="flex flex-wrap gap-3 justify-end">
-          <button ref={no} type="button" className="ops-btn px-4 min-h-11" onClick={onNo}>Cancel</button>
-          <button type="button" className="ops-btn-red px-4 min-h-11 disabled:opacity-50" disabled={busy} onClick={onYes}>{busy ? 'Saving…' : action}</button>
-        </div>
-      </div>
-    </div>
   )
 }

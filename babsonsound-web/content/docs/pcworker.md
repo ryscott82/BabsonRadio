@@ -1,6 +1,6 @@
 # Studio PC worker
 
-Runs the library jobs that admins queue in **Admin Panel → Music library** (scan, fetch metadata, fetch covers, find beats, measure loudness, apply, undo, schedule check). It runs the Python tools in `tools/` for each job and writes what they find back as proposals for an admin to approve. Contract with the website: `babsonsound-web/LIBRARY_WORKER.md`.
+Runs the library jobs that admins queue in **Settings → Music library** (scan, fetch metadata, fetch covers, find beats, measure loudness, apply, undo, schedule check). It runs the Python tools in `tools/` for each job and writes what they find back as proposals for an admin to approve. Contract with the website: `babsonsound-web/LIBRARY_WORKER.md`.
 
 How it behaves:
 - **One job at a time.** It listens for queued jobs (no polling) and finishes or fails each one before taking the next.
@@ -109,7 +109,7 @@ In AzuraCast: **Administration → Roles → Add role** "Library worker" with on
 It listens to the public stream and tells the site when it goes silent.
 1. Settings: copy `tools\deadair.env.example` to `tools\deadair.env` and fill in `STREAM_URL`, `SITE_URL` and `MONITOR_SECRET` (the same as `MONITOR_SECRET` or `CRON_SECRET` in Vercel). Lock it down like the worker's `.env`:
    `icacls C:\BabsonRadio\tools\deadair.env /inheritance:r /grant:r BRWorker:R Administrators:F SYSTEM:F`
-2. Test: `py -3 C:\BabsonRadio\tools\deadair_monitor.py` should print that it is listening. Within a minute the site has its first report (Admin Panel shows dead-air alerts).
+2. Test: `py -3 C:\BabsonRadio\tools\deadair_monitor.py` should print that it is listening. Within a minute the site has its first report (Settings shows dead-air alerts).
 3. Service (same account, same rules):
 ```
 nssm install BabsonRadioDeadAir C:\Windows\py.exe -3 deadair_monitor.py

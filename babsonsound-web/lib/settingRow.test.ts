@@ -1,12 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { canReset, changedOnly, confirmText, formatValue, fromInput, isChanged, needsConfirm, resetValue, settingMatches, toInput, validate, type SettingDef } from './settingRow.ts'
-import { SETTINGS, byId } from './settingsDefs.ts'
-import { DEFAULT_AUDIENCE, DEFAULT_LIMITS } from './listenLimits.ts'
-import { DEFAULT_CONFIG } from './autoschedule.ts'
-import { DEFAULT_THRESHOLDS } from './cpuTiers.ts'
+import { canReset, patchBody, valueToSend, changedOnly, confirmText, formatValue, fromInput, isChanged, needsConfirm, resetValue, settingMatches, toInput, validate, type SettingDef } from './settingRow.ts'
+import { SETTING_UI, toRow, type ServerSetting } from './settingsDefs.ts'
+import { SETTINGS as SERVER_SETTINGS, BY_KEY } from './adminSettings.ts'
 
-const num: SettingDef = { id: 't.n', tier: 'customize', level: 2, label: 'Idle', help: 'h', kind: 'number', default: 60, min: 0, max: 1440, unit: 'minutes', group: 'g' }
+const num: SettingDef = { id: 't.n', tier: 'customize', level: 2, label: 'Idle', help: 'h', kind: 'number', integer: true, default: 60, min: 0, max: 1440, unit: 'minutes', group: 'g' }
 const pct: SettingDef = { id: 't.p', tier: 'defaults', level: 3, label: 'Slow at', help: 'h', kind: 'number', default: 0.5, scale: 100, min: 0.01, max: 10, unit: '%', group: 'g', affects: 'every listener', risk: 'The site can be paused.' }
 const flag: SettingDef = { id: 't.b', tier: 'everyday', level: 2, label: 'Learn', help: 'h', kind: 'boolean', default: true, group: 'g' }
 
@@ -80,29 +78,57 @@ test('search matches label, help, group and keywords, all words in any order', (
   assert.equal(settingMatches(num, '  '), true)
 })
 
-// ── The real settings list ──
-test('every setting has a unique id, a tier, help text, and a valid default', () => {
-  const ids = new Set<string>()
-  for (const s of SETTINGS) {
-    assert.ok(!ids.has(s.id), `duplicate ${s.id}`); ids.add(s.id)
-    assert.ok(['everyday', 'customize', 'defaults'].includes(s.tier), s.id)
-    assert.ok(s.label.length > 3 && s.help.length > 10, s.id)
-    assert.equal(validate(s, s.default), null, `${s.id} default fails its own range`)
-    if (s.level === 3) assert.ok(s.affects, `${s.id} is Level 3 but says nobody is affected`)
-  }
-  for (const t of ['everyday', 'customize', 'defaults'] as const) assert.ok(SETTINGS.some(s => s.tier === t), t)
+test('Reset sends null, a change sends the value, and the body names the one setting', () => {
+  assert.equal(valueToSend(30, true), null)
+  assert.equal(valueToSend(30, false), 30)
+  assert.deepEqual(patchBody('limits.refreshSec', null), { changes: { 'limits.refreshSec': null } })
+  assert.deepEqual(patchBody('auto.learn', false), { changes: { 'auto.learn': false } })
 })
 
-test('defaults match the constants the server uses', () => {
-  assert.equal(byId('limits.student.idleMin')?.default, DEFAULT_AUDIENCE.idleMin)
-  assert.equal(byId('limits.guest.quietStart')?.default, DEFAULT_AUDIENCE.quietStart)
-  assert.equal(byId('limits.refreshSec')?.default, DEFAULT_LIMITS.refreshSec)
-  assert.equal(byId('auto.horizonHours')?.default, DEFAULT_CONFIG.horizonHours)
-  assert.equal(byId('auto.stepMinutes')?.default, String(DEFAULT_CONFIG.stepMinutes))
-  for (const t of [1, 2, 3] as const) for (const k of ['tight', 'critical'] as const) assert.equal(byId(`cpu.th.${t}.${k}`)?.default, DEFAULT_THRESHOLDS[t][k])
+// ── The real settings list: the server owns the keys, the page only words them ──
+const asServer = (d: (typeof SERVER_SETTINGS)[number], value = d.default): ServerSetting =>
+  ({ key: d.key, label: d.label, level: d.level, kind: d.kind, min: d.min, max: d.max, options: d.options, default: d.default, value, changed: false, changedAt: null, changedBy: null })
+
+test('every setting the page words exists on the server, and every server setting becomes a valid row', () => {
+  for (const id of Object.keys(SETTING_UI)) assert.ok(BY_KEY.has(id), `${id} is worded on the page but the server does not have it`)
+  const ids = new Set<string>()
+  for (const d of SERVER_SETTINGS) {
+    assert.ok(!ids.has(d.key), `duplicate ${d.key}`); ids.add(d.key)
+    const { def } = toRow(asServer(d))
+    assert.ok(['everyday', 'customize', 'defaults'].includes(def.tier), d.key)
+    assert.ok(def.label.length > 3 && def.help.length > 5, d.key)
+    assert.equal(validate(def, def.default), null, `${d.key} default fails its own range`)
+    if (def.level === 3) assert.ok(def.affects, `${d.key} is Level 3 but says nobody is affected`)
+  }
+  for (const t of ['everyday', 'customize', 'defaults'] as const) assert.ok(SERVER_SETTINGS.some(d => toRow(asServer(d)).def.tier === t), t)
+})
+
+test('the page words every server setting (no row falls back to a bare server label)', () => {
+  for (const d of SERVER_SETTINGS) assert.ok(SETTING_UI[d.key], `${d.key} has no wording in lib/settingsDefs.ts`)
+})
+
+test('a row carries who changed it and when', () => {
+  const d = SERVER_SETTINGS[0]
+  const row = toRow({ ...asServer(d), changed: true, changedAt: 1_700_000_000_000, changedBy: 'a@babson.edu' })
+  assert.equal(row.changedBy, 'a@babson.edu')
+  assert.equal(row.changedAt, 1_700_000_000_000)
 })
 
 test('values that can hurt every listener are Level 3 and ask first', () => {
-  for (const id of ['limits.refreshSec', 'auto.syncToAzuraCast', 'cpu.budgetHours', 'cpu.auto', 'cpu.th.2.critical']) assert.equal(needsConfirm(byId(id)!), true, id)
-  assert.equal(needsConfirm(byId('auto.learn')!), false)
+  for (const id of ['limits.refreshSec', 'auto.syncToAzuraCast', 'cpu.budgetHours', 'cpu.auto', 'cpu.th.2.critical']) {
+    const d = BY_KEY.get(id); if (!d) continue
+    assert.equal(needsConfirm(toRow(asServer(d)).def), true, id)
+  }
+})
+
+test('the five show-request settings are Level 3 and the confirm says it changes when every student request approves', () => {
+  for (const id of ['slots.afterHours', 'slots.beforeStartHours', 'slots.weekLimit', 'slots.maxRepeatWeeks', 'slots.minLeadHours']) {
+    const d = BY_KEY.get(id)!
+    assert.ok(d, id)
+    const def = toRow(asServer(d)).def
+    assert.equal(def.group, 'Show requests')
+    assert.equal(needsConfirm(def), true, id)
+  }
+  const after = toRow(asServer(BY_KEY.get('slots.afterHours')!)).def
+  assert.match(confirmText(after, 48, 24).body, /when every student.s show request approves/)
 })

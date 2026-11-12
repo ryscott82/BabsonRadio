@@ -78,6 +78,7 @@ service cloud.firestore {
     match /serverUsage/{id} { allow read, write: if false; }
     match /usageAlerts/{id} { allow read, write: if false; }
     match /cpuTierLog/{id} { allow read, write: if false; }
+    match /settingsLog/{id} { allow read, write: if false; }
 
     // Episode likes: server-only so "your friend liked this" can respect invisible mode.
     match /likes/{id} {

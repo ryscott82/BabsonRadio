@@ -4,6 +4,7 @@ import { CONDUCT_VERSION } from '../conduct'
 import { evaluateAuto, autoStartsInSameWeek, autoStartsOf, type BlockReason } from '../slotAuto'
 import { HttpError } from './http'
 import { findConflict } from './slots'
+import { loadSlotRules } from './slotRules'
 
 /** The auto-approver decided to leave a request pending. Not an error: the reason is saved on the request so the student can read it. */
 export class AutoSkip extends Error {
@@ -22,6 +23,7 @@ export type ApprovedMail = { to: string; title: string; at: number }
 export async function approveRequest(db: Firestore, requestId: string, o: { by: 'auto' | string; note?: string; connectionInfo?: string; now?: number }): Promise<{ ok: true; mail: ApprovedMail }> {
   const note = o.note ?? '', connectionInfo = o.connectionInfo ?? ''
   const reqRef = db.collection('slotRequests').doc(requestId)
+  const rules = await loadSlotRules(db) // the weekly limit an Admin set (cached 20 s)
   return db.runTransaction(async tx => {
     const now = o.now ?? Date.now()
     const r = await tx.get(reqRef)
@@ -46,7 +48,7 @@ export async function approveRequest(db: Firestore, requestId: string, o: { by: 
           level: String(signer.get('level') ?? 'student'), conductVersion: signer.get('conductVersion'),
           radioTrained: signer.get('radioTrained') === true, radioExpiresAt: (signer.get('radioExpiresAt') as Timestamp | undefined)?.toMillis?.() ?? null,
         },
-        conductVersion: CONDUCT_VERSION, autoStartsInWeek: autoStartsInSameWeek(autoStarts, start.toMillis()), conflict: !!conflict,
+        conductVersion: CONDUCT_VERSION, autoStartsInWeek: autoStartsInSameWeek(autoStarts, start.toMillis()), conflict: !!conflict, rules,
       })
       if (v.action === 'wait') throw new AutoSkip('not-due')
       if (v.action === 'skip') throw new AutoSkip(v.reason as BlockReason | 'held')

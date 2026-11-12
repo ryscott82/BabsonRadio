@@ -1,4 +1,5 @@
 import { Timestamp } from 'firebase-admin/firestore'
+import { STAFF_NAME } from '@/lib/roleLabel'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, str } from '@/lib/server/http'
 import { attendanceId, isTrainerUid, namesFor, newSecret, publicSession, readSession, sessionsCol, studioActor } from '@/lib/server/studio'
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
     if (endsAt < Date.now()) throw new HttpError(400, 'That session is already over.')
     if (!Number.isFinite(capacity) || capacity < 1 || capacity > 500) throw new HttpError(400, 'Capacity must be between 1 and 500.')
     if (trainerUid !== t.uid && a.level !== 'admin') throw new HttpError(403, 'Only an admin can name another trainer.', 'BR-STU-003')
-    if (!(await isTrainerUid(db, trainerUid))) throw new HttpError(400, 'The trainer must be a Director or an Admin.', 'BR-STU-001')
+    if (!(await isTrainerUid(db, trainerUid))) throw new HttpError(400, `The trainer must be ${STAFF_NAME}.`, 'BR-STU-001')
     const ref = sessionsCol(db).doc()
     await ref.set({
       covers, title, location, capacity, trainerUid, status: 'scheduled', rsvpCount: 0,

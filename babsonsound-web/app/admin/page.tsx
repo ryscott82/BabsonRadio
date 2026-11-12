@@ -3,47 +3,48 @@
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '@/lib/auth'
-import StationPanel from '@/components/admin/StationPanel'
-import Notifications, { type Notice } from '@/components/admin/Notifications'
 import OpsIcon from '@/components/admin/OpsIcons'
-import { menuFor, searchMenu, type AdminRole, type BadgeKey, type ExtraEntry, type SearchEntry } from '@/lib/adminMenu'
-import { SETTINGS } from '@/lib/settingsDefs'
+import CriticalStrip from '@/components/admin/today/CriticalStrip'
+import Controls from '@/components/admin/today/Controls'
+import ComingUp from '@/components/admin/today/ComingUp'
+import NeedsApproval from '@/components/admin/today/NeedsApproval'
+import { eboardExtras, LEGACY_HASH, menuFor, searchMenu, type AdminRole, type BadgeKey, type ExtraEntry, type SearchEntry } from '@/lib/adminMenu'
+import { SETTING_UI } from '@/lib/settingsDefs'
+import { settingHref } from '@/lib/settingsHome'
+import { roleLabel } from '@/lib/roleLabel'
+import { DASHBOARD_URL, startPolling, type Critical, type NextRow, type PendingRow } from '@/lib/todayPage'
 
-interface Alerts {
-  items: Notice[]; dismissedCount: number
-  pendingRequests: number; newReports: number | null
-  deadAir?: { active: boolean; since: number; detail: string; monitorAgeSec: number | null }
-  cancellations: { id: string; title: string; requesterName: string; startAt: number; cancelledAt: number; reason: string; wasApproved: boolean }[]
-}
 interface Dash {
   radioConnected: boolean
   nowPlaying: { configured: boolean; song: string; listeners: number; isLive: boolean; streamer: string; playlist: string }
   onAir: { title: string; isShow: boolean; endAt: number }
-  next: { title: string; startAt: number; endAt: number; source: string }[]
+  next: NextRow[]
+  pending: PendingRow[]
+  pendingTotal: number
+  critical: Critical
   announcement: { text: string } | null
-  last24h: { sessions: number; hours: number }
 }
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 /** Old links like /admin#onair keep working. */
-const LEGACY: Record<string, string> = { onair: 'shows', rules: 'settings', tools: 'system' }
-/** Settings are searchable from the menu (admins only) and open on the Settings page with that row highlighted. */
-const SETTING_ENTRIES: ExtraEntry[] = SETTINGS.map(s => ({ href: `/admin/settings?focus=${encodeURIComponent(s.id)}`, title: s.label, text: s.help, where: `Settings · ${s.group}`, keywords: s.keywords }))
+const LEGACY = LEGACY_HASH
+/** Settings are searchable from the menu (admins only). A result opens the page the setting lives on, with that row highlighted. */
+const SETTING_ENTRIES: ExtraEntry[] = Object.entries(SETTING_UI).map(([key, u]) => ({ href: settingHref(key), title: u.label ?? key, text: u.help, where: `Settings · ${u.group}`, keywords: u.keywords }))
 
 /** A grey bar the size of the text that will replace it, so cards keep their height while the numbers arrive. */
 const Bar = ({ w = 'w-2/3' }: { w?: string }) => <div className={`h-6 ${w} bg-white/25 motion-safe:animate-pulse`} aria-hidden />
 
-// Today: what needs you, what is on air, three quick actions, the next 24 hours, then the rest of the station controls.
-// Nothing waits for anything else: each part shows a grey placeholder of its own size until its numbers arrive. The numbers are read every
-// 60 seconds, only while this tab is visible.
+// Today: a critical strip (only when something is wrong), what is on air, the controls, what is coming up, and what needs approval.
+// ONE data call, GET /api/admin/dashboard, every 60 seconds while this tab is visible and never faster. Each part shows a grey placeholder of its
+// own size until its numbers arrive (no page-wide loading gate). Admins also read the bug count once, for the badge on Bugs and ideas.
 export default function AdminPage() {
   const { user, isAdmin, isDirector, loading } = useAuth()
   const router = useRouter()
-  const [alerts, setAlerts] = useState<Alerts | null>(null)
   const [dash, setDash] = useState<Dash | null>(null)
   const [failed, setFailed] = useState(false)
+  const [reports, setReports] = useState(0)
   const [query, setQuery] = useState('')
   const [tab, setTab] = useState(() => { // which section is open (kept in the address, so refresh and back work)
     if (typeof window === 'undefined') return 'home'
@@ -52,22 +53,24 @@ export default function AdminPage() {
   })
 
   useEffect(() => { if (!loading && (!user || !isDirector)) router.replace(user ? '/host' : '/') }, [loading, user, isDirector, router])
-  const load = useCallback(() => {
-    apiGet<Alerts>('/api/admin/alerts').then(a => { setAlerts(a); setFailed(false) }).catch(() => setFailed(true))
-    apiGet<Dash>('/api/admin/dashboard').then(setDash).catch(() => setFailed(true))
-  }, [])
+  const load = useCallback(() => { apiGet<Dash>(DASHBOARD_URL).then(d => { setDash(d); setFailed(false) }).catch(() => setFailed(true)) }, [])
   useEffect(() => {
     if (!user || !isDirector) return
-    queueMicrotask(load)
-    const t = setInterval(() => { if (!document.hidden) load() }, 60_000)
-    return () => clearInterval(t)
+    return startPolling(load, {
+      hidden: () => document.hidden,
+      every: (fn, ms) => { const t = setInterval(fn, ms); return () => clearInterval(t) },
+    })
   }, [user, isDirector, load])
+  useEffect(() => { // the bug badge: one read, no polling, Admins only (Bugs and ideas is an Admin page)
+    if (!user || !isAdmin) return
+    apiGet<{ newReports: number | null }>('/api/admin/alerts').then(a => setReports(a.newReports ?? 0)).catch(() => {})
+  }, [user, isAdmin])
 
   if (loading || !user || !isDirector) return <div className="min-h-[60vh]" />
 
   const role: AdminRole = isAdmin ? 'admin' : 'director'
   const menu = menuFor(role)
-  const badges: Record<BadgeKey, number> = { pending: alerts?.pendingRequests ?? 0, reports: alerts?.newReports ?? 0 }
+  const badges: Record<BadgeKey, number> = { pending: dash?.pendingTotal ?? 0, reports }
   const badgeOf = (b?: BadgeKey) => (b ? badges[b] : 0)
 
   const words = query.trim()
@@ -89,30 +92,9 @@ export default function AdminPage() {
   )
   const side = 'flex items-center gap-3 text-left px-3 py-2.5 border border-transparent'
 
-  // Needs you: counts that link to the page that fixes them, then the notification list. Empty means all clear.
-  const chips = [
-    alerts && alerts.pendingRequests > 0 ? { href: '/admin/slots', text: `${alerts.pendingRequests} show request${alerts.pendingRequests === 1 ? '' : 's'} waiting` } : null,
-    alerts && (alerts.newReports ?? 0) > 0 ? { href: '/admin/feedback', text: `${alerts.newReports} new bug report${alerts.newReports === 1 ? '' : 's'}` } : null,
-  ].filter((c): c is { href: string; text: string } => c !== null)
-  const needsYou = !alerts ? (
-    <section className="ops-card p-5 min-h-[7.5rem] space-y-3" aria-label="Needs you" aria-busy="true">
-      <h2 className="text-2xl font-light">Needs you</h2>
-      {failed ? <p className="text-base">Could not load. It will try again in a minute.</p> : <Bar w="w-1/3" />}
-    </section>
-  ) : (
-    <div className="space-y-3">
-      {chips.length > 0 && (
-        <div className="flex flex-wrap gap-3">
-          {chips.map(c => <Link key={c.href} href={c.href} className="ops-btn px-4 min-h-11 inline-flex items-center no-underline">{c.text}</Link>)}
-        </div>
-      )}
-      <Notifications title="Needs you" emptyText={chips.length ? 'Nothing else needs you.' : 'All clear'} items={alerts.items} dismissedCount={alerts.dismissedCount} reload={load} />
-    </div>
-  )
-
   const card = 'ops-card p-4 min-w-0 min-h-[6.5rem]'
-  const statusCards = (
-    <div className="grid sm:grid-cols-3 gap-3" aria-busy={!dash}>
+  const now = (
+    <div className="grid sm:grid-cols-3 gap-3" aria-busy={!dash} aria-label="Now">
       <div className={card}>
         <p className="text-base opacity-90">On air now</p>
         {dash ? <><p className="text-xl truncate">{dash.onAir.title || 'Nothing scheduled'}</p><p className="text-base opacity-80">{dash.onAir.endAt ? `until ${clock(dash.onAir.endAt)}` : ''}</p></> : <div className="pt-2"><Bar /></div>}
@@ -127,24 +109,25 @@ export default function AdminPage() {
       </div>
     </div>
   )
-
-  const next24: ReactNode = (
-    <section className="ops-card p-5 min-h-[10rem]" aria-label="Next 24 hours" aria-busy={!dash}>
-      <h2 className="text-2xl font-light mb-2">Next 24 hours</h2>
-      {!dash && <div className="space-y-3 py-1"><Bar w="w-full" /><Bar w="w-5/6" /><Bar w="w-2/3" /></div>}
-      {dash && (
-        <ul className="text-base divide-y divide-white/25">
-          {dash.next.map((n, i) => (
-            <li key={i} className="py-2 flex gap-3">
-              <span className="tabular-nums w-36 shrink-0 opacity-90">{clock(n.startAt)} – {clock(n.endAt)}</span>
-              <span className="truncate">{n.title}</span>
-              <span className="text-base opacity-80 ml-auto shrink-0">{n.source === 'auto' ? 'auto' : 'show'}</span>
-            </li>
-          ))}
-          {!dash.next.length && <li className="py-2">Nothing scheduled.</li>}
-        </ul>
+  const more = eboardExtras()
+  const todayView = (
+    <div className="space-y-6">
+      <CriticalStrip critical={dash?.critical} role={role} />
+      {failed && !dash && <p role="alert" className="ops-card p-4 text-base">Could not load. It will try again in a minute.</p>}
+      {dash && !dash.radioConnected && isAdmin && <p className="text-base opacity-90">Radio not connected.</p>}
+      {now}
+      <Controls role={role} />
+      <div className="grid xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] gap-6 items-start">
+        <div className="min-w-0 xl:order-1 order-2"><ComingUp rows={dash ? dash.next : null} /></div>
+        <div className="min-w-0 xl:order-2 order-1"><NeedsApproval rows={dash ? dash.pending : null} total={dash?.pendingTotal ?? 0} onChanged={load} /></div>
+      </div>
+      {more.length > 0 && (
+        <nav aria-label="More" className="flex flex-wrap items-center gap-3">
+          <span className="text-base opacity-90">More:</span>
+          {more.map(m => <Link key={m.href} href={m.href} className="ops-btn px-4 min-h-11 inline-flex items-center no-underline">{m.title}</Link>)}
+        </nav>
       )}
-    </section>
+    </div>
   )
 
   return (
@@ -153,15 +136,15 @@ export default function AdminPage() {
         <header className="flex flex-wrap items-center gap-4">
           <span className="ops-tile-icon !w-16 !h-16 shrink-0"><OpsIcon name="radio" size={40} /></span>
           <div>
-            <h1 className="text-4xl font-light leading-tight">Admin Panel</h1>
-            <p className="text-base opacity-90">{isAdmin ? 'Admin' : 'Director'}{dash && !dash.radioConnected && isAdmin ? ' · Radio not connected' : ''}</p>
+            <h1 className="text-4xl font-light leading-tight">Settings</h1>
+            <p className="text-base opacity-90">{isAdmin ? roleLabel('admin') : roleLabel('director')}{dash && !dash.radioConnected && isAdmin ? ' · Radio not connected' : ''}</p>
           </div>
           <Link href="/" className="ops-btn ml-auto min-h-11 inline-flex items-center px-4">Back to site</Link>
         </header>
 
         <div className="grid lg:grid-cols-[280px_1fr] gap-x-10 gap-y-6 items-start">
           <nav aria-label="Admin sections" className="space-y-3 lg:sticky lg:top-6">
-            <input type="search" className="ops-field w-full min-h-11" value={query} onChange={e => setQuery(e.target.value)} placeholder={isAdmin ? 'Search pages and settings' : 'Search the admin panel'} aria-label={isAdmin ? 'Search pages and settings' : 'Search the admin panel'} />
+            <input type="search" className="ops-field w-full min-h-11" value={query} onChange={e => setQuery(e.target.value)} placeholder={isAdmin ? 'Search pages and settings' : 'Search Settings'} aria-label={isAdmin ? 'Search pages and settings' : 'Search Settings'} />
             <div className="flex flex-wrap lg:flex-col gap-2 lg:gap-1">
               {menu.map(g => {
                 const active = !words && (g.id === 'home' ? showHome : g.id === tab)
@@ -202,13 +185,7 @@ export default function AdminPage() {
               </section>
             )}
 
-            {showHome && (
-              <div className="space-y-6">
-                {needsYou}
-                {statusCards}
-                {isAdmin ? <StationPanel only="today" between={next24} /> : next24}
-              </div>
-            )}
+            {showHome && todayView}
           </div>
         </div>
       </div>

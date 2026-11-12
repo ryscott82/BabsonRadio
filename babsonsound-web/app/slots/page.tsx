@@ -12,8 +12,9 @@ import type { AdultStatus } from '@/lib/publicContent'
 import HostGate from '@/components/HostGate'
 import HostAgreements from '@/components/HostAgreements'
 import HostOptions from '@/components/HostOptions'
+import { autoHelp, autoLine, type AutoInfo } from '@/lib/slotWording'
 
-interface Mine {
+interface Mine extends AutoInfo {
   id: string; title: string; type: SlotType; startAt: number; durationMin: number
   status: 'pending' | 'approved' | 'declined' | 'cancelled'; staffNote: string; connectionInfo: string
 }
@@ -39,6 +40,8 @@ export default function SlotsPage() {
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const [now] = useState(() => Date.now())
+  const [leadHours, setLeadHours] = useState<number>(SLOT_RULES.minLeadHours) // the staff-set lead time comes from the server
+  useEffect(() => { if (member) apiGet<{ rules?: { minLeadHours?: number } }>('/api/slots/options').then(o => { if (typeof o.rules?.minLeadHours === 'number') setLeadHours(o.rules.minLeadHours) }).catch(() => {}) }, [member])
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -105,7 +108,7 @@ export default function SlotsPage() {
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-10">
       <div>
         <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Host a show</h1>
-        <p className="text-lg text-br-dk-sub mt-2">Request a time. At least {SLOT_RULES.minLeadHours} hours ahead.</p>
+        <p className="text-lg text-br-dk-sub mt-2">Request a time. At least {leadHours} hours ahead.</p>
       </div>
 
       {signing && (
@@ -179,6 +182,12 @@ export default function SlotsPage() {
               <span className={`font-display text-sm tracking-widest ${r.status === 'declined' ? 'text-br-red' : r.status === 'approved' ? 'text-br-green' : 'text-br-dk-sub'}`}>{STATUS[r.status]}</span>
             </div>
             <p className="text-sm text-br-dk-sub">{fmt(r.startAt)} · {r.durationMin} min · {SLOT_TYPES[r.type]}</p>
+            {r.status === 'pending' && (
+              <div>
+                <p className="text-base text-br-dk-text">{autoLine(r, now, fmt)}</p>
+                {autoHelp(r, now, 'student') && <p className="text-base text-br-dk-sub">{autoHelp(r, now, 'student')}</p>}
+              </div>
+            )}
             {r.staffNote && <p className="text-sm text-br-dk-text">Staff note: {r.staffNote}</p>}
             {r.status === 'approved' && r.connectionInfo && (
               <pre className="sk-field rounded-lg p-3 text-sm text-br-dk-text whitespace-pre-wrap">{r.connectionInfo}</pre>

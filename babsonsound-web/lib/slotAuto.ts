@@ -13,9 +13,13 @@ export const AUTO = {
   optionsWeeks: 4,
 } as const
 
+/** The show-request numbers an Admin can change (Admin > Settings). Saved in config/slotRules; these are the defaults and what is used until something is saved. */
+export interface AutoRules { afterHours: number; beforeStartHours: number; weekLimit: number; maxRepeatWeeks: number; minLeadHours: number }
+export const DEFAULT_AUTO_RULES: AutoRules = { afterHours: AUTO.afterHours, beforeStartHours: AUTO.beforeStartHours, weekLimit: AUTO.weekLimit, maxRepeatWeeks: AUTO.maxRepeatWeeks, minLeadHours: 24 }
+
 const HOUR = 3_600_000
-export const autoApproveAtMs = (createdMs: number, startMs: number) =>
-  Math.min(createdMs + AUTO.afterHours * HOUR, startMs - AUTO.beforeStartHours * HOUR)
+export const autoApproveAtMs = (createdMs: number, startMs: number, rules: Pick<AutoRules, 'afterHours' | 'beforeStartHours'> = DEFAULT_AUTO_RULES) =>
+  Math.min(createdMs + rules.afterHours * HOUR, startMs - rules.beforeStartHours * HOUR)
 
 // ── New York calendar ──
 const TZ = 'America/New_York'
@@ -68,7 +72,7 @@ export function addWeeksWallClock(startMs: number, weeks: number) {
 /** Starts for the extra weeks (week 1, 2, ... after the first). */
 export const repeatStarts = (startMs: number, weeks: number) => Array.from({ length: weeks }, (_, i) => addWeeksWallClock(startMs, i + 1))
 
-export function cleanWeeks(v: unknown, max: number = AUTO.maxRepeatWeeks): number | null {
+export function cleanWeeks(v: unknown, max: number = DEFAULT_AUTO_RULES.maxRepeatWeeks): number | null {
   if (v == null || v === '') return 0
   const n = Number(v)
   return Number.isInteger(n) && n >= 0 && n <= max ? n : null
@@ -95,6 +99,8 @@ export function evaluateAuto(i: {
   autoStartsInWeek: number
   /** another approved slot overlaps this time */
   conflict: boolean
+  /** the saved limits; the defaults when left out */
+  rules?: Pick<AutoRules, 'weekLimit'>
 }): AutoVerdict {
   if (i.status !== 'pending') return { action: 'skip', reason: 'not-pending' }
   if (i.held) return { action: 'skip', reason: 'held' }
@@ -104,7 +110,7 @@ export function evaluateAuto(i: {
   if (i.type === 'live' && !radioTrainedFromProfile(i.requester, i.now)) return { action: 'skip', reason: 'training' }
   if (i.startMs <= i.now) return { action: 'skip', reason: 'past' }
   if (i.conflict) return { action: 'skip', reason: 'conflict' }
-  if (i.autoStartsInWeek >= AUTO.weekLimit) return { action: 'skip', reason: 'week-limit' }
+  if (i.autoStartsInWeek >= (i.rules ?? DEFAULT_AUTO_RULES).weekLimit) return { action: 'skip', reason: 'week-limit' }
   return { action: 'approve' }
 }
 

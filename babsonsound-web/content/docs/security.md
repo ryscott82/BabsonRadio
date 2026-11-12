@@ -53,5 +53,5 @@ The theme script in `app/layout.tsx` is allowed by hash and the hash is computed
 ## 7. After deploying: quick checks
 - `curl -I https://babsonradio.com/` shows the headers and no `X-Powered-By`.
 - `/api/health` signed out → 401; with an admin signed in (or `x-health-key`) → the checklist.
-- Admin Panel → Phone lookup loads.
+- Settings → Phone lookup loads.
 - The 14-day delete can't be tried by hand without waiting two weeks; `lib/unverifiedSweep.test.ts` covers the whole lifecycle. After the first cron run, `GET /api/cron/birthdays` (with the `CRON_SECRET` bearer) returns a `cleanup` object with the counts.

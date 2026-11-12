@@ -1,12 +1,12 @@
 # Library worker on the studio PC
 
-The music library jobs (clean titles and artists, find covers, find beats, even out loudness) run on the studio PC, not on Vercel. Admins queue them in **Admin Panel → Music library**, approve what comes back, then queue **Apply**.
+The music library jobs (clean titles and artists, find covers, find beats, even out loudness) run on the studio PC, not on Vercel. Admins queue them in **Settings → Music library**, approve what comes back, then queue **Apply**.
 
 ```
-Admin Panel ──queues──► Firestore workerJobs ──(listener)──► tools/pc-worker on the studio PC
+Settings ──queues──► Firestore workerJobs ──(listener)──► tools/pc-worker on the studio PC
                                                                │ runs tools/*.py --json, low priority
                                                                │ pauses while a show is live
-Admin Panel ◄──review── Firestore workerProposals ◄──pending────┘
+Settings ◄──review── Firestore workerProposals ◄──pending────┘
 Apply (approved only) ──► POST /api/worker/changes (logged first) ──► AzuraCast
 ```
 

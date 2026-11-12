@@ -1,6 +1,10 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
-import { HttpError, handle, readJson, requireStaff } from '@/lib/server/http'
+import { HttpError, handle, readJson, requireDirector } from '@/lib/server/http'
+import { accessOf } from '@/lib/server/access'
+import { controlAccess } from '@/lib/stationControls'
+import { loadConfig, setColorMode } from '@/lib/server/autoschedule'
+import { logSettingChanges } from '@/lib/server/adminSettings'
 import { azControl, azSkipVerified, azuraConfigured, azNowPlaying } from '@/lib/server/azuracast'
 import { buildScheduleFeed } from '@/lib/server/scheduleFeed'
 import { getNote, occIdOf } from '@/lib/server/live'
@@ -15,11 +19,16 @@ export const runtime = 'nodejs'
 
 let answer: { at: number; v: unknown } | null = null // shared for a few seconds; cleared by any button below
 
-// Admin controls: what is on, the shows we can pin a message to, and the big buttons.
+// E-board does not get the Admin-only states (audio processing, maintenance mode).
+const pick = (v: Record<string, unknown>, admin: boolean) => { if (admin) return v; const { audioFx, maintenance, ...rest } = v; void audioFx; void maintenance; return rest }
+
+// Station controls for E-board and Admins: what is on, the shows we can pin a message to, and the big buttons.
+// E-board: skip, emergency-stop, resume, on-air-sign, announce, clear-announcement, color-mode. Admins only: audio-fx and maintenance (lib/stationControls.ts).
 export async function GET(req: Request) {
   return handle(async () => {
-    await requireStaff(req)
-    if (answer && Date.now() - answer.at < 8_000) return answer.v
+    const t = await requireDirector(req)
+    const admin = (await accessOf(t)).level === 'admin'
+    if (answer && Date.now() - answer.at < 8_000) return pick(answer.v as Record<string, unknown>, admin)
     const db = adminDb()
     const now = Date.now()
     const items = (await buildScheduleFeed(db, { days: 2, showStudentHosts: false, now })).filter(i => i.source !== 'auto')
@@ -27,19 +36,31 @@ export async function GET(req: Request) {
       occId: occIdOf(i), title: i.title, startAt: i.startAt, endAt: i.endAt, onAir: i.startAt <= now && i.endAt > now,
       note: await getNote(db, occIdOf(i), now),
     })))
-    const out = { configured: azuraConfigured(), nowPlaying: await azNowPlaying().catch(() => null), shows, announcement: await getAnnouncement(db, now), audioFx: await getAudioFx(db, now), onAirSign: await getOnAirSign(db, now), maintenance: await getMaintenance(db, now) }
+    const out = { configured: azuraConfigured(), nowPlaying: await azNowPlaying().catch(() => null), shows, announcement: await getAnnouncement(db, now), audioFx: await getAudioFx(db, now), onAirSign: await getOnAirSign(db, now), maintenance: await getMaintenance(db, now), colorMode: (await loadConfig(db)).colorChanging }
     answer = { at: Date.now(), v: out }
-    return out
+    return pick(out, admin)
   })
 }
 
 // { action: 'skip' | 'emergency-stop' | 'resume' | 'maintenance' (with on) | ... }. Every use is logged.
 export async function POST(req: Request) {
   return handle(async () => {
-    const t = await requireStaff(req)
-    answer = null
+    const t = await requireDirector(req)
     const body = await readJson(req)
     const action = body.action
+    const level = (await accessOf(t)).level
+    const allowed = controlAccess(level, action)
+    if (allowed === 'forbidden') throw new HttpError(403, 'Admins only.', 'BR-PERM-002')
+    if (allowed === 'unknown') throw new HttpError(400, 'Unknown action.')
+    answer = null
+    if (action === 'color-mode') {
+      // Album-art colours: flips this one Auto DJ value and nothing else. Logged in Settings history and in the station log.
+      const on = body.on === true
+      const r = await setColorMode(adminDb(), on, t.uid)
+      await logSettingChanges(adminDb(), r.before === r.after ? [] : [{ key: 'auto.colorChanging', old: r.before, new: r.after }], t.email ?? t.uid).catch(e => console.error('[settingsLog]', e))
+      await adminDb().collection('hostActions').add({ uid: t.uid, action: on ? 'color-mode-on' : 'color-mode-off', show: '(station)', at: Timestamp.now() })
+      return { ok: true, colorMode: on }
+    }
     if (action === 'maintenance') {
       await setMaintenance(adminDb(), body.on === true, t.uid)
       await adminDb().collection('hostActions').add({ uid: t.uid, action: body.on === true ? 'maintenance-on' : 'maintenance-off', show: '(admin)', at: Timestamp.now() })

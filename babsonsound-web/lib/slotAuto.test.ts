@@ -185,7 +185,7 @@ test('the request route filters title, description and location and takes repeat
   const r = src('app/api/slots/request/route.ts')
   assert.match(r, /assertClean\(db, title, description, location\)/)
   assert.match(r, /repeatWeeks/)
-  assert.match(src('lib/server/slotCreate.ts'), /autoApproveAt: Timestamp\.fromMillis\(autoApproveAtMs\(now, s\)\), autoEligible/)
+  assert.match(src('lib/server/slotCreate.ts'), /autoApproveAt: Timestamp\.fromMillis\(autoApproveAtMs\(now, s, rules\)\), autoEligible/)
 })
 
 test('hold is staff only and blocks auto-approval', () => {

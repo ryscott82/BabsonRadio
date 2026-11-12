@@ -49,7 +49,7 @@ export default function AdminTrainingPage() {
     <div className="min-h-screen">
       <div className="max-w-[1800px] mx-auto px-5 lg:px-10 py-6 space-y-4">
         <div className="flex items-baseline gap-3 border-b border-br-dk-border pb-3">
-          <Link href="/admin" className="text-br-dk-sub text-xs">admin panel</Link>
+          <Link href="/admin" className="text-br-dk-sub text-xs">Settings</Link>
           <h1 className="text-br-dk-text text-base font-semibold">training</h1>
           <span className="text-xs text-br-dk-sub ml-auto">{counts.checked} checked in · {counts.trained} certified · {counts.requested} waiting for training</span>
         </div>

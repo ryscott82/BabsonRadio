@@ -1,4 +1,5 @@
 import { adminDb } from '@/lib/server/admin'
+import { roleLabel } from '@/lib/roleLabel'
 import { HttpError, handle, readJson, str } from '@/lib/server/http'
 import { levelFromLegacy } from '@/lib/server/access'
 import { ms, studioActor, writeGrants } from '@/lib/server/studio'
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
     const u = await db.collection('users').doc(uid).get()
     if (!u.exists) throw new HttpError(404, 'That person was not found.')
     const level = u.get('level') ?? levelFromLegacy(u.get('role'), u.get('email'))
-    if (level !== 'student') throw new HttpError(400, level === 'guest' ? 'Guests cannot be trained. They need a verified school email first.' : 'Directors and admins do not need badges.', 'BR-STU-021')
+    if (level !== 'student') throw new HttpError(400, level === 'guest' ? 'Guests cannot be trained. They need a verified school email first.' : `${roleLabel('director')} members and admins do not need badges.`, 'BR-STU-021')
     let expiresAt = badgeExpiry(now)
     if (b.expiresAt != null) {
       expiresAt = Number(b.expiresAt)

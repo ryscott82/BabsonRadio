@@ -35,7 +35,7 @@ export default function PlayLogPage() {
     <div className="min-h-screen">
       <div className="max-w-[1800px] mx-auto px-5 lg:px-10 py-6 space-y-4">
         <div className="flex items-baseline gap-3 border-b border-br-dk-border pb-3">
-          <Link href="/admin" className="text-br-dk-sub text-xs">admin panel</Link>
+          <Link href="/admin" className="text-br-dk-sub text-xs">Settings</Link>
           <h1 className="text-br-dk-text text-base font-semibold">play log</h1>
         </div>
         <p className="text-sm text-br-dk-sub">Every track that aired, in Eastern time: artist, title, album, ISRC when AzuraCast has it, length, playlist and live DJ. Keep these files; reporting to SoundExchange and the license holder is built from them.</p>

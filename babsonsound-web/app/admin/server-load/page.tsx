@@ -14,11 +14,14 @@ import Instructions from '@/components/admin/usage/Instructions'
 import RouteTable from '@/components/admin/usage/RouteTable'
 import TierPanel from '@/components/admin/usage/TierPanel'
 import { fmtWhen } from '@/components/admin/usage/format'
+import SettingsBox from '@/components/admin/SettingsBox'
 
 // Admin only. Server time on Vercel (Active CPU): how to read Vercel's numbers, a log of readings typed in from it, charts, the forecast, which
 // features are slowed or off (with a lock per tier), what each feature costs, and the alert history.
 // It loads once when opened and again only when Refresh is pressed or something is saved: this page must not use server time itself.
 // Everything arrives in one call (/api/admin/server-usage/overview).
+const cpuKeys = (k: string) => k.startsWith('cpu.')
+
 export default function ServerLoadPage() {
   const { user, isAdmin, loading } = useAuth()
   const router = useRouter()
@@ -27,6 +30,7 @@ export default function ServerLoadPage() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [editing, setEditing] = useState<UsageRow | null>(null)
+  const [focus] = useState(() => { try { return new URLSearchParams(window.location.search).get('focus') ?? '' } catch { return '' } })
 
   useEffect(() => { if (!loading && (!user || !isAdmin)) router.replace('/') }, [loading, user, isAdmin, router])
   const load = useCallback(async () => {
@@ -63,6 +67,8 @@ export default function ServerLoadPage() {
           )}
           {msg && !error && <p role="status" className="ops-card p-3">{msg}</p>}
         </div>
+
+        <SettingsBox accept={cpuKeys} focus={focus} onSaved={() => load()} />
 
         <Instructions />
 

@@ -31,7 +31,7 @@ export async function beginSync(db: Firestore, uid: string, route: SyncRoute, ha
   })
 }
 
-/** Pauses an account's syncing and leaves a note for the Admin Panel (it shows up under Notifications and on the Phone lookup page). */
+/** Pauses an account's syncing and leaves a note for the Settings (it shows up under Notifications and on the Phone lookup page). */
 export async function flagSync(db: Firestore, uid: string, reason: string, who: { email: string; name: string }) {
   await db.collection('contactSyncs').doc(uid).set({
     flagged: true, flagReason: reason, flagAt: Timestamp.now(), flagEmail: who.email, flagName: who.name,

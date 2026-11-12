@@ -1,6 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
-import { HttpError, handle, readJson, requireStaff, str } from '@/lib/server/http'
+import { HttpError, handle, readJson, requireDirector, str } from '@/lib/server/http'
 
 export const runtime = 'nodejs'
 
@@ -10,7 +10,7 @@ export const runtime = 'nodejs'
 // { label, startAt, endAt?, ongoing? }
 export async function POST(req: Request) {
   return handle(async () => {
-    await requireStaff(req)
+    await requireDirector(req)
     const b = await readJson(req)
     const label = str(b.label, 80)
     const startAt = Number(b.startAt)

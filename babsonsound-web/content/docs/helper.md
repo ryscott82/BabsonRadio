@@ -22,13 +22,13 @@ It can't fix a mixer that is already clipping before BUTT; the level screen says
 ## Recordings
 Every go-live starts BUTT's recorder and End show stops it (set `RECORD_SHOWS=0` to turn that off). Files go to BUTT's recording folder (Settings → Record).
 
-Ad break times are set in **Admin Panel → Studio PC log → Ad breaks** (minutes past each hour and length).
+Ad break times are set in **Settings → Studio PC log → Ad breaks** (minutes past each hour and length).
 
 ## Who can go live
 - Directors and admins: any time.
 - Students: an active Radio badge and one of their own shows starting within 30 minutes (or still running, up to 30 minutes after it ends).
 - Anyone signed in can **end** the stream, so nobody gets stuck on air.
-- Every sign-in is logged with what happened (went live, songs, signed out). Directors and admins see it in **Admin Panel → Studio PC log**.
+- Every sign-in is logged with what happened (went live, songs, signed out). Directors and admins see it in **Settings → Studio PC log**.
 
 ## One-time setup on the studio PC (Windows)
 1. **Node.js 18 or newer** (nodejs.org, LTS installer).

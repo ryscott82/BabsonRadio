@@ -1,4 +1,5 @@
 import 'server-only'
+import { STAFF_ONLY } from '../roleLabel'
 import { FieldValue, Timestamp, type Firestore, type DocumentSnapshot } from 'firebase-admin/firestore'
 import type { DecodedIdToken } from 'firebase-admin/auth'
 import { randomBytes } from 'node:crypto'
@@ -32,7 +33,7 @@ export async function studioActor(req: Request, need: 'student' | 'staff' | 'adm
   const a = await accessOf(t)
   const g = memberGate(a.level)
   if (!g.ok) throw new HttpError(g.status, g.message, g.code)
-  if (need === 'staff' && !isTrainerLevel(a.level)) throw new HttpError(403, 'Directors and admins only.', 'BR-PERM-002')
+  if (need === 'staff' && !isTrainerLevel(a.level)) throw new HttpError(403, STAFF_ONLY, 'BR-PERM-002')
   if (need === 'admin' && a.level !== 'admin') throw new HttpError(403, 'Admins only.', 'BR-PERM-002')
   return { t, a }
 }

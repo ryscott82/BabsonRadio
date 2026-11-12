@@ -1,6 +1,7 @@
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/http'
 import { createSlotRequests } from '@/lib/server/slotCreate'
+import { loadSlotRules } from '@/lib/server/slotRules'
 import { assertClean } from '@/lib/server/wordFilter'
 import { type SlotCategory, type SlotType } from '@/lib/slots'
 import { cleanWeeks, repeatStarts } from '@/lib/slotAuto'
@@ -15,9 +16,10 @@ export async function POST(req: Request) {
     const t = await requireMember(req)
     const b = await readJson(req)
     const requestId = str(b.requestId, 100)
-    const weeks = cleanWeeks(b.weeks)
-    if (!requestId || !weeks) throw new HttpError(400, 'Pick 1 to 3 weeks.')
     const db = adminDb()
+    const max = (await loadSlotRules(db)).maxRepeatWeeks
+    const weeks = cleanWeeks(b.weeks, max)
+    if (!requestId || !weeks) throw new HttpError(400, max ? `Pick 1 to ${max} weeks.` : 'Repeating is turned off right now.')
     const ref = db.collection('slotRequests').doc(requestId)
     const r = await ref.get()
     if (!r.exists || r.get('requesterUid') !== t.uid) throw new HttpError(404, 'Request not found.')

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description: 'Babson Radio is the first all-internet radio station in the United States, run by students at Babson College since 1998 and made by Babson Sound.',
 }
 
-export const revalidate = 60 // admins can change these words (Admin Panel > Page text); the page picks them up within a minute
+export const revalidate = 60 // admins can change these words (Settings > Page text); the page picks them up within a minute
 
 function Section({ title, items }: { title: string; items: string[] }) {
   return (

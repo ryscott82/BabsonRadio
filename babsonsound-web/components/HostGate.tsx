@@ -26,7 +26,7 @@ export default function HostGate({ children }: { children: ReactNode }) {
 
   const load = useCallback(() => apiGet<Info>('/api/training').then(setInfo).catch(e => setError(e instanceof Error ? e.message : 'Could not load.')), [])
   useEffect(() => { queueMicrotask(load) }, [load])
-  // While waiting for a director to confirm, check again every few seconds.
+  // While waiting for an E-board member to confirm, check again every few seconds.
   useEffect(() => {
     if (info?.checkIn !== 'pending') return
     const t = setInterval(() => { if (!document.hidden) void load() }, 5_000)
@@ -76,14 +76,14 @@ export default function HostGate({ children }: { children: ReactNode }) {
       <h2 className="font-display text-br-gold tracking-widest text-sm">Host training</h2>
       {info.checkIn === 'pending' ? (
         <>
-          <p className="text-sm text-br-dk-text">Waiting for a director to confirm training.</p>
+          <p className="text-sm text-br-dk-text">Waiting for an E-board member to confirm training.</p>
         </>
       ) : (
         <>
           <p className="text-sm text-br-dk-text">Training is in person, then a short quiz and the host agreements.</p>
           <div className="flex flex-wrap gap-3 items-center">
             {info.requested
-              ? <span className="text-sm text-br-dk-sub">Requested. A director will reach out.</span>
+              ? <span className="text-sm text-br-dk-sub">Requested. An E-board member will reach out.</span>
               : <button type="button" className={ghost} disabled={busy} onClick={() => run(() => api('/api/training/request', {}))}>Schedule a training</button>}
             <button type="button" className={solid} disabled={busy} onClick={() => run(() => api('/api/training/checkin', {}))}>I&apos;m at my training</button>
           </div>

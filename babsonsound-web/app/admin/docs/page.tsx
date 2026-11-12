@@ -7,7 +7,7 @@ import DocView from '@/components/admin/DocView'
 
 interface DocItem { id: string; group: string; title: string; about: string; file: string }
 
-// Admin only. The guides that live with the project (features by role, setup, studio, reference), readable without leaving the admin panel.
+// Admin only. The guides that live with the project (features by role, setup, studio, reference), readable without leaving Settings.
 export default function DocsPage() {
   const { isAdmin, loading } = useAuth()
   const [docs, setDocs] = useState<DocItem[]>([])

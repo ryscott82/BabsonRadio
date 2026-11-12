@@ -1,6 +1,8 @@
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireStaff } from '@/lib/server/http'
-import { cpuState, resetCpuCache } from '@/lib/server/cpuBudget'
+import { cpuState, loadCpuConfig, resetCpuCache } from '@/lib/server/cpuBudget'
+import { logSettingChanges } from '@/lib/server/adminSettings'
+import { storeChanges } from '@/lib/adminSettings'
 import { resetUsageStatus } from '@/lib/server/serverUsage'
 import { cleanDirectAt, cleanDirectMode, cleanLocks, cleanThresholds, DIRECT_MODES, TIERS } from '@/lib/cpuTiers'
 
@@ -51,6 +53,7 @@ export async function POST(req: Request) {
       out.thresholds = cleanThresholds(b.thresholds, (await cpuState(db)).config.thresholds)
     }
     const ref = db.collection('usage').doc('cpuConfig')
+    const before = await loadCpuConfig(db)
     const { tierLocks, ...rest } = out
     if (Object.keys(rest).length) await ref.set(rest, { merge: true })
     if (tierLocks !== undefined) { await ref.set({}, { merge: true }); await ref.update({ tierLocks }) } // update() replaces the whole map, so a cleared lock really goes
@@ -58,6 +61,8 @@ export async function POST(req: Request) {
     await db.collection('cpuTierLog').add({ at: Date.now(), by: who.email ?? who.uid, change: out })
     resetCpuCache()
     resetUsageStatus()
+    // Settings history: one line per changed value (tier locks are not settings rows and keep their own log above).
+    await logSettingChanges(db, storeChanges('cpu', before, await loadCpuConfig(db)), who.email ?? who.uid).catch(e => console.error('[settingsLog]', e))
     return { ok: true }
   })
 }

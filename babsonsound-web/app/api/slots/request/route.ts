@@ -3,6 +3,7 @@ import { HttpError, handle, readJson, requireMember, str } from '@/lib/server/ht
 import { checkImageRef } from '@/lib/server/images'
 import { assertClean } from '@/lib/server/wordFilter'
 import { createSlotRequests } from '@/lib/server/slotCreate'
+import { loadSlotRules } from '@/lib/server/slotRules'
 import { SLOT_CATEGORIES, SLOT_RULES, SLOT_TYPES, type SlotCategory, type SlotType } from '@/lib/slots'
 import { checkAudioUrl, cleanWeeks, repeatStarts } from '@/lib/slotAuto'
 
@@ -25,7 +26,8 @@ export async function POST(req: Request) {
     const startMs = Number(b.startAt)
     const durationMin = Number(b.durationMin)
     const audioURL = str(b.audioURL, 500)
-    const weeks = cleanWeeks(b.repeatWeeks)
+    const rules = await loadSlotRules(adminDb())
+    const weeks = cleanWeeks(b.repeatWeeks, rules.maxRepeatWeeks)
     const img = b.imageUrl ? checkImageRef(t.uid, b.imageUrl, b.imagePath) : null // optional picture
     if (b.imageUrl && !img) throw new HttpError(400, 'That picture could not be used. Upload it again.')
 
@@ -33,7 +35,7 @@ export async function POST(req: Request) {
     if (description.length < 10) throw new HttpError(400, 'Tell us what your show is about (a sentence or two).')
     if (!(type in SLOT_TYPES)) throw new HttpError(400, 'Pick live or pre-recorded.')
     if (!SLOT_CATEGORIES.includes(category)) throw new HttpError(400, 'Pick a category.')
-    if (weeks === null) throw new HttpError(400, 'Repeat for 0 to 3 more weeks.')
+    if (weeks === null) throw new HttpError(400, `Repeat for 0 to ${rules.maxRepeatWeeks} more weeks.`)
     if (!Number.isFinite(startMs) || !Number.isFinite(durationMin)) throw new HttpError(400, 'Pick a start time and length.')
     const step = SLOT_RULES.stepMinutes
     if (durationMin < SLOT_RULES.minMinutes || durationMin > SLOT_RULES.maxMinutes || durationMin % step !== 0) {

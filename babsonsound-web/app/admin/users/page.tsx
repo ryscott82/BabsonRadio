@@ -1,5 +1,6 @@
 'use client'
 
+import { roleLabel } from '@/lib/roleLabel'
 import { Pick, MoreButton, usePaged, matchAll } from '@/components/admin/FilterBar'
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -15,7 +16,7 @@ interface Row { id: string; name: string; firstName: string; lastName: string; g
 interface Gone { id: string; email: string; name: string; level: string; reason: string; by: string; at: number; done: boolean }
 interface Invite { email: string; level: Level; studioTrained: boolean; radioTrained: boolean; mailedAt?: number }
 
-const LEVEL_LABEL: Record<Level, string> = { guest: 'Guest', student: 'Student', director: 'Director', admin: 'Admin' }
+const LEVEL_LABEL: Record<Level, string> = { guest: roleLabel('guest'), student: roleLabel('student'), director: roleLabel('director'), admin: roleLabel('admin') }
 const LEVELS = Object.keys(LEVEL_LABEL) as Level[]
 
 export default function AdminUsersPage() {
@@ -161,8 +162,8 @@ export default function AdminUsersPage() {
         <span className="text-xs text-br-dk-sub shrink-0">{rows.length} accounts</span>
       </div>
       <p className="text-sm text-br-dk-sub">
-        Guest: live radio only. Student: school email, can use the library and request pre-recorded shows. Director: sets show times and approves requests. Admin: runs the station and manages people.
-        Radio trained lets a student request live shows and go on air. Studio trained is for the studio. Directors and admins count as both. Owner accounts cannot be changed.
+        Guest: live radio only. Student: school email, can use the library and request pre-recorded shows. E-board: sets show times and approves requests. Admin: runs the station and manages people.
+        Radio trained lets a student request live shows and go on air. Studio trained is for the studio. E-board and admins count as both. Owner accounts cannot be changed.
         Any email can be given a role. A school email (babson.edu, olin.edu, wellesley.edu) becomes a Student on its own; any other email stays a Guest until you give it a role, and the role works once that email is verified.
       </p>
       <div className="sk-raised rounded-xl px-4 py-3 space-y-3">

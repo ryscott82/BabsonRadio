@@ -2,13 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { apiGet } from '@/lib/auth'
-import { DISMISS_KEY, bannerFor, dismissValue, isDismissed, type BannerTone, type UsageStatus } from '@/lib/usageBanner'
+import { DISMISS_KEY, bannerFor, dismissValue, isDismissed, type BannerTone } from '@/lib/usageBanner'
+import { useUsageStatus } from './useUsageStatus'
 
-const CACHE = 'usageStatusCache'
-const FRESH = 5 * 60_000
 const TONE: Record<BannerTone, { box: string; mark: string }> = {
   watch: { box: 'bg-black/40 border-white/50', mark: 'ⓘ' },
   warn: { box: 'bg-[#7a5800] border-[#ffd166]', mark: '▲' },
@@ -24,24 +22,8 @@ const TONE: Record<BannerTone, { box: string; mark: string }> = {
 export default function UsageBanner() {
   const { isAdmin, loading } = useAuth()
   const path = usePathname()
-  const [s, setS] = useState<UsageStatus | null>(null)
+  const s = useUsageStatus(!loading && isAdmin)
   const [hidden, setHidden] = useState(() => { try { return localStorage.getItem(DISMISS_KEY) ?? '' } catch { return '' } })
-
-  const keep = useCallback((v: UsageStatus) => { setS(v); try { sessionStorage.setItem(CACHE, JSON.stringify({ at: Date.now(), v })) } catch { /* private window */ } }, [])
-  useEffect(() => {
-    if (loading || !isAdmin) return
-    let alive = true
-    queueMicrotask(async () => {
-      try {
-        const c = JSON.parse(sessionStorage.getItem(CACHE) ?? 'null') as { at: number; v: UsageStatus } | null
-        if (c && Date.now() - c.at < FRESH) { if (alive) setS(c.v); return }
-      } catch { /* no cache */ }
-      try { const v = await apiGet<UsageStatus>('/api/admin/server-usage/status'); if (alive) keep(v) } catch { /* the banner is a convenience: say nothing if it cannot load */ }
-    })
-    const on = (e: Event) => keep((e as CustomEvent<UsageStatus>).detail)
-    window.addEventListener('usage-status', on)
-    return () => { alive = false; window.removeEventListener('usage-status', on) }
-  }, [isAdmin, loading, keep])
 
   const b = isAdmin ? bannerFor(s) : null
   if (!b || !s || isDismissed(hidden, s.month, b.rank)) return null

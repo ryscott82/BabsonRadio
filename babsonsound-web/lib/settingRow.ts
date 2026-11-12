@@ -3,8 +3,8 @@
 
 export type SettingValue = number | boolean | string
 export type SettingKind = 'number' | 'boolean' | 'hour' | 'choice'
-/** Level 2 = changes how something works day to day. Level 3 = could hurt every listener if wrong, so saving asks "are you sure". */
-export type SettingLevel = 2 | 3
+/** Level 1 = everyday switch, level 2 = changes how something works day to day. Level 3 = could hurt every listener if wrong, so saving asks "are you sure". */
+export type SettingLevel = 1 | 2 | 3
 export type SettingTier = 'everyday' | 'customize' | 'defaults'
 
 export interface SettingDef {
@@ -18,6 +18,12 @@ export interface SettingDef {
   default: SettingValue
   /** number: allowed range and the unit shown after it. `scale` shows a stored fraction as a percent (0.75 -> 75). */
   min?: number; max?: number; unit?: string; scale?: number
+  /** The server keeps this value but nothing uses it right now (shown as "Not enforced right now"). */
+  notEnforced?: boolean
+  /** main: its own card on the page it controls. expert: in that page's closed Expert fold. */
+  visible?: 'main' | 'expert'
+  /** The server only accepts whole numbers. */
+  integer?: boolean
   choices?: { value: string; label: string }[]
   /** Level 3: who feels a change ("Every listener"). Used in the confirm step. */
   affects?: string
@@ -72,10 +78,9 @@ export function validate(def: SettingDef, v: SettingValue | null): string | null
     const n = Number(v)
     if (!Number.isFinite(n)) return 'Enter a number.'
     const lo = def.min, hi = def.max
-    const k = def.scale ?? 1
     if (lo !== undefined && n < lo - 1e-9) return `Must be at least ${formatValue(def, lo)}.`
     if (hi !== undefined && n > hi + 1e-9) return `Must be at most ${formatValue(def, hi)}.`
-    if (k === 1 && !Number.isInteger(n) && def.unit !== 'hours') return 'Use a whole number.'
+    if (def.integer && !Number.isInteger(n)) return 'Use a whole number.'
   }
   if (def.kind === 'hour') { const h = Number(v); if (!Number.isInteger(h) || h < 0 || h > 23) return 'Choose an hour.' }
   if (def.kind === 'choice' && !def.choices?.some(c => c.value === v)) return 'Choose one of the options.'
@@ -103,4 +108,13 @@ export function settingMatches(def: SettingDef, query: string): boolean {
   if (!words.length) return true
   const hay = `${def.label} ${def.help} ${def.group} ${def.keywords ?? ''}`.toLowerCase()
   return words.every(w => hay.includes(w))
+}
+
+/** The body of the one PATCH call: a value to save, or null to put the setting back to its default (the server fills in the default). */
+export function patchBody(id: string, next: SettingValue | null): { changes: Record<string, SettingValue | null> } {
+  return { changes: { [id]: next } }
+}
+/** What a row sends: Reset sends null, a normal save sends the value as typed (a choice that is a number on the server goes as text, which it accepts). */
+export function valueToSend(next: SettingValue, reset: boolean): SettingValue | null {
+  return reset ? null : next
 }

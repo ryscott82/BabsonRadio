@@ -95,7 +95,7 @@ export default function Nav() {
                 <div className="absolute right-0 top-full mt-2 w-52 sk-raised rounded-xl overflow-hidden">
                   <Link href="/profile" onClick={close} className={item}>Profile</Link>
                   {canRequest && <Link href="/slots" onClick={close} className={`${item} border-t border-br-dk-border`}>Request a spot</Link>}
-                  {showAdmin && <Link href="/admin" onClick={close} className={`${item} border-t border-br-dk-border`}>Admin Panel</Link>}
+                  {showAdmin && <Link href="/admin" onClick={close} className={`${item} border-t border-br-dk-border`}>Settings</Link>}
                   {isGuest && <Link href="/delete-account" onClick={close} className={item}>Delete account</Link>}
                   <button
                     onClick={() => { signOut(); close() }}

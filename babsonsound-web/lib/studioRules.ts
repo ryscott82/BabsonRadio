@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { roleLabel } from './roleLabel.ts'
 
 // Studio training rules with no database and no 'server-only', so the tests can run them directly.
 
@@ -161,7 +162,7 @@ export interface AttendanceLike { checkedInAt?: number | null; removedAt?: numbe
 export function checkinGate(i: { level: string; emailVerified: boolean; demo: boolean; status: SessionStatus; row: AttendanceLike | null }): Gate {
   const m = memberGate(i.level)
   if (!m.ok) return m
-  if (i.level !== 'student') return no(403, 'BR-STU-012', 'Directors and admins do not need to check in.')
+  if (i.level !== 'student') return no(403, 'BR-STU-012', `${roleLabel('director')} members and admins do not need to check in.`)
   if (!i.emailVerified && !i.demo) return no(403, 'BR-STU-002', 'Verify your school email first.')
   if (i.status !== 'checkin_open') return no(409, 'BR-STU-004', 'Check-in is not open for this session.')
   if (i.row?.removedAt != null) return no(403, 'BR-STU-008', 'You were removed from this session. Ask the trainer.')

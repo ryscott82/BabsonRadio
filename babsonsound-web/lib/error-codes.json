@@ -478,9 +478,9 @@
   {
     "code": "BR-ACC-025",
     "title": "That name isn't allowed",
-    "meaning": "A first or last name contains a word on the blocked list (Admin Panel → Blocked words, plus the built-in lists).",
+    "meaning": "A first or last name contains a word on the blocked list (Settings → Blocked words, plus the built-in lists).",
     "userFix": "Use a different name.",
-    "staffCheck": "Look at the name the person was trying to use. If it is a real name that is wrongly blocked, check Admin Panel → Blocked words for a custom entry."
+    "staffCheck": "Look at the name the person was trying to use. If it is a real name that is wrongly blocked, check Settings → Blocked words for a custom entry."
   },
   {
     "code": "BR-AGE-001",
@@ -683,7 +683,7 @@
     "title": "Contacts are paused for this account",
     "meaning": "A sync looked like someone checking lots of numbers (a very high number of matches, or most of a big list matching), so contacts are paused until an admin clears it.",
     "userFix": "Contact Babson Radio if you think this is a mistake.",
-    "staffCheck": "Admin Panel → Phone lookup → Paused accounts. Look at the reason and the account. Clear it if it is a real student with a big friend list. Thresholds: FLAG_MATCHED and FLAG_RATIO in lib/contactLimits.ts."
+    "staffCheck": "Settings → Phone lookup → Paused accounts. Look at the reason and the account. Clear it if it is a real student with a big friend list. Thresholds: FLAG_MATCHED and FLAG_RATIO in lib/contactLimits.ts."
   },
   {
     "code": "BR-OPS-001",

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { apiGet } from '@/lib/auth'
-import { DAYPARTS, localParts, planAutoBlocks, type AutoConfig, type AutoRule, type Daypart } from '@/lib/autoschedule'
+import { localParts, planAutoBlocks, type AutoConfig, type AutoRule, type Daypart } from '@/lib/autoschedule'
 
 // Auto DJ planner. Left: pick a playlist and edit when it plays. Right: the next 3 days as a grid, redrawn as you edit.
 // The grid is a preview of these settings; real shows and booked slots are drawn in grey and the auto DJ works around them.
@@ -90,14 +90,6 @@ export default function AutoPlanner({ cfg, update, genres, setGenres }: {
     return [...plan, ...real]
   }, [cfg, items, dayStart, stats])
 
-  const key = sel.toLowerCase()
-  const stat = stats.find(x => x.label.toLowerCase() === key)
-  const manual = cfg.weightOverrides?.[key]
-  const setManual = (v: number | undefined) => {
-    const next = { ...(cfg.weightOverrides ?? {}) }
-    if (v === undefined) delete next[key]; else next[key] = Math.round(v * 100) / 100
-    update({ weightOverrides: next })
-  }
   const rulesFor = sel === QUIET ? cfg.rules.filter(r => r.quiet) : cfg.rules.filter(r => !r.quiet && r.fillers.includes(sel))
   const others = (r: AutoRule) => r.fillers.filter(x => x !== sel)
 
@@ -131,6 +123,10 @@ export default function AutoPlanner({ cfg, update, genres, setGenres }: {
           </div>
         )}
         {shared.length > 0 && <p className="text-sm text-br-dk-muted">Also plays here: {shared.join(', ')}. Time changes apply to all of them.</p>}
+        <label className="flex items-center gap-2 text-base text-br-dk-text min-h-11">
+          <input type="checkbox" className="w-5 h-5" checked={r.enabled !== false} onChange={e => setRule(r.id, e.target.checked ? { enabled: undefined } : { enabled: false })} />
+          This block is on {r.enabled === false && <span className="text-br-dk-muted">(off: it is kept but not scheduled)</span>}
+        </label>
         <div className="flex flex-wrap gap-4 text-sm">
           {!quiet && <label className="flex items-center gap-2 text-br-dk-text"><input type="checkbox" checked={r.oneGenre === true} onChange={e => setRule(r.id, { oneGenre: e.target.checked })} /> One playlist per night</label>}
           {!quiet && <button type="button" className="text-br-dk-sub hover:text-br-gold" onClick={() => withGenre(r, sel)}>Remove {sel} from this block</button>}
@@ -193,34 +189,6 @@ export default function AutoPlanner({ cfg, update, genres, setGenres }: {
               </select>
             )}
           </div>
-          {sel !== QUIET && (
-            <div className="border border-br-dk-border p-3 space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-br-dk-text mr-auto">How often it plays</span>
-                <button type="button" className="sk-key px-3 py-1 text-sm" style={on(manual === undefined)} aria-pressed={manual === undefined} onClick={() => setManual(undefined)}>Auto</button>
-                <button type="button" className="sk-key px-3 py-1 text-sm" style={on(manual !== undefined)} aria-pressed={manual !== undefined} onClick={() => setManual(manual ?? stat?.weight ?? 1)}>Manual</button>
-              </div>
-              {manual === undefined ? (
-                <div className="text-sm space-y-1">
-                  <p className="text-br-dk-text tabular-nums">{(cfg.learn && stat ? stat.weight : 1).toFixed(2)}× average {!cfg.learn && <span className="text-br-dk-muted">(learning is off)</span>}</p>
-                  {cfg.learn && stat && stat.samples > 0 ? (
-                    <ul className="grid grid-cols-2 gap-x-4 text-br-dk-sub tabular-nums">
-                      {DAYPARTS.map(d => <li key={d.id} className="flex justify-between"><span>{d.label}</span><span>{stat.parts[d.id].toFixed(2)}×</span></li>)}
-                    </ul>
-                  ) : cfg.learn ? <p className="text-br-dk-muted">No listener data yet, so it counts as average.</p> : null}
-                  <p className="text-br-dk-muted">From listener counts, ratings and reactions, by time of day.</p>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-3">
-                    <input type="range" min={0} max={3} step={0.05} value={manual} onChange={e => setManual(Number(e.target.value))} className="flex-1" aria-label="Frequency" />
-                    <input type="number" min={0} max={3} step={0.05} value={manual} onChange={e => setManual(Number(e.target.value))} className={`${box} w-20`} aria-label="Frequency value" />
-                  </div>
-                  <p className="text-sm text-br-dk-muted">1 = average, 2 = twice as often, 0 = avoid. Replaces the automatic value at all hours.</p>
-                </div>
-              )}
-            </div>
-          )}
           {sel !== QUIET && (
             <div className="flex flex-wrap gap-4 text-sm">
               <label className="flex items-center gap-2 text-br-dk-text">

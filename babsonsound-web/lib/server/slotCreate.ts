@@ -11,6 +11,7 @@ import { assertAllAdults, recordConsent } from './publicContent'
 import { touchesCleanHours } from '../conduct'
 import { SLOT_RULES, type SlotCategory, type SlotType } from '../slots'
 import { autoApproveAtMs, autoEligible, pendingCount } from '../slotAuto'
+import { loadSlotRules } from './slotRules'
 
 export type NewRequest = {
   title: string; description: string; location: string; type: SlotType; category: SlotCategory; audioURL: string
@@ -27,6 +28,7 @@ export type Skipped = { startAt: number; reason: 'conflict' | 'too-far' | 'too-s
  */
 export async function createSlotRequests(db: Firestore, t: DecodedIdToken, b: NewRequest, starts: number[], o: { hardFirst: boolean; groupId?: string | null; now?: number }) {
   const now = o.now ?? Date.now()
+  const rules = await loadSlotRules(db)
   const stepMs = b.durationMin * 60_000
   const skipped: Skipped[] = []
   const mine = (await db.collection('slotRequests').where('requesterUid', '==', t.uid).get()).docs
@@ -35,7 +37,7 @@ export async function createSlotRequests(db: Firestore, t: DecodedIdToken, b: Ne
   const ok: number[] = []
   for (const [i, s] of starts.entries()) {
     const first = i === 0 && o.hardFirst
-    if (s < now + SLOT_RULES.minLeadHours * 3600_000) { if (first) throw new HttpError(400, `Request at least ${SLOT_RULES.minLeadHours} hours ahead.`); skipped.push({ startAt: s, reason: 'too-soon' }); continue }
+    if (s < now + rules.minLeadHours * 3600_000) { if (first) throw new HttpError(400, `Request at least ${rules.minLeadHours} hours ahead.`); skipped.push({ startAt: s, reason: 'too-soon' }); continue }
     if (s > now + SLOT_RULES.maxAdvanceDays * 86_400_000) { if (first) throw new HttpError(400, `Requests can be up to ${SLOT_RULES.maxAdvanceDays} days ahead.`); skipped.push({ startAt: s, reason: 'too-far' }); continue }
     if (taken.has(s)) { skipped.push({ startAt: s, reason: 'already-requested' }); continue }
     if (await findConflict(db, new Date(s), new Date(s + stepMs))) {
@@ -79,7 +81,7 @@ export async function createSlotRequests(db: Firestore, t: DecodedIdToken, b: Ne
     status: 'pending', createdAt: created, makePublic: false, cleanHours: touchesCleanHours(s, s + stepMs), conductSigned: ready.conductSigned, receiveRatings: b.receiveRatings,
     ...(groupId ? { groupId } : {}),
     // Approves itself at this time unless staff hold it, the week limit applies, or the agreement / training is missing (lib/server/autoApprove.ts).
-    autoApproveAt: Timestamp.fromMillis(autoApproveAtMs(now, s)), autoEligible: eligible,
+    autoApproveAt: Timestamp.fromMillis(autoApproveAtMs(now, s, rules)), autoEligible: eligible,
   }))
   await batch.commit()
 

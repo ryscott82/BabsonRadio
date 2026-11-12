@@ -87,3 +87,10 @@ export function featuresNow(tiers: Record<Tier, Pick<TierStatus, 'level' | 'lock
 }
 /** Plain words for a level: what a listener notices. */
 export const LEVEL_WORD: Record<Level, string> = { normal: 'Normal', tight: 'Slowed', critical: 'Off' }
+
+/** The line in Today's "Needs you" when the top banner would show (same status, same rules). Null when there is nothing to warn about. */
+export function usageWarning(s: UsageStatus | null): string | null {
+  const b = bannerFor(s)
+  if (!b || !s) return null
+  return b.rank === 1 ? 'Usage warning: server time is on track to pass the allowance' : `Usage warning: server time is at ${Math.round(s.pct)}% of the allowance`
+}

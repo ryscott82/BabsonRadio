@@ -9,8 +9,10 @@ import { useAuth } from '@/contexts/AuthContext'
 import { api } from '@/lib/auth'
 import { SLOT_TYPES, type SlotType } from '@/lib/slots'
 import { ErrorText } from '@/components/AuthUI'
+import SettingsBox from '@/components/admin/SettingsBox'
+import { autoHelp, autoLine, holdBody, holdLabel, type AutoInfo } from '@/lib/slotWording'
 
-interface Req {
+interface Req extends AutoInfo {
   id: string; requesterName: string; requesterEmail: string; title: string; description: string; location?: string
   type: SlotType; category: string; audioURL: string; startAt: number; endAt: number; durationMin: number
 }
@@ -21,13 +23,14 @@ const fmt = (ms: number) =>
   new Date(ms).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 
 export default function AdminSlotsPage() {
-  const { user, isDirector, loading } = useAuth()
+  const { user, isDirector, isAdmin, loading } = useAuth()
   const router = useRouter()
   const [pending, setPending] = useState<Req[]>([])
   const [upcoming, setUpcoming] = useState<Slot[]>([])
   const [archive, setArchive] = useState<Arch[]>([])
   const [tab, setTab] = useState<'pending' | 'booked' | 'archive'>('pending')
   const [error, setError] = useState('')
+  const [focus] = useState(() => { try { return new URLSearchParams(window.location.search).get('focus') ?? '' } catch { return '' } })
   const [now] = useState(() => Date.now())
 
   useEffect(() => {
@@ -42,6 +45,8 @@ export default function AdminSlotsPage() {
         title: d.get('title'), description: d.get('description'), location: d.get('location') ?? '', type: d.get('type'),
         category: d.get('category'), audioURL: d.get('audioURL') ?? '',
         startAt: d.get('startAt').toMillis(), endAt: d.get('endAt').toMillis(), durationMin: d.get('durationMin'),
+        held: d.get('held') === true, autoApproveAt: d.get('autoApproveAt')?.toMillis?.() ?? null,
+        autoBlockedReason: d.get('autoBlockedReason') ?? '', autoEligible: d.get('autoEligible') !== false,
       })).sort((a, b) => a.startAt - b.startAt)),
       e => setError(e.message))
     const u2 = onSnapshot(collection(db, 'airSlots'),
@@ -119,9 +124,18 @@ export default function AdminSlotsPage() {
           <MoreButton p={archiveP} />
         </section>
       )}
+
+      {/* Admins only: not drawn at all for E-board. */}
+      {isAdmin && (
+        <div className="space-y-3 pt-4 border-t border-br-dk-border" data-testid="request-rules">
+          <SettingsBox title="Request rules" accept={slotKeys} foldTitle="Advanced" status={false} focus={focus} />
+        </div>
+      )}
     </div>
   )
 }
+
+const slotKeys = (k: string) => k.startsWith('slots.')
 
 function PendingCard({ r, onError }: { r: Req; onError: (m: string) => void }) {
   const [note, setNote] = useState('')
@@ -129,10 +143,18 @@ function PendingCard({ r, onError }: { r: Req; onError: (m: string) => void }) {
   const [more, setMore] = useState(false)
   const [busy, setBusy] = useState(false)
   const [gone, setGone] = useState('')
+  const [now] = useState(() => Date.now())
 
   async function decide(action: 'approve' | 'decline') {
     setBusy(true); onError('')
     try { await api('/api/slots/decision', { requestId: r.id, action, note, connectionInfo: info }); setGone(action === 'approve' ? 'Approved. An email was sent if email is set up.' : 'Declined.') }
+    catch (e) { onError(e instanceof Error ? e.message : 'Something went wrong.') }
+    setBusy(false)
+  }
+
+  async function hold(next: boolean) {
+    setBusy(true); onError('')
+    try { await api('/api/slots/hold', holdBody(r.id, next)) }
     catch (e) { onError(e instanceof Error ? e.message : 'Something went wrong.') }
     setBusy(false)
   }
@@ -148,6 +170,10 @@ function PendingCard({ r, onError }: { r: Req; onError: (m: string) => void }) {
         </div>
         <p className="text-sm text-br-gold text-right">{fmt(r.startAt)}<br /><span className="text-xs text-br-dk-sub">{r.durationMin} min</span></p>
       </div>
+      <div className="rounded-lg border border-br-dk-border px-3 py-2" data-testid="auto-line">
+        <p className="text-base text-br-dk-text">{autoLine(r, now, fmt)}</p>
+        {autoHelp(r, now, 'staff') && <p className="text-base text-br-dk-sub">{autoHelp(r, now, 'staff')}</p>}
+      </div>
       {r.description && <p className="text-sm text-br-dk-sub whitespace-pre-wrap line-clamp-3">{r.description}</p>}
       {r.location && <p className="text-sm text-br-dk-text">Special request / location: {r.location}</p>}
       {r.audioURL && <a href={r.audioURL} target="_blank" rel="noopener noreferrer" className="text-sm text-br-gold hover:underline break-all">{r.audioURL}</a>}
@@ -161,6 +187,7 @@ function PendingCard({ r, onError }: { r: Req; onError: (m: string) => void }) {
       <div className="flex items-center gap-3">
         <button disabled={busy} onClick={() => decide('approve')} className="font-display tracking-widest text-xs sk-btn px-5 py-2.5 rounded-lg disabled:opacity-50">Approve</button>
         <button disabled={busy} onClick={() => decide('decline')} className="font-display tracking-widest text-xs text-br-red border border-br-red/50 px-4 py-2.5 rounded-lg disabled:opacity-50">Decline</button>
+        <button type="button" disabled={busy} onClick={() => hold(!r.held)} className="text-base text-br-dk-text border border-br-dk-border px-4 py-2.5 rounded-lg min-h-11 disabled:opacity-50">{holdLabel(!!r.held)}</button>
         <button type="button" onClick={() => setMore(!more)} className="ml-auto text-xs text-br-dk-sub underline">{more ? 'Hide note' : 'Add a note or go-live details'}</button>
       </div>
     </div>

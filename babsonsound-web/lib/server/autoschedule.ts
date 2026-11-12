@@ -1,7 +1,7 @@
 import 'server-only'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 import {
-  DEFAULT_CONFIG, clipInterval, endAfter, parseClock, planAutoBlocks, sanitizeConfig,
+  DEFAULT_CONFIG, applyDirectorSave, clipInterval, endAfter, parseClock, planAutoBlocks, sanitizeConfig,
   type AutoConfig, type Interval, type PlannedBlock, type WeeklyEntry,
 } from '../autoschedule'
 import { syncToAzuraCast, type SyncResult } from './azuracast'
@@ -28,6 +28,41 @@ export async function saveConfig(db: Firestore, raw: unknown, uid: string): Prom
   await db.collection(CONFIG_DOC[0]).doc(CONFIG_DOC[1]).set({ ...cfg, updatedAt: Timestamp.now(), updatedBy: uid })
   configCache = null
   return cfg
+}
+
+/**
+ * The save used by POST /api/admin/autoschedule. The saved document is read again inside the transaction, so a Director's save is merged onto
+ * what is stored right now (only rules and defaultFillers come from the request) and can never put back an old Admin-only value.
+ * An Admin's save replaces the whole config as before. Returns the config as it was and as it is now.
+ */
+export async function saveConfigAs(db: Firestore, raw: unknown, who: { uid: string; admin: boolean }): Promise<{ before: AutoConfig; after: AutoConfig }> {
+  const ref = db.collection(CONFIG_DOC[0]).doc(CONFIG_DOC[1])
+  const r = await db.runTransaction(async tx => {
+    const snap = await tx.get(ref)
+    const before = snap.exists ? sanitizeConfig(snap.data()) : DEFAULT_CONFIG
+    const after = who.admin ? sanitizeConfig(raw) : applyDirectorSave(before, raw)
+    tx.set(ref, { ...after, updatedAt: Timestamp.now(), updatedBy: who.uid })
+    return { before, after }
+  })
+  configCache = null
+  return r
+}
+
+/**
+ * The album-art colour switch (auto.colorChanging) on its own. E-board can flip this one value; the write touches only this field (and who and when),
+ * so nothing else in the Auto DJ config can change through it. Returns the old and new value.
+ */
+export async function setColorMode(db: Firestore, on: boolean, uid: string): Promise<{ before: boolean; after: boolean }> {
+  const ref = db.collection(CONFIG_DOC[0]).doc(CONFIG_DOC[1])
+  const r = await db.runTransaction(async tx => {
+    const snap = await tx.get(ref)
+    const before = snap.exists ? sanitizeConfig(snap.data()).colorChanging : DEFAULT_CONFIG.colorChanging
+    if (snap.exists) tx.update(ref, { colorChanging: on, updatedAt: Timestamp.now(), updatedBy: uid })
+    else tx.set(ref, { ...DEFAULT_CONFIG, colorChanging: on, updatedAt: Timestamp.now(), updatedBy: uid }) // no saved config yet: start from the defaults
+    return { before, after: on }
+  })
+  configCache = null
+  return r
 }
 
 /** Recurring weekly shows from the `schedule` collection. endTime or durationMin optional; default 60 min. */

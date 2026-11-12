@@ -29,7 +29,7 @@ export function isBabsonEmail(email: string): boolean {
   return /^[^\s@]+@(babson|olin|wellesley)\.edu$/i.test(email.trim())
 }
 
-async function request<T>(method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown, anon = false): Promise<T> {
+async function request<T>(method: 'GET' | 'POST' | 'DELETE' | 'PATCH', path: string, body?: unknown, anon = false): Promise<T> {
   const token = anon ? undefined : await auth.currentUser?.getIdToken()
   let res: Response
   try {
@@ -66,6 +66,8 @@ export async function apiUpload<T = Record<string, unknown>>(path: string, form:
   if (data === null) throw fail('Unexpected reply from the server.', 'BR-CLI-004')
   return data as T
 }
+/** PATCH JSON to one of our API routes (a partial change, like Admin > Settings). */
+export const apiPatch = <T = Record<string, unknown>>(path: string, body: unknown) => request<T>('PATCH', path, body)
 export const apiDelete = <T = Record<string, unknown>>(path: string, body: unknown) => request<T>('DELETE', path, body)
 
 // ── Babson students ───────────────────────────────────────────

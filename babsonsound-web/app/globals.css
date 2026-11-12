@@ -432,6 +432,13 @@ span[data-pin-log], [data-pinterest-extension-installed] ~ span[style*="z-index"
 .ops-hub .ops-btn-red:hover { background:#8f1d17; }
 .ops-hub .ops-btn:disabled, .ops-hub .ops-btn-red:disabled { cursor:not-allowed; }
 .ops-hub .ops-btn[aria-pressed="true"] { outline:2px solid #fff; outline-offset:2px; }
+/* the left menu, in the style of the Windows 10 Settings page: a flat panel, plain rows, the open one marked with a bar on its left edge */
+.ops-hub .ops-side { background: rgba(4,50,28,.4); border-right:1px solid rgba(255,255,255,.28); }
+.ops-hub .ops-navitem { display:flex; align-items:center; gap:.75rem; width:100%; min-height:48px; padding:.5rem .75rem .5rem 1rem; background:transparent; color:#fff;
+  border:0; border-left:4px solid transparent; text-align:left; font-size:16px; text-decoration:none; cursor:pointer; }
+.ops-hub .ops-navitem:hover { background: rgba(255,255,255,.12); }
+.ops-hub .ops-navitem[aria-current="page"] { background: rgba(255,255,255,.2); border-left-color:#fff; font-weight:600; }
+.ops-hub .ops-navitem:focus-visible { outline:2px solid #fff; outline-offset:-2px; }
 
 /* admin pages are full screen: no nav bar, so no top gap */
 .hw-main:has(> .ops), .hw-main:has(> * > .ops) { padding-top: 0; padding-bottom: 0; }
@@ -449,7 +456,7 @@ html .hw-main .ops.ops-hub input:not([type=checkbox]):not([type=radio]):not([typ
   background:#fff; color:#10243f; border:1px solid #9db8dd; border-radius:0;
 }
 html .hw-main .ops.ops-hub input::placeholder, html .hw-main .ops.ops-hub textarea::placeholder { color:#3f7258; }
-html .hw-main .ops.ops-hub a:not(.ops-tile):not(.ops-btn) { color:#fff; text-decoration:underline; text-underline-offset:3px; }
+html .hw-main .ops.ops-hub a:not(.ops-tile):not(.ops-btn):not(.ops-navitem) { color:#fff; text-decoration:underline; text-underline-offset:3px; }
 html .hw-main .ops.ops-hub .sk-btn:hover:not(:disabled), html .hw-main .ops.ops-hub .sk-key:hover:not(:disabled) { background:#0a3f27; border-color:#fff; }
 html .hw-main .ops.ops-hub .sk-btn[aria-pressed="true"], html .hw-main .ops.ops-hub .sk-key[aria-pressed="true"] { outline:2px solid #fff; outline-offset:1px; }
 

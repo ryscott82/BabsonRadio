@@ -64,35 +64,37 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <Badges.Provider value={badges}>
-      <div className="grid lg:grid-cols-[240px_minmax(0,1fr)] items-start">
-        <aside className="px-5 lg:pl-8 lg:pr-4 pt-5 lg:pt-6 lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto">
-          <nav aria-label="Admin sections" className="space-y-3">
-            <input type="search" className="ops-field w-full min-h-11" value={query} onChange={e => setQuery(e.target.value)} placeholder={isAdmin ? 'Search pages and settings' : 'Search Settings'} aria-label={isAdmin ? 'Search pages and settings' : 'Search Settings'} />
+      <div className="grid lg:grid-cols-[260px_minmax(0,1fr)] items-start">
+        <aside className="ops-side lg:self-stretch border-b lg:border-b-0 border-white/30">
+          <nav aria-label="Admin sections" className="lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto py-4 lg:py-5 space-y-3">
+            <div className="px-4">
+              <h2 className="text-2xl font-light mb-3">Settings</h2>
+              <input type="search" className="ops-field w-full min-h-11" value={query} onChange={e => setQuery(e.target.value)} placeholder={isAdmin ? 'Search pages and settings' : 'Search Settings'} aria-label={isAdmin ? 'Search pages and settings' : 'Search Settings'} />
+            </div>
             {query.trim() && (
-              <ul aria-label="Search results" className="ops-card p-2 space-y-1">
+              <ul aria-label="Search results" className="border-y border-white/30">
                 {found.length ? found.map(e => (
                   <li key={e.href}>
-                    <Link href={e.href} onClick={() => { remember(e.href); setQuery('') }} className="block px-2 py-1.5 text-base no-underline hover:bg-black/20">
+                    <Link href={e.href} onClick={() => { remember(e.href); setQuery('') }} className="ops-navitem !items-start !flex-col !gap-0 py-2">
                       <span className="block">{e.title}</span><span className="block opacity-80">{e.where}</span>
                     </Link>
                   </li>
-                )) : <li className="px-2 py-1.5 text-base">Nothing matches. Try a shorter word.</li>}
+                )) : <li className="px-4 py-2 text-base">Nothing matches. Try a shorter word.</li>}
               </ul>
             )}
-            <div className="flex flex-wrap lg:flex-col gap-2 lg:gap-1">
+            <div className="flex flex-wrap lg:flex-col">
               {menu.map(g => {
                 const active = g.id === current
                 const n = count(g)
                 return (
-                  <button key={g.id} type="button" onClick={() => go(g)} aria-current={active ? 'page' : undefined}
-                          className={`ops-btn flex items-center gap-3 text-left px-3 py-2.5 border border-transparent min-h-11 lg:w-full ${active ? 'underline underline-offset-4' : ''}`}>
+                  <button key={g.id} type="button" onClick={() => go(g)} aria-current={active ? 'page' : undefined} className="ops-navitem lg:w-full w-auto">
                     <OpsIcon name={g.icon} size={22} />
                     <span className="flex-1">{g.title}</span>
                     {n > 0 && <span className="min-w-6 h-6 px-1.5 rounded-full bg-white text-[#0f5233] text-base font-bold flex items-center justify-center">{n}</span>}
                   </button>
                 )
               })}
-              <Link href="/" className="ops-btn min-h-11 inline-flex items-center px-3 lg:w-full no-underline lg:mt-3">Back to site</Link>
+              <Link href="/" className="ops-navitem lg:w-full w-auto lg:mt-3 lg:border-t border-white/30">Back to site</Link>
             </div>
           </nav>
         </aside>

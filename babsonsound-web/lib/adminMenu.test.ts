@@ -185,7 +185,8 @@ test('the left menu is drawn by the admin layout, so it is on every admin page a
   const layout = src('app/admin/layout.tsx'), shell = src('components/admin/AdminShell.tsx'), page = src('app/admin/page.tsx')
   assert.match(layout, /<AdminShell><BackBar \/>\{children\}<\/AdminShell>/)
   assert.match(shell, /aria-label="Admin sections"/); assert.match(shell, /menuFor\(role\)/)
-  assert.match(shell, /lg:sticky lg:top-0/)
+  assert.match(shell, /lg:sticky lg:top-0/); assert.match(shell, /ops-side/); assert.match(shell, /className="ops-navitem/)
+  assert.match(readFileSync(new URL('../app/globals.css', import.meta.url), 'utf8'), /\.ops-navitem\[aria-current="page"\] \{[^}]*border-left-color:#fff/) // the open tab has a bar on its left edge
   assert.doesNotMatch(page, /aria-label="Admin sections"/)
   assert.match(shell, /const current: TabId = onHub \? hashTab : /) // a sub-page highlights its own tab
   assert.match(shell, /router\.push\(tabHref\(g\.id\)\)/) // from a page, a tab goes to that tab

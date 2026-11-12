@@ -35,12 +35,14 @@ export async function POST(req: Request) {
     }
 
     const ref = db.collection('liveNotes').doc(occId)
-    if (!headline && !message) { await ref.delete(); return { ok: true, cleared: true } }
+    const logNote = (action: string, detail: string) => db.collection('hostActions').add({ uid: c.t.uid, action, show: title, detail, at: Timestamp.now() }).catch(e => console.error('[hostActions]', e))
+    if (!headline && !message) { await ref.delete(); await logNote('show-message-clear', ''); return { ok: true, cleared: true } }
     const u = await db.collection('users').doc(c.t.uid).get()
     await ref.set({
       headline, message, showTitle: title, expiresAt: Timestamp.fromMillis(expires), updatedAt: Timestamp.now(),
       by: c.t.uid, byName: u.get('firstName') ?? u.get('displayName') ?? '',
     })
+    await logNote('show-message', `${headline} ${message}`.trim().slice(0, 160))
     return { ok: true }
   })
 }

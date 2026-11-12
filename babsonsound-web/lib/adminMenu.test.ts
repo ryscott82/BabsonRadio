@@ -46,18 +46,18 @@ test('Bugs and ideas is in Advanced and its badge is on the Advanced tab, so onl
   assert.equal(tabOf('/admin/blocked-words'), 'content')
   assert.equal(SECTIONS.flatMap(s => s.tiles).find(t => t.href === '/admin/feedback')?.badge, 'reports')
   assert.equal(SECTIONS.find(s => s.id === 'advanced')!.admin, true)
-  const page = src('app/admin/page.tsx')
-  assert.match(page, /g\.tiles\.reduce\(\(a, t\) => a \+ badgeOf\(t\.badge\)/) // the tab number is the sum of its tiles' badges
-  assert.match(page, /newReports/)
+  const shell = src('components/admin/AdminShell.tsx')
+  assert.match(shell, /g\.tiles\.reduce\(\(a, t\) => a \+ \(t\.badge \? badges\[t\.badge\] : 0\), 0\)/) // the tab number is the sum of its tiles' badges
+  assert.match(shell, /newReports/)
 })
 test('Notifications is a tab that is itself a page, with the unread badge from the alerts read the page already makes', () => {
   const n = SECTIONS.find(s => s.id === 'notifications')!
   assert.equal(n.href, '/admin/notifications'); assert.equal(n.badge, 'alerts')
   for (const role of ['director', 'admin'] as const) assert.ok(menuFor(role).some(s => s.id === 'notifications'), role)
-  const page = src('app/admin/page.tsx')
-  assert.match(page, /unreadCount\(a\.items\)/)
-  assert.match(page, /ALERTS_URL/)
-  assert.match(page, /if \(!user \|\| !isDirector\) return\n\s+apiGet<\{ items: unknown\[\]; newReports/) // both roles read it, once
+  const shell = src('components/admin/AdminShell.tsx')
+  assert.match(shell, /unreadCount\(a\.items\)/)
+  assert.match(shell, /ALERTS_URL/)
+  assert.match(shell, /if \(!user \|\| !isDirector\) return\n\s+apiGet<\{ items: unknown\[\]; newReports/) // both roles read it, once
 })
 test('E-board keeps what they could open before: Stats is reachable from search and the More links, and so are the old pages', () => {
   assert.deepEqual(eboardExtras().map(e => e.href), ['/admin/stats'])
@@ -95,9 +95,9 @@ test('an old Advanced link opened by E-board lands on home, not on a tab they ca
 
 // ── Back ──
 test('switching a tab pushes a history entry, and Back / the address bring the tab back', () => {
-  const page = src('app/admin/page.tsx')
-  assert.match(page, /history\.pushState\(null, '', tabHref\(id\)\)/)
-  assert.match(page, /addEventListener\('popstate', sync\)/)
+  const shell = src('components/admin/AdminShell.tsx'), page = src('app/admin/page.tsx')
+  assert.match(shell, /history\.pushState\(null, '', tabHref\(g\.id\)\)/)
+  assert.match(page, /addEventListener\('popstate', sync\)/); assert.match(page, /addEventListener\(TAB_EVENT, sync\)/)
   assert.equal(tabHref('home'), '/admin'); assert.equal(tabHref('users'), '/admin#users'); assert.equal(tabHref('notifications'), '/admin/notifications')
 })
 test('every page in the menu has a Back target: the tab it belongs to, never plain home', () => {
@@ -135,8 +135,9 @@ test('arrived from search: Back goes to the tab the person was on, only for that
   assert.equal(readFromNote('not json'), null); assert.equal(readFromNote(null), null); assert.equal(readFromNote('{"tab":"zzz","href":"/x"}'), null)
 })
 test('the hub notes the tab the person was on whenever a page is opened (tile or search result); the Back bar reads it', () => {
-  const page = src('app/admin/page.tsx'), bar = src('components/admin/BackBar.tsx')
+  const page = src('app/admin/page.tsx'), shell = src('components/admin/AdminShell.tsx'), bar = src('components/admin/BackBar.tsx')
   assert.match(page, /onClick=\{\(\) => remember\(t\.href\)\}/); assert.match(page, /setItem\(FROM_KEY, fromNote\(tab, href\)\)/)
+  assert.match(shell, /remember\(e\.href\)/); assert.match(shell, /setItem\(FROM_KEY, fromNote\(current, href\)\)/)
   assert.match(bar, /backTarget\(path, isAdmin \? 'admin' : 'director', from\)/)
 })
 
@@ -177,4 +178,15 @@ test('no admin page keeps a narrow centered column', () => {
     return statSync(new URL(`../${rel}`, import.meta.url)).isDirectory() ? walk(rel) : rel.endsWith('.tsx') ? [rel] : []
   })
   for (const f of [...walk('app/admin'), 'components/admin/UsageBanner.tsx', 'components/admin/BackBar.tsx']) assert.doesNotMatch(src(f), /max-w-(\[\d+px\]|\dxl|xl) mx-auto/, f)
+})
+
+// ── the left menu never goes away ──
+test('the left menu is drawn by the admin layout, so it is on every admin page and every view; the home page does not draw its own', () => {
+  const layout = src('app/admin/layout.tsx'), shell = src('components/admin/AdminShell.tsx'), page = src('app/admin/page.tsx')
+  assert.match(layout, /<AdminShell><BackBar \/>\{children\}<\/AdminShell>/)
+  assert.match(shell, /aria-label="Admin sections"/); assert.match(shell, /menuFor\(role\)/)
+  assert.match(shell, /lg:sticky lg:top-0/)
+  assert.doesNotMatch(page, /aria-label="Admin sections"/)
+  assert.match(shell, /const current: TabId = onHub \? hashTab : /) // a sub-page highlights its own tab
+  assert.match(shell, /router\.push\(tabHref\(g\.id\)\)/) // from a page, a tab goes to that tab
 })

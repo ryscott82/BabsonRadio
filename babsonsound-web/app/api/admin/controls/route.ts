@@ -78,8 +78,10 @@ export async function POST(req: Request) {
     }
     // Audience message: works even if the radio itself is not connected.
     if (action === 'announce' || action === 'clear-announcement') {
-      await setAnnouncement(adminDb(), action === 'announce' ? String(body.text ?? '') : '', Number(body.minutes) || 60, t.uid)
-      await adminDb().collection('hostActions').add({ uid: t.uid, action: String(action), show: '(admin)', at: Timestamp.now() })
+      const text = action === 'announce' ? String(body.text ?? '') : ''
+      const minutes = Number(body.minutes) || 60
+      await setAnnouncement(adminDb(), text, minutes, t.uid)
+      await adminDb().collection('hostActions').add({ uid: t.uid, action: String(action), show: '(site)', detail: action === 'announce' ? `${text.slice(0, 160)} (${minutes} min)` : '', at: Timestamp.now() })
       return { ok: true }
     }
     if (!azuraConfigured()) throw new HttpError(503, 'The radio controls are not connected yet.', 'BR-HST-003')

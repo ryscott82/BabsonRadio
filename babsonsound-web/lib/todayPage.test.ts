@@ -89,11 +89,11 @@ test('no phone number is rendered or even read anywhere on Today', () => {
   for (const f of todayFiles) assert.doesNotMatch(read(f), /phone/i, f)
 })
 
-test('Settings home makes one data call on load: the dashboard, plus one read of the alerts for the tab numbers; nothing else is polled', () => {
+test('Settings home makes one data call on load: the dashboard (the alerts for the tab numbers are read once by the left menu); nothing else is polled', () => {
   const page = read('../app/admin/page.tsx')
   assert.match(page, /apiGet<Dash>\(DASHBOARD_URL\)/)
   assert.equal(DASHBOARD_URL, '/api/admin/dashboard')
-  assert.equal((page.match(/apiGet</g) ?? []).length, 2) // dashboard, and the one-time alerts read for the badges
+  assert.equal((page.match(/apiGet</g) ?? []).length, 1) // the dashboard only
   assert.equal((page.match(/setInterval/g) ?? []).length, 1) // only inside startPolling's env
   for (const f of todayFiles.filter(f => f.includes('today/'))) assert.doesNotMatch(read(f), /setInterval/, f)
   assert.doesNotMatch(page, /StationPanel/)

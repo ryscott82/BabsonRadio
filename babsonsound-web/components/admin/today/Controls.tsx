@@ -13,7 +13,7 @@ type Ask = 'emergency-stop' | 'resume' | null
 const until = (ms: number) => new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
 
 /**
- * The controls: one row of icon buttons (skip, emergency stop, resume, ON AIR sign, color mode, announcement, play a song next, and for Admins More).
+ * The controls: a grid of icon buttons, each with its name beside it (skip, emergency stop, resume, ON AIR sign, color mode, announcement, play a song next, and for Admins More).
  * The switches (sign, color mode, announcement) show on or off on their icon, so the state is read once when the row appears. It is never polled.
  * Emergency stop and Resume ask first. "More" (audio processing, maintenance mode) is drawn for Admins only; E-board never sees it.
  */
@@ -66,7 +66,7 @@ export default function Controls({ role }: { role: 'director' | 'admin' }) {
 
   return (
     <section aria-label="Controls" className="space-y-4">
-      <div className="flex flex-wrap gap-x-5 gap-y-4 pb-4">
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 2xl:grid-cols-4 gap-3">
         {buttonsFor(role).map(b => (
           <IconButton key={b.id} label={b.label} tip={b.tip} icon={b.icon} red={b.red} on={on(b.id)}
                       pressed={panelOf[b.id] ? panel === panelOf[b.id] : undefined} expanded={panelOf[b.id] ? panel === panelOf[b.id] : undefined}
@@ -111,10 +111,10 @@ export default function Controls({ role }: { role: 'director' | 'admin' }) {
         </div>
       )}
       {role === 'admin' && panel === 'more' && (
-        <div className="ops-card p-4 flex flex-wrap gap-x-6 gap-y-4 pb-8" aria-label="More controls">
+        <div className="ops-card p-4 grid grid-cols-1 min-[420px]:grid-cols-2 gap-3" aria-label="More controls">
           {MORE_SWITCHES.map(m => {
             const isOn = m.id === 'audio-fx' ? d?.audioFx !== false : d?.maintenance === true
-            return <IconButton key={m.id} label={m.label} tip={m.tip} icon={m.icon} caption on={d ? isOn : undefined} busy={!!busy || !d}
+            return <IconButton key={m.id} label={m.label} tip={m.tip} icon={m.icon} on={d ? isOn : undefined} busy={!!busy || !d}
                                onClick={() => m.id === 'audio-fx'
                                  ? run('fx', { action: 'audio-fx', on: d?.audioFx === false }, d?.audioFx === false ? 'Audio processing is on.' : 'Audio processing is off.')
                                  : run('maintenance', { action: 'maintenance', on: d?.maintenance !== true }, d?.maintenance === true ? 'Maintenance mode is off.' : 'Maintenance mode is on.')} />

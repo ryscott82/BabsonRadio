@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { canCopyEmail, hostLine, type NextRow } from '@/lib/todayPage'
+import { canCopyEmail, hostLine, studentShows, type NextRow } from '@/lib/todayPage'
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
-/** The next 24 hours: time, title, host name, and a Copy email button for shows booked through a request. Nothing else about the host is shown. */
-export default function ComingUp({ rows }: { rows: NextRow[] | null }) {
+/** Student shows in the next 24 hours: time, title, host name, and a Copy email button for shows booked through a request. Nothing else about the host is shown. */
+export default function ComingUp({ rows: all }: { rows: NextRow[] | null }) {
+  const rows = all ? studentShows(all) : null
   const [copied, setCopied] = useState('')
   async function copy(i: number, email: string) {
     try { await navigator.clipboard.writeText(email); setCopied(`Copied the email for ${rows?.[i]?.title ?? 'the host'}.`) }
@@ -21,11 +22,11 @@ export default function ComingUp({ rows }: { rows: NextRow[] | null }) {
           {rows.map((n, i) => (
             <li key={i} className="py-2 flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="tabular-nums w-36 shrink-0 opacity-90">{clock(n.startAt)} – {clock(n.endAt)}</span>
-              <span className="min-w-0 flex-1 basis-40">{n.title}{hostLine(n) ? <span className="opacity-90"> · {hostLine(n)}</span> : n.source === 'auto' ? <span className="opacity-80"> · Auto DJ</span> : null}</span>
+              <span className="min-w-0 flex-1 basis-40">{n.title}{hostLine(n) ? <span className="opacity-90"> · {hostLine(n)}</span>  : null}</span>
               {canCopyEmail(n) && <button type="button" className="ops-btn px-3 min-h-11" onClick={() => copy(i, n.hostEmail as string)}>Copy email</button>}
             </li>
           ))}
-          {!rows.length && <li className="py-2">Nothing scheduled.</li>}
+          {!rows.length && <li className="py-2">No student shows coming up.</li>}
         </ul>
       )}
       <p role="status" className="text-base min-h-6">{copied}</p>

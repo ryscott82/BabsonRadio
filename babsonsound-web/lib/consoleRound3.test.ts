@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { CONTROL_BUTTONS, MORE_SWITCHES, buttonsFor } from './controlButtons.ts'
 import { BROADCAST_GAP_MS, broadcastAudit, broadcastWait } from './broadcastGuard.ts'
 import { ALL_CLEAR, canSend, clip, confirmBody, goesTo, unreadCount } from './notificationsPage.ts'
+import { studentShows } from './todayPage.ts'
 import { emptyForm, quickSave } from './usageForm.ts'
 
 const src = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')
@@ -20,13 +21,12 @@ test('every icon button has a name and a tooltip line; only Emergency stop is re
   assert.deepEqual(CONTROL_BUTTONS.filter(b => 'red' in b && b.red).map(b => b.id), ['emergency-stop'])
   assert.deepEqual(CONTROL_BUTTONS.filter(b => b.toggle).map(b => b.id), ['sign', 'color', 'announce'])
 })
-test('the icon button draws aria-label, a tooltip on hover and keyboard focus, a caption where there is no hover, and a filled icon when on', () => {
+test('the icon button draws aria-label, its name beside the icon, a short tooltip on hover and keyboard focus, and a filled icon when on', () => {
   const ib = src('components/admin/IconButton.tsx')
   assert.match(ib, /aria-label=\{`\$\{label\}\$\{state\}`\}/)
+  assert.match(ib, /<span className="text-lg leading-tight">\{label\}<\/span>/) // the name, always shown, no description
   assert.match(ib, /role="tooltip"/)
   assert.match(ib, /group-hover:opacity-100/); assert.match(ib, /group-focus-within:opacity-100/)
-  assert.match(ib, /\[@media\(hover:none\)\]:block/) // the caption on touch
-  assert.match(ib, /md:hidden/) // and on phone widths
   assert.match(ib, /filled=\{on === true\}/)
   assert.match(ib, /ops-btn-red/)
   assert.doesNotMatch(ib, /text-(xs|sm)\b/) // 16 px or larger
@@ -43,13 +43,18 @@ test('Controls renders every button through IconButton, and Emergency stop and R
 // ── home layout ──
 test('wide screens: Needs approval is the whole right column, sticky and scrolling inside itself; phones: below the controls', () => {
   const page = src('app/admin/page.tsx'), na = src('components/admin/today/NeedsApproval.tsx')
-  assert.match(page, /xl:grid-cols-\[220px_minmax\(0,1fr\)_26rem\]/)
-  assert.match(page, /<aside aria-label="Needs approval column"[^>]*xl:col-start-3 xl:row-start-1 xl:row-span-2 xl:sticky xl:top-0/)
+  assert.match(page, /xl:grid-cols-\[minmax\(0,1fr\)_26rem\]/)
+  assert.match(page, /<aside aria-label="Needs approval column"[^>]*xl:col-start-2 xl:row-start-1 xl:row-span-2 xl:sticky xl:top-0/)
   assert.match(na, /xl:h-screen xl:flex xl:flex-col/); assert.match(na, /xl:overflow-y-auto/)
   assert.ok(na.indexOf('Approve all</button>') < na.indexOf('<ul className="divide-y'), 'Approve all sits at the top, above the list')
-  // DOM order = phone order: controls, then Needs approval, then Coming up
   const iControls = page.indexOf('<Controls role={role} />'), iNeeds = page.indexOf('<NeedsApproval'), iComing = page.indexOf('<ComingUp')
   assert.ok(iControls > 0 && iControls < iNeeds && iNeeds < iComing)
+})
+test('Coming up lists student-run shows only; Auto DJ blocks are not shown', () => {
+  const rows = [{ title: 'Morning Show', startAt: 1, endAt: 2, source: 'request' }, { title: 'Auto DJ', startAt: 2, endAt: 3, source: 'auto' }, { title: 'Sports', startAt: 3, endAt: 4, source: 'manual' }]
+  assert.deepEqual(studentShows(rows).map(r => r.title), ['Morning Show', 'Sports'])
+  assert.match(src('components/admin/today/ComingUp.tsx'), /studentShows\(all\)/)
+  assert.doesNotMatch(src('components/admin/today/ComingUp.tsx'), /Auto DJ/)
 })
 
 // ── server load quick entry ──

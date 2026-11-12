@@ -10,6 +10,9 @@ export interface PendingRow extends AutoInfo {
 export interface NextRow { title: string; startAt: number; endAt: number; source: string; hostName?: string; hostEmail?: string }
 export interface Critical { siteDown: boolean; deadAir: boolean; serverTime: 'ok' | 'critical' | 'over' }
 
+/** Only student-run shows are listed on the home page; Auto DJ blocks are not. */
+export const studentShows = (rows: readonly NextRow[]): NextRow[] => rows.filter(r => r.source !== 'auto')
+
 export const POLL_MS = 60_000
 export const DASHBOARD_URL = '/api/admin/dashboard'
 

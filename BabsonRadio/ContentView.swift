@@ -76,29 +76,19 @@ struct ContentView: View {
                 }
             }
 
-            if !isGuest {
-            ShowsView()
+            // Members is for everyone (guests and signed-out people see events and info only). The old Shows tab is part of
+            // Library now, and the Host tab moved into Members: hosts see the Host panel at the top there.
+            MembersView()
                 .padding(.leading, sideW).padding(.top, sideW > 0 ? 64 : 0)
                 .environment(\.hwFlushBottom, sideW > 0)
                 .ignoresSafeArea(.container, edges: sideW > 0 ? .bottom : [])
                 .modifier(TabBarStyle(hidden: hideBar))
-                .tag(4)
+                .tag(3)
                 .tabItem {
-                    BRTabIcon(systemName: "square.stack", label: "Shows")
+                    BRTabIcon(systemName: "person.2", label: "Members")
                 }
-            }
 
-            if profile.hosting {
-                NavigationStack { HostPanelView() }
-                    .padding(.leading, sideW).padding(.top, sideW > 0 ? 64 : 0)
-                .environment(\.hwFlushBottom, sideW > 0)
-                .ignoresSafeArea(.container, edges: sideW > 0 ? .bottom : [])
-                    .modifier(TabBarStyle(hidden: hideBar))
-                    .tag(3)
-                    .tabItem { BRTabIcon(systemName: "mic.fill", label: "Host") }
-            }
-
-            // Search lives on the Library tab; Profile is the circle button in the top corner of every page.
+            // Search lives on the Library tab; Profile is the circle button in the top corner of every page. Four tabs, no More tab.
         }
         // Measured on the full-size TabView (before the padding); the pane appears and disappears with no animation.
         // The floating tab bar sits on tan glass in light mode, so its selected item needs a darker green there (a brighter one is
@@ -144,7 +134,7 @@ struct ContentView: View {
     private func lifecycle<V: View>(_ content: V) -> some View {
         content
             .onChange(of: tab) { old, new in
-                if isGuest && new != 0 { tab = 0; auth.goToSignIn(); return }
+                if isGuest && new != 0 && new != 3 { tab = 0; auth.goToSignIn(); return }
                 if new == 0 && old != 0 { liveLoad += 1 }
             }
             .onChange(of: auth.signInRequest) { _, _ in withAnimation { welcomeSkipped = false } }
@@ -227,12 +217,11 @@ struct ContentView: View {
         if !splashDone { SplashView().transition(.opacity).zIndex(3) }
     }
 
-    /// Host tab appears while the host window is open; re-check every minute.
+    /// Whether the host controls are open (drives the Host panel card on Members and the welcome). Checked when the app opens and when
+    /// the person signs in; the Members tab checks again when it opens or is pulled down. No timer.
     private func keepHostingFresh() async {
-        while auth.isSignedIn && !Task.isCancelled {
-            await ProfileStore.shared.loadHosting()
-            try? await Task.sleep(nanoseconds: 60_000_000_000)
-        }
+        guard auth.isSignedIn else { return }
+        await ProfileStore.shared.loadHosting()
     }
 
     /// Hold the splash until the sign-in check is done (at most 6 seconds), and at least long enough to see it.
@@ -254,7 +243,7 @@ extension ContentView {
         return hostWelcomeDay != HostWelcome.todayKey
     }
 
-    /// Hosts get a welcome once a day (and again after the app was closed completely), then land on the Host tab.
+    /// Hosts get a welcome once a day (and again after the app was closed completely), then land on Members, where the Host panel is.
     @ViewBuilder private var hostWelcome: some View {
         if showHostWelcome {
             HostWelcomeView {
@@ -345,7 +334,7 @@ struct HostWelcomeView: View {
                 Spacer()
                 Image(systemName: "mic.fill").font(.system(size: 44)).foregroundColor(scheme == .dark ? .brGold : .brGreen)
                 Text("Welcome, Host").font(BRFont.display(34)).foregroundColor(scheme == .dark ? .brDkText : .brLtText)
-                Text("Your Host tab is ready.").font(BRFont.body(15, .regular)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
+                Text("Your Host panel is in Members.").font(BRFont.body(15, .regular)).foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                 Spacer()
                 Button(action: onContinue) {
                     Text("Continue").font(BRFont.display(15)).kerning(2)

@@ -311,10 +311,9 @@ private struct ProfileButtonModifier: ViewModifier {
     }
 }
 
-/// "Host a show" in the top bar: opens the same request form as the website's button. Students only.
+/// "Host a show" in the top bar of every tab: opens the three-step flow (same as the website's button). Students only.
 struct HostShowButton: View {
     @ObservedObject private var auth = AuthManager.shared
-    @StateObject private var slots = SlotsManager()
     @State private var showForm = false
     var body: some View {
         if auth.isSignedIn, auth.currentUser?.isGuest != true {
@@ -324,7 +323,11 @@ struct HostShowButton: View {
                     .background(HWKeyFace(corner: 15))
             }
             .buttonStyle(.plain)
-            .sheet(isPresented: $showForm) { RequestSlotForm(slots: slots) }
+            .sheet(isPresented: $showForm) {
+                NavigationStack {
+                    HostShowView().toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { showForm = false } } }
+                }
+            }
         }
     }
 }

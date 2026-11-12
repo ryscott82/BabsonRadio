@@ -2,7 +2,8 @@ import SwiftUI
 import Combine
 import WebKit
 
-// MARK: - Library tab
+// MARK: - Library tab (Shows and Episodes)
+// Shows (the station's shows) sit above the episodes. The old Shows tab was merged in here.
 // Episodes the person saved, plus "Based on your interests" (worked out on the server from what they saved and liked).
 // Episodes are YouTube videos the station added; they play in a sheet inside the app. Students only.
 
@@ -116,6 +117,8 @@ struct LibraryView: View {
                             }
                             ForEach(results) { EpisodeListRow(ep: $0) }
                         } else {
+                        ShowsSection()
+
                         // Topics: one tap searches for it.
                         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                             ForEach(ShowCategory.allCases, id: \.self) { cat in
@@ -124,7 +127,9 @@ struct LibraryView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 12) {
-                            BRSectionHeader(title: "Saved")
+                            BRSectionHeader(title: "Episodes")
+                            Text("Saved")
+                                .font(BRFont.body(13, .semibold)).foregroundColor(sub)
                             if lib.saved.isEmpty {
                                 Text(lib.loaded ? "Nothing saved yet." : "Loading…")
                                     .font(BRFont.body(14, .regular)).foregroundColor(sub)
@@ -140,6 +145,7 @@ struct LibraryView: View {
                                 ForEach(fresh) { EpisodeListRow(ep: $0) }
                             }
                         }
+                        HostShowCard(compact: false)
                         }
                     }
                 }
@@ -154,7 +160,8 @@ struct LibraryView: View {
             .searchable(text: $query, isPresented: $isSearching, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search shows and episodes")
             .onChange(of: isSearching) { _, now in SearchState.shared.active = now }
             .onDisappear { SearchState.shared.active = false }
-            .refreshable { if canUse { await lib.loadLibrary(); await lib.loadAll() } }
+            .navigationDestination(for: ShowItem.self) { ShowDetailView(show: $0) }
+            .refreshable { if canUse { await ShowsManager.shared.load(); await lib.loadLibrary(); await lib.loadAll() } }
         }
         .task(id: canUse) { if canUse { await lib.loadLibrary(); await lib.loadAll() } }
     }

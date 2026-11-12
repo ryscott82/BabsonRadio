@@ -69,6 +69,7 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | BR-SLT-003 | **Too many pending requests**: Limit of 3 pending requests per person. | Wait for a decision or cancel one. | — |
 | BR-SLT-004 | **Request can't be changed**: It was already decided, cancelled or started. | Refresh the list. | — |
 | BR-SLT-005 | **Request details missing or invalid**: Title, category, type or audio link is missing or invalid (audio links must be https and only for pre-recorded shows). | Fix the highlighted fields. | — |
+| BR-SLT-006 | **Live show too long**: A live show request is longer than 90 minutes. Pre-recorded shows keep the longer limit. | Pick 90 minutes or less, or make it a pre-recorded show. | Existing longer live shows are left alone. |
 
 ## Permissions
 

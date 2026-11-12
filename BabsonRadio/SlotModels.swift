@@ -31,6 +31,11 @@ nonisolated struct SlotRequest: Identifiable, Decodable {
     let createdAt: Date
 }
 
+extension SlotRequest {
+    /// What a pending request is waiting for, in plain words.
+    var autoNote: String { "Waiting for approval. Approved shows appear on the schedule." }
+}
+
 /// Filler programming the auto-scheduler put in the gaps (lofi, jazz, ...). Public.
 nonisolated struct AutoBlock: Identifiable, Decodable {
     let id: String

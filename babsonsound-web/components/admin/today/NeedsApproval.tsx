@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { api } from '@/lib/auth'
 import ConfirmDialog from '../ConfirmDialog'
+import { standingFlag } from '@/lib/strikesAdmin'
 import { holdBody, holdLabel } from '@/lib/slotWording'
 import { approveAllBody, approveAllLabel, flagWords, isFlagged, moreWaiting, noteLine, resultLines, waitingFor, type ApproveResultRow, type PendingRow } from '@/lib/todayPage'
 
@@ -43,7 +44,7 @@ export default function NeedsApproval({ rows, total, onChanged }: { rows: Pendin
 
   const extra = rows ? moreWaiting(total, rows.length) : 0
   return (
-    <section className="ops-card p-5 space-y-3 min-h-[10rem] min-w-0 xl:h-screen xl:flex xl:flex-col xl:!rounded-none" aria-label="Needs approval" aria-busy={!rows}>
+    <section className="ops-card p-5 space-y-3 min-h-[10rem] min-w-0 lg:h-full lg:flex lg:flex-col" aria-label="Needs approval" aria-busy={!rows}>
       <div className="flex flex-wrap items-center gap-3 shrink-0">
         <h2 className="text-2xl font-light flex-1">Needs approval{rows && rows.length > 0 ? ` (${total})` : ''}</h2>
         {rows && rows.length > 1 && <button type="button" className="ops-btn px-4 min-h-11" onClick={() => { setShown(rows); setResults(null); setAsking(true) }}>Approve all</button>}
@@ -51,11 +52,12 @@ export default function NeedsApproval({ rows, total, onChanged }: { rows: Pendin
       {!rows && <div className="space-y-3"><div className="h-6 w-full bg-white/25 motion-safe:animate-pulse" aria-hidden /><div className="h-6 w-2/3 bg-white/25 motion-safe:animate-pulse" aria-hidden /></div>}
       {rows && rows.length === 0 && <p className="text-base">Nothing is waiting.</p>}
       {err && <p role="alert" className="text-base font-semibold bg-white text-[#9d1c14] px-3 py-1">{err}</p>}
-      <ul className="divide-y divide-white/25 xl:flex-1 xl:min-h-0 xl:overflow-y-auto">
+      <ul className="divide-y divide-white/25 lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
         {rows?.map(r => (
           <li key={r.id} className="py-3 space-y-2">
             <p className="text-lg leading-snug">{r.title}</p>
             <p className="text-base opacity-90">{r.hostUid ? <Link href={`/admin/users/${encodeURIComponent(r.hostUid)}`} className="underline underline-offset-2">{r.hostName}</Link> : r.hostName} · {when(r.startAt)} · {r.durationMin} min</p>
+            {standingFlag(r.strikes ?? 0) && <p className="text-base font-semibold">Standing: {standingFlag(r.strikes ?? 0)}</p>}
             <p className={`text-base ${waitingFor(r, now).auto ? 'opacity-90' : 'font-semibold'}`}>{waitingFor(r, now).text}</p>
             {noteLine(r) && <p className="text-base font-semibold">{noteLine(r)}</p>}
             {declining === r.id ? (

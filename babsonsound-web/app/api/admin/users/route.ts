@@ -7,6 +7,7 @@ import { validGradYear } from '@/lib/terms'
 import { clearPhone, phoneFieldsDeleted } from '@/lib/server/phoneStore'
 import { removeContactGraph } from '@/lib/server/contactGraph'
 import { LEVELS, forgetAccess, inviteKey, isOwnerEmail, type Level } from '@/lib/server/access'
+import { syncNameLower } from '@/lib/server/names'
 
 export const runtime = 'nodejs'
 
@@ -33,6 +34,8 @@ export async function GET(req: Request) {
           level: (LEVELS as string[]).includes(d.get('level')) ? d.get('level') : 'guest',
           studioTrained: d.get('studioTrained') === true,
           radioTrained: d.get('radioTrained') === true,
+          // kept on the profile when a strike is decided (lib/server/strikes.ts), so this costs no extra read
+          strikeLevel: Number(d.get('strikeLevel') ?? 0) || 0, bannedUntil: typeof d.get('bannedUntil') === 'number' ? (d.get('bannedUntil') as number) : null,
           instagram: String(d.get('instagram') ?? ''),
           awaitingVerify: d.get('roleNeedsVerify') === true,
           owner: isOwnerEmail(email),
@@ -132,6 +135,7 @@ export async function POST(req: Request) {
         after: Object.fromEntries(Object.entries(update).map(([k, v]) => [k, v instanceof FieldValue ? '' : v])),
       })
       await ref.update(update)
+      if ('firstName' in update || 'lastName' in update) await syncNameLower(adminDb(), uid).catch(() => {})
       const n = (await ref.get())
       return {
         ok: true, firstName: String(n.get('firstName') ?? n.get('displayName') ?? ''), lastName: String(n.get('lastName') ?? ''),

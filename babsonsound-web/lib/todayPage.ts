@@ -6,6 +6,8 @@ import { autoLine, type AutoInfo } from './slotWording.ts'
 export type PendingFlag = 'explicit' | 'minor' | 'cleanHours' | 'agreementUnsigned' | 'conflict'
 export interface PendingRow extends AutoInfo {
   id: string; title: string; hostName: string; hostUid?: string; startAt: number; durationMin: number; type: string; flags: PendingFlag[]
+  /** Confirmed strikes this semester (0 to 3), for the small standing flag. */
+  strikes?: number
 }
 export interface NextRow { title: string; startAt: number; endAt: number; source: string; hostName?: string; hostEmail?: string }
 export interface Critical { siteDown: boolean; deadAir: boolean; serverTime: 'ok' | 'critical' | 'over' }

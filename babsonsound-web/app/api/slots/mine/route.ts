@@ -32,6 +32,9 @@ export async function GET(req: Request) {
         connectionInfo: approved ? (d.get('connectionInfo') ?? '') : '',
         createdAt: d.get('createdAt').toMillis(),
         groupId: d.get('groupId') ?? '',
+        // your own guest list (nobody else's), and whether a live show is not using the studio
+        guests: (d.get('guests') as unknown[] | undefined) ?? [], justMe: d.get('justMe') === true, noStudio: d.get('noStudio') === true,
+        attachedRecordingId: String(d.get('attachedRecordingId') ?? ''),
         held,
         autoApproveAt: pending && !held ? due : null,
         autoBlockedReason: pending ? String(d.get('autoBlockedReason') ?? '') : '',

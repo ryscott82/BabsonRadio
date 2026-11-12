@@ -71,6 +71,10 @@ export default function SettingRow({ def, value, onSave, highlight = false, meta
             {def.unit && <span>{def.unit}</span>}
           </label>
         )}
+        {(def.kind === 'text' || def.kind === 'date') && (
+          <input type={def.kind === 'date' ? 'date' : 'text'} aria-label={def.label} className={field} value={String(shown)} disabled={!loaded || busy}
+                 aria-invalid={!!problem} onChange={e => { setDraft(e.target.value); setMsg(''); setErr('') }} />
+        )}
         {def.kind === 'boolean' && (
           <label className="flex items-center gap-3 text-base min-h-11">
             <input type="checkbox" className="h-6 w-6" checked={shown === true} disabled={!loaded || busy}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
+import EverythingOnAir from '@/components/admin/EverythingOnAir'
 import { ErrorText, Field, PrimaryButton } from '@/components/AuthUI'
 import ImagePicker from '@/components/ImagePicker'
 import ColorPicker from '@/components/ColorPicker'
@@ -31,6 +32,7 @@ const blankEv = (): Ev => ({ id: '', title: '', date: today(), startTime: '20:00
 export default function AdminSchedulePage() {
   const { user, isDirector, loading } = useAuth()
   const router = useRouter()
+  const [view, setView] = useState<'edit' | 'all'>('edit')
   const [shows, setShows] = useState<Show[]>([])
   const [edit, setEdit] = useState<Show | null>(null)
   const [events, setEvents] = useState<Ev[]>([])
@@ -84,11 +86,30 @@ export default function AdminSchedulePage() {
     catch (err) { setError(err instanceof Error ? err.message : 'Could not delete.') }
   }
 
+  const viewTabs = (
+    <div role="tablist" aria-label="Schedule view" className="flex gap-2">
+      {([['edit', 'Weekly schedule'], ['all', 'Everything on air']] as const).map(([id, text]) => (
+        <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => setView(id)}
+                className={`rounded-lg px-4 min-h-11 text-base ${view === id ? 'sk-key text-br-gold ring-1 ring-br-gold' : 'sk-field text-br-dk-text'}`}>{text}</button>
+      ))}
+    </div>
+  )
+  if (view === 'all') {
+    return (
+      <div className="px-5 lg:px-8 py-8 space-y-6">
+        <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Schedule</h1>
+        {viewTabs}
+        <EverythingOnAir />
+      </div>
+    )
+  }
+
   const box = 'sk-field w-full rounded-xl px-4 py-3 text-sm text-br-dk-text focus:outline-none'
   const lab = 'block text-xs text-br-dk-sub mb-1.5 font-display tracking-widest'
 
   return (
     <div className="px-5 lg:px-8 py-8 space-y-8">
+      {viewTabs}
       <div className="flex items-center gap-4">
         <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em] shrink-0">Weekly schedule</h1>
         <div className="flex-1 h-px bg-br-dk-border" />

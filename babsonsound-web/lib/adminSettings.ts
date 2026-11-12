@@ -3,13 +3,14 @@ import { DEFAULT_DIRECT_AT, DEFAULT_THRESHOLDS } from './cpuTiers.ts'
 import { DEFAULT_AUTO_RULES } from './slotAuto.ts'
 import { SLOT_RANGE } from './slotRulesCore.ts'
 import { PRESETS, presetValues, protectionOf, type Preset } from './protectionPresets.ts'
+import { DEFAULT_STUDIO, STUDIO_RANGE, checkQuietSpec, isIsoDate } from './studioBookCore.ts'
 
 // The one table behind Admin > Settings: every value the page can change, its default and its allowed range. Pure, so the routes, the page
 // and the tests share it. Each key points at the field the existing endpoint already stores (limits = usage/limits, cpu = usage/cpuConfig,
 // auto = config/autoScheduler, slots = config/slotRules), so nothing about what is stored changes.
 
-export type Store = 'limits' | 'cpu' | 'auto' | 'slots'
-export type Kind = 'bool' | 'int' | 'num' | 'enum'
+export type Store = 'limits' | 'cpu' | 'auto' | 'slots' | 'studio'
+export type Kind = 'bool' | 'int' | 'num' | 'enum' | 'date' | 'text'
 /** 1 = Everyday, 2 = Customize, 3 = Defaults and safety (the page asks before saving these). */
 export type Level = 1 | 2 | 3
 export type Value = boolean | number | string
@@ -31,6 +32,8 @@ interface RawDef {
   level: Level
   /** A setting that is worked out from other settings (cpu.protection): it has no stored value of its own and a patch expands into the real ones. */
   virtual?: true
+  /** Extra check for a text value: an error sentence, or null when it is fine. */
+  check?: (v: string) => string | null
 }
 
 export interface SettingDef extends RawDef {
@@ -79,6 +82,19 @@ const RAW: readonly RawDef[] = [
   { key: 'slots.weekLimit', label: 'Automatic approvals per person each week', store: 'slots', path: ['weekLimit'], kind: 'int', min: SLOT_RANGE.weekLimit[0], max: SLOT_RANGE.weekLimit[1], default: DEFAULT_AUTO_RULES.weekLimit, level: 3 },
   { key: 'slots.maxRepeatWeeks', label: 'Most extra weeks a request can repeat (0 = off)', store: 'slots', path: ['maxRepeatWeeks'], kind: 'int', min: SLOT_RANGE.maxRepeatWeeks[0], max: SLOT_RANGE.maxRepeatWeeks[1], default: DEFAULT_AUTO_RULES.maxRepeatWeeks, level: 3 },
   { key: 'slots.minLeadHours', label: 'Fewest hours ahead a show can be requested', store: 'slots', path: ['minLeadHours'], kind: 'int', min: SLOT_RANGE.minLeadHours[0], max: SLOT_RANGE.minLeadHours[1], default: DEFAULT_AUTO_RULES.minLeadHours, level: 3 },
+  { key: 'studio.capacity', label: 'Most people in the studio at once, including the booker', store: 'studio', path: ['capacity'], kind: 'int', min: STUDIO_RANGE.capacity[0], max: STUDIO_RANGE.capacity[1], default: DEFAULT_STUDIO.capacity, level: 2 },
+  { key: 'studio.openHour', label: 'Studio bookings open at (hour, 0 to 23)', store: 'studio', path: ['openHour'], kind: 'int', min: STUDIO_RANGE.openHour[0], max: STUDIO_RANGE.openHour[1], default: DEFAULT_STUDIO.openHour, level: 3 },
+  { key: 'studio.closeHour', label: 'Studio bookings close at (hour, 1 to 24)', store: 'studio', path: ['closeHour'], kind: 'int', min: STUDIO_RANGE.closeHour[0], max: STUDIO_RANGE.closeHour[1], default: DEFAULT_STUDIO.closeHour, level: 3 },
+  { key: 'studio.minMinutes', label: 'Shortest studio booking (minutes)', store: 'studio', path: ['minMinutes'], kind: 'int', min: STUDIO_RANGE.minMinutes[0], max: STUDIO_RANGE.minMinutes[1], default: DEFAULT_STUDIO.minMinutes, level: 3 },
+  { key: 'studio.maxMinutes', label: 'Longest studio booking (minutes)', store: 'studio', path: ['maxMinutes'], kind: 'int', min: STUDIO_RANGE.maxMinutes[0], max: STUDIO_RANGE.maxMinutes[1], default: DEFAULT_STUDIO.maxMinutes, level: 3 },
+  { key: 'studio.maxHolds', label: 'Studio bookings one person can hold at a time', store: 'studio', path: ['maxHolds'], kind: 'int', min: STUDIO_RANGE.maxHolds[0], max: STUDIO_RANGE.maxHolds[1], default: DEFAULT_STUDIO.maxHolds, level: 3 },
+  { key: 'studio.lookAheadDays', label: 'How far ahead the studio can be booked (days)', store: 'studio', path: ['lookAheadDays'], kind: 'int', min: STUDIO_RANGE.lookAheadDays[0], max: STUDIO_RANGE.lookAheadDays[1], default: DEFAULT_STUDIO.lookAheadDays, level: 3 },
+  { key: 'studio.cancelHours', label: 'Free cancel until this many hours before a studio booking', store: 'studio', path: ['cancelHours'], kind: 'int', min: STUDIO_RANGE.cancelHours[0], max: STUDIO_RANGE.cancelHours[1], default: DEFAULT_STUDIO.cancelHours, level: 3 },
+  { key: 'studio.graceMinutes', label: 'Minutes after the start before an unused booking is released', store: 'studio', path: ['graceMinutes'], kind: 'int', min: STUDIO_RANGE.graceMinutes[0], max: STUDIO_RANGE.graceMinutes[1], default: DEFAULT_STUDIO.graceMinutes, level: 3 },
+  { key: 'studio.quiet', label: 'Studio quiet hours (days and hours, e.g. Mon-Fri 9-16; Mon-Fri 22-7)', store: 'studio', path: ['quiet'], kind: 'text', default: DEFAULT_STUDIO.quiet, level: 3, check: checkQuietSpec },
+  { key: 'strikes.studioNoShow', label: 'A missed studio booking flags a strike for review', store: 'studio', path: ['studioNoShow'], kind: 'bool', default: DEFAULT_STUDIO.studioNoShow, level: 3 },
+  { key: 'strikes.semesterEnd', label: 'Strikes expire at the end of the semester (date)', store: 'studio', path: ['semesterEnd'], kind: 'date', default: DEFAULT_STUDIO.semesterEnd, level: 3 },
+  { key: 'strikes.lateCancelHours', label: 'Cancelling a show less than this many hours ahead is flagged', store: 'studio', path: ['lateCancelHours'], kind: 'int', min: STUDIO_RANGE.lateCancelHours[0], max: STUDIO_RANGE.lateCancelHours[1], default: DEFAULT_STUDIO.lateCancelHours, level: 3 },
   { key: 'auto.enabled', label: 'Auto DJ schedule on', store: 'auto', path: ['enabled'], kind: 'bool', default: true, level: 1 },
   { key: 'auto.horizonHours', label: 'Plan ahead (hours)', store: 'auto', path: ['horizonHours'], kind: 'int', min: 6, max: 168, default: 48, level: 2 },
   { key: 'auto.stepMinutes', label: 'Planning step (minutes)', store: 'auto', path: ['stepMinutes'], kind: 'enum', options: [15, 30, 60], default: 30, level: 3 },
@@ -92,7 +108,7 @@ const RAW: readonly RawDef[] = [
 /** On a page of its own (main): the values a person plausibly changes in a normal month. Everything else is Expert. */
 const MAIN = new Set([
   ...(['student', 'guest'] as const).flatMap(w => ['idleMin', 'sessionMaxMin', 'quietEnabled', 'quietStart', 'quietEnd'].map(k => `limits.${w}.${k}`)),
-  'slots.afterHours', 'slots.weekLimit', 'cpu.budgetHours', 'cpu.protection', 'cpu.reactionsLocked',
+  'slots.afterHours', 'slots.weekLimit', 'cpu.budgetHours', 'cpu.protection', 'cpu.reactionsLocked', 'studio.capacity',
 ])
 /** Saved, but nothing in the server uses them right now (the server no longer counts listening minutes against a daily cap). */
 const NOT_ENFORCED = new Set(['limits.student.dailyCapMin', 'limits.student.dailyAutoMin', 'limits.guest.dailyCapMin', 'limits.guest.dailyAutoMin'])
@@ -105,6 +121,14 @@ export const BY_KEY: ReadonlyMap<string, SettingDef> = new Map(SETTINGS.map(s =>
 export function checkValue(def: RawDef, v: unknown): { ok: true; value: Value } | { ok: false; error: string } {
   const bad = (m: string) => ({ ok: false as const, error: `${def.key}: ${m}` })
   if (def.kind === 'bool') return typeof v === 'boolean' ? { ok: true, value: v } : bad('must be true or false.')
+  if (def.kind === 'date') return isIsoDate(v) ? { ok: true, value: v } : bad('must be a date like 2026-12-18.')
+  if (def.kind === 'text') {
+    if (typeof v !== 'string') return bad('must be text.')
+    const t = v.trim()
+    if (t.length > 120) return bad('is too long (120 characters at most).')
+    const e = def.check?.(t)
+    return e ? bad(e) : { ok: true, value: t }
+  }
   if (def.kind === 'enum') {
     // Numbers that are listed (15, 30, 60) may also arrive as text ("30"), which is how the page's choice lists hold them.
     const hit = def.options!.find(o => o === v || (typeof o === 'number' && typeof v === 'string' && v.trim() !== '' && Number(v) === o))
@@ -154,6 +178,10 @@ export function planPatch(current: Record<string, Value>, patch: unknown): { cha
     const t = next[`cpu.th.${tier}.tight`] as number, c = next[`cpu.th.${tier}.critical`] as number
     if (typeof t === 'number' && typeof c === 'number' && t <= 1 && c < t) errors.push(`cpu.th.${tier}: critical must not be below tight.`)
   }
+  const open = next['studio.openHour'] as number, close = next['studio.closeHour'] as number
+  if (typeof open === 'number' && typeof close === 'number' && close <= open) errors.push('studio.closeHour: must be later than studio.openHour.')
+  const lo = next['studio.minMinutes'] as number, hi = next['studio.maxMinutes'] as number
+  if (typeof lo === 'number' && typeof hi === 'number' && hi < lo) errors.push('studio.maxMinutes: must not be below studio.minMinutes.')
   return { changes: errors.length ? [] : changes, errors }
 }
 

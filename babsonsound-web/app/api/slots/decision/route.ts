@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireDirector, str } from '@/lib/server/http'
 import { rebuildAutoSchedule } from '@/lib/server/autoschedule'
 import { releaseImage } from '@/lib/server/slots'
+import { releaseRecording } from '@/lib/server/recordings'
 import { approveRequest, whenText } from '@/lib/server/slotApproval'
 import { after } from 'next/server'
 import { sendMail, slotDecisionMail } from '@/lib/server/mailer'
@@ -46,6 +47,7 @@ export async function POST(req: Request) {
       const m = slotDecisionMail({ approved: action === 'approve', title: mail.title, when: whenText(mail.at), note, connectionInfo })
       after(() => sendMail(mail.to, m.subject, m.text, m.html))
     }
+    if (action === 'decline') await releaseRecording(db, requestId).catch(e => console.error('[recording release]', e))
     if (action === 'decline') await releaseImage(db, declinedImage, requestId) // a declined request's picture is no longer needed (unless a repeat still uses it)
     // Refit the auto-scheduled filler around the new booking. Never blocks the approval.
     if (action === 'approve') await rebuildAutoSchedule(db).catch(e => console.error('[autoschedule]', e))

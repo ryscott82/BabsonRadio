@@ -5,6 +5,7 @@ import { evaluateAuto, autoStartsInSameWeek, autoStartsOf, type BlockReason } fr
 import { HttpError } from './http'
 import { findConflict } from './slots'
 import { loadSlotRules } from './slotRules'
+import { airRecording } from './recordings'
 
 /** The auto-approver decided to leave a request pending. Not an error: the reason is saved on the request so the student can read it. */
 export class AutoSkip extends Error {
@@ -24,7 +25,7 @@ export async function approveRequest(db: Firestore, requestId: string, o: { by: 
   const note = o.note ?? '', connectionInfo = o.connectionInfo ?? ''
   const reqRef = db.collection('slotRequests').doc(requestId)
   const rules = await loadSlotRules(db) // the weekly limit an Admin set (cached 20 s)
-  return db.runTransaction(async tx => {
+  const done = await db.runTransaction(async tx => {
     const now = o.now ?? Date.now()
     const r = await tx.get(reqRef)
     if (!r.exists) throw new HttpError(404, 'Request not found.')
@@ -65,7 +66,7 @@ export async function approveRequest(db: Firestore, requestId: string, o: { by: 
       startAt: start, endAt: end,
       receiveRatings: r.get('receiveRatings') !== false,
       makePublic: r.get('makePublic') === true, publicConsentId: r.get('publicConsentId') ?? '',
-      groupId: r.get('groupId') ?? '', approvedBy: o.by,
+      groupId: r.get('groupId') ?? '', approvedBy: o.by, noStudio: r.get('noStudio') === true,
     })
     tx.update(reqRef, {
       status: 'approved', staffNote: note, connectionInfo, approvedBy: o.by,
@@ -74,6 +75,9 @@ export async function approveRequest(db: Firestore, requestId: string, o: { by: 
     })
     return { ok: true as const, mail: { to: String(r.get('requesterEmail') ?? ''), title: String(r.get('title') ?? ''), at: start.toMillis() } }
   })
+  // A pre-recorded show with a recording attached gets its one-time AzuraCast playlist now (best effort: the approval itself never fails because of it).
+  await airRecording(db, requestId).catch(e => console.error('[recording air]', e))
+  return done
 }
 
 /** "Monday, March 2 at 8:00 PM ET", for the decision email. */

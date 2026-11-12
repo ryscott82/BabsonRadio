@@ -36,7 +36,9 @@ try {
 
 await db.collection('users').doc(user.uid).set({
   firstName: name, displayName: name, email: email.toLowerCase(),
-  level: kind === 'admin' ? 'admin' : 'student', studioTrained: false, radioTrained: false,
+  level: kind === 'admin' ? 'admin' : 'student',
+  // The demo account holds both badges (no expiry) so App Review can reach studio booking and live Host a show.
+  studioTrained: kind === 'demo', radioTrained: kind === 'demo',
   accountType: 'babson',
   ...(kind === 'demo' ? { demo: true, unsubscribed: true } : {}),
   notifyNewEpisode: [], notifyGoesLive: [],

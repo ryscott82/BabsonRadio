@@ -42,7 +42,7 @@ struct UsersAdminView: View {
     @State private var newEmail = ""
     @State private var newLevel = "student"
 
-    private static let levels: [(String, String)] = [("guest", "Guest"), ("student", "Student"), ("director", "Director"), ("admin", "Admin")]
+    private static let levels: [(String, String)] = [("guest", "Guest"), ("student", "Student"), ("director", "E-board"), ("admin", "Admin")]
     private func label(_ l: String) -> String { Self.levels.first { $0.0 == l }?.1 ?? l.capitalized }
 
     private var found: [AdminUser] {
@@ -57,7 +57,7 @@ struct UsersAdminView: View {
                 .textInputAutocapitalization(.never).autocorrectionDisabled().adminField()
             if let m = message { Text(m).font(BRFont.body(14, .regular)).foregroundColor(white) }
             if query.trimmingCharacters(in: .whitespaces).count < 2 {
-                Text("Showing staff, directors and trained hosts. Search to find anyone else.").font(BRFont.body(13, .regular)).foregroundColor(softWhite)
+                Text("Showing the E-board and trained hosts. Search to find anyone else.").font(BRFont.body(13, .regular)).foregroundColor(softWhite)
             }
             ForEach(found) { u in
                 VStack(alignment: .leading, spacing: 10) {
@@ -567,7 +567,7 @@ struct EasterEggsAdminView: View {
     }
 }
 
-// MARK: Schedule (the weekly shows; directors and admins)
+// MARK: Schedule (the weekly shows; the E-board and admins)
 
 nonisolated private struct SchedShow: Decodable, Identifiable {
     let id: String; var showName: String; var dayOfWeek: Int; var startTime: String; var endTime: String

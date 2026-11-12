@@ -81,7 +81,7 @@ struct HostGateView<Content: View>: View {
         Group {
             if let info = model.info {
                 if info.trained {
-                    // The on-air agreements come after the show request is sent (see RequestSlotForm), not before.
+                    // The on-air agreements come after the show request is sent (see HostShowView), not before.
                     content()
                 } else if info.checkIn == "approved" && !info.questions.isEmpty {
                     quiz(info)
@@ -95,14 +95,6 @@ struct HostGateView<Content: View>: View {
             }
         }
         .task { await model.load() }
-        // While waiting for a director to confirm, check again every few seconds.
-        .task(id: model.info?.checkIn) {
-            guard model.info?.checkIn == "pending" else { return }
-            while !Task.isCancelled && model.info?.checkIn == "pending" {
-                try? await Task.sleep(for: .seconds(5))
-                await model.load()
-            }
-        }
     }
 
     // MARK: Training (in person)
@@ -112,14 +104,14 @@ struct HostGateView<Content: View>: View {
             Text("Host training")
                 .font(BRFont.display(28)).kerning(2).foregroundColor(text)
             if info.checkIn == "pending" {
-                Text("Waiting for a director to confirm you are at training. This updates on its own.")
+                Text("Waiting for the E-board to confirm you are at training.")
                     .font(BRFont.body(14, .regular)).foregroundColor(text)
-                ProgressView().padding(.top, 4)
+                Button { Task { await model.load() } } label: { Text("Check again").font(BRFont.body(16, .semibold)).frame(minHeight: 44) }
             } else {
                 Text("Training happens in person. Then you take a short quiz and sign the host agreements.")
                     .font(BRFont.body(14, .regular)).foregroundColor(text)
                 if info.requested {
-                    Text("Requested. A director will reach out.").font(BRFont.body(13, .regular)).foregroundColor(sub)
+                    Text("Requested. The E-board will reach out.").font(BRFont.body(13, .regular)).foregroundColor(sub)
                 } else {
                     Button { Task { await model.requestTraining() } } label: {
                         Text("Schedule a training")

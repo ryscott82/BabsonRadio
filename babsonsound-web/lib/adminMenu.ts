@@ -1,19 +1,21 @@
 import type { OpsIcon } from '@/components/admin/OpsIcons'
 
-// The Settings menu (the whole admin panel is called Settings). Six tabs, in this order: Settings (home), Users, Shows, Content, Notifications, Advanced.
+// The Settings menu (the whole admin panel is called Settings). Seven tabs, in this order: Overview (home), Users, Shows, Content, Notifications, Documentation, Advanced.
 // Pure (no React), so the role rules, the search, the old links and the Back targets are all tested.
 // E-board (stored role `director`) sees every tab except Advanced. Admins see all six. Hidden, not greyed out: a person never sees what they cannot use.
 // Rule for where a page lives: what people need often is in an everyday tab; what is rare, a default value or Admin-only is in Advanced.
 
 export type AdminRole = 'director' | 'admin'
 export type BadgeKey = 'pending' | 'reports' | 'alerts'
-export type TabId = 'home' | 'users' | 'shows' | 'content' | 'notifications' | 'advanced'
+export type TabId = 'home' | 'users' | 'shows' | 'content' | 'notifications' | 'docs' | 'advanced'
 export interface MenuTile { href: string; icon: OpsIcon; title: string; text: string; admin?: boolean; badge?: BadgeKey; eboard?: boolean }
 export interface MenuGroup { title?: string; tiles: MenuTile[] }
 export interface MenuTab {
   id: TabId; title: string; icon: OpsIcon; admin?: boolean
-  /** A tab that is itself a page (Notifications) opens that address instead of showing tiles. */
+  /** A tab that is itself a page (Notifications, Documentation) opens that address instead of showing tiles. */
   href?: string
+  /** The line search shows for a tab that is itself a page. */
+  text?: string
   /** Shown as a count on the tab itself. */
   badge?: BadgeKey
   groups: MenuGroup[]
@@ -23,8 +25,8 @@ export interface MenuTab {
 
 const tab = (t: Omit<MenuTab, 'tiles'>): MenuTab => ({ ...t, tiles: t.groups.flatMap(g => g.tiles) })
 
-/** Settings is the page itself (the overview), so it has no tiles. */
-export const HOME: MenuTab = tab({ id: 'home', title: 'Settings', icon: 'radio', groups: [] })
+/** The Overview is the home page itself, so it has no tiles. */
+export const HOME: MenuTab = tab({ id: 'home', title: 'Overview', icon: 'radio', groups: [] })
 /** Kept for older imports. */
 export const TODAY = HOME
 
@@ -45,6 +47,9 @@ export const SECTIONS: MenuTab[] = [
     { href: '/admin/show-updates', icon: 'updates', title: 'Show changes', text: 'Review edits hosts made' },
     { href: '/admin/autoschedule', icon: 'auto', title: 'Auto DJ', text: 'Rules and playlists for the music between shows' },
     { href: '/admin/setlists', icon: 'setlists', title: 'Set lists', text: 'Songs planned for shows', admin: true },
+    { href: '/admin/strikes', icon: 'blocked', title: 'Strikes', text: 'Missed shows to confirm or excuse, and who is in good standing' },
+    { href: '/admin/studio-list', icon: 'training', title: 'Studio list', text: 'Who is coming to the studio and shows, with a CSV' },
+    { href: '/admin/club-events', icon: 'announce', title: 'Club events', text: 'Add and edit events shown on the Members page' },
   ] }] }),
   tab({ id: 'content', title: 'Content', icon: 'library', groups: [
     { tiles: [
@@ -61,7 +66,8 @@ export const SECTIONS: MenuTab[] = [
       { href: '/admin/expert?focus=library.fetch_art', icon: 'auto', title: 'Cover art defaults', text: 'Look up album covers automatically', admin: true },
     ] },
   ] }),
-  tab({ id: 'notifications', title: 'Notifications', icon: 'bell', href: NOTIFICATIONS_HREF, badge: 'alerts', groups: [] }),
+  tab({ id: 'notifications', title: 'Notifications', icon: 'bell', href: NOTIFICATIONS_HREF, badge: 'alerts', text: 'Alerts, and send a message to phones', groups: [] }),
+  tab({ id: 'docs', title: 'Documentation', icon: 'docs', admin: true, href: '/admin/docs', text: 'Features, setup guides and reference', groups: [] }),
   tab({ id: 'advanced', title: 'Advanced', icon: 'stats', admin: true, groups: [
     { title: 'Server', tiles: [
       { href: '/admin/server-load', icon: 'stats', title: 'Server load', text: 'Vercel server time: the allowance, protection level, readings and charts', admin: true },
@@ -80,7 +86,6 @@ export const SECTIONS: MenuTab[] = [
       { href: '/admin/stats', icon: 'stats', title: 'Stats', text: 'Listeners, hours and logs', eboard: true },
       { href: '/admin/feedback', icon: 'bug', title: 'Bugs and ideas', text: 'Reports from listeners', badge: 'reports', admin: true },
       { href: '/admin/tests', icon: 'tests', title: 'Tests', text: 'Preview features safely', admin: true },
-      { href: '/admin/docs', icon: 'docs', title: 'Docs', text: 'Features, setup guides and reference', admin: true },
     ] },
   ] }),
 ]
@@ -106,7 +111,7 @@ export const LEGACY_HASH: Record<string, TabId> = {
   onair: 'shows', people: 'users', music: 'content', messages: 'notifications',
   customize: 'advanced', rules: 'advanced', system: 'advanced', tools: 'advanced', settings: 'advanced',
 }
-const TAB_IDS = new Set<string>(['home', 'users', 'shows', 'content', 'notifications', 'advanced'])
+const TAB_IDS = new Set<string>(['home', 'users', 'shows', 'content', 'notifications', 'docs', 'advanced'])
 
 /** "#people" -> "users". Unknown or empty -> "home". A tab the role cannot see -> "home". */
 export function resolveHash(hash: string, role: AdminRole = 'admin'): TabId {
@@ -115,7 +120,7 @@ export function resolveHash(hash: string, role: AdminRole = 'admin'): TabId {
   return menuFor(role).some(t => t.id === id) ? id : 'home'
 }
 /** The address that shows a tab (the home tab has no hash). Notifications is its own page. */
-export const tabHref = (id: TabId) => id === 'home' ? '/admin' : id === 'notifications' ? NOTIFICATIONS_HREF : `/admin#${id}`
+export const tabHref = (id: TabId) => id === 'home' ? '/admin' : (SECTIONS.find(s => s.id === id)?.href ?? `/admin#${id}`)
 
 // Pages that are not menu tiles but belong to a tab, so Back and search know where they are.
 export const EXTRA_PAGES: { href: string; title: string; text: string; tab: TabId; admin?: boolean }[] = [
@@ -133,12 +138,13 @@ const pathOnly = (h: string) => h.split('?')[0].split('#')[0]
 export function tabOfPath(path: string): TabId {
   const p = pathOnly(path).replace(/\/$/, '')
   if (p === '' || p === '/admin') return 'home'
-  if (p === NOTIFICATIONS_HREF || p === '/admin/notify') return 'notifications'
+  if (p === '/admin/notify') return 'notifications'
   let best: { len: number; tab: TabId } | null = null
   const consider = (href: string, id: TabId) => {
     const h = pathOnly(href)
     if ((p === h || p.startsWith(`${h}/`)) && (!best || h.length > best.len)) best = { len: h.length, tab: id }
   }
+  for (const s of SECTIONS) if (s.href) consider(s.href, s.id)
   for (const s of SECTIONS) for (const t of s.tiles) if (!t.href.includes('?')) consider(t.href, s.id) // a tile that only points into another page (a setting) does not own it
   for (const e of EXTRA_PAGES) consider(e.href, e.tab)
   if (p === '/admin/settings') return 'advanced'
@@ -153,7 +159,7 @@ export interface FromSearch { tab: TabId; href: string }
  */
 export function backTarget(path: string, role: AdminRole, from?: FromSearch | null): { href: string; label: string } {
   const sub = pathOnly(path).replace(/\/$/, '')
-  if (sub === NOTIFICATIONS_HREF) return { href: '/admin', label: HOME.title } // Notifications is a tab itself, so Back goes to the home page
+  if (SECTIONS.some(s => s.href && pathOnly(s.href) === sub)) return { href: '/admin', label: HOME.title } // a tab that is itself a page: Back goes to the Overview
   const menu = menuFor(role)
   let id: TabId = from && pathOnly(from.href).replace(/\/$/, '') === sub ? from.tab : tabOfPath(path)
   if (!menu.some(t => t.id === id)) id = 'home'
@@ -170,7 +176,7 @@ export function searchEntries(role: AdminRole, extra: ExtraEntry[] = []): Search
   const admin = role === 'admin'
   const menu = menuFor(role)
   const pages: SearchEntry[] = [
-    ...menu.flatMap(s => s.href ? [{ href: s.href, icon: s.icon, title: s.title, text: 'Alerts, and send a message to phones', where: s.title, badge: s.badge }] : s.tiles.map(t => ({ href: t.href, icon: t.icon, title: t.title, text: t.text, where: s.title, badge: t.badge }))),
+    ...menu.flatMap(s => s.href ? [{ href: s.href, icon: s.icon, title: s.title, text: s.text ?? '', where: s.title, badge: s.badge }] : s.tiles.map(t => ({ href: t.href, icon: t.icon, title: t.title, text: t.text, where: s.title, badge: t.badge }))),
     ...(role === 'director' ? eboardExtras().map(t => ({ href: t.href, icon: t.icon, title: t.title, text: t.text, where: 'More', badge: t.badge })) : []),
     ...EXTRA_PAGES.filter(e => (admin || !e.admin) && e.tab !== 'home').filter(e => admin || e.tab !== 'advanced' || e.href === '/admin/insights').map(e => ({ href: e.href, icon: 'stats' as OpsIcon, title: e.title, text: e.text, where: menu.find(m => m.id === e.tab)?.title ?? 'More' })),
   ]

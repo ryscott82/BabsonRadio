@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { signOut } from '@/lib/auth'
 
 // Guests (any email that is not Babson, Olin or Wellesley) only get the Live page. These stay reachable for everyone.
-const ALLOWED = ['/', '/auth', '/about', '/privacy', '/terms', '/support', '/unsubscribe', '/delete-account', '/booth']
+const ALLOWED = ['/', '/auth', '/about', '/privacy', '/terms', '/support', '/unsubscribe', '/delete-account', '/booth', '/members']
 
 // Pages a guest is sent to sign in for (they sign out first, so the sign-in page opens instead of bouncing back).
 const SIGN_IN_PAGES = ['/schedule', '/library', '/browse', '/shows']

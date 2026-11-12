@@ -3,6 +3,10 @@ import { handle, requireMember } from '@/lib/server/http'
 import { readiness } from '@/lib/server/conduct'
 import { accessOf } from '@/lib/server/access'
 import { SLOT_RULES } from '@/lib/slots'
+import { LIVE_MAX_MINUTES, POLICY_VERSION, QUIET_WARNING } from '@/lib/studioBookCore'
+import { loadStudioRules } from '@/lib/server/studioRules'
+import { maybeRebuildPopular } from '@/lib/server/popularTimes'
+import { after } from 'next/server'
 import { AUTO, nyWeekKey, weekKeysFrom } from '@/lib/slotAuto'
 import { loadSlotRules } from '@/lib/server/slotRules'
 
@@ -17,6 +21,9 @@ export async function GET(req: Request) {
     const db = adminDb()
     const now = Date.now()
     const sr = await loadSlotRules(db)
+    const studio = await loadStudioRules(db)
+    // Popular times are rebuilt at most once a week, here, after the reply is sent (no cron).
+    after(() => maybeRebuildPopular(db).catch(e => console.error('[popular times]', e)))
     const [ready, a, mine] = await Promise.all([
       readiness(db, t), accessOf(t),
       db.collection('slotRequests').where('requesterUid', '==', t.uid).get(),
@@ -40,7 +47,9 @@ export async function GET(req: Request) {
         audioURL: String(last.get('audioURL') ?? ''), imageUrl: String(last.get('imageUrl') ?? ''), receiveRatings: last.get('receiveRatings') !== false,
         startAt: last.get('startAt').toMillis() as number, status: String(last.get('status') ?? ''),
       } : null,
-      rules: { ...SLOT_RULES, minLeadHours: sr.minLeadHours, autoApproveHours: sr.afterHours, autoApproveBeforeStartHours: sr.beforeStartHours, weekLimit: sr.weekLimit, maxRepeatWeeks: sr.maxRepeatWeeks },
+      rules: { ...SLOT_RULES, minLeadHours: sr.minLeadHours, autoApproveHours: sr.afterHours, autoApproveBeforeStartHours: sr.beforeStartHours, weekLimit: sr.weekLimit, maxRepeatWeeks: sr.maxRepeatWeeks,
+        // Live shows are capped at 90 minutes; maxMinutes above stays the cap for pre-recorded shows.
+        liveMaxMinutes: LIVE_MAX_MINUTES, capacity: studio.capacity, policyVersion: POLICY_VERSION, quietWarning: QUIET_WARNING },
       weekHasShow,
     }
   }, { 'Cache-Control': 'private, no-store' })

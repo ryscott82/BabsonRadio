@@ -1,7 +1,7 @@
 import SwiftUI
 import Combine
 
-// MARK: - Shows tab
+// MARK: - Shows (a section of the Library tab)
 // The station's shows with their description and hosts, the same list as the website's Shows page. Tap one to see its episodes.
 
 nonisolated struct ShowItem: Identifiable, Decodable, Hashable {
@@ -37,38 +37,27 @@ final class ShowsManager: ObservableObject {
     }
 }
 
-struct ShowsView: View {
+/// The Shows section of the Library tab (it used to be its own tab). Rows push a ShowDetailView, so the Library's NavigationStack
+/// must declare `.navigationDestination(for: ShowItem.self)`. Loads when it appears; the Library's pull to refresh calls `mgr.load()`.
+struct ShowsSection: View {
     @ObservedObject private var mgr = ShowsManager.shared
     @ObservedObject private var auth = AuthManager.shared
     @Environment(\.colorScheme) private var scheme
 
-    private var text: Color { scheme == .dark ? .brDkText : .brLtText }
     private var sub: Color { scheme == .dark ? .brDkSub : .brLtSub }
 
     var body: some View {
-        NavigationStack {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 14) {
-                    BRSectionHeader(title: "Shows")
-                    if let e = mgr.error { Text(e).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
-                    if mgr.loaded && mgr.shows.isEmpty && mgr.error == nil {
-                        Text("New shows will show up here as they are added.").font(BRFont.body(14, .regular)).foregroundColor(sub)
-                    } else if !mgr.loaded {
-                        Text("Loading…").font(BRFont.body(14, .regular)).foregroundColor(sub)
-                    }
-                    ForEach(mgr.shows) { show in
-                        NavigationLink(value: show) { ShowRow(show: show) }.buttonStyle(.plain)
-                    }
-                }
-                .padding(20)
+        VStack(alignment: .leading, spacing: 14) {
+            BRSectionHeader(title: "Shows")
+            if let e = mgr.error { Text(e).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
+            if mgr.loaded && mgr.shows.isEmpty && mgr.error == nil {
+                Text("New shows will show up here as they are added.").font(BRFont.body(14, .regular)).foregroundColor(sub)
+            } else if !mgr.loaded {
+                Text("Loading…").font(BRFont.body(14, .regular)).foregroundColor(sub)
             }
-            .hwPage()
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .principal) { EtchedText(text: "Babson Radio", size: 24) } }
-            .profileButton()
-            .navigationDestination(for: ShowItem.self) { ShowDetailView(show: $0) }
-            .refreshable { await mgr.load() }
+            ForEach(mgr.shows) { show in
+                NavigationLink(value: show) { ShowRow(show: show) }.buttonStyle(.plain)
+            }
         }
         .task(id: auth.canAccessLibrary) { if auth.canAccessLibrary { await mgr.load() } }
     }

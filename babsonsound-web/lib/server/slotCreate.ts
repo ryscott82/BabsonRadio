@@ -12,12 +12,17 @@ import { touchesCleanHours } from '../conduct'
 import { SLOT_RULES, type SlotCategory, type SlotType } from '../slots'
 import { autoApproveAtMs, autoEligible, pendingCount } from '../slotAuto'
 import { loadSlotRules } from './slotRules'
+import { loadStudioRules } from './studioRules'
+import { assertNotBanned, rememberGuests, studioBusy } from './studioBook'
+import { POLICY_VERSION, holdsStudio, purgeAtMs, quietInfo, type Guest } from '../studioBookCore'
 
 export type NewRequest = {
   title: string; description: string; location: string; type: SlotType; category: SlotCategory; audioURL: string
   img: { imageUrl: string; imagePath: string } | null; durationMin: number; receiveRatings: boolean
   /** typed signature for sharing recordings beyond students (first show of a group only; the rest point at the same record) */
   publicConsent?: Record<string, unknown> | null
+  /** who is coming (or justMe) and whether a live show is not using the studio */
+  guests: Guest[]; justMe: boolean; noStudio: boolean
 }
 export type Skipped = { startAt: number; reason: 'conflict' | 'too-far' | 'too-soon' | 'already-requested' }
 
@@ -29,6 +34,9 @@ export type Skipped = { startAt: number; reason: 'conflict' | 'too-far' | 'too-s
 export async function createSlotRequests(db: Firestore, t: DecodedIdToken, b: NewRequest, starts: number[], o: { hardFirst: boolean; groupId?: string | null; now?: number }) {
   const now = o.now ?? Date.now()
   const rules = await loadSlotRules(db)
+  const studio = await loadStudioRules(db)
+  const user = await db.collection('users').doc(t.uid).get()
+  assertNotBanned(user, now) // three confirmed strikes pause new requests
   const stepMs = b.durationMin * 60_000
   const skipped: Skipped[] = []
   const mine = (await db.collection('slotRequests').where('requesterUid', '==', t.uid).get()).docs
@@ -42,6 +50,10 @@ export async function createSlotRequests(db: Firestore, t: DecodedIdToken, b: Ne
     if (taken.has(s)) { skipped.push({ startAt: s, reason: 'already-requested' }); continue }
     if (await findConflict(db, new Date(s), new Date(s + stepMs))) {
       if (first) throw new HttpError(409, 'That time is already booked. Pick another.')
+      skipped.push({ startAt: s, reason: 'conflict' }); continue
+    }
+    if (holdsStudio({ type: b.type, noStudio: b.noStudio }) && await studioBusy(db, s, s + stepMs)) {
+      if (first) throw new HttpError(409, 'The studio is booked then. Pick another time, or tick that you are not using the studio.', 'BR-BKG-002')
       skipped.push({ startAt: s, reason: 'conflict' }); continue
     }
     ok.push(s)
@@ -66,7 +78,6 @@ export async function createSlotRequests(db: Firestore, t: DecodedIdToken, b: Ne
   const wantsPublic = b.publicConsent != null && typeof b.publicConsent === 'object'
   if (wantsPublic) await assertAllAdults(db, [t.uid])
 
-  const user = await db.collection('users').doc(t.uid).get()
   const eligible = autoEligible({ type: b.type, conductSigned: ready.conductSigned, radioTrained: ready.trained })
   const created = Timestamp.fromMillis(now)
   const refs = ok.map(() => db.collection('slotRequests').doc())
@@ -80,6 +91,8 @@ export async function createSlotRequests(db: Firestore, t: DecodedIdToken, b: Ne
     startAt: Timestamp.fromMillis(s), endAt: Timestamp.fromMillis(s + stepMs), durationMin: b.durationMin,
     status: 'pending', createdAt: created, makePublic: false, cleanHours: touchesCleanHours(s, s + stepMs), conductSigned: ready.conductSigned, receiveRatings: b.receiveRatings,
     ...(groupId ? { groupId } : {}),
+    guests: b.guests, justMe: b.justMe, noStudio: b.type === 'live' && b.noStudio, policyVersion: POLICY_VERSION,
+    ...(b.guests.length ? { purgeAt: Timestamp.fromMillis(purgeAtMs(s)) } : {}),
     // Approves itself at this time unless staff hold it, the week limit applies, or the agreement / training is missing (lib/server/autoApprove.ts).
     autoApproveAt: Timestamp.fromMillis(autoApproveAtMs(now, s, rules)), autoEligible: eligible,
   }))
@@ -93,5 +106,7 @@ export async function createSlotRequests(db: Firestore, t: DecodedIdToken, b: Ne
   }
   const who = user.get('firstName') ?? 'A student'
   after(() => notifyAdmins('requests', { title: 'New show request', body: `${who}: ${b.title}${ok.length > 1 ? ` (${ok.length} weeks)` : ''}` }, t.uid))
-  return { id: refs[0].id, ids: refs.map(r => r.id), skipped, groupId, needsAgreement: !ready.conductSigned }
+  after(() => rememberGuests(db, t.uid, b.guests, now).catch(() => {}))
+  const q = quietInfo(studio.quiet, ok[0], ok[0] + stepMs)
+  return { id: refs[0].id, ids: refs.map(r => r.id), skipped, groupId, needsAgreement: !ready.conductSigned, quiet: q.quiet, warning: q.warning }
 }

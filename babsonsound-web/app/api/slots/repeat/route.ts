@@ -5,11 +5,15 @@ import { loadSlotRules } from '@/lib/server/slotRules'
 import { assertClean } from '@/lib/server/wordFilter'
 import { type SlotCategory, type SlotType } from '@/lib/slots'
 import { cleanWeeks, repeatStarts } from '@/lib/slotAuto'
+import { loadStudioRules } from '@/lib/server/studioRules'
+import { resolveGuests } from '@/lib/server/studioBook'
+import { cleanGuests, liveLengthError, type GuestInput } from '@/lib/studioBookCore'
 
 export const runtime = 'nodejs'
 
 // "Same time next week": copies one of your own pending or approved requests to the next 1 to 3 weeks (same New York time).
-//   POST { requestId, weeks: 1..3 }   -> { id, ids, skipped, groupId, needsAgreement }
+//   POST { requestId, weeks: 1..3, guests?, justMe? }   -> { id, ids, skipped, groupId, needsAgreement, quiet, warning }
+// Guests default to the original request's (send `guests` or `justMe` to change them). A live show is at most 90 minutes, so a longer live show cannot be repeated.
 // The same checks as a new request (lead time, training for live, agreement, a group counts as one pending). Weeks that are taken, too soon or already requested are skipped.
 export async function POST(req: Request) {
   return handle(async () => {
@@ -27,12 +31,22 @@ export async function POST(req: Request) {
 
     const title = String(r.get('title') ?? ''), description = String(r.get('description') ?? ''), location = String(r.get('location') ?? '')
     await assertClean(db, title, description, location) // the word list may have grown since the first request
+    const type = r.get('type') as SlotType
+    const tooLong = liveLengthError(type, Number(r.get('durationMin')))
+    if (tooLong) throw new HttpError(400, tooLong, 'BR-SLT-006')
+    const studio = await loadStudioRules(db)
+    const own = (r.get('guests') as GuestInput[] | undefined) ?? []
+    const sent = b.guests !== undefined || b.justMe !== undefined
+    const g = cleanGuests(sent ? b.guests : own, sent ? b.justMe : r.get('justMe') === true, studio.capacity)
+    if (!g.ok) throw new HttpError(400, g.error, 'BR-BKG-004')
+    const guests = await resolveGuests(db, t.uid, g.guests)
     const startMs = (r.get('startAt').toMillis() as number)
     const groupId = (r.get('groupId') as string | undefined) || ref.id
     const out = await createSlotRequests(db, t, {
       title, description, location, type: r.get('type') as SlotType, category: r.get('category') as SlotCategory, audioURL: String(r.get('audioURL') ?? ''),
       img: r.get('imageUrl') ? { imageUrl: String(r.get('imageUrl')), imagePath: String(r.get('imagePath') ?? '') } : null,
       durationMin: Number(r.get('durationMin')), receiveRatings: r.get('receiveRatings') !== false, publicConsent: null,
+      guests, justMe: g.justMe, noStudio: r.get('noStudio') === true,
     }, repeatStarts(startMs, weeks), { hardFirst: false, groupId })
     if (!r.get('groupId')) await ref.update({ groupId }).catch(() => {})
     return out

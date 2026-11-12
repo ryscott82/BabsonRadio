@@ -11,7 +11,8 @@ import CriticalStrip from '@/components/admin/today/CriticalStrip'
 import Controls from '@/components/admin/today/Controls'
 import ComingUp from '@/components/admin/today/ComingUp'
 import NeedsApproval from '@/components/admin/today/NeedsApproval'
-import { FROM_KEY, NOTIFICATIONS_HREF, eboardExtras, fromNote, menuFor, resolveHash, type AdminRole, type BadgeKey, type SearchEntry, type TabId } from '@/lib/adminMenu'
+import ReportBug from '@/components/admin/today/ReportBug'
+import { FROM_KEY, eboardExtras, fromNote, menuFor, resolveHash, type AdminRole, type BadgeKey, type SearchEntry, type TabId } from '@/lib/adminMenu'
 import { roleLabel } from '@/lib/roleLabel'
 import { DASHBOARD_URL, startPolling, type Critical, type NextRow, type PendingRow } from '@/lib/todayPage'
 
@@ -23,7 +24,7 @@ interface Dash {
   critical: Critical
 }
 
-// The Settings home: a critical strip (only when something is wrong), the controls as icon buttons, what is coming up, and what needs approval.
+// The Overview (home): a critical strip (only when something is wrong), the controls as icon buttons, what is coming up, and what needs approval.
 // ONE data call, GET /api/admin/dashboard, every 60 seconds while this tab is visible and never faster. Each part shows a grey placeholder of its
 // own size until its numbers arrive. The left menu (tabs, search, numbers) is drawn by the admin layout, so it stays on every page; it pushes a history entry when a tab is chosen.
 export default function AdminPage() {
@@ -48,7 +49,8 @@ export default function AdminPage() {
     if (!user || !isDirector) return
     const sync = () => {
       const id = resolveHash(window.location.hash, role)
-      if (id === 'notifications') { router.replace(NOTIFICATIONS_HREF); return }
+      const page = menuFor(role).find(m => m.id === id)?.href
+      if (page) { router.replace(page); return } // a tab that is itself a page (Notifications, Documentation)
       setTab(id)
     }
     queueMicrotask(sync)
@@ -93,35 +95,41 @@ export default function AdminPage() {
     )
   }
 
-  // Home. Wide screens: two columns (controls and coming up | needs approval, which runs the full height and scrolls inside itself).
-  // Small screens: header, controls, then Needs approval, then Coming up. The left menu comes from the admin layout.
+  // Home (Overview): four boxes. Wide screens: a 2 by 2 grid that fills the window, Controls and Coming up on top, Needs approval and Report a bug below;
+  // each box scrolls inside itself. Small screens: Controls, then Needs approval, then Coming up, then Report a bug. The left menu comes from the admin layout.
   const more = eboardExtras()
+  const box = 'min-w-0 lg:min-h-0 lg:overflow-y-auto'
   return (
     <div className="ops-hub">
-      <div className="px-5 lg:px-8 py-6 grid gap-x-8 gap-y-6 items-start xl:grid-cols-[minmax(0,1fr)_30rem] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_30rem] xl:!pr-0 xl:!py-0">
-        <div className="space-y-6 min-w-0 xl:col-start-1 xl:row-start-1 xl:pt-6" data-testid="home-main">
-          <header className="flex flex-wrap items-center gap-4">
-            <span className="ops-tile-icon !w-14 !h-14 shrink-0"><OpsIcon name="radio" size={34} /></span>
-            <div>
-              <h1 className="text-4xl font-light leading-tight">Settings</h1>
-              <p className="text-base opacity-90">{roleLabel(role)}{dash && !dash.radioConnected && isAdmin ? ' · Radio not connected' : ''}</p>
+      <div className="px-5 lg:px-8 py-4 flex flex-col gap-4 lg:h-dvh lg:min-h-[44rem]" data-testid="home-main">
+        <header className="flex flex-wrap items-center gap-4 shrink-0">
+          <h1 className="text-4xl font-light leading-tight">Overview</h1>
+          <p className="text-base opacity-90">{roleLabel(role)}{dash && !dash.radioConnected && isAdmin ? ' · Radio not connected' : ''}</p>
+        </header>
+        <CriticalStrip critical={dash?.critical} role={role} />
+        {failed && !dash && <p role="alert" className="ops-card p-4 text-base">Could not load. It will try again in a minute.</p>}
+        <div className="grid gap-4 lg:grid-cols-2 lg:grid-rows-2 lg:flex-1 lg:min-h-0 items-stretch">
+          <div className={`${box} lg:col-start-1 lg:row-start-1`}>
+            <div className="ops-card p-5 space-y-4">
+              <h2 className="text-2xl font-light">Controls</h2>
+              <Controls role={role} />
+              {more.length > 0 && (
+                <nav aria-label="More" className="flex flex-wrap items-center gap-3">
+                  <span className="text-base opacity-90">More:</span>
+                  {more.map(m => <Link key={m.href} href={m.href} className="ops-btn px-4 min-h-11 inline-flex items-center no-underline">{m.title}</Link>)}
+                </nav>
+              )}
             </div>
-          </header>
-          <CriticalStrip critical={dash?.critical} role={role} />
-          {failed && !dash && <p role="alert" className="ops-card p-4 text-base">Could not load. It will try again in a minute.</p>}
-          <Controls role={role} />
-        </div>
-        <aside aria-label="Needs approval column" className="min-w-0 xl:col-start-2 2xl:col-start-3 xl:row-start-1 xl:row-span-2 xl:sticky xl:top-0 xl:self-start">
-          <NeedsApproval rows={dash ? dash.pending : null} total={dash?.pendingTotal ?? 0} onChanged={load} />
-        </aside>
-        <div className="min-w-0 space-y-6 xl:col-start-1 xl:row-start-2 2xl:col-start-2 2xl:row-start-1 2xl:pt-6 xl:pb-6">
-          <ComingUp rows={dash ? dash.next : null} />
-          {more.length > 0 && (
-            <nav aria-label="More" className="flex flex-wrap items-center gap-3">
-              <span className="text-base opacity-90">More:</span>
-              {more.map(m => <Link key={m.href} href={m.href} className="ops-btn px-4 min-h-11 inline-flex items-center no-underline">{m.title}</Link>)}
-            </nav>
-          )}
+          </div>
+          <div className={`${box} lg:col-start-1 lg:row-start-2`}>
+            <NeedsApproval rows={dash ? dash.pending : null} total={dash?.pendingTotal ?? 0} onChanged={load} />
+          </div>
+          <div className={`${box} lg:col-start-2 lg:row-start-1`}>
+            <ComingUp rows={dash ? dash.next : null} />
+          </div>
+          <div className={`${box} lg:col-start-2 lg:row-start-2`}>
+            <ReportBug />
+          </div>
         </div>
       </div>
     </div>

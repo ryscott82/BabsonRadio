@@ -27,7 +27,7 @@ export async function ensureProfile(t: DecodedIdToken, opts: { agreed?: boolean;
   const first = await cleanOr(adminDb(), (opts.firstName ?? '').trim().slice(0, 40) || (t.name ?? '').split(' ')[0] || '')
   try {
     await ref.create({
-      firstName: first, lastName: '', username: usernameOf(email), displayName: first || email.split('@')[0],
+      firstName: first, lastName: '', nameLower: first.toLowerCase(), username: usernameOf(email), displayName: first || email.split('@')[0],
       email, gradYear: '',
       level: school ? 'student' : 'guest', accountType: school ? 'babson' : 'guest',
       studioTrained: false, radioTrained: false,

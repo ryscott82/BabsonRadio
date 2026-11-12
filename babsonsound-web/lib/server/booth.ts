@@ -4,7 +4,9 @@ import type { Access } from './access'
 import { hostShows, occurrenceId } from './host'
 import { currentOnAir } from './live'
 import { HttpError } from './http'
-import { cleanAdPlan, liveWindowOpen, type AdPlan } from '../booth'
+import { cleanAdPlan, liveWindowOpen, verifyAttest, type AdPlan } from '../booth'
+import { accessOf as accessOfUser } from './access'
+import { requireUser } from './http'
 import { buildScheduleFeed } from './scheduleFeed'
 
 // Studio PC (booth): who may go live from the studio, and the sign-in log. See tools/studio-helper/README.md.
@@ -158,4 +160,12 @@ export async function latestNote(db: Firestore, now = Date.now()): Promise<Booth
   const at = (d?.get('at') as Timestamp | undefined)?.toMillis() ?? 0
   if (!d || now - at > NOTE_MAX_AGE_MS) return null
   return { text: String(d.get('text') ?? ''), by: String(d.get('byName') ?? ''), at }
+}
+
+/** The studio PC page proves itself with the signed nonce it already uses ({ x-booth-nonce, x-booth-sig } headers), or the person is signed in (not a guest). */
+export async function requireBoothCaller(req: Request, now = Date.now()): Promise<void> {
+  const nonce = req.headers.get('x-booth-nonce') ?? '', sig = req.headers.get('x-booth-sig') ?? ''
+  if (nonce && sig && verifyAttest(boothSecret(), nonce.slice(0, 100), sig.slice(0, 100), now)) return
+  const t = await requireUser(req)
+  if ((await accessOfUser(t)).level === 'guest') throw new HttpError(403, 'This is for Babson, Olin and Wellesley students.', 'BR-PERM-001')
 }

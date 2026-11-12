@@ -125,3 +125,48 @@ export function studioInviteMail(o: { link: string }) {
 <p>If this does not look right, you can ignore this email. To stop these emails, reply with &ldquo;unsubscribe&rdquo;.</p><p>Babson Radio</p></div>`
   return { subject, text, html }
 }
+
+const plainMail = (subject: string, lines: string[]) => {
+  const text = ['Hi,', '', ...lines, '', 'Babson Radio'].join('\n')
+  const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1710;line-height:1.5">${
+    ['Hi,', ...lines, 'Babson Radio'].map(l => (l === '' ? '' : `<p style="white-space:pre-wrap">${escapeHtml(l)}</p>`)).join('')}</div>`
+  return { subject, text, html }
+}
+
+/** A studio booking nobody checked in to was released. Friendly: it is a note, not a penalty. */
+export function studioReleasedMail(o: { when: string }) {
+  return plainMail('Your studio booking was released', [
+    `We didn’t see anyone check in to your studio booking on ${o.when}, so we freed the time for other members.`,
+    'No problem if plans changed. You can book the studio again any time at https://babsonradio.com/members.',
+  ])
+}
+
+/** A strike was confirmed by the E-board. 1 = a friendly note, 2 = a formal warning, 3 = the semester pause. */
+export function strikeMail(o: { kind: 'mistake' | 'warning' | 'ban'; reason: string; until: string }) {
+  if (o.kind === 'mistake') {
+    return plainMail('A note about your Babson Radio booking', [
+      `The E-board marked this as a mistake: ${o.reason}.`,
+      'It happens. Nothing else changes, and it clears at the end of the semester.',
+    ])
+  }
+  if (o.kind === 'warning') {
+    return plainMail('Warning: second strike on your Babson Radio account', [
+      `The E-board confirmed a second strike: ${o.reason}.`,
+      'A third strike this semester pauses new show requests and studio bookings until the semester ends. Strikes clear at the end of the semester.',
+      'If you think this is a mistake, reply to this email or talk to the E-board.',
+    ])
+  }
+  return plainMail('Show requests and studio bookings are paused', [
+    `The E-board confirmed a third strike: ${o.reason}.`,
+    `New show requests and studio bookings are paused until ${o.until}. Shows that are already approved stay on the schedule.`,
+    'If you think this is a mistake, reply to this email or talk to the E-board.',
+  ])
+}
+
+/** The student's recording finished uploading. */
+export function recordingReadyMail(o: { title: string }) {
+  return plainMail(`Your recording “${o.title}” is uploaded`, [
+    `Your recording “${o.title}” is safely uploaded to Babson Radio.`,
+    'To air it, attach it to your pre-recorded show at https://babsonradio.com/members. Listen to the whole recording first.',
+  ])
+}

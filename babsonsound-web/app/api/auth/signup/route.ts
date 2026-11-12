@@ -8,6 +8,7 @@ import { TERMS_VERSION, validGradYear } from '@/lib/terms'
 import { signupGuard } from '@/lib/server/signupGuard'
 import { applyInviteNow } from '@/lib/server/access'
 import { assertCleanName } from '@/lib/server/wordFilter'
+import { nameLower } from '@/lib/studioBookCore'
 
 export const runtime = 'nodejs'
 
@@ -65,7 +66,7 @@ export async function POST(req: Request) {
           // A number someone else already uses is allowed: the lookup entry stays with the first account.
           if (phoneRef && !(await tx.get(phoneRef)).exists) tx.set(phoneRef, { uid, verified: false })
           tx.set(db.collection('users').doc(uid), {
-            firstName, lastName, username, displayName: firstName || email.split('@')[0], email, ...(pf ?? {}), gradYear: school ? gradYear : '',
+            firstName, lastName, nameLower: nameLower(firstName, lastName), username, displayName: firstName || email.split('@')[0], email, ...(pf ?? {}), gradYear: school ? gradYear : '',
             termsAcceptedAt: Timestamp.now(), termsVersion: TERMS_VERSION,
             // The sign-up form says "We'll email you when we launch." The launch email only goes to accounts with this.
             ...(b.launchNotice === false ? {} : { launchNoticeConsentAt: Timestamp.now() }),

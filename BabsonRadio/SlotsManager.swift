@@ -42,27 +42,15 @@ class SlotsManager: ObservableObject {
         isLoading = false
     }
 
-    /// Throws a BackendError with a user-readable message if the server rejects the request.
-    func submit(title: String, details: String, type: String, category: String,
-                start: Date, durationMin: Int, audioURL: String, image: UploadedImage? = nil,
-                location: String = "", receiveRatings: Bool = true, publicConsent: [String: Any]? = nil) async throws -> Bool {
-        var body: [String: Any] = [
-            "title": title,
-            "description": details,
-            "type": type,
-            "category": category,
-            "startAt": Int(start.timeIntervalSince1970 * 1000),
-            "durationMin": durationMin,
-            "audioURL": audioURL,
-            "imageUrl": image?.url ?? "",
-            "imagePath": image?.path ?? "",
-            "location": location,
-            "receiveRatings": receiveRatings,
-        ]
-        if let publicConsent { body["publicConsent"] = publicConsent }
-        let sent: SlotSent = try await BackendAPI.post("/api/slots/request", body)
-        await refresh()
-        return sent.needsAgreement ?? false
+    /// Just my own requests (the Host a show screen reads the open times separately).
+    func loadMine() async {
+        isLoading = true
+        do {
+            let mine: MySlotRequestsResponse = try await BackendAPI.get("/api/slots/mine")
+            myRequests = mine.requests
+            errorMessage = nil
+        } catch { errorMessage = (error as? BackendError)?.message ?? error.localizedDescription }
+        isLoading = false
     }
 
     func cancel(_ requestId: String) async {

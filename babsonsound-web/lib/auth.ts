@@ -22,7 +22,7 @@ const fbFail = (e: unknown, fallback: string) => {
 
 export const BABSON_DOMAIN = '@babson.edu'
 /** Schools whose students can use Babson Radio. The first is the default in the email dropdown. */
-export const SCHOOL_DOMAINS = ['@babson.edu', '@olin.edu', '@wellesley.edu'] as const
+export { SCHOOL_DOMAINS } from './authDomains'
 
 /** True for a Babson, Olin or Wellesley address. */
 export function isBabsonEmail(email: string): boolean {

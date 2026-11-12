@@ -62,7 +62,7 @@ function Bell({ on, onClick, label, small }: { on: boolean; onClick: (e: React.M
 }
 
 export default function ScheduleList() {
-  const { user } = useAuth()
+  const { user, isBabson } = useAuth()
   const [bells, setBells] = useState<Set<string>>(new Set())
   const [note, setNote] = useState('')
   const [items, setItems] = useState<Item[] | null>(null)
@@ -281,6 +281,10 @@ export default function ScheduleList() {
               </p>
               {open.description && <p className="text-sm text-br-dk-text whitespace-pre-wrap">{open.description}</p>}
               {open.showSlug && <Link href={`/shows/${open.showSlug}`} className="inline-block text-sm text-br-gold">See the show</Link>}
+              {open.source === 'auto' && !!user && isBabson && open.endAt > now && (
+                <Link href={`/slots?start=${Math.max(open.startAt, Math.ceil((now + 36 * 3_600_000) / 1_800_000) * 1_800_000)}&len=${Math.min(90, Math.max(30, Math.round((open.endAt - open.startAt) / 60_000)))}`}
+                      className="sk-key rounded-xl w-full py-3 text-base font-semibold text-br-gold text-center block">Host here</Link>
+              )}
               <button onClick={() => toggleBell(open)} aria-pressed={bells.has(open.reminderKey)}
                       className="sk-key rounded-xl w-full py-3 text-sm font-display tracking-[0.2em] text-br-dk-text">
                 {bells.has(open.reminderKey) ? 'REMINDER ON' : 'REMIND ME 5 MINUTES BEFORE'}

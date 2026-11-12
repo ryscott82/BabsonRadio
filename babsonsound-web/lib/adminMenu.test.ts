@@ -10,11 +10,11 @@ const hrefs = (role: 'director' | 'admin') => menuFor(role).flatMap(s => s.tiles
 const tabOf = (h: string) => SECTIONS.find(s => s.tiles.some(t => t.href === h))?.id
 
 // ── tabs per role ──
-test('E-board sees Settings, Users, Shows, Content and Notifications, in that order, and no Advanced', () => {
-  assert.deepEqual(titles('director'), ['Settings', 'Users', 'Shows', 'Content', 'Notifications'])
+test('E-board sees Overview, Users, Shows, Content and Notifications, in that order, and no Documentation or Advanced', () => {
+  assert.deepEqual(titles('director'), ['Overview', 'Users', 'Shows', 'Content', 'Notifications'])
 })
-test('an admin sees the same five and Advanced last', () => {
-  assert.deepEqual(titles('admin'), ['Settings', 'Users', 'Shows', 'Content', 'Notifications', 'Advanced'])
+test('an admin sees the same five, then Documentation and Advanced', () => {
+  assert.deepEqual(titles('admin'), ['Overview', 'Users', 'Shows', 'Content', 'Notifications', 'Documentation', 'Advanced'])
 })
 test('nothing Admin-only is in the E-board menu, not even a heading, and no tab is empty', () => {
   const adminOnly = SECTIONS.filter(s => !s.admin).flatMap(s => s.tiles).filter(t => t.admin).map(t => t.href)
@@ -27,12 +27,12 @@ test('nothing Admin-only is in the E-board menu, not even a heading, and no tab 
 test('tab membership matches the design', () => {
   const admin = (id: string) => menuFor('admin').find(s => s.id === id)!
   assert.deepEqual(admin('users').tiles.map(t => t.title), ['Users and roles', 'Training', 'Phone changes', 'Phone lookup', 'Birthdays', 'Studio PC log'])
-  assert.deepEqual(admin('shows').tiles.map(t => t.title), ['Schedule', 'Show requests', 'Show changes', 'Auto DJ', 'Set lists'])
+  assert.deepEqual(admin('shows').tiles.map(t => t.title), ['Schedule', 'Show requests', 'Show changes', 'Auto DJ', 'Set lists', 'Strikes', 'Studio list', 'Club events'])
   assert.deepEqual(admin('content').groups[0].tiles.map(t => t.title), ['Episodes', 'Music library', 'Uploads', 'Song requests', 'Blocked words'])
   assert.equal(admin('content').groups[1].title, 'Content library')
   assert.deepEqual(admin('advanced').groups.map(g => g.title), ['Server', 'Limits and defaults', 'Site and content settings', 'Tools'])
   assert.deepEqual(admin('advanced').tiles.map(t => t.title).sort(),
-    ['Bugs and ideas', 'Docs', 'Easter eggs', 'Expert settings', 'Launch email', 'Listening limits', 'Page text', 'Server load', 'Stats', 'Studio form', 'Tests'].sort())
+    ['Bugs and ideas', 'Easter eggs', 'Expert settings', 'Launch email', 'Listening limits', 'Page text', 'Server load', 'Stats', 'Studio form', 'Tests'].sort())
 })
 test('E-board Users tab has Training and the Studio PC log; Shows has Auto DJ; Content has Blocked words and no library settings', () => {
   const t = (id: string) => menuFor('director').find(s => s.id === id)!.tiles.map(x => x.href)
@@ -70,7 +70,7 @@ test('every old URL still opens: in the menu exactly once, or a redirect page th
   const old = ['schedule', 'slots', 'show-updates', 'booth', 'setlists', 'library', 'music-library', 'media', 'autoschedule', 'requests', 'blocked-words',
     'users', 'training', 'studio-form', 'phone-changes', 'phone-lookup', 'birthdays', 'launch-email', 'feedback', 'site-text',
     'listening-limits', 'easter-eggs', 'stats', 'server-load', 'tests', 'docs'].map(p => `/admin/${p}`)
-  const all = hrefs('admin')
+  const all = [...hrefs('admin'), ...menuFor('admin').flatMap(s => (s.href ? [s.href] : []))]
   for (const h of old) assert.equal(all.filter(x => x === h).length, 1, h)
   assert.ok(all.includes('/admin/expert'))
   for (const h of ['/admin/notify', '/admin/settings', '/admin/controls', '/admin/notifications']) assert.ok(existsSync(new URL(`../app${h}/page.tsx`, import.meta.url)), h)
@@ -190,4 +190,15 @@ test('the left menu is drawn by the admin layout, so it is on every admin page a
   assert.doesNotMatch(page, /aria-label="Admin sections"/)
   assert.match(shell, /const current: TabId = onHub \? hashTab : /) // a sub-page highlights its own tab
   assert.match(shell, /router\.push\(tabHref\(g\.id\)\)/) // from a page, a tab goes to that tab
+})
+
+test('Documentation is a tab of its own (Admins), the Overview is the home name, and #docs opens the page', () => {
+  const d = menuFor('admin').find(s => s.id === 'docs')!
+  assert.equal(d.href, '/admin/docs'); assert.equal(d.admin, true)
+  assert.ok(!menuFor('director').some(s => s.id === 'docs'))
+  assert.equal(tabOfPath('/admin/docs'), 'docs'); assert.equal(tabHref('docs'), '/admin/docs')
+  assert.equal(backTarget('/admin/docs', 'admin').href, '/admin'); assert.equal(backTarget('/admin/docs', 'admin').label, 'Overview')
+  assert.equal(resolveHash('#docs', 'admin'), 'docs'); assert.equal(resolveHash('#docs', 'director'), 'home')
+  assert.ok(searchMenu('admin', 'documentation').some(e => e.href === '/admin/docs'))
+  assert.match(src('app/admin/page.tsx'), /<h1 className="text-4xl font-light leading-tight">Overview<\/h1>/)
 })

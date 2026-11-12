@@ -5,10 +5,14 @@
 // STUDIO_PC_SECRET after checking the person may go live. The format matches babsonsound-web/lib/booth.ts.
 
 import { createServer } from 'node:http'
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { execFile } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { copyFileSync, createReadStream, existsSync, mkdirSync, openSync, readFileSync, readSync, closeSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
+import { dirname, extname, join } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { createRecorder } from './lib/recorder.mjs'
+import { createUploads } from './lib/uploads.mjs'
+import { normalizeOne } from './lib/normalize.mjs'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 
@@ -38,6 +42,18 @@ const BED_LISTS = list(process.env.BED_PLAYLISTS || 'Beds,Podcast beds,Backgroun
 const ID_LISTS = list(process.env.ID_PLAYLISTS || 'Station IDs,Sweepers')
 const PAD_LISTS = list(process.env.SOUNDBOARD_PLAYLISTS || 'Soundboard,Jingles,Sound effects')
 const AD_LISTS = list(process.env.AD_PLAYLISTS || 'Ads,Advertisements,PSAs')
+
+// Record a show: takes are kept in RECORDINGS_DIR until the upload is confirmed (then 7 more days). Uploads go straight to AzuraCast with the
+// key above (it needs "Manage station media"), into UPLOAD_FOLDER, then the website is told (SITE_URL). See README "Record a show".
+const SITE_URL = (process.env.SITE_URL || 'https://babsonradio.com').replace(/\/+$/, '')
+const REC_DIR = process.env.RECORDINGS_DIR || join(here, 'recordings')
+const UPLOAD_FOLDER = process.env.UPLOAD_FOLDER || 'Student recordings'
+const UPLOAD_WHILE_LIVE = process.env.UPLOAD_WHILE_LIVE === '1'
+const FFMPEG = process.env.FFMPEG_PATH || 'ffmpeg'
+const FFPROBE = process.env.FFPROBE_PATH || 'ffprobe'
+// Optional: even out each recording's loudness after it is uploaded, with the PC worker's tool (needs Python and tools/normalize_loudness.py).
+const NORMALIZE = process.env.NORMALIZE_RECORDINGS === '1'
+const TOOLS_DIR = process.env.TOOLS_DIR || join(here, '..')
 
 // Auto level: BUTT's Master Gain can be moved by a MIDI CC (BUTT: Settings → MIDI). The helper sends that CC through a
 // virtual MIDI cable (loopMIDI on Windows). Optional: without it, the page just shows the level.
@@ -102,14 +118,120 @@ async function status() {
     connected: num('connected') === 1, connecting: num('connecting') === 1, recording: num('recording') === 1,
     signal: num('signal present') === 1, silence: num('signal absent') === 1,
     streamSeconds: num('stream seconds'), volumeLeft: num('volume left'), volumeRight: num('volume right'), song: txt('song'),
+    recordSeconds: num('record seconds'), recordPath: txt('record path'),
   }
 }
+/** Is a show going out from this PC? If BUTT doesn't answer, nothing is streaming from here. */
+const isLive = () => status().then(s => s.connected || s.connecting, () => false)
 
 // One command at a time, so a double-tap can't send connect twice.
 let queue = Promise.resolve()
 const serial = fn => (queue = queue.then(fn, fn))
 
 const log = (...a) => console.log(new Date().toLocaleString(), ...a)
+
+// ── Record a show ─────────────────────────────────────────────
+mkdirSync(REC_DIR, { recursive: true })
+const jsonStore = file => ({
+  load: () => { try { return JSON.parse(readFileSync(file, 'utf8')) } catch { return null } },
+  save: v => { writeFileSync(`${file}.tmp`, JSON.stringify(v, null, 1)); renameSync(`${file}.tmp`, file) },
+})
+function moveFile(src, dst) {
+  try { renameSync(src, dst) } catch (e) {
+    if (e.code !== 'EXDEV') throw e
+    copyFileSync(src, dst); unlinkSync(src) // BUTT's folder is on another drive
+  }
+}
+const run = (cmd, args, ms = 10 * 60_000) => new Promise((resolve, reject) => {
+  execFile(cmd, args, { timeout: ms, windowsHide: true, maxBuffer: 4 << 20 }, (err, out, errOut) => (err ? reject(new Error(String(errOut || err.message).trim().slice(-300))) : resolve(String(out))))
+})
+const recorder = createRecorder({
+  butt, status, dir: REC_DIR, now: Date.now, sleep: ms => new Promise(r => setTimeout(r, ms)), log,
+  store: jsonStore(join(REC_DIR, 'recorder.json')),
+  files: {
+    mkdir: d => mkdirSync(d, { recursive: true }), move: async (a, b) => moveFile(a, b), exists: existsSync,
+    removeDir: d => rmSync(d, { recursive: true, force: true }), join, ext: f => extname(f).toLowerCase(),
+  },
+  // Join the pieces without re-encoding (they all come from the same BUTT settings).
+  concat: async (files, out) => {
+    const listFile = `${out}.txt`
+    writeFileSync(listFile, files.map(f => `file '${f.replace(/\\/g, '/').replace(/'/g, "'\\''")}'`).join('\n'))
+    try { await run(FFMPEG, ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', listFile, '-c', 'copy', out]) }
+    catch (e) { throw new Error(`Could not join the recording (is ffmpeg installed?): ${e.message}`) }
+    finally { rmSync(listFile, { force: true }) }
+    for (const f of files) rmSync(f, { force: true })
+  },
+  probe: async f => Number((await run(FFPROBE, ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f], 30_000)).trim()) || 0,
+})
+
+let normalizeDeps = null
+async function normalize(item) {
+  if (!normalizeDeps) {
+    const { runTool } = await import(pathToFileURL(join(TOOLS_DIR, 'pc-worker', 'src', 'python.mjs')).href)
+    normalizeDeps = {
+      runTool, isLive, target: Number(process.env.TARGET_LUFS) || undefined,
+      cfg: {
+        python: process.env.PYTHON || (process.platform === 'win32' ? 'py' : 'python3'), toolsDir: TOOLS_DIR,
+        azura: { url: AZ_URL, station: process.env.AZURACAST_STATION || decodeURIComponent(AZ_STATION), apiKey: AZ_KEY, minInterval: Number(process.env.AZ_MIN_INTERVAL) || 1 },
+      },
+    }
+  }
+  return normalizeOne(item.mediaId, normalizeDeps)
+}
+
+const uploads = createUploads({
+  store: { load: () => jsonStore(join(REC_DIR, 'queue.json')).load() || [], save: v => jsonStore(join(REC_DIR, 'queue.json')).save(v) },
+  fs: {
+    size: f => statSync(f).size,
+    read: async (f, start, end) => {
+      const buf = Buffer.alloc(end - start), fd = openSync(f, 'r')
+      try { readSync(fd, buf, 0, buf.length, start) } finally { closeSync(fd) }
+      return buf
+    },
+    remove: f => { rmSync(f, { force: true }); rmSync(dirname(f), { recursive: true, force: true }) },
+  },
+  fetch: (...a) => fetch(...a), now: Date.now, log, isLive, uploadWhileLive: UPLOAD_WHILE_LIVE,
+  az: { base: AZ_URL, key: AZ_KEY, station: AZ_STATION, dir: UPLOAD_FOLDER },
+  // The website knows this is the studio PC by the same signed nonce the page uses to sign in.
+  site: {
+    url: SITE_URL,
+    headers: () => {
+      const nonce = `${Date.now()}.${randomBytes(12).toString('hex')}`
+      return { 'x-booth-nonce': nonce, 'x-booth-sig': mac(`attest:${nonce}`).toString('hex') }
+    },
+  },
+  normalize: NORMALIZE ? normalize : undefined,
+})
+// Work the queue every few seconds (one step at a time), and clear week-old finished files at start and every hour.
+let pumping = false
+async function pump() {
+  if (pumping) return
+  pumping = true
+  try { while (await uploads.step()) { /* next */ } } catch (e) { log('UPLOAD ERROR', e.message) } finally { pumping = false }
+}
+setInterval(pump, 3000).unref?.()
+setTimeout(() => { uploads.cleanup(); pump() }, 2000)
+setInterval(() => uploads.cleanup(), 3_600_000).unref?.()
+
+const cleanTitle = v => String(v || '').replace(/[\u0000-\u001f]+/g, ' ').trim().slice(0, 80)
+const cleanRef = v => (/^[A-Za-z0-9_-]{1,100}$/.test(String(v || '')) ? String(v) : '')
+
+/** Plays a take back to the page (listen back before saving), with Range so the page can seek. */
+function streamFile(file, req, res, origin) {
+  const size = statSync(file).size
+  const types = { '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.opus': 'audio/ogg', '.flac': 'audio/flac', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.aac': 'audio/aac' }
+  const h = { 'access-control-allow-origin': origin, vary: 'Origin', 'cache-control': 'no-store', 'accept-ranges': 'bytes', 'content-type': types[extname(file).toLowerCase()] || 'application/octet-stream' }
+  const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '')
+  if (m && (m[1] || m[2])) {
+    let start = m[1] ? Number(m[1]) : size - Number(m[2]), end = m[1] && m[2] ? Number(m[2]) : size - 1
+    start = Math.max(0, start); end = Math.min(size - 1, end)
+    if (start > end) { res.writeHead(416, { ...h, 'content-range': `bytes */${size}` }); return res.end() }
+    res.writeHead(206, { ...h, 'content-range': `bytes ${start}-${end}/${size}`, 'content-length': end - start + 1 })
+    return createReadStream(file, { start, end }).pipe(res)
+  }
+  res.writeHead(200, { ...h, 'content-length': size })
+  createReadStream(file).pipe(res)
+}
 
 // ── Station music library (AzuraCast) ───────────────────────
 let lib = { at: 0, rows: [] }
@@ -208,6 +330,24 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/status') return send(res, 200, await status(), origin)
     if (req.method === 'GET' && url.pathname === '/gain') return send(res, 200, { available: !!midi(), db: gainDb, error: midiError }, origin)
 
+    // Record a show: what is going on, my unsaved takes and my uploads. Needs the person's token (their own things only).
+    if (req.method === 'GET' && url.pathname === '/record/state') {
+      const c = verifyToken(url.searchParams.get('token'))
+      if (!c) return send(res, 401, { error: 'Sign in again on the studio PC.', code: 'BR-BTH-002' }, origin)
+      const r = recorder.state()
+      return send(res, 200, {
+        canRecord: c.r === true, recorder: r.uid === c.u || r.state === 'idle' ? r : { state: r.state, name: r.name, elapsedSec: r.elapsedSec, id: '', uid: '' },
+        takes: recorder.takesFor(c.u), uploads: uploads.list(c.u),
+      }, origin)
+    }
+    const take = /^\/record\/file\/([A-Za-z0-9]{8,40})$/.exec(url.pathname)
+    if (req.method === 'GET' && take) {
+      const c = verifyToken(url.searchParams.get('token'))
+      const t = c && recorder.take(take[1])
+      if (!t || t.uid !== c.u || !existsSync(t.file)) return send(res, 404, { error: 'Recording not found.' }, origin)
+      return streamFile(t.file, req, res, origin)
+    }
+
     const track = /^\/library\/play\/([^/]+)$/.exec(url.pathname)
     if (req.method === 'GET' && track) {
       if (!verifyToken(url.searchParams.get('token'))) return send(res, 401, { error: 'Sign in again on the studio PC.', code: 'BR-BTH-002' }, origin)
@@ -231,6 +371,7 @@ const server = createServer(async (req, res) => {
     }
     if (url.pathname === '/live/start') {
       if (!c.l) return send(res, 403, { error: "You can't go live right now." }, origin)
+      if (recorder.active()) return send(res, 409, { error: 'A recording is going. Stop it before going live.' }, origin)
       const st = await serial(async () => {
         const now = await status()
         if (!now.connected && !now.connecting) await butt(BUTT_SERVER ? ['-s', BUTT_SERVER] : ['-s'])
@@ -249,6 +390,48 @@ const server = createServer(async (req, res) => {
       log(`LIVE STOP   ${c.n} (${c.u})`)
       return send(res, 200, st, origin)
     }
+    // ── Record a show (BUTT's recorder only, no stream) ──
+    if (url.pathname === '/record/start') {
+      if (c.r !== true) return send(res, 403, { error: 'Finish studio training to record in the studio.' }, origin)
+      return send(res, 200, await serial(() => recorder.start(c)), origin)
+    }
+    // Anyone signed in can pause or stop a recording, so nobody is stuck with one running (like ending the stream).
+    if (url.pathname === '/record/pause') return send(res, 200, await serial(() => recorder.pause()), origin)
+    if (url.pathname === '/record/resume') {
+      if (c.r !== true || recorder.state().uid !== c.u) return send(res, 403, { error: 'Only the person who started this recording can resume it.' }, origin)
+      return send(res, 200, await serial(() => recorder.resume()), origin)
+    }
+    if (url.pathname === '/record/stop') {
+      const t = await serial(() => recorder.stop())
+      return send(res, 200, { id: t.id, durationSec: t.durationSec, mine: t.uid === c.u }, origin)
+    }
+    if (url.pathname === '/record/save') {
+      const t = recorder.take(String(b.id || ''))
+      if (!t || t.uid !== c.u) return send(res, 404, { error: 'Recording not found.' }, origin)
+      if (c.r !== true) return send(res, 403, { error: 'Finish studio training to record in the studio.' }, origin)
+      const title = cleanTitle(b.title)
+      if (!title) return send(res, 400, { error: 'Give the recording a title.' }, origin)
+      const requestId = cleanRef(b.requestId)
+      uploads.add({ ...t, title, token: b.token, bookingId: cleanRef(b.bookingId), requestId, cleanConfirmed: requestId ? b.cleanConfirmed === true : false })
+      recorder.forget(t.id)
+      log(`RECORD SAVE  ${c.n} ${t.id} "${title}"`)
+      pump()
+      return send(res, 200, { ok: true, uploads: uploads.list(c.u) }, origin)
+    }
+    if (url.pathname === '/record/discard') {
+      const t = recorder.take(String(b.id || ''))
+      if (!t || t.uid !== c.u) return send(res, 404, { error: 'Recording not found.' }, origin)
+      recorder.discard(t.id)
+      return send(res, 200, { ok: true }, origin)
+    }
+    if (url.pathname === '/uploads/retry') {
+      const it = uploads.get(String(b.id || ''))
+      if (!it || it.uid !== c.u) return send(res, 404, { error: 'Recording not found.' }, origin)
+      uploads.retry(it.id)
+      pump()
+      return send(res, 200, { ok: true, uploads: uploads.list(c.u) }, origin)
+    }
+
     if (url.pathname === '/song') {
       if (!c.l) return send(res, 403, { error: "You can't send songs right now." }, origin)
       const text = String(b.text || '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 200)
@@ -264,4 +447,4 @@ const server = createServer(async (req, res) => {
   }
 })
 
-server.listen(PORT, '127.0.0.1', () => log(`Studio helper on http://127.0.0.1:${PORT} for ${ORIGINS.join(', ')}. BUTT: ${BUTT}`))
+server.listen(PORT, '127.0.0.1', () => log(`Studio helper on http://127.0.0.1:${PORT} for ${ORIGINS.join(', ')}. BUTT: ${BUTT}. Recordings: ${REC_DIR}${NORMALIZE ? ' (loudness on)' : ''}`))

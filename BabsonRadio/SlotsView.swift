@@ -2,151 +2,26 @@ import SwiftUI
 import PhotosUI
 import UIKit
 
-// MARK: - "Go on air" (reached from Profile)
-// Members request a time on the radio; staff approve in the web admin. This screen shows
-// the user's requests, what's already booked, and a form to ask for a new slot.
+// MARK: - Host a show (reached from Profile, Members, Library and the top bar)
+// The three-step flow lives in HostShowView.swift. This wrapper keeps the old name for the Profile row.
 
 struct SlotsView: View {
-    @StateObject private var auth = AuthManager.shared
-    @StateObject private var slots = SlotsManager()
-    @Environment(\.colorScheme) var scheme
-    @State private var showForm = false
     /// True when pushed from Profile (the Profile tab already provides the navigation stack).
     var embedded = false
 
-    private var textColor: Color { scheme == .dark ? .brDkText : .brLtText }
-    private var subColor: Color { scheme == .dark ? .brDkSub : .brLtSub }
-    private var accent: Color { scheme == .dark ? .brGold : .brGreen }
-
     var body: some View {
-        Group {
-            if embedded {
-                scroll
-                    .navigationTitle("Host a show")
-                    .navigationBarTitleDisplayMode(.inline)
-            } else {
-                NavigationStack { scroll }
-            }
-        }
-        .sheet(isPresented: $showForm) {
-            RequestSlotForm(slots: slots)
-        }
-        .task(id: auth.currentUser?.id) {
-            if auth.isSignedIn { await slots.refresh() }
-        }
-    }
-
-    private var scroll: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 0) {
-                if auth.currentUser?.isGuest == true {
-                    GuestLockedNote(text: "Requesting airtime is for Babson students.")
-                } else if auth.isSignedIn {
-                    HostGateView { signedInContent }
-                } else {
-                    signedOutPrompt
-                }
-            }
-        }
-        .refreshable {
-            if auth.isSignedIn { await slots.refresh() }
-        }
-        .hwPage()
-    }
-
-    // MARK: - Signed in
-
-    private var signedInContent: some View {
-        VStack(alignment: .leading, spacing: 28) {
-
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Go ON AIR")
-                    .font(BRFont.display(34))
-                    .kerning(3)
-                    .foregroundColor(textColor)
-                Text("Have a show idea? Request a time on the radio.")
-                    .font(BRFont.body(14, .regular))
-                    .foregroundColor(subColor)
-
-                Button { showForm = true } label: {
-                    HStack(spacing: 8) {
-                        Spacer()
-                        Image(systemName: "mic.fill")
-                        Text("Request a slot")
-                            .font(BRFont.display(15))
-                            .kerning(2)
-                        Spacer()
-                    }
-                    .padding(.vertical, 14)
-                }
-                .buttonStyle(HWKeyStyle(corner: 12, lit: false, height: nil))
-                .padding(.top, 6)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-
-            if let error = slots.errorMessage {
-                Text(error)
-                    .font(BRFont.body(13, .regular))
-                    .foregroundColor(.brRed)
-                    .padding(.horizontal, 20)
-            }
-
-            VStack(alignment: .leading, spacing: 14) {
-                BRSectionHeader(title: "My requests")
-                    .padding(.horizontal, 20)
-                if slots.myRequests.isEmpty {
-                    emptyText(slots.isLoading ? "Loading…" : "You haven't requested a slot yet.")
-                } else {
-                    ForEach(slots.myRequests) { request in
-                        SlotRequestRow(request: request) {
-                            Task { await slots.cancel(request.id) }
-                        }
-                        .padding(.horizontal, 20)
-                    }
-                }
-            }
-
-            HostOptionsView()
-                .padding(.horizontal, 20)
-        }
-        .padding(.bottom, 40)
-    }
-
-    // MARK: - Signed out
-
-    private var signedOutPrompt: some View {
-        VStack(spacing: 14) {
-            Image(systemName: "mic.slash")
-                .font(.system(size: 34))
-                .foregroundColor(subColor)
-            Text("Sign in to request a slot")
-                .font(BRFont.display(22))
-                .kerning(2)
-                .foregroundColor(textColor)
-            Text("Sign in with your Babson email to request airtime.")
-                .font(BRFont.body(14, .regular))
-                .foregroundColor(subColor)
-                .multilineTextAlignment(.center)
-        }
-        .padding(.horizontal, 32)
-        .padding(.top, 120)
-        .frame(maxWidth: .infinity)
-    }
-
-    private func emptyText(_ text: String) -> some View {
-        Text(text)
-            .font(BRFont.body(13, .regular))
-            .foregroundColor(subColor)
-            .padding(.horizontal, 20)
+        if embedded { HostShowView() } else { NavigationStack { HostShowView() } }
     }
 }
 
 // MARK: - Rows
 
-private struct SlotRequestRow: View {
+struct SlotRequestRow: View {
     let request: SlotRequest
     let onCancel: () -> Void
+    /// "Same time next week" (only when repeating is on) and "Pick another time" (declined shows).
+    var onRepeat: (() -> Void)? = nil
+    var onPickAnother: (() -> Void)? = nil
     @Environment(\.colorScheme) var scheme
 
     private var textColor: Color { scheme == .dark ? .brDkText : .brLtText }
@@ -214,9 +89,21 @@ private struct SlotRequestRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             }
 
+            if request.status == "pending" {
+                Text(request.autoNote).font(BRFont.body(14, .regular)).foregroundColor(subColor)
+            }
+
+            if request.status == "declined", let onPickAnother {
+                Button("Pick another time", action: onPickAnother).font(BRFont.body(16, .semibold)).frame(minHeight: 44)
+            }
+
+            if (request.status == "pending" || request.status == "approved"), request.startAt > Date(), let onRepeat {
+                Button("Same time next week", action: onRepeat).font(BRFont.body(16, .semibold)).frame(minHeight: 44)
+            }
+
             if canCancel {
                 Button("Cancel request", role: .destructive, action: onCancel)
-                    .font(BRFont.body(13, .regular))
+                    .font(BRFont.body(16, .regular)).frame(minHeight: 44)
             }
         }
         .padding(16)
@@ -284,278 +171,6 @@ private struct AirSlotRow: View {
         .brCard()
     }
 }
-
-// MARK: - Request form
-
-struct RequestSlotForm: View {
-    @ObservedObject var slots: SlotsManager
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var title = ""
-    @State private var details = ""
-    @State private var type = "live"
-    @State private var category = "podcast"
-    @State private var start = RequestSlotForm.roundUp(Date().addingTimeInterval(25 * 3600))
-    @State private var durationMin = 60
-    @State private var audioURL = ""
-    @State private var location = ""
-    @State private var receiveRatings = true
-    @State private var sharePublic = false
-    @State private var pubTicks: Set<Int> = []
-    @State private var pubName = ""
-    @State private var pubInfo: PublicInfo?
-    @State private var photoItem: PhotosPickerItem?
-    @State private var photoPreview: UIImage?
-    @State private var uploaded: UploadedImage?
-    @State private var isUploading = false
-    @State private var isSubmitting = false
-    @State private var errorText: String? = nil
-    /// After the request is in, the on-air agreements to sign (only when the account has not signed them yet).
-    @State private var agreements: TrainingInfo?
-    @State private var signBusy = false
-    @State private var signError: String?
-
-    private static let categories = ["podcast", "music", "talk", "interview", "news", "other"]
-    private static let lengths = [15, 30, 45, 60, 90, 120, 180, 240]
-
-    /// The server only accepts start times on a 15-minute mark.
-    static func roundUp(_ date: Date) -> Date {
-        let step = 900.0
-        return Date(timeIntervalSince1970: (date.timeIntervalSince1970 / step).rounded(.up) * step)
-    }
-
-    private var snappedStart: Date { Self.roundUp(start) }
-    private var snappedEnd: Date { snappedStart.addingTimeInterval(Double(durationMin) * 60) }
-    private var earliest: Date { Date().addingTimeInterval(24 * 3600) }
-    private var latest: Date { Date().addingTimeInterval(60 * 86_400) }
-    private var tooSoon: Bool { snappedStart < earliest }
-    private var conflict: AirSlot? {
-        slots.schedule.first { $0.startAt < snappedEnd && $0.endAt > snappedStart }
-    }
-    private var publicOK: Bool {
-        guard sharePublic, let info = pubInfo else { return true }
-        return pubTicks.count == info.publicClauses.count && pubName.trimmingCharacters(in: .whitespaces).split(separator: " ").count >= 2
-    }
-    private var canSubmit: Bool {
-        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && details.trimmingCharacters(in: .whitespacesAndNewlines).count >= 10 && publicOK
-            && conflict == nil && !tooSoon && !isSubmitting && !isUploading
-    }
-
-    var body: some View {
-        if let info = agreements {
-            NavigationStack {
-                ScrollView {
-                    AgreementsForm(info: info, busy: signBusy, error: signError) { name in sign(name, version: info.agreementsVersion) }
-                        .padding(20)
-                }
-                .hwPage()
-                .navigationTitle("On-air agreement")
-                .navigationBarTitleDisplayMode(.inline)
-            }
-            .interactiveDismissDisabled()
-        } else {
-            requestForm
-        }
-    }
-
-    private func sign(_ name: String, version: String) {
-        signBusy = true; signError = nil
-        Task {
-            do {
-                let _: EmptyResponse = try await BackendAPI.post("/api/host/readiness", ["typedName": name, "accepted": true, "version": version])
-                dismiss()
-            } catch { signError = (error as? BackendError)?.message ?? error.localizedDescription }
-            signBusy = false
-        }
-    }
-
-    private var requestForm: some View {
-        NavigationStack {
-            Form {
-                Section("About your show") {
-                    TextField("", text: $title, prompt: Text("Title").foregroundColor(.brPlaceholder))
-                    TextField("", text: $details, prompt: Text("What's it about? A sentence or two").foregroundColor(.brPlaceholder), axis: .vertical)
-                        .lineLimit(3...6)
-                    Picker("Category", selection: $category) {
-                        ForEach(Self.categories, id: \.self) { Text($0.capitalized).tag($0) }
-                    }
-                }
-                .listRowBackground(HWFieldFill())
-
-                Section {
-                    TextField("", text: $location, prompt: Text("Special requests or location (optional)").foregroundColor(.brPlaceholder))
-                }
-                .listRowBackground(HWFieldFill())
-
-                Section {
-                    Toggle("Receive ratings during my show", isOn: $receiveRatings)
-                } footer: {
-                    Text("Listeners can always rate. Off just hides the ratings from you.")
-                }
-                .listRowBackground(HWFieldFill())
-
-                Section("Picture (optional)") {
-                    HStack(spacing: 14) {
-                        if let photoPreview {
-                            Image(uiImage: photoPreview).resizable().scaledToFill()
-                                .frame(width: 72, height: 72).clipShape(RoundedRectangle(cornerRadius: 10))
-                        }
-                        PhotosPicker(selection: $photoItem, matching: .images) {
-                            Text(isUploading ? "Uploading…" : (photoPreview == nil ? "Add a picture" : "Change picture"))
-                        }
-                        .disabled(isUploading)
-                        if photoPreview != nil {
-                            Button("Remove", role: .destructive) { photoItem = nil; photoPreview = nil; uploaded = nil }
-                        }
-                    }
-                    Text("Shown to listeners if approved.")
-                        .font(BRFont.body(13, .regular)).foregroundStyle(Color.brSecondary)
-                }
-                .listRowBackground(HWFieldFill())
-
-                Section("How will it air?") {
-                    Picker("Format", selection: $type) {
-                        Text("Live").tag("live")
-                        Text("Pre-recorded").tag("prerecorded")
-                    }
-                    .pickerStyle(.segmented)
-
-                    if type == "prerecorded" {
-                        TextField("", text: $audioURL, prompt: Text("Link to your audio (https://…)").foregroundColor(.brPlaceholder))
-                            .keyboardType(.URL)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                        Text("Link to your recording.")
-                            .font(BRFont.body(13, .regular))
-                            .foregroundStyle(Color.brSecondary)
-                    } else {
-                        Text("We'll send connection details if approved.")
-                            .font(BRFont.body(13, .regular))
-                            .foregroundStyle(Color.brSecondary)
-                    }
-                }
-                .listRowBackground(HWFieldFill())
-
-                if let info = pubInfo, info.publicSharing == "adult" {
-                    Section {
-                        Toggle("Also share my recordings with the public", isOn: $sharePublic)
-                        if sharePublic {
-                            ForEach(Array(info.publicClauses.enumerated()), id: \.offset) { i, c in
-                                Button {
-                                    if pubTicks.contains(i) { pubTicks.remove(i) } else { pubTicks.insert(i) }
-                                } label: {
-                                    HStack(alignment: .top, spacing: 10) {
-                                        Image(systemName: pubTicks.contains(i) ? "checkmark.square.fill" : "square")
-                                        Text(c).font(BRFont.body(13, .regular)).multilineTextAlignment(.leading)
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            TextField("", text: $pubName, prompt: Text("Type your full name to sign").foregroundColor(.brPlaceholder))
-                                .textInputAutocapitalization(.words).autocorrectionDisabled()
-                        }
-                    } footer: {
-                        Text(sharePublic ? "" : "Off: Babson students only.")
-                    }
-                    .listRowBackground(HWFieldFill())
-                }
-
-                Section("When") {
-                    DatePicker("Start", selection: $start, in: earliest...latest,
-                               displayedComponents: [.date, .hourAndMinute])
-                    Picker("Length", selection: $durationMin) {
-                        ForEach(Self.lengths, id: \.self) { Text("\($0) min").tag($0) }
-                    }
-                    Text("\(snappedStart.formatted(date: .abbreviated, time: .shortened)) – \(snappedEnd.formatted(date: .omitted, time: .shortened))")
-                        .font(BRFont.body(13, .regular))
-                        .foregroundStyle(Color.brSecondary)
-                    if let conflict {
-                        Text("That overlaps \"\(conflict.title)\", which is already booked.")
-                            .font(BRFont.body(13, .regular))
-                            .foregroundStyle(.red)
-                    }
-                    if tooSoon {
-                        Text("Requests need 24 hours' notice.")
-                            .font(BRFont.body(13, .regular))
-                            .foregroundStyle(.red)
-                    }
-                }
-                .listRowBackground(HWFieldFill())
-
-                if let errorText {
-                    Section { Text(errorText).foregroundStyle(.red) }
-                    .listRowBackground(HWFieldFill())
-                }
-            }
-            .hwPage()
-            .onChange(of: photoItem) { _, item in
-                guard let item else { return }
-                Task { await upload(item) }
-            }
-            .task { pubInfo = try? await BackendAPI.get("/api/me") }
-            .navigationTitle("Host a show")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(isSubmitting ? "Sending…" : "Send") { submit() }
-                        .disabled(!canSubmit)
-                }
-            }
-        }
-    }
-
-    private func upload(_ item: PhotosPickerItem) async {
-        isUploading = true
-        errorText = nil
-        defer { isUploading = false }
-        do {
-            guard let raw = try await item.loadTransferable(type: Data.self),
-                  let jpeg = ImageShrinker.jpeg(from: raw) else {
-                errorText = "That picture couldn't be used. Try another one. (BR-CLI-004)"
-                return
-            }
-            uploaded = try await BackendAPI.uploadImage(jpeg)
-            photoPreview = UIImage(data: jpeg)
-        } catch {
-            errorText = (error as? BackendError)?.message ?? error.localizedDescription
-            photoItem = nil
-        }
-    }
-
-    private func submit() {
-        isSubmitting = true
-        errorText = nil
-        Task {
-            do {
-                let needsAgreement = try await slots.submit(
-                    title: title.trimmingCharacters(in: .whitespacesAndNewlines),
-                    details: details.trimmingCharacters(in: .whitespacesAndNewlines),
-                    type: type,
-                    category: category,
-                    start: snappedStart,
-                    durationMin: durationMin,
-                    audioURL: type == "prerecorded" ? audioURL.trimmingCharacters(in: .whitespaces) : "",
-                    image: uploaded,
-                    location: location.trimmingCharacters(in: .whitespacesAndNewlines),
-                    receiveRatings: receiveRatings,
-                    publicConsent: sharePublic && pubInfo != nil
-                        ? ["typedName": pubName.trimmingCharacters(in: .whitespaces), "accepted": true, "version": pubInfo!.publicVersion]
-                        : nil
-                )
-                // The request is saved. If the account has not agreed to the on-air terms yet, that comes next.
-                if needsAgreement { agreements = try await BackendAPI.get("/api/training") } else { dismiss() }
-            } catch {
-                errorText = (error as? BackendError)?.message ?? error.localizedDescription
-            }
-            isSubmitting = false
-        }
-    }
-}
-
 
 nonisolated struct PublicInfo: Decodable {
     let publicSharing: String?
@@ -964,6 +579,7 @@ private struct ScheduleEntryRow: View {
 
 struct ScheduleDetailView: View {
     let entry: ScheduleEntry
+    @ObservedObject private var auth = AuthManager.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) var scheme
 
@@ -991,6 +607,12 @@ struct ScheduleDetailView: View {
                             .font(BRFont.body(14, .regular))
                             .foregroundColor(scheme == .dark ? .brDkSub : .brLtSub)
                         DetailBellRow(entry: entry)
+                        // An open Auto DJ stretch: one tap starts Host a show at this time.
+                        if entry.source == "auto", entry.startAt > Date(), auth.isSignedIn, auth.currentUser?.isGuest != true {
+                            NavigationLink { HostShowView(preStart: entry.startAt, preLength: min(90, max(30, Int(entry.endAt.timeIntervalSince(entry.startAt) / 60)))) } label: {
+                                Label("Host here", systemImage: "mic.fill").font(BRFont.body(16, .semibold)).frame(minHeight: 44)
+                            }
+                        }
                         if !entry.description.isEmpty {
                             Text(entry.description)
                                 .font(BRFont.body(15, .regular))

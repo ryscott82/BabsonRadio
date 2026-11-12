@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
+import StrikesPanel from '@/components/admin/strikes/StrikesPanel'
 import Notifications, { type Notice } from '@/components/admin/Notifications'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
 import { BROADCAST_BODY_MAX, BROADCAST_TITLE_MAX } from '@/lib/broadcastGuard'
@@ -58,7 +59,8 @@ export default function NotificationsPage() {
     <div className="px-5 lg:px-8 py-6 space-y-6">
       <h1 className="text-4xl font-light leading-tight">Notifications</h1>
       <div className="grid xl:grid-cols-2 gap-6 items-start">
-        <div className="min-w-0">
+        <div className="min-w-0 space-y-6">
+          <StrikesPanel pendingOnly />
           {items === null
             ? <section className="ops-card p-5 min-h-[8rem]" aria-busy="true"><h2 className="text-2xl font-light">Inbox</h2></section>
             : <Notifications items={items} dismissedCount={dismissed} reload={loadAlerts} title="Inbox" emptyText={ALL_CLEAR} />}

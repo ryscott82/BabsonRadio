@@ -18,8 +18,8 @@ const b64 = (s: string | Buffer) => Buffer.from(s).toString('base64url')
 const mac = (secret: string, msg: string) => createHmac('sha256', secret).update(msg).digest()
 const same = (a: Buffer, b: Buffer) => a.length === b.length && timingSafeEqual(a, b)
 
-/** u: uid, n: name, s: studio session id, l: may go live (false = may only end the stream), exp: ms. */
-export interface BoothClaims { u: string; n: string; s: string; l: boolean; exp: number }
+/** u: uid, n: name, s: studio session id, l: may go live (false = may only end the stream), r: may use Record a show (Studio badge), exp: ms. */
+export interface BoothClaims { u: string; n: string; s: string; l: boolean; r?: boolean; exp: number }
 
 export function signToken(secret: string, c: BoothClaims): string {
   const body = b64(JSON.stringify(c))
@@ -35,6 +35,19 @@ export function verifyToken(secret: string, token: string, now = Date.now()): Bo
     return typeof c.exp === 'number' && c.exp > now && typeof c.u === 'string' ? c : null
   } catch { return null }
 }
+
+/** The claims of a token this site signed, even an expired one (the caller decides how old is too old). */
+export function readToken(secret: string, token: string): BoothClaims | null {
+  const [body, sig, extra] = token.split('.')
+  if (!body || !sig || extra !== undefined) return null
+  if (!same(Buffer.from(sig, 'base64url'), mac(secret, `ctl:${body}`))) return null
+  try {
+    const c = JSON.parse(Buffer.from(body, 'base64url').toString()) as BoothClaims
+    return typeof c.exp === 'number' && typeof c.u === 'string' ? c : null
+  } catch { return null }
+}
+/** A recording made on the studio PC can reach this site up to this long after its token ran out (the PC keeps retrying while the site is down). */
+export const RECORDING_TOKEN_MAX_AGE_MS = 14 * 86_400_000
 
 /** Nonce made by the page: "<ms>.<random>". */
 export const attestSig = (secret: string, nonce: string) => mac(secret, `attest:${nonce}`).toString('hex')
@@ -116,4 +129,40 @@ export function nextGain(gainDb: number, shortLufs: number, momentaryLufs: numbe
   const err = TARGET_LUFS - out
   if (Math.abs(err) <= DEADBAND_DB) return gainDb
   return clamp(gainDb + (err > 0 ? Math.min(err, STEP_UP_DB) : Math.max(err, -STEP_DOWN_DB)))
+}
+
+// ── Quiet hours and bookings on the booth page ──────────────
+export const QUIET_BANNER = 'Quiet hours: keep the volume as low as possible. No loud DJ sets.'
+export const QUIET_SOON_MS = 15 * 60_000
+export const BOOKING_SOON_MS = 90 * 60_000
+
+/** What /api/booth/studio-status says (only the parts the page uses). */
+export interface StudioStatus {
+  quiet: boolean; quietUntil: number | null; quietStartsAt: number | null
+  bookings: { id: string; startAt: number; endAt: number; name: string }[]
+}
+
+/** The quiet-hours banner at `now`, from a status that may be a few minutes old. Warning only: it never blocks anything.
+ *  'on' while quiet (until = when it ends, if known); 'soon' from 15 minutes before quiet hours start (inMs counts down). */
+export function quietBanner(st: Pick<StudioStatus, 'quiet' | 'quietUntil' | 'quietStartsAt'> | null, now: number):
+  { kind: 'on'; until: number | null } | { kind: 'soon'; inMs: number; startsAt: number } | null {
+  if (!st) return null
+  if (st.quiet && (st.quietUntil === null || now < st.quietUntil)) return { kind: 'on', until: st.quietUntil }
+  const s = st.quietStartsAt
+  if (s === null || !Number.isFinite(s)) return null
+  if (now >= s) return { kind: 'on', until: null }
+  if (s - now <= QUIET_SOON_MS) return { kind: 'soon', inMs: s - now, startsAt: s }
+  return null
+}
+
+/** The booking lines under the welcome: "Booked now by <name>" (only when the signed-in person is not the booker) and
+ *  "Next booking: <time>, <name>" when one starts within 90 minutes. Walk-ins always work: these are information only. */
+export function bookingLines(st: Pick<StudioStatus, 'bookings'> | null, myBookingId: string, now: number, time: (ms: number) => string): string[] {
+  if (!st?.bookings?.length) return []
+  const out: string[] = []
+  const cur = st.bookings.find(b => b.startAt <= now && now < b.endAt)
+  if (cur && cur.id !== myBookingId) out.push(`Booked now by ${cur.name}`)
+  const next = st.bookings.filter(b => b.startAt > now).sort((a, b) => a.startAt - b.startAt)[0]
+  if (next && next.startAt - now <= BOOKING_SOON_MS && next.id !== myBookingId) out.push(`Next booking: ${time(next.startAt)}, ${next.name}`)
+  return out
 }

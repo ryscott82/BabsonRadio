@@ -3,6 +3,7 @@ import { HttpError, handle } from '@/lib/server/http'
 import { rebuildAutoSchedule } from '@/lib/server/autoschedule'
 import { refreshNowPlaying } from '@/lib/server/nowplaying'
 import { runAutoApprove } from '@/lib/server/autoApprove'
+import { runHousekeeping } from '@/lib/server/housekeeping'
 
 export const runtime = 'nodejs'
 
@@ -17,6 +18,8 @@ export async function GET(req: Request) {
     await refreshNowPlaying().catch(() => {})
     // Show requests whose 24-hour wait is over (also run by the birthdays cron, the studio PC check and the site itself; see lib/server/autoApprove.ts).
     const slots = await runAutoApprove(adminDb()).catch(e => { console.error('[auto approve]', e); return null })
-    return { ok: true, planned: r.blocks.length, kept: r.kept, slots }
+    // Strike flags, released studio bookings, guest deletion after 90 days, finished recordings (lib/server/housekeeping.ts).
+    const housekeeping = await runHousekeeping(adminDb()).catch(e => { console.error('[housekeeping]', e); return null })
+    return { ok: true, planned: r.blocks.length, kept: r.kept, slots, housekeeping }
   })
 }

@@ -7,14 +7,14 @@ import { azuraConfigured } from '@/lib/server/azuracast'
 import { getAnnouncement } from '@/lib/server/announcement'
 import { usageStatus } from '@/lib/server/serverUsage'
 import { findAll, loadConfig as loadWords } from '@/lib/server/wordFilter'
-import { PENDING_MAX, criticalOf, shapeNext, shapePending, type HostInfo, type PendingSource } from '@/lib/todayData'
+import { PENDING_MAX, criticalOf, shapePending, shapeUpcoming, upcomingItems, type HostInfo, type PendingSource } from '@/lib/todayData'
 
 export const runtime = 'nodejs'
 
 let cache: { at: number; v: { sessions: number; hours: number } } | null = null
 let answer: { at: number; v: unknown } | null = null // the whole reply, shared for 20 seconds so several people do not each rebuild it
 
-// Everything the Today page needs in one call (E-board and Admins): on air now, the next 24 hours with each real show's host (name and email only: no other contact detail,
+// Everything the Today page needs in one call (E-board and Admins): on air now, the next student shows (at least 10) with each real show's host (name and email only: no other contact detail,
 // ever), pending show requests with why each is waiting (up to 20), the critical strip, and the last 24 hours of listening.
 // The whole reply is kept 20 s per server instance, so the page's 60 s refresh from several people costs one build.
 export async function GET(req: Request) {
@@ -25,17 +25,17 @@ export async function GET(req: Request) {
     const now = Date.now()
     const [np, feed, announcement] = await Promise.all([
       getNowPlaying(),
-      buildScheduleFeed(db, { days: 1, showStudentHosts: false, now }),
+      buildScheduleFeed(db, { days: 28, showStudentHosts: false, now, includeAuto: false }), // the same 28 day feed the schedule page uses, shared and cached
       getAnnouncement(db, now),
     ])
-    // Hosts of the real (slot) shows in the next 24 hours: one batched read of just two fields each (the airSlot id is the request id).
-    const soon = feed.filter(i => i.endAt > now && i.startAt < now + 86_400_000 && i.id.startsWith('slot-'))
+    // Hosts of the upcoming real (slot) shows, at least the next 10: one batched read of just two fields each (the airSlot id is the request id).
+    const soon = upcomingItems(feed, now).filter(i => i.id.startsWith('slot-'))
     const hosts = new Map<string, HostInfo>()
     if (soon.length) {
       const snaps = await db.getAll(...soon.map(i => db.collection('slotRequests').doc(i.id.slice(5))), { fieldMask: ['requesterName', 'requesterEmail'] })
       for (const s of snaps) if (s.exists) hosts.set(s.id, { name: String(s.get('requesterName') ?? ''), email: String(s.get('requesterEmail') ?? '') })
     }
-    const next = shapeNext(feed, hosts, now)
+    const next = shapeUpcoming(feed, hosts, now)
 
     // Pending requests (usually a handful): sorted and cut to 20 here, flags from the text and the requester's `minor` field only.
     const pendSnap = await db.collection('slotRequests').where('status', '==', 'pending').get()
@@ -48,10 +48,16 @@ export async function GET(req: Request) {
     }))
     const shown = [...pendSrc].sort((a, b) => a.startAt - b.startAt).slice(0, PENDING_MAX)
     const uids = [...new Set(shown.map(s => s.requesterUid).filter(Boolean))]
-    const minors = new Set<string>()
-    if (uids.length) for (const u of await db.getAll(...uids.map(u => db.collection('users').doc(u)), { fieldMask: ['minor'] })) if (u.exists && u.get('minor') === true) minors.add(u.id)
+    const minors = new Set<string>(), strikeCount = new Map<string, number>()
+    // `strikeLevel` and `strikeUntil` are kept on the profile when a strike is decided (lib/server/strikes.ts), so the count costs no extra read.
+    if (uids.length) for (const u of await db.getAll(...uids.map(u => db.collection('users').doc(u)), { fieldMask: ['minor', 'strikeLevel', 'strikeUntil'] })) {
+      if (!u.exists) continue
+      if (u.get('minor') === true) minors.add(u.id)
+      const until = (u.get('strikeUntil') as { toMillis?: () => number } | undefined)?.toMillis?.() ?? 0
+      if (until > now) strikeCount.set(u.id, Number(u.get('strikeLevel') ?? 0))
+    }
     const words = (await loadWords(db)).custom
-    const pending = shapePending(pendSrc, text => findAll(text, words).some(h => h.tier !== 'crude'), uid => minors.has(uid))
+    const pending = shapePending(pendSrc, text => findAll(text, words).some(h => h.tier !== 'crude'), uid => minors.has(uid), uid => strikeCount.get(uid) ?? 0)
 
     const [deadAir, usage] = await Promise.all([
       db.collection('ops').doc('deadair').get().then(d => d.get('active') === true).catch(() => false),

@@ -1013,5 +1013,103 @@
     "meaning": "Too many refused worker requests in a minute.",
     "userFix": "Wait a minute.",
     "staffCheck": "Check WORKER_SECRET and the PC clock."
+  },
+  {
+    "code": "BR-BKG-001",
+    "title": "Studio time not allowed",
+    "meaning": "The studio time breaks a rule: not on a half hour, outside opening hours, too short or too long, in the past, or too far ahead.",
+    "userFix": "Pick a time inside the opening hours, in 30-minute steps, in the length shown, within the booking window.",
+    "staffCheck": "Rules are in Admin > Settings (studio.*)."
+  },
+  {
+    "code": "BR-BKG-002",
+    "title": "Studio already booked then",
+    "meaning": "Someone else booked the studio, or a live show or pending live request holds it, at that time.",
+    "userFix": "Pick another time on the grid.",
+    "staffCheck": "Check studioBookings and the live show for that time."
+  },
+  {
+    "code": "BR-BKG-003",
+    "title": "Too many studio bookings",
+    "meaning": "This person already holds the most upcoming studio bookings allowed.",
+    "userFix": "Cancel one, or wait until one has passed.",
+    "staffCheck": "Limit is studio.maxHolds. Live shows do not count."
+  },
+  {
+    "code": "BR-BKG-004",
+    "title": "Guest list missing or not allowed",
+    "meaning": "The guest list is empty without \"just me\", has an invalid email or name, repeats someone, or is longer than the studio holds.",
+    "userFix": "List who is coming (name and email) or tick \"just me\". With you in the room, no more than the studio capacity.",
+    "staffCheck": "Capacity is studio.capacity."
+  },
+  {
+    "code": "BR-BKG-005",
+    "title": "Policy box not ticked",
+    "meaning": "The request or booking was sent without agreeing to the studio and show policy.",
+    "userFix": "Tick the policy box and send again.",
+    "staffCheck": "The accepted policy version is saved on the request or booking."
+  },
+  {
+    "code": "BR-BKG-006",
+    "title": "Studio booking not found or cannot be changed",
+    "meaning": "No such booking, it is not yours, or it has already started, been cancelled or released.",
+    "userFix": "Open My bookings and check the booking.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-BKG-007",
+    "title": "Studio training needed",
+    "meaning": "Booking the studio needs the Studio badge, and this account does not have an active one.",
+    "userFix": "Finish studio training (or renew it) to book the studio.",
+    "staffCheck": "Check the Studio badge and its expiry on the person."
+  },
+  {
+    "code": "BR-STR-001",
+    "title": "Booking and requests paused",
+    "meaning": "Three confirmed strikes this semester pause new show requests and studio bookings until the semester ends.",
+    "userFix": "Contact the E-board. Existing approved shows are not affected.",
+    "staffCheck": "Strikes page. The E-board can lift the pause by excusing a strike."
+  },
+  {
+    "code": "BR-STR-002",
+    "title": "Strike not found or already decided",
+    "meaning": "The strike does not exist, or it was already confirmed or excused.",
+    "userFix": "Reload the strikes page.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-REC-001",
+    "title": "Recording not found",
+    "meaning": "No recording like that, or it belongs to someone else.",
+    "userFix": "Open My recordings and pick one from the list.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-REC-002",
+    "title": "Confirm you listened first",
+    "meaning": "Attaching a recording to a show needs the tick \"I listened to the whole recording and it is clean\".",
+    "userFix": "Listen to the whole recording, then tick the box.",
+    "staffCheck": "Needed for clean hours and explicit-content rules."
+  },
+  {
+    "code": "BR-REC-003",
+    "title": "Recording cannot be attached here",
+    "meaning": "The show is not your pre-recorded show, has already started, or is not pending or approved.",
+    "userFix": "Attach it to an upcoming pre-recorded show of yours.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-EVT-001",
+    "title": "Club event is missing details",
+    "meaning": "A club event needs a title, a start time, and an end time after the start.",
+    "userFix": "Fill in the title and times.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-SLT-006",
+    "title": "Live show too long",
+    "meaning": "A live show request is longer than 90 minutes. Pre-recorded shows keep the longer limit.",
+    "userFix": "Pick 90 minutes or less, or make it a pre-recorded show.",
+    "staffCheck": "Existing longer live shows are left alone."
   }
 ]

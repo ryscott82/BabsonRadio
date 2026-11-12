@@ -199,6 +199,13 @@ service cloud.firestore {
       allow write: if isWorker();
     }
     // Append-only change log of every AzuraCast change (written by the API from the worker's reports), and the stored beats: server only.
+    // Studio bookings, strikes, recordings, club events, past-guest lists and the popular-times summary: server only (guest names and emails stay private).
+    match /studioBookings/{id}       { allow read, write: if false; }
+    match /strikes/{id}              { allow read, write: if false; }
+    match /recordings/{id}           { allow read, write: if false; }
+    match /clubEvents/{id}           { allow read, write: if false; }
+    match /guestHistory/{id}         { allow read, write: if false; }
+    match /popularTimes/{id}         { allow read, write: if false; }
     match /libraryChanges/{id}       { allow read, write: if false; }
     match /libraryBeats/{id}         { allow read, write: if false; }
   }

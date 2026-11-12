@@ -6,6 +6,7 @@ import { loadCpuConfig, resetCpuCache } from './cpuBudget'
 import { resetUsageStatus } from './serverUsage'
 import { loadConfig, saveConfig } from './autoschedule'
 import { loadSlotRules, resetSlotRules } from './slotRules'
+import { loadStudioRules, resetStudioRules, STUDIO_DOC } from './studioRules'
 import { SETTINGS, clipLog, planPatch, readValue, type Change, type SettingDef, type Store, type Value } from '../adminSettings'
 
 // Admin > Settings in one call: GET reads every value, PATCH saves some of them and writes one small line per changed value to settingsLog.
@@ -17,8 +18,8 @@ const META = (db: Firestore) => db.collection('config').doc('settingsMeta')
 export interface SettingRow extends SettingDef { value: Value; changed: boolean; changedAt: number | null; changedBy: string | null }
 
 async function currentDocs(db: Firestore) {
-  const [limits, cpu, auto, slots, meta] = await Promise.all([loadLimits(db), loadCpuConfig(db), loadConfig(db), loadSlotRules(db), META(db).get()])
-  return { docs: { limits, cpu, auto, slots } as Record<Store, unknown>, meta: (meta.get('m') ?? {}) as Record<string, { at?: number; by?: string }> }
+  const [limits, cpu, auto, slots, studio, meta] = await Promise.all([loadLimits(db), loadCpuConfig(db), loadConfig(db), loadSlotRules(db), loadStudioRules(db), META(db).get()])
+  return { docs: { limits, cpu, auto, slots, studio } as Record<Store, unknown>, meta: (meta.get('m') ?? {}) as Record<string, { at?: number; by?: string }> }
 }
 
 export const valuesOf = (docs: Record<Store, unknown>): Record<string, Value> => Object.fromEntries(SETTINGS.map(s => [s.key, readValue(s, docs[s.store])]))
@@ -60,7 +61,7 @@ export async function patchSettings(patch: unknown, uid: string, who: string, db
   if (errors.length) throw Object.assign(new Error(errors.join(' ')), { status: 400 })
   if (!changes.length) return { rows: await loadSettings(db), changed: [] }
 
-  const lim = nest(changes, 'limits'), cpu = nest(changes, 'cpu'), auto = nest(changes, 'auto'), slots = nest(changes, 'slots')
+  const lim = nest(changes, 'limits'), cpu = nest(changes, 'cpu'), auto = nest(changes, 'auto'), slots = nest(changes, 'slots'), studio = nest(changes, 'studio')
   if (Object.keys(lim).length) await saveLimits(lim, uid)
   if (Object.keys(cpu).length) {
     await db.collection('usage').doc('cpuConfig').set(cpu, { merge: true })
@@ -70,6 +71,10 @@ export async function patchSettings(patch: unknown, uid: string, who: string, db
   if (Object.keys(slots).length) {
     await db.collection('config').doc('slotRules').set({ ...slots, updatedAt: Date.now(), updatedBy: uid }, { merge: true })
     resetSlotRules()
+  }
+  if (Object.keys(studio).length) {
+    await db.collection(STUDIO_DOC[0]).doc(STUDIO_DOC[1]).set({ ...studio, updatedAt: Date.now(), updatedBy: uid }, { merge: true })
+    resetStudioRules()
   }
 
   await logSettingChanges(db, changes, who)

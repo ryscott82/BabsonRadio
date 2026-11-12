@@ -29,3 +29,6 @@ tools/art_report.csv
 __pycache__/
 *.pyc
 .vercel
+
+# Studio PC recordings (kept locally until uploaded)
+tools/studio-helper/recordings/

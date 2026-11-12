@@ -9,18 +9,9 @@ import { useState } from 'react'
 import { useLiveBundle } from '@/lib/liveStore'
 import ThemeToggle from './ThemeToggle'
 import { LINKS } from '@/lib/links'
-
-// Four links in the bar (search lives on the Library page, suggesting music on the "What would you like to hear?" card). Everything else (profile, requesting a spot, host panel, admin) lives in the profile menu.
-const NAV_LINKS = [
-  { href: '/', label: 'Live' },
-  { href: '/schedule', label: 'Schedule' },
-  { href: '/library', label: 'Library' },
-  { href: '/shows', label: 'Shows' },
-  { href: '/about', label: 'About' },
-]
+import { activeHref, linksFor, profileMenu } from '@/lib/siteNav'
 
 export default function Nav() {
-  const HOST_LINK = { href: '/host', label: 'Host' }
   const { user, userDoc, isAdmin, isDirector, isBabson, isGuest } = useAuth()
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)      // profile menu
@@ -37,11 +28,12 @@ export default function Nav() {
   if (pathname === '/coming-soon' || pathname.startsWith('/admin') || pathname.startsWith('/booth')) return null
 
   const showHost = hosting && !isGuest
-  const links = isGuest ? NAV_LINKS.slice(0, 1) : showHost ? [...NAV_LINKS, HOST_LINK] : NAV_LINKS // guests: Live only
+  const links = linksFor({ isGuest, hosting: showHost }) // guests: Live and Members
   const showAdmin = isAdmin || isDirector
   const canRequest = isBabson
-  const active = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href))
+  const active = (href: string) => activeHref(pathname, href)
   const item = 'block px-4 py-3 text-sm text-br-dk-text hover:bg-br-dk-surface2 transition-colors'
+  const menuLinks = profileMenu({ isStudent: canRequest, isGuest, staff: showAdmin })
   const close = () => { setMenuOpen(false); setMobileOpen(false) }
 
   return (
@@ -94,8 +86,9 @@ export default function Nav() {
               {menuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-52 sk-raised rounded-xl overflow-hidden">
                   <Link href="/profile" onClick={close} className={item}>Profile</Link>
-                  {canRequest && <Link href="/slots" onClick={close} className={`${item} border-t border-br-dk-border`}>Request a spot</Link>}
-                  {showAdmin && <Link href="/admin" onClick={close} className={`${item} border-t border-br-dk-border`}>Settings</Link>}
+                  {menuLinks.filter(l => l.href !== '/profile').map(l => (
+                    <Link key={l.href} href={l.href} onClick={close} className={`${item} border-t border-br-dk-border`}>{l.label}</Link>
+                  ))}
                   {isGuest && <Link href="/delete-account" onClick={close} className={item}>Delete account</Link>}
                   <button
                     onClick={() => { signOut(); close() }}

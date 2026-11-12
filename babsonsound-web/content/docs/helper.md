@@ -4,10 +4,14 @@ The studio PC runs Chrome in kiosk mode on **babsonradio.com/booth**. People sig
 
 ## What's on the page
 Glass screens on the oak desk, sized for the studio screen (1920×1080):
+- **Quiet hours banner** (very top): from 15 minutes before quiet hours it says "Quiet hours start in 12:34…", then during them "Quiet hours: keep the volume as low as possible. No loud DJ sets." with the end time. A warning only: it never stops anyone going live or recording. Quiet hours are set in Admin → Settings → Studio.
+- **Bookings** (next to the banner): "Booked now by Alex" when someone else has the studio booked right now, and "Next booking: 3:00 PM, Jo" when a booking starts within 90 minutes. First names only. Walk-ins always work and nobody is ever signed out because of a booking. Signing in during your own booking (from 15 minutes before) checks you in.
 - **Top**: "Welcome, Name", the last host's note, listeners and reactions, the ON AIR sign, the clock, and three buttons. **Leave a note** writes a note the next host sees at the top for 24 hours. **Audio setup** picks which input the level meter listens to (the same one BUTT streams) and which output tracks and pads play out of (it has to feed the mixer). **Sign out** ends the show first if you're live.
 - **Show screen**: the show's name, time left (red in the last 5 minutes, then time over), next ad break, how long you've been talking, time on air, station ID reminder, who's on next.
 - **Level screen**: what's going to the station (mixer level plus BUTT's gain): Good / Too quiet / Too loud / No sound / Dead air, a big bar against the target (-14 LUFS), and the **Auto level** switch.
-- **Go live / End show**: the big button. Going live also starts BUTT's recording; ending stops it. Before going live: Mic check (ticks itself), Phone silent, Clean music.
+- **Go live / Record a show**: two buttons above the big button pick the mode.
+  - **Go live**: going live also starts BUTT's recording; ending stops it. Before going live: Mic check (ticks itself), Phone silent, Clean music.
+  - **Record a show**: records in BUTT only, nothing goes on air. See "Record a show" below.
 - **Tracks**: Beds, All, or search the whole library. Tap a track to play it (fades in). Play/Pause, Fade out, Talk over, and the **Music volume** fader (tracks only, not the mics).
 - **Sound board**: 9 pads (keys 1 to 9) for IDs, jingles and effects.
 
@@ -19,8 +23,37 @@ BUTT has no command for gain, but its **Master Gain** can follow a MIDI control.
 4. Restart the helper. The page's **Auto level** button turns on; it moves BUTT's gain by at most half a dB a second toward the target, holds still in pauses, drops 3 dB if it would clip, and stays within ±12 dB. Turning it off puts BUTT back at 0 dB.
 It can't fix a mixer that is already clipping before BUTT; the level screen says so.
 
-## Recordings
-Every go-live starts BUTT's recorder and End show stops it (set `RECORD_SHOWS=0` to turn that off). Files go to BUTT's recording folder (Settings → Record).
+## Recordings of live shows
+Every go-live starts BUTT's recorder and End show stops it (set `RECORD_SHOWS=0` to turn that off). Files go to BUTT's recording folder (Settings → Record). These stay on the PC; they are not uploaded.
+
+## Record a show (pre-recorded shows and podcasts)
+For students with the **Studio badge** (E-board and admins always). The stream is never touched.
+
+**On the page**
+1. Press **Record a show** above the big button. Tick **Mic check** (ticks itself after 3 seconds of a good level) and **Phone silent**, then **Record**. The level meter works the same as for a live show.
+2. While recording: the time recorded, **Pause** / **Resume**, and **Stop**. The time doesn't count while paused. Go live is not offered while a recording is going (the helper refuses it too), and Record is not offered while the station is live from this PC.
+3. After **Stop**: a box to **listen back**, a **title**, and **What is it for?**: one of your studio bookings from today, one of your upcoming pre-recorded shows, or nothing. For a show, tick "I listened to the whole recording and it is clean" to have it attached to that show (without the tick it is saved but not attached; you can attach it later on the website). **Save** starts the upload. **Later** keeps it on the PC as "Not saved yet" (it is there the next time you sign in). **Delete** removes it for good after a second tap.
+4. Under the button each recording shows **Uploading 42%**, **Uploaded. Telling the website…**, **Uploaded** (or "Uploaded, attached to your show"), or **Failed** with a **Retry** button. "Waiting until the live show ends" means someone went live; the upload continues after.
+- Signing out (or the 10-minute idle sign-out, which never happens while recording) stops the recording and keeps it as "Not saved yet".
+- Anyone signed in can Pause or Stop a recording someone else left running; only the person who started it can Resume, listen back, or Save it.
+
+**What the helper does**
+- BUTT has no pause command, so Pause stops BUTT's recorder and Resume starts a new piece. Each piece is moved out of BUTT's record folder straight away (BUTT reuses its file name and would overwrite it) into `recordings\<id>\`. Stop joins the pieces with ffmpeg without re-encoding and reads the length with ffprobe.
+- **Upload**: straight from this PC to AzuraCast with the PC's own AzuraCast key (`AZURACAST_API_KEY`, the "Manage station media" user), never through the website. It uses **AzuraCast's file upload API** (the same chunked "flow" upload AzuraCast's own upload box and the website use), not SFTP: 2 MB pieces, and before each piece it asks AzuraCast whether it already has it, so a stopped upload carries on where it stopped. Files go into the folder **Student recordings** as `2026-11-12_1530_title_abc123.mp3`.
+- Retries: 2, 4, 8, 16, 32 seconds… up to a minute between tries. After 6 failed tries in a row it shows **Failed**; **Retry** starts again.
+- Then it tells the website (`/api/booth/recordings/start` and `/complete`, signed with `STUDIO_PC_SECRET` like the sign-in, carrying the person's own sign-in token so it counts as theirs). If the website can't be reached it keeps trying (every few minutes, for as long as it takes; up to 14 days later is accepted). The student gets the "your recording is ready" email when the website hears about it.
+- **The local file is never deleted until both the upload and the website have succeeded.** After that it is kept 7 more days, then removed (checked at start and every hour). Unsaved recordings are never removed by the helper.
+- Uploads wait while a show is live from this PC so they never take the stream's bandwidth (`UPLOAD_WHILE_LIVE=1` to change that).
+- Everything is kept in `recordings\queue.json` and `recordings\recorder.json`, so a restart of the helper or the PC loses nothing: uploads carry on, and a recording that was going is still there.
+- **Loudness (optional)**: with `NORMALIZE_RECORDINGS=1`, after a recording is uploaded and the website has it, the helper runs the PC worker's low-priority tool (`tools\normalize_loudness.py`, through `tools\pc-worker\src\python.mjs`) to measure it and set AzuraCast's **Amplify** for that one file (the file itself is not changed). It never starts while a show is live from this PC and stops if one starts. It needs Python (see the PC worker README) and the `tools` folder next to this one, or `TOOLS_DIR`. This change is not in the Music library undo log; set Amplify back in AzuraCast → Media if needed.
+
+**Settings** (`.env`, see `.env.example`): `SITE_URL`, `RECORDINGS_DIR` (default `recordings` here; needs room for a few hours of audio), `UPLOAD_FOLDER` (default `Student recordings`), `UPLOAD_WHILE_LIVE`, `FFMPEG_PATH` / `FFPROBE_PATH` (blank if on the Path), `NORMALIZE_RECORDINGS`, `TOOLS_DIR`, `PYTHON`, `AZURACAST_STATION`. The AzuraCast user behind `AZURACAST_API_KEY` needs **Manage station media** (it already has it for background music).
+
+**Setup once**
+1. **BUTT 0.1.34 or newer** (the helper reads BUTT's "record path"). In BUTT → Settings → Record, pick the format (MP3 is safest for AzuraCast) and any folder. Keep "Split recording" off.
+2. **ffmpeg** on the system Path (the PC worker needs it too). Without it, Pause still works but the pieces can't be joined; a recording with no pause doesn't need it.
+3. Give the kiosk account write access to the helper folder (or set `RECORDINGS_DIR`).
+4. Restart the helper. It prints `Recordings: <folder>` when it starts.
 
 Ad break times are set in **Settings → Studio PC log → Ad breaks** (minutes past each hour and length).
 
@@ -62,7 +95,18 @@ Exit kiosk Chrome with Alt+F4.
 | Meter reads very different from BUTT | Pick the same device under **Sound → Mixer input** as BUTT's input. BUTT's own gain or compressor also changes what goes out. |
 | "The music library is not set up" | Fill in the AzuraCast lines in `.env` and restart the helper. |
 | Background music plays but listeners can't hear it | The music output isn't reaching the mixer/BUTT. See step 7. |
+| Record says "BUTT did not say where it saved the recording" | Update BUTT to 0.1.34 or newer. The recording is still in BUTT's record folder; copy it somewhere safe. |
+| "Could not move BUTT's recording" | Another program has the file open (antivirus, a file sync). The message says where the file is. Exclude BUTT's record folder from sync. |
+| "Could not join the recording (is ffmpeg installed?)" | Put ffmpeg on the system Path (or set `FFMPEG_PATH`) and restart the helper. The pieces are in `recordings\<id>\`. |
+| Recording stuck on **Failed** | Usually AzuraCast is unreachable or `AZURACAST_API_KEY` lost "Manage station media". Fix it and press **Retry**. The file stays on the PC. |
+| "Uploaded. Telling the website…" for a long time | The website can't be reached, or refused (the line under the list says why). It keeps trying by itself; the file stays on the PC. A refusal "Sign in again on the studio PC" means `STUDIO_PC_SECRET` differs from Vercel or the PC clock is off. |
+| "Waiting until the live show ends" with nobody live | BUTT is still connected. Disconnect in BUTT. |
+| Record button says "Finish studio training to record" | The person has no active Studio badge. |
+| Disk filling up | Finished recordings are removed 7 days after they are saved. Unsaved ones ("Not saved yet") stay until their owner saves or deletes them; old ones can be deleted from `recordings\` by hand once you've checked nobody needs them. |
 | Go live works but listeners hear the music | BUTT connected to the wrong server, or AzuraCast isn't letting the DJ login override (check Streamers/DJs). |
+
+## Tests
+`npm test` in this folder (Node 18+; 22 recommended). No BUTT, AzuraCast or website needed: they cover the upload retries and resuming, the status flow (Uploading → Uploaded / Failed → Retry), the website being down, the 7-day cleanup, waiting while live, Pause/Resume/Stop with a pretend BUTT, the loudness step, and the whole helper over HTTP (record → listen back → save → upload → website) with a pretend BUTT, ffmpeg, AzuraCast and website. The quiet-hours banner timing and booking lines are tested in the website (`npm test` in `babsonsound-web`, `lib/booth.test.ts`).
 
 ## Testing on a laptop
 Set `ALLOW_LOCALHOST=1` in `.env`, run `npm run dev` in `babsonsound-web`, and open `http://localhost:3000/booth`. Use the same `STUDIO_PC_SECRET` in `.env.local`.

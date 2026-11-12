@@ -1,5 +1,6 @@
 'use client'
 
+import { standingFlag } from '@/lib/strikesAdmin'
 import { roleLabel } from '@/lib/roleLabel'
 import { Pick, MoreButton, usePaged, matchAll } from '@/components/admin/FilterBar'
 import { useCallback, useEffect, useState } from 'react'
@@ -11,7 +12,7 @@ import { gradYearOptions } from '@/lib/terms'
 import { isTestEmail } from '@/lib/testAccount'
 
 type Level = 'guest' | 'student' | 'director' | 'admin'
-interface Row { id: string; name: string; firstName: string; lastName: string; gradYear: string; username: string; email: string; level: Level; studioTrained: boolean; radioTrained: boolean; instagram: string; awaitingVerify: boolean; owner: boolean; you: boolean }
+interface Row { id: string; name: string; firstName: string; lastName: string; gradYear: string; username: string; email: string; level: Level; studioTrained: boolean; radioTrained: boolean; strikeLevel?: number; bannedUntil?: number | null; instagram: string; awaitingVerify: boolean; owner: boolean; you: boolean }
 
 interface Gone { id: string; email: string; name: string; level: string; reason: string; by: string; at: number; done: boolean }
 interface Invite { email: string; level: Level; studioTrained: boolean; radioTrained: boolean; mailedAt?: number }
@@ -219,7 +220,7 @@ export default function AdminUsersPage() {
           return (
             <div key={r.id} className="sk-raised rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm text-br-dk-text truncate">{r.name || '(no name)'}{r.username ? ` · @${r.username}` : ''}</p>
+                <p className="text-base text-br-dk-text truncate">{r.name || '(no name)'}{r.username ? ` · @${r.username}` : ''}{standingFlag(r.strikeLevel ?? 0, r.bannedUntil) ? <span className="ml-2 text-br-red text-sm font-semibold">{standingFlag(r.strikeLevel ?? 0, r.bannedUntil)}</span> : null}</p>
                 <p className="text-xs text-br-dk-sub truncate">{r.email}{r.owner ? ' · owner' : ''}{r.awaitingVerify ? ' · role starts when the email is verified' : ''}</p>
                 {(!r.owner || r.you) && <button type="button" onClick={() => (editId === r.id ? setEditId('') : startEdit(r))} aria-expanded={editId === r.id}
                         className="text-xs text-br-dk-sub underline" aria-label={`Edit details for ${r.name || r.email}`}>{editId === r.id ? 'Close' : 'Edit details'}</button>}

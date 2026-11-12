@@ -20,6 +20,7 @@ export async function GET(req: Request) {
       audioURL: String(d.get('audioURL') ?? ''), groupId: String(d.get('groupId') ?? ''), held: d.get('held') === true, heldNote: String(d.get('heldNote') ?? ''),
       autoApproveAt: (d.get('autoApproveAt')?.toMillis?.() as number | undefined) ?? null, autoBlockedReason: String(d.get('autoBlockedReason') ?? ''), autoEligible: d.get('autoEligible') !== false,
       cleanHours: d.get('cleanHours') === true, makePublic: d.get('makePublic') === true,
+      guests: (d.get('guests') as unknown[] | undefined) ?? [], justMe: d.get('justMe') === true, noStudio: d.get('noStudio') === true, // E-board and Admin only
     })).sort((a, b) => a.startAt - b.startAt)
     return { requests }
   })

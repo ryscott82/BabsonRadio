@@ -8,7 +8,7 @@ import type { SettingDef, SettingTier, SettingValue } from './settingRow.ts'
 /** A row as GET /api/admin/settings returns it (and PATCH returns the whole list again). */
 export interface ServerSetting {
   key: string; label: string; level: 1 | 2 | 3
-  kind: 'bool' | 'int' | 'num' | 'enum'
+  kind: 'bool' | 'int' | 'num' | 'enum' | 'date' | 'text'
   min?: number; max?: number; options?: readonly (string | number)[]
   default: boolean | number | string; value: boolean | number | string
   changed: boolean; changedAt: number | null; changedBy: string | null
@@ -88,6 +88,19 @@ export const SETTING_UI: Readonly<Record<string, SettingUi>> = Object.fromEntrie
   ['slots.weekLimit', { group: 'Show requests', label: 'How many shows can one person have approved automatically each week?', help: 'After this many automatic approvals in a week, that person\u2019s next requests wait for staff.', affects: SLOT_WHO, keywords: 'auto approve limit slot week' }],
   ['slots.maxRepeatWeeks', { group: 'Show requests', label: 'Most extra weeks a request can repeat', help: 'How many more weeks a student can ask for in one request. 0 turns repeating off.', unit: 'weeks', affects: 'every student\u2019s repeat requests', keywords: 'repeat weekly slot' }],
   ['slots.minLeadHours', { group: 'Show requests', label: 'Fewest hours ahead a show can be requested', help: 'A student cannot request a show that starts sooner than this.', unit: 'hours', affects: 'which shows every student can request', keywords: 'lead time notice slot' }],
+  ['studio.capacity', { group: 'Studio', label: 'How many people can be in the studio at once?', help: 'Counts the person who booked. A booking or show request cannot list more guests than fit.', unit: 'people', affects: 'every studio booking and show request', keywords: 'studio capacity guests room' }],
+  ['studio.openHour', { group: 'Studio', label: 'Studio bookings open at', help: 'The earliest start for a studio booking.', hour: true, affects: 'every studio booking' }],
+  ['studio.closeHour', { group: 'Studio', label: 'Studio bookings close at', help: 'A studio booking must end by this hour.', unit: 'o\u2019clock (24-hour)', affects: 'every studio booking' }],
+  ['studio.minMinutes', { group: 'Studio', label: 'Shortest studio booking', help: 'Bookings go in 30-minute steps.', unit: 'minutes', affects: 'every studio booking' }],
+  ['studio.maxMinutes', { group: 'Studio', label: 'Longest studio booking', help: 'Bookings go in 30-minute steps.', unit: 'minutes', affects: 'every studio booking' }],
+  ['studio.maxHolds', { group: 'Studio', label: 'Studio bookings one person can hold', help: 'Upcoming bookings at one time. Live shows do not count.', affects: 'every member who books the studio' }],
+  ['studio.lookAheadDays', { group: 'Studio', label: 'How far ahead the studio can be booked', help: 'The furthest day a member can book.', unit: 'days', affects: 'every studio booking' }],
+  ['studio.cancelHours', { group: 'Studio', label: 'Free cancel until', help: 'Hours before a booking when cancelling is still free.', unit: 'hours', affects: 'every studio booking' }],
+  ['studio.graceMinutes', { group: 'Studio', label: 'Release an unused booking after', help: 'If nobody checks in this long after the start, the booking is released and the person is emailed.', unit: 'minutes', affects: 'every studio booking' }],
+  ['studio.quiet', { group: 'Studio', label: 'Quiet hours', help: 'Days and hour ranges, like Mon-Fri 9-16; Mon-Fri 22-7. Members see a warning. Nothing is blocked.', affects: 'the warning on bookings and show requests', keywords: 'quiet hours volume loud' }],
+  ['strikes.studioNoShow', { group: 'Strikes', label: 'Flag a strike for a missed studio booking', help: 'Off by default. When on, a booking nobody checked in to is flagged for the E-board to review. It never becomes a strike by itself.', affects: 'every member who books the studio' }],
+  ['strikes.semesterEnd', { group: 'Strikes', label: 'Strikes end on', help: 'Confirmed strikes stop counting after this date (end of day, station time). Update it each semester.', affects: 'every member with a strike', keywords: 'semester expire' }],
+  ['strikes.lateCancelHours', { group: 'Strikes', label: 'Flag a show cancelled less than this far ahead', help: 'A cancellation closer to the start than this is flagged for review. 0 turns it off.', unit: 'hours', affects: 'every member who cancels a show' }],
   ['cpu.auto', { group: 'Server time', label: 'Slow features down automatically', help: 'When the month fills up, reactions, ratings and other extras slow down or turn off by themselves.', affects: LISTENERS, risk: 'Off means nothing slows down until you do it by hand, and the site can be paused.', keywords: 'vercel cpu tiers' }],
   ['cpu.protection', { group: 'Server time', label: 'How early should the site slow things down to protect server time?', help: 'How early the site slows extras down as the month’s server time fills. Strict starts earlier, Relaxed later. Custom means the individual values were changed by hand; choosing a level replaces them.', optionLabels: { relaxed: 'Relaxed', normal: 'Normal', strict: 'Strict', custom: 'Custom' }, affects: LISTENERS, risk: 'Relaxed lets the month fill further before anything slows down, and the site can be paused.', keywords: 'protection preset thresholds tiers vercel cpu' }],
   ['cpu.nowPlayingDirect', { group: 'Server time', label: 'Read “now playing” straight from the radio server', help: 'Pages read the radio server’s public feed instead of asking our server. Saves server time.', optionLabels: { auto: 'Automatic', on: 'Always on', off: 'Off' }, affects: LISTENERS, risk: 'If the feed is down, now playing can go stale.', keywords: 'direct feed' }],
@@ -105,7 +118,7 @@ const asValue = (kind: ServerSetting['kind'], v: SettingValue): SettingValue => 
 export function toRow(s: ServerSetting): { def: SettingDef; value: SettingValue; changedAt: number | null; changedBy: string | null } {
   const ui = SETTING_UI[s.key]
   const num = s.kind === 'int' || s.kind === 'num'
-  const kind: SettingDef['kind'] = s.kind === 'bool' ? 'boolean' : s.kind === 'enum' ? 'choice' : ui?.hour ? 'hour' : 'number'
+  const kind: SettingDef['kind'] = s.kind === 'bool' ? 'boolean' : s.kind === 'enum' ? 'choice' : s.kind === 'date' ? 'date' : s.kind === 'text' ? 'text' : ui?.hour ? 'hour' : 'number'
   const optionLabel = (o: string | number) => ui?.optionLabels?.[String(o)] ?? (ui?.unit ? `${o} ${ui.unit}` : String(o))
   const def: SettingDef = {
     id: s.key, tier: TIER_OF_LEVEL[s.level], level: s.level, visible: s.visible ?? 'expert', ...(s.enforced === false ? { notEnforced: true } : {}),

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, signIn, signOut } from '@/lib/auth'
-import { adBreak, type AdPlan, type LevelState } from '@/lib/booth'
+import { QUIET_BANNER, adBreak, bookingLines, quietBanner, type AdPlan, type LevelState, type StudioStatus } from '@/lib/booth'
 import { errText, helper, loadPref, mmss, savePref, type Butt, type Track } from '@/components/booth/helper'
 import { useInputMeter } from '@/components/booth/useInputMeter'
 import LevelMeter from '@/components/booth/LevelMeter'
@@ -15,14 +15,17 @@ import EmojiGlyph from '@/components/EmojiGlyph'
 import { useAutoGain } from '@/components/booth/useAutoGain'
 import { useListeners } from '@/components/booth/useListeners'
 import NoteBox from '@/components/booth/NoteBox'
+import RecordShow, { useRecState } from '@/components/booth/RecordShow'
+import { useStudioStatus } from '@/components/booth/useStudioStatus'
 
 // Studio PC kiosk (Chrome --kiosk on babsonradio.com/booth): glass screens on the oak desk. Top: the show and its time left,
-// and the level (with auto level). Bottom: the big Go live / End show button, tracks, and the sound board.
+// and the level (with auto level). Bottom: the big Go live / End show button (or Record a show), tracks, and the sound board.
+// Above it all: the quiet-hours banner and who has the studio booked (information only: walk-ins always work, nothing is ever blocked).
 // Talks to the studio helper on 127.0.0.1 (tools/studio-helper), which drives BUTT. Only works on the studio PC.
 
 interface Show { title: string; occId: string; startAt: number; endAt: number }
 interface Session {
-  sessionId: string; name: string; firstName: string; level: string; canGoLive: boolean; reason: string
+  sessionId: string; name: string; firstName: string; level: string; canGoLive: boolean; canRecord?: boolean; reason: string
   show: Show | null; nextShow: Show | null; token: string; tokenExp: number
   ads: AdPlan; note: { text: string; by: string; at: number } | null
   next: { title: string; hosts: string[]; startAt: number } | null
@@ -106,7 +109,7 @@ function SignInBox() {
 }
 
 function Console({ butt, buttErr }: { butt: Butt | null; buttErr: string }) {
-  const { isGuest } = useAuth()
+  const { isGuest, user } = useAuth()
   const [s, setS] = useState<Session | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState('')
@@ -150,6 +153,11 @@ function Console({ butt, buttErr }: { butt: Butt | null; buttErr: string }) {
     return (cur && cur.tokenExp - Date.now() > 60_000 ? cur : await refresh()).token
   }, [refresh])
   const auto = useAutoGain(meter.frame, token)
+  const studio = useStudioStatus(!isGuest)
+  const rec = useRecState(token)
+  const recording = !!rec.st && rec.st.recorder.state !== 'idle'
+  const [mode, setMode] = useState<'live' | 'record'>('live')
+  const shownMode = live || connecting ? 'live' : recording ? 'record' : mode
 
   const report = useCallback((kind: string, extra: Record<string, unknown> = {}) => {
     const id = sessionRef.current?.sessionId
@@ -187,21 +195,23 @@ function Console({ butt, buttErr }: { butt: Butt | null; buttErr: string }) {
       await helper('/live/stop', { token: await token() })
       await report('live_stop').catch(() => {})
     }
+    // A recording is stopped and kept on this PC; it shows as "Not saved yet" next time they sign in.
+    if (recording) await helper('/record/stop', { token: await token() }).catch(() => {})
     await leave('sign_out')
   })
 
-  // Sign out by itself after 10 quiet minutes, but never while on air.
+  // Sign out by itself after 10 quiet minutes, but never while on air or recording.
   useEffect(() => {
     const touch = () => { lastActive.current = Date.now() }
     if (!lastActive.current) touch()
     const evs = ['pointerdown', 'keydown'] as const
     evs.forEach(e => window.addEventListener(e, touch))
     const t = setInterval(() => {
-      if (!live && !connecting && Date.now() - lastActive.current > IDLE_MS) leave('idle_out').catch(() => {})
+      if (!live && !connecting && !recording && Date.now() - lastActive.current > IDLE_MS) leave('idle_out').catch(() => {})
     }, 15_000)
     return () => { evs.forEach(e => window.removeEventListener(e, touch)); clearInterval(t) }
-  }, [live, connecting, leave])
-  useEffect(() => { if (live) lastActive.current = Date.now() }, [live])
+  }, [live, connecting, recording, leave])
+  useEffect(() => { if (live || recording) lastActive.current = Date.now() }, [live, recording])
 
   if (isGuest) {
     return (
@@ -221,6 +231,7 @@ function Console({ butt, buttErr }: { butt: Butt | null; buttErr: string }) {
 
   return (
     <div className="flex flex-col gap-6 xl:h-[calc(100dvh-3rem)]">
+      <StudioNotices status={studio.status} myBookingId={studio.myBookingId} />
       <header className="flex items-center gap-6">
         <div className="min-w-0 flex-1 hw-desk-text">
           <h1 className="hw-title text-6xl leading-none truncate">Welcome, {s?.firstName || '…'}</h1>
@@ -243,10 +254,10 @@ function Console({ butt, buttErr }: { butt: Butt | null; buttErr: string }) {
         {confirmOut ? (
           <>
             <button type="button" className={hb} onClick={() => setConfirmOut(false)}>Stay</button>
-            <button type="button" className={`${hb} gbtn-stop`} onClick={signOutNow} disabled={!!busy}>End show and sign out</button>
+            <button type="button" className={`${hb} gbtn-stop`} onClick={signOutNow} disabled={!!busy}>{live ? 'End show and sign out' : 'Stop recording and sign out'}</button>
           </>
         ) : (
-          <button type="button" className={hb} onClick={() => (live ? setConfirmOut(true) : signOutNow())} disabled={!!busy}>Sign out</button>
+          <button type="button" className={hb} onClick={() => (live || recording ? setConfirmOut(true) : signOutNow())} disabled={!!busy}>Sign out</button>
         )}
       </header>
 
@@ -257,10 +268,22 @@ function Console({ butt, buttErr }: { butt: Butt | null; buttErr: string }) {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1.75fr_1fr] min-h-0 flex-1">
-        <div className="hw-screen p-6">
-          <GoLive live={live} connecting={connecting} recording={!!butt?.recording} onAirSeconds={butt?.streamSeconds ?? 0}
-                  canGoLive={!!s?.canGoLive} reason={s?.reason ?? ''} ready={ready} busy={busy}
-                  level={meter.stats.state} ads={s?.ads ?? null} onGoLive={goLive} onEnd={endShow} onPlayAds={() => setAdCue(n => n + 1)} />
+        <div className="hw-screen p-6 flex flex-col gap-4 min-h-0">
+          {!live && !connecting && !recording && (
+            <div className="flex gap-2" role="group" aria-label="Mode">
+              <button type="button" className="gbtn h-12 flex-1 text-xl" aria-pressed={shownMode === 'live'} onClick={() => setMode('live')}>Go live</button>
+              <button type="button" className="gbtn h-12 flex-1 text-xl" aria-pressed={shownMode === 'record'} onClick={() => setMode('record')}>Record a show</button>
+            </div>
+          )}
+          <div className="flex-1 min-h-0">
+            {shownMode === 'live' ? (
+              <GoLive live={live} connecting={connecting} recording={!!butt?.recording} onAirSeconds={butt?.streamSeconds ?? 0}
+                      canGoLive={!!s?.canGoLive} reason={s?.reason ?? ''} ready={ready} busy={busy}
+                      level={meter.stats.state} ads={s?.ads ?? null} onGoLive={goLive} onEnd={endShow} onPlayAds={() => setAdCue(n => n + 1)} />
+            ) : (
+              <RecordShow st={rec.st} reload={rec.reload} getToken={token} live={live || connecting} ready={ready} level={meter.stats.state} myUid={user?.uid ?? ''} />
+            )}
+          </div>
         </div>
         <div className="hw-screen p-6 min-h-0">
           <MusicPlayer getToken={token} live={live} output={devices.music} idCue={idCue} adCue={adCue} onAired={onAired} />
@@ -272,6 +295,30 @@ function Console({ butt, buttErr }: { butt: Butt | null; buttErr: string }) {
 
       {modal === 'sound' && <DeviceSettings value={devices} onChange={changeDevices} refresh={meter.devicesChanged} onClose={() => setModal('')} />}
       {modal === 'note' && s && <NoteBox sessionId={s.sessionId} onClose={() => setModal('')} />}
+    </div>
+  )
+}
+
+const fmtClock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+
+/** The quiet-hours banner (from 15 minutes before, with a countdown) and who has the studio booked. Warnings only. */
+function StudioNotices({ status, myBookingId }: { status: StudioStatus | null; myBookingId: string }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [])
+  const q = quietBanner(status, now)
+  const lines = bookingLines(status, myBookingId, now, fmtClock)
+  if (!q && !lines.length) return null
+  return (
+    <div className="flex items-center gap-6 flex-wrap">
+      {q && (
+        <div className="hw-screen px-6 py-3 flex-1 min-w-[40%]" role="status">
+          <p className="hw-title text-3xl warn">
+            {q.kind === 'soon' ? `Quiet hours start in ${mmss(q.inMs / 1000)}. Keep the volume as low as possible. No loud DJ sets.` : QUIET_BANNER}
+          </p>
+          {q.kind === 'on' && q.until && <p className="lbl text-lg">Until {fmtClock(q.until)}.</p>}
+        </div>
+      )}
+      {lines.length > 0 && <p className="hw-desk-text text-2xl">{lines.join(' · ')}</p>}
     </div>
   )
 }

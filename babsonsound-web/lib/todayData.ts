@@ -13,6 +13,8 @@ export interface PendingSource {
 export interface PendingRow {
   id: string; title: string; hostName: string; hostUid: string; startAt: number; durationMin: number; type: string
   autoApproveAt: number | null; autoBlockedReason: string; held: boolean; flags: PendingFlag[]
+  /** Confirmed strikes this semester (0 to 3). The count only: no reasons, no names of anything else. */
+  strikes: number
 }
 
 /** Most pending requests sent in the one dashboard call. The page shows `pendingTotal` for the rest. */
@@ -29,10 +31,10 @@ export function pendingFlags(i: { explicit: boolean; minor: boolean; cleanHours:
 }
 
 /** Soonest first, at most PENDING_MAX rows, each with only the listed fields. `explicitOf` and `minorOf` look at the text and the requester. */
-export function shapePending(src: PendingSource[], explicitOf: (text: string) => boolean, minorOf: (uid: string) => boolean): { rows: PendingRow[]; total: number } {
+export function shapePending(src: PendingSource[], explicitOf: (text: string) => boolean, minorOf: (uid: string) => boolean, strikesOf: (uid: string) => number = () => 0): { rows: PendingRow[]; total: number } {
   const rows = [...src].sort((a, b) => a.startAt - b.startAt).slice(0, PENDING_MAX).map(s => ({
     id: s.id, title: s.title, hostName: s.requesterName, hostUid: s.requesterUid, startAt: s.startAt, durationMin: s.durationMin, type: s.type,
-    autoApproveAt: s.autoApproveAt, autoBlockedReason: s.autoBlockedReason, held: s.held,
+    autoApproveAt: s.autoApproveAt, autoBlockedReason: s.autoBlockedReason, held: s.held, strikes: strikesOf(s.requesterUid),
     flags: pendingFlags({ explicit: explicitOf(`${s.title} ${s.description} ${s.location}`), minor: minorOf(s.requesterUid), cleanHours: s.cleanHours, conductSigned: s.conductSigned, autoBlockedReason: s.autoBlockedReason }),
   }))
   return { rows, total: src.length }
@@ -42,18 +44,30 @@ export interface NextItem { id: string; title: string; startAt: number; endAt: n
 export interface HostInfo { name: string; email: string }
 export interface NextRow { title: string; startAt: number; endAt: number; source: string; hostName?: string; hostEmail?: string }
 
+function nextRow(i: NextItem, hosts: ReadonlyMap<string, HostInfo>): NextRow {
+  const row: NextRow = { title: i.title, startAt: i.startAt, endAt: i.endAt, source: i.source }
+  if (i.source === 'auto') return row
+  const h = i.id.startsWith('slot-') ? hosts.get(i.id.slice(5)) : undefined
+  const name = h?.name || (i.hosts ?? []).join(', ')
+  if (name) row.hostName = name
+  if (h?.email) row.hostEmail = h.email
+  return row
+}
+
 /** The next 24 hours. Only a real show (anything that is not an Auto DJ block) carries `hostName`, and `hostEmail` only when a request on file has one. */
 export function shapeNext(items: NextItem[], hosts: ReadonlyMap<string, HostInfo>, now: number, max = 12): NextRow[] {
-  return items.filter(i => i.endAt > now && i.startAt < now + 86_400_000).sort((a, b) => a.startAt - b.startAt).slice(0, max).map(i => {
-    const row: NextRow = { title: i.title, startAt: i.startAt, endAt: i.endAt, source: i.source }
-    if (i.source === 'auto') return row
-    const h = i.id.startsWith('slot-') ? hosts.get(i.id.slice(5)) : undefined
-    const name = h?.name || (i.hosts ?? []).join(', ')
-    if (name) row.hostName = name
-    if (h?.email) row.hostEmail = h.email
-    return row
-  })
+  return items.filter(i => i.endAt > now && i.startAt < now + 86_400_000).sort((a, b) => a.startAt - b.startAt).slice(0, max).map(i => nextRow(i, hosts))
 }
+
+/** Coming up on the home page: at least the next 10 student shows however far away (every one in the next 24 hours if there are more), at most 30. No Auto DJ blocks. */
+export const UPCOMING_MIN = 10
+export const UPCOMING_MAX = 30
+export function upcomingItems(items: NextItem[], now: number): NextItem[] {
+  const real = items.filter(i => i.source !== 'auto' && i.endAt > now).sort((a, b) => a.startAt - b.startAt)
+  const inDay = real.filter(i => i.startAt < now + 86_400_000).length
+  return real.slice(0, Math.min(UPCOMING_MAX, Math.max(UPCOMING_MIN, inDay)))
+}
+export const shapeUpcoming = (items: NextItem[], hosts: ReadonlyMap<string, HostInfo>, now: number): NextRow[] => upcomingItems(items, now).map(i => nextRow(i, hosts))
 
 export type ServerTime = 'ok' | 'critical' | 'over'
 export interface Critical { siteDown: boolean; deadAir: boolean; serverTime: ServerTime }

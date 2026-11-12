@@ -1,0 +1,45 @@
+import { Timestamp } from 'firebase-admin/firestore'
+import { adminDb } from '@/lib/server/admin'
+import { HttpError, handle, readJson, str } from '@/lib/server/http'
+import { recordingCaller } from '@/lib/server/boothRecordings'
+import { cleanRecordingId } from '@/lib/recordingsCore'
+import { assertClean } from '@/lib/server/wordFilter'
+
+export const runtime = 'nodejs'
+
+// "Record a show" on the studio PC: { title, bookingId?, requestId?, cleanConfirmed?, id?, token? } -> { id }. Only the details are kept here; the PC
+// uploads the file straight to AzuraCast with its own key (never through this site). Members with the Studio badge, or the studio PC on their behalf
+// (signed headers + their control token, see recordingCaller). `id` is the PC's own id for the recording: sending it again returns the same record.
+// requestId is the pre-recorded show it is for: it is attached when the upload is complete, if cleanConfirmed is true and the show still qualifies.
+export async function POST(req: Request) {
+  return handle(async () => {
+    const b = await readJson(req)
+    const who = await recordingCaller(req, b)
+    const title = str(b.title, 80)
+    if (!title) throw new HttpError(400, 'Give the recording a title.')
+    const db = adminDb()
+    await assertClean(db, title, '')
+    const bookingId = str(b.bookingId, 100), requestId = str(b.requestId, 100)
+    if (bookingId) {
+      const bk = await db.collection('studioBookings').doc(bookingId).get()
+      if (!bk.exists || bk.get('uid') !== who.uid) throw new HttpError(404, 'Booking not found.', 'BR-BKG-006')
+    }
+    if (requestId) {
+      const rq = await db.collection('slotRequests').doc(requestId).get()
+      if (!rq.exists || rq.get('requesterUid') !== who.uid || rq.get('type') !== 'prerecorded') throw new HttpError(404, 'Show not found.', 'BR-REC-003')
+    }
+    const doc = {
+      uid: who.uid, title, ...(bookingId ? { bookingId } : {}), ...(requestId ? { forRequestId: requestId, cleanConfirmed: b.cleanConfirmed === true } : {}),
+      azuracastPath: '', durationSec: 0, status: 'recording', createdAt: Timestamp.now(), ...(who.viaPc ? { fromStudioPc: true } : {}),
+    }
+    const pcId = cleanRecordingId(b.id)
+    if (!pcId) return { id: (await db.collection('recordings').add(doc)).id }
+    const ref = db.collection('recordings').doc(pcId)
+    await db.runTransaction(async tx => {
+      const d = await tx.get(ref)
+      if (d.exists) { if (d.get('uid') !== who.uid) throw new HttpError(409, 'That recording id is taken.', 'BR-REC-001'); return }
+      tx.create(ref, doc)
+    })
+    return { id: pcId }
+  })
+}

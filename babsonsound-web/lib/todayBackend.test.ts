@@ -119,7 +119,7 @@ test('pending rows: the listed fields only, soonest first, at most 20, flags for
   const rows = Array.from({ length: 25 }, (_, i) => pend({ id: `r${i}`, startAt: (25 - i) * HOUR }))
   const out = shapePending(rows, () => false, () => false)
   assert.equal(out.rows.length, PENDING_MAX); assert.equal(out.total, 25); assert.equal(out.rows[0].id, 'r24')
-  assert.deepEqual(Object.keys(out.rows[0]).sort(), ['autoApproveAt', 'autoBlockedReason', 'durationMin', 'flags', 'held', 'hostName', 'hostUid', 'id', 'startAt', 'title', 'type'])
+  assert.deepEqual(Object.keys(out.rows[0]).sort(), ['autoApproveAt', 'autoBlockedReason', 'durationMin', 'flags', 'held', 'hostName', 'hostUid', 'id', 'startAt', 'strikes', 'title', 'type'])
   const f = pendingFlags({ explicit: true, minor: true, cleanHours: true, conductSigned: false, autoBlockedReason: 'conflict' })
   assert.deepEqual(f, ['explicit', 'minor', 'cleanHours', 'agreementUnsigned', 'conflict'])
   assert.deepEqual(pendingFlags({ explicit: false, minor: false, cleanHours: false, conductSigned: true, autoBlockedReason: '' }), [])
@@ -140,7 +140,7 @@ test('the dashboard never carries a phone number, whatever the stored documents 
   assert.doesNotMatch(all, /phone/i); assert.doesNotMatch(all, /\d{3}[-. ]?\d{3}[-. ]?\d{4}/); assert.doesNotMatch(all, /\+1\d{10}/)
   const route = src('app/api/admin/dashboard/route.ts')
   assert.doesNotMatch(route, /phone/i, 'the route never reads a phone field')
-  assert.match(route, /fieldMask: \['requesterName', 'requesterEmail'\]/); assert.match(route, /fieldMask: \['minor'\]/)
+  assert.match(route, /fieldMask: \['requesterName', 'requesterEmail'\]/); assert.match(route, /fieldMask: \['minor', 'strikeLevel', 'strikeUntil'\]/)
   assert.match(route, /< 20_000/, 'kept 20 s per instance')
 })
 
@@ -258,7 +258,7 @@ test('each row says where it shows (main or expert) and whether the server uses 
   const main = SETTINGS.filter(s => s.visible === 'main').map(s => s.key)
   assert.deepEqual(main.sort(), [
     'cpu.budgetHours', 'cpu.protection', 'cpu.reactionsLocked', 'limits.guest.idleMin', 'limits.guest.quietEnabled', 'limits.guest.quietEnd', 'limits.guest.quietStart', 'limits.guest.sessionMaxMin',
-    'limits.student.idleMin', 'limits.student.quietEnabled', 'limits.student.quietEnd', 'limits.student.quietStart', 'limits.student.sessionMaxMin', 'slots.afterHours', 'slots.weekLimit',
+    'limits.student.idleMin', 'limits.student.quietEnabled', 'limits.student.quietEnd', 'limits.student.quietStart', 'limits.student.sessionMaxMin', 'slots.afterHours', 'slots.weekLimit', 'studio.capacity',
   ])
   for (const w of ['student', 'guest']) for (const k of ['dailyCapMin', 'dailyAutoMin']) {
     const s = BY_KEY.get(`limits.${w}.${k}`)!; assert.equal(s.visible, 'expert'); assert.equal(s.enforced, false)

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { adBreak, attestSig, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
+import { QUIET_BANNER, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
 
 const S = 'test-secret-123'
 
@@ -73,4 +73,40 @@ test('auto level moves slowly toward -14, holds in pauses, drops fast on clippin
   let g = 0
   for (let i = 0; i < 60; i++) g = nextGain(g, -22, -21, false)
   assert.ok(Math.abs(-22 + g - -14) <= 1)                // settles within a minute
+})
+
+test('readToken keeps the signature check but not the expiry; r is carried', () => {
+  const now = 1_800_000_000_000
+  const t = signToken(S, { u: 'abc', n: 'Ryan', s: 's', l: false, r: true, exp: now - 86_400_000 })
+  assert.equal(verifyToken(S, t, now), null)
+  assert.equal(readToken(S, t)?.r, true)
+  assert.equal(readToken('other', t), null)
+  assert.equal(readToken(S, t.slice(0, -2) + 'xx'), null)
+})
+
+test('quiet banner: 15 minutes before with a countdown, on during, off after; never blocks', () => {
+  const start = 1_800_000_000_000, end = start + 7 * 3_600_000
+  const before = { quiet: false, quietUntil: null, quietStartsAt: start }
+  assert.equal(quietBanner(before, start - 16 * 60_000), null)
+  assert.deepEqual(quietBanner(before, start - 15 * 60_000), { kind: 'soon', inMs: 15 * 60_000, startsAt: start })
+  assert.deepEqual(quietBanner(before, start - 61_000), { kind: 'soon', inMs: 61_000, startsAt: start })
+  assert.deepEqual(quietBanner(before, start), { kind: 'on', until: null }) // the status is a few minutes old: still switches on time
+  const during = { quiet: true, quietUntil: end, quietStartsAt: null }
+  assert.deepEqual(quietBanner(during, start + 1000), { kind: 'on', until: end })
+  assert.equal(quietBanner(during, end), null)
+  assert.equal(quietBanner(null, start), null)
+  assert.equal(quietBanner({ quiet: false, quietUntil: null, quietStartsAt: null }, start), null)
+  assert.equal(QUIET_BANNER, 'Quiet hours: keep the volume as low as possible. No loud DJ sets.')
+})
+
+test('booking lines: booked now by someone else, next within 90 minutes, nothing for my own booking', () => {
+  const now = 1_800_000_000_000, h = 3_600_000, t = (ms: number) => `T${(ms - now) / 60_000}`
+  const cur = { id: 'b1', startAt: now - h, endAt: now + h / 2, name: 'Alex' }
+  const next = { id: 'b2', startAt: now + h, endAt: now + 2 * h, name: 'Jo' }
+  assert.deepEqual(bookingLines({ bookings: [cur, next] }, '', now, t), ['Booked now by Alex', 'Next booking: T60, Jo'])
+  assert.deepEqual(bookingLines({ bookings: [cur, next] }, 'b1', now, t), ['Next booking: T60, Jo'])
+  assert.deepEqual(bookingLines({ bookings: [{ ...next, startAt: now + 91 * 60_000 }] }, '', now, t), [])
+  assert.deepEqual(bookingLines({ bookings: [{ ...next, startAt: now + 90 * 60_000 }] }, '', now, t), ['Next booking: T90, Jo'])
+  assert.deepEqual(bookingLines({ bookings: [next] }, 'b2', now, t), [])
+  assert.deepEqual(bookingLines(null, '', now, t), [])
 })

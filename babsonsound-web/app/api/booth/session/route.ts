@@ -8,7 +8,7 @@ export const runtime = 'nodejs'
 
 // Studio PC sign-in. The page sends a nonce signed by the helper on the studio PC ({nonce, sig}), so this only works there.
 // Logs the sign-in (or keeps the current session alive), says whether this person can go live now, and returns a 15-minute
-// control token for the helper (l=true lets it go live; otherwise it can only end the stream). The page calls this every few minutes.
+// control token for the helper (l=true lets it go live; otherwise it can only end the stream; r=true lets it record a show). The page calls this every few minutes.
 export async function POST(req: Request) {
   return handle(async () => {
     const db = adminDb()
@@ -32,9 +32,11 @@ export async function POST(req: Request) {
     const [ads, note, next] = await Promise.all([
       adPlan(db), latestNote(db, now).catch(() => null), nextOnAir(db, p.show?.endAt ?? now, now).catch(() => null),
     ])
+    // r: Record a show (the Studio badge; E-board and admins always have it). The studio PC sends this token back with the recording.
+    const canRecord = a.studio === true
     return {
-      sessionId, name, firstName: String(u.get('firstName') ?? '') || name.split(' ')[0], level: a.level, ...p, ads, note, next,
-      token: signToken(secret, { u: t.uid, n: name, s: sessionId, l: p.canGoLive, exp: tokenExp }),
+      sessionId, name, firstName: String(u.get('firstName') ?? '') || name.split(' ')[0], level: a.level, ...p, ads, note, next, canRecord,
+      token: signToken(secret, { u: t.uid, n: name, s: sessionId, l: p.canGoLive, r: canRecord, exp: tokenExp }),
       tokenExp,
     }
   })

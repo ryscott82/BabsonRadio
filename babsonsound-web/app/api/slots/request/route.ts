@@ -6,13 +6,18 @@ import { createSlotRequests } from '@/lib/server/slotCreate'
 import { loadSlotRules } from '@/lib/server/slotRules'
 import { SLOT_CATEGORIES, SLOT_RULES, SLOT_TYPES, type SlotCategory, type SlotType } from '@/lib/slots'
 import { checkAudioUrl, cleanWeeks, repeatStarts } from '@/lib/slotAuto'
+import { loadStudioRules } from '@/lib/server/studioRules'
+import { resolveGuests } from '@/lib/server/studioBook'
+import { cleanGuests, liveLengthError } from '@/lib/studioBookCore'
 
 export const runtime = 'nodejs'
 
 // A member asks for an on-air time. Staff approve or decline in /api/slots/decision, or the request approves itself after 24 hours
 // (12 hours before the show if that is sooner) when nothing stops it (lib/server/autoApprove.ts).
 // Optional `repeatWeeks` (0 to 3) asks for the same New York time on the next weeks too, as one group (`groupId`). Weeks that are taken, too soon,
-// too far ahead or already requested are skipped. Reply: { id, ids, skipped, groupId, needsAgreement }. A group counts as one pending request.
+// too far ahead or already requested are skipped. Reply: { id, ids, skipped, groupId, needsAgreement, quiet, warning }. A group counts as one pending request.
+// Also required: `policyAck: true` (the policy box) and who is coming: `guests` [{ name, email } | { id }] or `justMe: true`. A live show is at most 90 minutes
+// (pre-recorded shows keep the longer cap) and holds the studio unless `noStudio: true`. Three confirmed strikes pause new requests.
 export async function POST(req: Request) {
   return handle(async () => {
     const t = await requireMember(req)
@@ -42,6 +47,9 @@ export async function POST(req: Request) {
       throw new HttpError(400, `Length must be ${SLOT_RULES.minMinutes}–${SLOT_RULES.maxMinutes} minutes in ${step}-minute steps.`)
     }
     if (startMs % (step * 60_000) !== 0) throw new HttpError(400, `Start time must be on a ${step}-minute mark.`)
+    const tooLong = liveLengthError(type, durationMin)
+    if (tooLong) throw new HttpError(400, tooLong, 'BR-SLT-006')
+    if (b.policyAck !== true) throw new HttpError(400, 'Tick the box to agree to the studio and show policy.', 'BR-BKG-005')
 
     if (audioURL) {
       if (type !== 'prerecorded') throw new HttpError(400, 'An audio link only applies to pre-recorded shows.')
@@ -50,13 +58,17 @@ export async function POST(req: Request) {
     }
 
     const db = adminDb()
+    const studio = await loadStudioRules(db)
+    const g = cleanGuests(b.guests, b.justMe, studio.capacity)
+    if (!g.ok) throw new HttpError(400, g.error, 'BR-BKG-004')
+    const guests = await resolveGuests(db, t.uid, g.guests)
     // The same word filter as every other text a member writes that others may read (the show's title, description and location).
     await assertClean(db, title, description, location)
 
     const wantsPublic = b.publicConsent != null && typeof b.publicConsent === 'object'
     const r = await createSlotRequests(db, t, {
       title, description, location, type, category, audioURL, img, durationMin, receiveRatings: b.receiveRatings !== false,
-      publicConsent: wantsPublic ? (b.publicConsent as Record<string, unknown>) : null,
+      publicConsent: wantsPublic ? (b.publicConsent as Record<string, unknown>) : null, guests, justMe: g.justMe, noStudio: b.noStudio === true,
     }, [startMs, ...repeatStarts(startMs, weeks)], { hardFirst: true })
     return r
   })

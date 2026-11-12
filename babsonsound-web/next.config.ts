@@ -1,10 +1,15 @@
 import type { NextConfig } from "next";
 import { securityHeaders } from "./lib/securityHeaders";
+import { LEGACY_REDIRECTS } from "./lib/siteNav";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   // The admin guides page reads these files at run time, so they must ship with the server function.
   outputFileTracingIncludes: { '/api/admin/docs': ['./content/docs/**/*'] },
+  // Old addresses keep working (the Shows list moved onto the Library page).
+  async redirects() {
+    return LEGACY_REDIRECTS.map(r => ({ ...r, permanent: true }));
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders() },

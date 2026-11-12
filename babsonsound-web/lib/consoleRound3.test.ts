@@ -5,6 +5,7 @@ import { CONTROL_BUTTONS, MORE_SWITCHES, buttonsFor } from './controlButtons.ts'
 import { BROADCAST_GAP_MS, broadcastAudit, broadcastWait } from './broadcastGuard.ts'
 import { ALL_CLEAR, canSend, clip, confirmBody, goesTo, unreadCount } from './notificationsPage.ts'
 import { studentShows } from './todayPage.ts'
+import { shapeUpcoming, upcomingItems, UPCOMING_MAX, UPCOMING_MIN } from './todayData.ts'
 import { shapeProfile, trainingOf } from './userProfile.ts'
 import { emptyForm, quickSave } from './usageForm.ts'
 
@@ -42,14 +43,22 @@ test('Controls renders every button through IconButton, and Emergency stop and R
 })
 
 // ── home layout ──
-test('wide screens: Needs approval is the whole right column, sticky and scrolling inside itself; phones: below the controls', () => {
+test('the Overview is four boxes (Controls, Coming up, Needs approval, Report a bug) in a 2 by 2 grid; on phones Needs approval comes right after Controls', () => {
   const page = src('app/admin/page.tsx'), na = src('components/admin/today/NeedsApproval.tsx')
-  assert.match(page, /xl:grid-cols-\[minmax\(0,1fr\)_30rem\] 2xl:grid-cols-\[minmax\(0,1fr\)_minmax\(0,1fr\)_30rem\]/)
-  assert.match(page, /<aside aria-label="Needs approval column"[^>]*xl:col-start-2 2xl:col-start-3 xl:row-start-1 xl:row-span-2 xl:sticky xl:top-0/)
-  assert.match(na, /xl:h-screen xl:flex xl:flex-col/); assert.match(na, /xl:overflow-y-auto/)
+  assert.match(page, /lg:grid-cols-2 lg:grid-rows-2/)
+  for (const c of ['<Controls role={role} />', '<ComingUp', '<NeedsApproval', '<ReportBug />']) assert.ok(page.includes(c), c)
+  assert.match(page, /lg:col-start-1 lg:row-start-1[\s\S]*<Controls/); assert.match(page, /lg:col-start-2 lg:row-start-1[\s\S]*<ComingUp/)
+  assert.match(page, /lg:col-start-1 lg:row-start-2[\s\S]*<NeedsApproval/); assert.match(page, /lg:col-start-2 lg:row-start-2[\s\S]*<ReportBug/)
+  assert.match(na, /lg:overflow-y-auto/) // scrolls inside its own box
   assert.ok(na.indexOf('Approve all</button>') < na.indexOf('<ul className="divide-y'), 'Approve all sits at the top, above the list')
-  const iControls = page.indexOf('<Controls role={role} />'), iNeeds = page.indexOf('<NeedsApproval'), iComing = page.indexOf('<ComingUp')
-  assert.ok(iControls > 0 && iControls < iNeeds && iNeeds < iComing)
+  const iControls = page.indexOf('<Controls role={role} />'), iNeeds = page.indexOf('<NeedsApproval'), iComing = page.indexOf('<ComingUp'), iBug = page.indexOf('<ReportBug')
+  assert.ok(iControls > 0 && iControls < iNeeds && iNeeds < iComing && iComing < iBug) // DOM order = phone order
+})
+test('Report a bug files a bug through the existing feedback route and shows the server sentence', () => {
+  const r = src('components/admin/today/ReportBug.tsx')
+  assert.match(r, /api\('\/api\/feedback', \{ type: 'bug', message: text\.trim\(\), platform: 'web'/)
+  assert.match(r, /setErr\(x instanceof Error \? x\.message/)
+  assert.equal((r.match(/api\(/g) ?? []).length, 1)
 })
 test('Coming up lists student-run shows only; Auto DJ blocks are not shown', () => {
   const rows = [{ title: 'Morning Show', startAt: 1, endAt: 2, source: 'request' }, { title: 'Auto DJ', startAt: 2, endAt: 3, source: 'auto' }, { title: 'Sports', startAt: 3, endAt: 4, source: 'manual' }]
@@ -164,4 +173,21 @@ test('the profile shows training and show history, newest first, and never an em
   for (const w of ['sam@babson.edu', '123', '@sam', 'email', 'phone', 'instagram']) assert.ok(!json.includes(w), w)
   assert.deepEqual(trainingOf(true, NOW - 1, NOW), { trained: false, expired: true, until: NOW - 1 })
   assert.equal(shapeProfile({ level: 'director' }, [], NOW).radio.trained, true) // E-board and Admins always count as trained
+})
+
+test('Coming up shows at least the next 10 student shows however far away, never Auto DJ, and every one in the next 24 hours if there are more', () => {
+  const NOW = 1_800_000_000_000, H = 3_600_000
+  const item = (i: number, source = 'slot', at = NOW + i * 6 * H) => ({ id: `slot-${i}`, title: `Show ${i}`, startAt: at, endAt: at + H, source })
+  const far = Array.from({ length: 25 }, (_, i) => item(i + 1))
+  const auto = Array.from({ length: 40 }, (_, i) => ({ id: `a${i}`, title: 'Auto', startAt: NOW + i * H, endAt: NOW + (i + 1) * H, source: 'auto' }))
+  const rows = shapeUpcoming([...auto, ...far], new Map(), NOW)
+  assert.equal(rows.length, UPCOMING_MIN); assert.ok(rows.every(r => r.source !== 'auto'))
+  assert.deepEqual(rows.map(r => r.title)[0], 'Show 1'); assert.ok(rows[9].startAt > NOW + 24 * H) // reaches days ahead
+  assert.equal(shapeUpcoming(far.slice(0, 4), new Map(), NOW).length, 4) // fewer than 10 exist: all of them
+  const busy = Array.from({ length: 14 }, (_, i) => item(i, 'slot', NOW + (i + 1) * H))
+  assert.equal(upcomingItems(busy, NOW).length, 14) // more than 10 in the next day: all of them
+  assert.equal(upcomingItems(Array.from({ length: 60 }, (_, i) => item(i, 'slot', NOW + (i + 1) * 60_000)), NOW).length, UPCOMING_MAX)
+  assert.equal(upcomingItems([item(1, 'slot', NOW - 5 * H)], NOW).length, 0) // already over
+  const route = src('app/api/admin/dashboard/route.ts')
+  assert.match(route, /includeAuto: false/); assert.match(route, /shapeUpcoming\(feed, hosts, now\)/)
 })

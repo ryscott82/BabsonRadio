@@ -2,7 +2,7 @@
 // Pure (no React, no fetch), so the tests cover it.
 
 export type SettingValue = number | boolean | string
-export type SettingKind = 'number' | 'boolean' | 'hour' | 'choice'
+export type SettingKind = 'number' | 'boolean' | 'hour' | 'choice' | 'text' | 'date'
 /** Level 1 = everyday switch, level 2 = changes how something works day to day. Level 3 = could hurt every listener if wrong, so saving asks "are you sure". */
 export type SettingLevel = 1 | 2 | 3
 export type SettingTier = 'everyday' | 'customize' | 'defaults'
@@ -56,6 +56,7 @@ export function formatValue(def: SettingDef, v: SettingValue | undefined): strin
   if (def.kind === 'boolean') return v ? 'On' : 'Off'
   if (def.kind === 'choice') return def.choices?.find(c => c.value === v)?.label ?? String(v)
   if (def.kind === 'hour') { const h = Number(v); return `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? 'AM' : 'PM'}` }
+  if (def.kind === 'text' || def.kind === 'date') return String(v)
   const n = Number(v) * (def.scale ?? 1)
   const shown = Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100)
   return def.unit ? `${shown}${def.unit === '%' ? '%' : ` ${def.unit}`}` : shown
@@ -84,6 +85,8 @@ export function validate(def: SettingDef, v: SettingValue | null): string | null
   }
   if (def.kind === 'hour') { const h = Number(v); if (!Number.isInteger(h) || h < 0 || h > 23) return 'Choose an hour.' }
   if (def.kind === 'choice' && !def.choices?.some(c => c.value === v)) return 'Choose one of the options.'
+  if (def.kind === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(String(v))) return 'Choose a date.'
+  if (def.kind === 'text' && String(v).trim() === '') return 'Enter some text.'
   return null
 }
 

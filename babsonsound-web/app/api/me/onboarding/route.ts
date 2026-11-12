@@ -10,6 +10,7 @@ import { phoneHashOf, savePhone } from '@/lib/server/phoneStore'
 import { normalizeUS } from '@/lib/phone'
 import { validGradYear } from '@/lib/terms'
 import { ageOn } from '@/lib/age'
+import { nameLower } from '@/lib/studioBookCore'
 
 export const runtime = 'nodejs'
 
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
     const firstName = str(b.firstName, 40), lastName = str(b.lastName, 60)
     if (!firstName) throw new HttpError(400, 'Enter your first name.')
     await assertCleanName(db, firstName, lastName)
-    const update: Record<string, unknown> = { firstName, lastName, displayName: firstName }
+    const update: Record<string, unknown> = { firstName, lastName, nameLower: nameLower(firstName, lastName), displayName: firstName }
 
     if (!guest) {
       // Phone and graduation year are optional. Skipping the phone number is fine.

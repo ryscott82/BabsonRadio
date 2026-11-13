@@ -396,7 +396,7 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
           {live && showName ? showName : s?.show ? s.show.title : next ? `Next: ${next.title} at ${clock(next.startAt)}` : 'Nothing booked'}
         </p>
         {!bypass && !bl && <CrewPanel crew={s?.crew ?? []} driverName={s?.name ?? ''} onAir={live || connecting || recording} getToken={token} />}
-        <div className={`flex items-center justify-center gap-3 min-w-0 flex-wrap flex-1 ${bl ? 'hidden' : ''}`}>
+        <div className="flex items-center justify-center gap-3 min-w-0 flex-wrap flex-1" style={bl ? { display: 'none' } : undefined}>
           <ClockScreen show={s?.show ?? null} ads={s?.ads ?? null} live={live} lastMusicAt={lastMusicAt} onPlayId={() => setIdCue(n => n + 1)} />
           <StudioNotices status={studio.status} myBookingId={studio.myBookingId} />
         </div>
@@ -489,7 +489,7 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
         </div>
 
         {/* Hidden (not removed) while the browser is open, so a track that is playing keeps playing. */}
-        <div className={`bp p-6 flex flex-col gap-3 min-h-0 h-full overflow-hidden ${bl ? 'hidden' : ''}`}>
+        <div className="bp p-6 flex flex-col gap-3 min-h-0 h-full overflow-hidden" style={bl ? { display: 'none' } : undefined}>
           {bypass ? <SignInInfo onSignIn={() => openSignIn(false)} /> : (
             <>
               <div className="flex-1 min-h-0">

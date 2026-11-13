@@ -114,15 +114,17 @@ export default function BoothPage() {
   useEffect(() => { if (signedOut && browserSt?.open) closeBrowser().catch(() => {}) }, [signedOut, browserSt?.open])
   useEffect(() => { if (signedOut) forgetSignIns() }, [signedOut])
 
-  const leavePanel = async () => {
-    setExited(true)
-    try { await exitPanel() } catch { setExited(false) }
+  const [exitErr, setExitErr] = useState('')
+  const leavePanel = async (token?: string) => {
+    setExitErr(''); setExited(true)
+    try { await exitPanel(token) } catch (e) { setExited(false); setExitErr(errText(e)) }
   }
 
   return (
     <>
       {/* Pure black from 7 pm to 7 am, over the oak desk. */}
       {theme.night && <div className="fixed inset-0 z-[1] bg-black" aria-hidden />}
+      {exitErr && <p role="alert" className="fixed top-3 left-1/2 -translate-x-1/2 z-[95] hw-screen px-6 py-3 text-2xl warn">Couldn’t close the panel: {exitErr}</p>}
       <div className={`relative z-[2] -mt-16 -mb-12 min-h-dvh px-8 py-6 text-lg ${theme.night ? 'booth-night' : ''}`}>
         {exited ? (
           <Center title="Booth panel closed" text="The panel comes back by itself in about 30 minutes." />
@@ -152,7 +154,7 @@ function Center({ title, text, children }: { title: string; text?: string; child
   )
 }
 
-function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onBypassEnd, autoLive, onWantLive, onUnlock }: { butt: Butt | null; buttRef: React.MutableRefObject<Butt | null>; buttErr: string; browserSt: BrowserState | null; onExitPanel: () => void; bypass: { pin: string; session: Session } | null; onBypassEnd: () => void; autoLive: boolean; onWantLive: (v: boolean) => void; onUnlock: (pin: string) => void }) {
+function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onBypassEnd, autoLive, onWantLive, onUnlock }: { butt: Butt | null; buttRef: React.MutableRefObject<Butt | null>; buttErr: string; browserSt: BrowserState | null; onExitPanel: (token?: string) => void | Promise<void>; bypass: { pin: string; session: Session } | null; onBypassEnd: () => void; autoLive: boolean; onWantLive: (v: boolean) => void; onUnlock: (pin: string) => void }) {
   const { isGuest, user } = useAuth()
   const [s, setS] = useState<Session | null>(bypass?.session ?? null)
   const [error, setError] = useState('')
@@ -419,7 +421,7 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
           <div className="flex items-center gap-2 flex-wrap">
             {!bypass && <button type="button" className={sb} onClick={() => setModal('note')}>Leave a note</button>}
             <button type="button" className={sb} onClick={() => setModal('sound')}>Audio setup</button>
-            {canExit && !live && !connecting && !recording && <button type="button" className={sb} onClick={onExitPanel}>Exit panel</button>}
+            {canExit && !live && !connecting && !recording && <button type="button" className={sb} onClick={async () => { let tk = ''; try { tk = await token() } catch { /* the helper decides */ } void onExitPanel(tk) }}>Exit panel</button>}
           </div>
         </div>
       {(welcomeBig || countdownBig || showBig || problem || s?.note || (live && showName)) ? (

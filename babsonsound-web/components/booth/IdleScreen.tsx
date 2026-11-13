@@ -243,4 +243,5 @@ function useBackAfterIdle(back: () => void, ms = 3 * 60_000) {
 }
 
 /** Used by the page: closes the booth window and tells the studio PC to leave the booth alone for 30 minutes. */
-export const exitPanel = () => helper('/exit-booth', {})
+/** Close the booth panel for 30 minutes. The signed-in person's token goes along so the helper can check they are E-board or Admin. */
+export const exitPanel = (token?: string) => helper('/exit-booth', token ? { token } : {})

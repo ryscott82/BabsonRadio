@@ -242,3 +242,8 @@ export const MIXING_PEAK_DBFS = -45
 export const MIXING_HOLD_MS = 3_000
 /** After someone leaves the booth, audio does not reopen it for this long. */
 export const MIXING_SNOOZE_MS = 5 * 60_000
+
+// ── Quiet-hours reminder ────────────────────────────────────
+/** The small "Reminder: Quiet Hours are in Effect" notice comes back this long after it was dismissed. */
+export const QUIET_REMIND_MS = 30 * 60_000
+export const quietReminderDue = (dismissedAt: number, now: number) => !dismissedAt || now - dismissedAt >= QUIET_REMIND_MS

@@ -644,3 +644,6 @@ html.hw-lite .hw-eq.hw-led > i { filter: none; }
 .booth-night .gpad { background: #040605; border-color: rgba(31,191,127,.4); box-shadow: 0 0 10px rgba(31,191,127,.16), inset 0 0 10px rgba(31,191,127,.06); }
 .booth-night .gpad[aria-pressed="true"] { background: linear-gradient(#2bd08f, #12925f); }
 .booth-night .gfield { background: #000; border-color: rgba(31,191,127,.35); }
+
+/* Bigger ON AIR sign for the booth header. */
+.hw-sign-lg > span { font-size: 4.2rem; line-height: 1; padding: 6px 30px 8px calc(30px + .03em); }

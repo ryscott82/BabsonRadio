@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, signOut } from '@/lib/auth'
-import { MIXING_HOLD_MS, MIXING_PEAK_DBFS, MIXING_SNOOZE_MS, QUIET_BANNER, adBreak, bookingLines, quietBanner, type AdPlan, type LevelState, type StudioStatus } from '@/lib/booth'
+import { quietReminderDue, MIXING_HOLD_MS, MIXING_PEAK_DBFS, MIXING_SNOOZE_MS, adBreak, bookingLines, quietBanner, type AdPlan, type LevelState, type StudioStatus } from '@/lib/booth'
 import { boothFetch, errText, helper, loadPref, mmss, savePref, type Butt, type Track } from '@/components/booth/helper'
 import DoorClaim from '@/components/booth/DoorClaim'
 import { openSignIn } from '@/lib/signInPrompt'
 import IdleScreen, { exitPanel } from '@/components/booth/IdleScreen'
 import { useInputMeter } from '@/components/booth/useInputMeter'
-import LevelMeter, { Bar as MiniMeter } from '@/components/booth/LevelMeter'
+import LevelMeter from '@/components/booth/LevelMeter'
 import DeviceSettings, { type Devices } from '@/components/booth/DeviceSettings'
 import MusicPlayer from '@/components/booth/MusicPlayer'
 import Soundboard from '@/components/booth/Soundboard'
@@ -140,12 +140,10 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
   const [devices, setDevices] = useState<Devices>(() => ({ input: loadPref('input'), music: loadPref('music') }))
   const [modal, setModal] = useState<'' | 'sound' | 'note' | 'show'>('')
   const [signInOpen, setSignInOpen] = useState(false)
-  const [audioAt, setAudioAt] = useState(0)        // last time sound was on the input (no sign in only)
-  const [thanksOff, setThanksOff] = useState(false)
+  const [nowTrack, setNowTrack] = useState<Track | null>(null)
   const [pin, setPin] = useState('')
   const [pinBusy, setPinBusy] = useState(false)
   const [pinError, setPinError] = useState('')
-  const audioSet = useRef(0)
   const [idCue, setIdCue] = useState(0)
   const [adCue, setAdCue] = useState(0)
   const [lastMusicAt, setLastMusicAt] = useState(0)
@@ -200,7 +198,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
   }
   const auto = useAutoGain(meter.frame, token)
   useEffect(() => { gainRef.current = auto.on ? auto.db : 0 }, [auto.on, auto.db])
-  const studio = useStudioStatus(!isGuest && !bypass)
+  const studio = useStudioStatus(!isGuest, !!bypass)
   const rec = useRecState(token)
   const recording = !!rec.st && rec.st.recorder.state !== 'idle'
   const [mode, setMode] = useState<'live' | 'record'>('live')
@@ -282,7 +280,6 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
   useEffect(() => {
     if (!bypass || !meter.stats.on || meter.stats.state === 'silent') return
     lastActive.current = Date.now()
-    if (Date.now() - audioSet.current > 2_000) { audioSet.current = Date.now(); queueMicrotask(() => setAudioAt(Date.now())) }
   }, [bypass, meter.stats])
   // They pressed Go live before signing in: once signed in and the session is loaded, go live right away (or show why not).
   const autoDone = useRef(false)
@@ -307,19 +304,18 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
   const ready = !!butt && !buttErr
   const problem = error || (buttErr ? 'BUTT isn’t answering. Open BUTT on this computer.' : '')
   const top = Object.entries(audience?.recentReactions ?? {}).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]).slice(0, 3)
-  const hb = 'gbtn h-12 px-5 text-lg'
+  const sb = 'gbtn h-9 px-3 text-sm'
 
   const date = new Date(now).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
 
+  const next = s?.next
   return (
-    <div className="fixed inset-0 z-[2] flex flex-col gap-4 px-8 pt-5 pb-6 overflow-hidden">
-      <StudioNotices status={studio.status} myBookingId={studio.myBookingId} />
-
-      {/* Top: time left, ON AIR and listeners in the middle, date right. */}
-      <header className="hw-desk-text grid grid-cols-[1fr_auto_1fr] items-center gap-6 shrink-0">
+    <div className="fixed inset-0 z-[2] flex flex-col gap-3 px-8 pt-5 pb-6 overflow-hidden">
+      {/* Top: time left, notifications in the middle (ON AIR, listeners, quiet hours, bookings), date and small buttons right. */}
+      <header className="hw-desk-text grid grid-cols-[auto_1fr_auto] items-start gap-6 shrink-0">
         <p className="hw-title text-5xl leading-none tabular-nums">{clock(now)}</p>
-        <div className="flex items-center gap-6">
-          <div className="hw-sign shrink-0" style={{ position: 'relative', left: 0, top: 0 }}>
+        <div className="flex items-center justify-center gap-6 min-w-0 flex-wrap">
+          <div className="hw-sign hw-sign-lg shrink-0" style={{ position: 'relative', left: 0, top: 0 }}>
             <span style={live ? undefined : { color: '#4a2620', textShadow: 'none' }}>ON AIR</span>
           </div>
           {audience && (
@@ -328,49 +324,52 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
               {top.map(([e, n]) => <span key={e} className="flex items-center gap-1"><EmojiGlyph e={e} size={24} />{n}</span>)}
             </div>
           )}
+          <StudioNotices status={studio.status} myBookingId={studio.myBookingId} />
         </div>
-        <p className="hw-title text-4xl leading-none text-right">{date}</p>
+        <div className="flex flex-col items-end gap-2">
+          <p className="hw-title text-4xl leading-none">{date}</p>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {!bypass && <button type="button" className={sb} onClick={() => setModal('note')}>Leave a note</button>}
+            <button type="button" className={sb} onClick={() => setModal('sound')}>Audio setup</button>
+            <button type="button" className={sb} onClick={onToggleTheme} aria-pressed={night} title="Switch between the day and night look. It goes back to automatic at 7 am or 7 pm.">{night ? '☾ Night' : '☀ Day'}</button>
+            {!live && !connecting && !recording && <button type="button" className={sb} onClick={onExitPanel}>Exit panel</button>}
+            {confirmOut ? (
+              <>
+                <button type="button" className={sb} onClick={() => setConfirmOut(false)}>Stay</button>
+                <button type="button" className={`${sb} gbtn-stop`} onClick={signOutNow} disabled={!!busy}>{live ? 'End show and sign out' : 'Stop recording and sign out'}</button>
+              </>
+            ) : (
+              <button type="button" className={sb} onClick={() => (live || recording ? setConfirmOut(true) : signOutNow())} disabled={!!busy}>{bypass ? 'Back to sign in' : 'Sign out'}</button>
+            )}
+          </div>
+        </div>
       </header>
 
-      {/* Middle: the welcome, then the show read-out and the small buttons. */}
-      <section className="flex-1 min-h-0 flex flex-col items-center justify-center gap-4">
-        <div className="hw-desk-text text-center min-w-0 max-w-full">
-          <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(3.5rem, 13vh, 9.5rem)' }}>Welcome, {s?.firstName || '…'}</h1>
-          <p className={`text-2xl mt-2 line-clamp-2 ${problem ? 'text-[#FFB3A6]' : ''}`}>
-            {problem || (s?.note ? `Note from ${s.note.by || 'the last host'}: ${s.note.text}` : '\u00A0')}
-          </p>
-        </div>
-        <ClockScreen show={s?.show ?? null} next={s?.next ?? null} ads={s?.ads ?? null} live={live}
-                     onAirSeconds={butt?.streamSeconds ?? 0} lastMusicAt={lastMusicAt} onPlayId={() => setIdCue(n => n + 1)} />
-        <div className="flex items-center gap-3 flex-wrap justify-center">
-          {!bypass && <button type="button" className={hb} onClick={() => setModal('note')}>Leave a note</button>}
-          {!bypass && <button type="button" className={hb} onClick={() => setModal('show')}>Show info</button>}
-          <button type="button" className={hb} onClick={() => setModal('sound')}>Audio setup</button>
-          <button type="button" className={hb} onClick={onToggleTheme} aria-pressed={night} title="Switch between the day and night look. It goes back to automatic at 7 am or 7 pm.">
-            {night ? '☾ Night' : '☀ Day'}
-          </button>
-          {!live && !connecting && !recording && <button type="button" className={hb} onClick={onExitPanel}>Exit panel</button>}
-          {confirmOut ? (
-            <>
-              <button type="button" className={hb} onClick={() => setConfirmOut(false)}>Stay</button>
-              <button type="button" className={`${hb} gbtn-stop`} onClick={signOutNow} disabled={!!busy}>{live ? 'End show and sign out' : 'Stop recording and sign out'}</button>
-            </>
-          ) : (
-            <button type="button" className={hb} onClick={() => (live || recording ? setConfirmOut(true) : signOutNow())} disabled={!!busy}>{bypass ? 'Back to sign in' : 'Sign out'}</button>
-          )}
-        </div>
-      </section>
+      <div className="hw-desk-text text-center min-w-0 shrink-0">
+        <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(3rem, 9vh, 6.5rem)' }}>Welcome, {bypass ? 'Babson Sound user' : s?.firstName || '…'}</h1>
+        {(problem || s?.note) && <p className={`text-xl mt-1 line-clamp-1 ${problem ? 'text-[#FFB3A6]' : ''}`}>{problem || `Note from ${s?.note?.by || 'the last host'}: ${s?.note?.text}`}</p>}
+      </div>
 
-      {/* Bottom half: four panels. */}
-      <div className="grid grid-cols-[1.05fr_1fr_1.65fr_1fr] gap-5 h-[47%] shrink-0 min-h-0">
-        <div className="bp p-6 flex flex-col gap-3 min-h-0">
-          {!bypass && !live && !connecting && !recording && (
-            <div className="flex gap-2" role="group" aria-label="Mode">
-              <button type="button" className="gbtn h-11 flex-1 text-lg" aria-pressed={shownMode === 'live'} onClick={() => setMode('live')}>Go live</button>
-              <button type="button" className="gbtn h-11 flex-1 text-lg" aria-pressed={shownMode === 'record'} onClick={() => setMode('record')}>Record a show</button>
-            </div>
-          )}
-          <div className="flex-1 min-h-0">
+      <ClockScreen show={s?.show ?? null} next={s?.next ?? null} ads={s?.ads ?? null} live={live}
+                   onAirSeconds={butt?.streamSeconds ?? 0} lastMusicAt={lastMusicAt} onPlayId={() => setIdCue(n => n + 1)} />
+
+      {/* Left: up next, the loudness meter, what is on, Go live. Right: tracks (or the sign-in info) with the sound board under them. */}
+      <div className="grid grid-cols-[1fr_1.15fr] gap-5 flex-1 min-h-0">
+        <div className="flex flex-col gap-3 min-h-0">
+          <p className="hw-desk-text text-2xl truncate shrink-0">Up next: <span className="opacity-90">{next ? `${next.title}${next.hosts.length ? ` with ${next.hosts.join(', ')}` : ''} at ${clock(next.startAt)}` : 'nothing booked'}</span></p>
+          <div className="flex-1 min-h-0"><LevelMeter frame={meter.frame} stats={meter.stats} error={meter.error} deadAir={deadAir} auto={auto} /></div>
+          <div className="bp px-6 py-3 grid grid-cols-[8.5rem_1fr] items-center gap-x-4 gap-y-1 shrink-0">
+            <span className="lbl text-lg">Show name</span><span className="text-2xl truncate">{s?.show?.title ?? 'No show booked'}</span>
+            <span className="lbl text-lg">Track title</span><span className="text-2xl truncate">{nowTrack ? `${nowTrack.title}${nowTrack.artist ? ` · ${nowTrack.artist}` : ''}` : 'Nothing playing'}</span>
+            <span className="lbl text-lg">Host name</span><span className="text-2xl truncate">{bypass ? 'Not signed in' : s?.name ?? '…'}</span>
+          </div>
+          <div className="bp px-6 py-4 flex flex-col gap-3 shrink-0">
+            {!bypass && !live && !connecting && !recording && (
+              <div className="flex gap-2" role="group" aria-label="Mode">
+                <button type="button" className="gbtn h-10 flex-1 text-base" aria-pressed={shownMode === 'live'} onClick={() => setMode('live')}>Go live</button>
+                <button type="button" className="gbtn h-10 flex-1 text-base" aria-pressed={shownMode === 'record'} onClick={() => setMode('record')}>Record a show</button>
+              </div>
+            )}
             {shownMode === 'live' ? (
               <GoLive live={live} connecting={connecting} recording={!!butt?.recording} onAirSeconds={butt?.streamSeconds ?? 0}
                       canGoLive={!!s?.canGoLive} signInToLive={!!bypass && !!s?.signInToLive} onSignIn={() => { onWantLive(true); setSignInOpen(true) }} reason={s?.reason ?? ''} ready={ready} busy={busy}
@@ -380,12 +379,13 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
             )}
           </div>
         </div>
-        <LevelMeter frame={meter.frame} stats={meter.stats} error={meter.error} deadAir={deadAir} auto={auto} />
-        <div className="bp p-6 min-h-0">
-          <MusicPlayer getToken={token} live={live} output={devices.music} idCue={idCue} adCue={adCue} onAired={onAired} />
-        </div>
-        <div className="bp p-6 min-h-0">
-          <Soundboard getToken={token} output={devices.music} />
+
+        <div className="bp p-6 flex flex-col gap-3 min-h-0">
+          <div className="flex-1 min-h-0">
+            <MusicPlayer getToken={token} live={live} output={devices.music} idCue={idCue} adCue={adCue} onAired={onAired} onTrack={setNowTrack}
+                         listSlot={bypass ? <SignInInfo onSignIn={create => openSignIn(create)} /> : undefined} />
+          </div>
+          <div className="h-32 shrink-0"><Soundboard getToken={token} output={devices.music} /></div>
         </div>
       </div>
 
@@ -408,14 +408,6 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
         </div>
       )}
       {bypass && <DoorClaim />}
-      {bypass && !thanksOff && !signInOpen && now - audioAt < 12_000 && (
-        <div className="fixed left-1/2 -translate-x-1/2 top-28 z-40 bp px-8 py-5 w-[640px] max-w-[90vw] space-y-3" role="status">
-          <button type="button" className="absolute right-4 top-3 text-2xl lbl z-10" aria-label="Close" onClick={() => setThanksOff(true)}>×</button>
-          <p className="hw-title text-3xl leading-tight pr-8">Thanks for using the studio! Get more features by signing in!</p>
-          <MiniMeter frame={meter.frame} gain={0} compact />
-          <button type="button" className="gbtn gbtn-go h-14 px-8 text-2xl" onClick={() => { onWantLive(false); setSignInOpen(true) }}>Sign in</button>
-        </div>
-      )}
       {signInOpen && bypass && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/85 px-8" role="dialog" aria-label="Sign in to go live">
           <div className="hw-screen max-w-4xl w-full p-10 space-y-6">
@@ -450,21 +442,25 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
 
 const fmtClock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
-/** The quiet-hours banner (from 15 minutes before, with a countdown) and who has the studio booked. Warnings only. */
+/** Quiet hours: a small reminder at the top while they are on (dismiss it and it comes back every 30 minutes), and a countdown from 15 minutes
+ *  before they start. Also who has the studio booked. Warnings only. */
 function StudioNotices({ status, myBookingId }: { status: StudioStatus | null; myBookingId: string }) {
   const [now, setNow] = useState(() => Date.now())
+  const [dismissedAt, setDismissedAt] = useState(0)
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [])
   const q = quietBanner(status, now)
   const lines = bookingLines(status, myBookingId, now, fmtClock)
-  if (!q && !lines.length) return null
+  const showQuiet = q && (q.kind === 'soon' || quietReminderDue(dismissedAt, now))
+  if (!showQuiet && !lines.length) return null
   return (
-    <div className="flex items-center gap-6 flex-wrap">
-      {q && (
-        <div className="bp px-6 py-2 flex-1 min-w-[40%]" role="status">
+    <div className="flex items-center gap-6 flex-wrap shrink-0">
+      {showQuiet && q && (
+        <div className="bp px-5 py-2 flex items-center gap-4 flex-1 min-w-[40%]" role="status">
           <p className="hw-title text-2xl warn">
-            {q.kind === 'soon' ? `Quiet hours start in ${mmss(q.inMs / 1000)}. Keep the volume as low as possible. No loud DJ sets.` : QUIET_BANNER}
+            {q.kind === 'soon' ? `Quiet hours start in ${mmss(q.inMs / 1000)}. Keep the volume as low as possible. No loud DJ sets.` : 'Reminder: Quiet Hours are in Effect'}
           </p>
-          {q.kind === 'on' && q.until && <p className="lbl text-lg">Until {fmtClock(q.until)}.</p>}
+          {q.kind === 'on' && q.until && <p className="lbl text-lg">Until {fmtClock(q.until)}</p>}
+          {q.kind === 'on' && <button type="button" className="ml-auto text-3xl lbl px-2" aria-label="Dismiss" onClick={() => setDismissedAt(Date.now())}>×</button>}
         </div>
       )}
       {lines.length > 0 && <p className="hw-desk-text text-xl">{lines.join(' · ')}</p>}
@@ -498,22 +494,22 @@ function GoLive(p: {
 
   if (p.live || p.connecting) {
     return (
-      <div className="h-full flex flex-col gap-3">
+      <div className="h-full flex flex-col justify-center gap-3">
         {ad?.now && <button type="button" className="gbtn h-16 text-2xl" onClick={p.onPlayAds}>Play the ads</button>}
-        <button type="button" onClick={p.onEnd} disabled={!!p.busy} className="gbtn gbtn-stop flex-1 min-h-28 flex flex-col items-center justify-center gap-2">
-          <span className="hw-title text-5xl">{p.busy === 'stop' ? 'Ending…' : 'End show'}</span>
-          <span className="text-xl opacity-90">{p.connecting ? 'Connecting…' : `On air ${mmss(p.onAirSeconds)}${p.recording ? ' · recording' : ''}`}</span>
+        <button type="button" onClick={p.onEnd} disabled={!!p.busy} className="gbtn gbtn-stop h-20 flex flex-col items-center justify-center">
+          <span className="hw-title text-3xl">{p.busy === 'stop' ? 'Ending…' : 'End show'}</span>
+          <span className="text-base opacity-90">{p.connecting ? 'Connecting…' : `On air ${mmss(p.onAirSeconds)}${p.recording ? ' · recording' : ''}`}</span>
         </button>
       </div>
     )
   }
   if (p.signInToLive) {
     return (
-      <div className="h-full flex flex-col gap-3">
+      <div className="h-full flex flex-col justify-center gap-3">
         <p className="hw-title text-2xl leading-tight">Mixing? Press Go live, then sign in.</p>
-        <button type="button" onClick={p.onSignIn} disabled={!p.ready} className="gbtn gbtn-go flex-1 min-h-28 flex flex-col items-center justify-center gap-2">
-          <span className="hw-title text-5xl">Go live</span>
-          <span className="text-xl opacity-90">{p.ready ? 'You sign in next' : 'Waiting for BUTT…'}</span>
+        <button type="button" onClick={p.onSignIn} disabled={!p.ready} className="gbtn gbtn-go h-20 flex flex-col items-center justify-center">
+          <span className="hw-title text-3xl">Go live</span>
+          <span className="text-base opacity-90">{p.ready ? 'You sign in next' : 'Waiting for BUTT…'}</span>
         </button>
       </div>
     )
@@ -521,7 +517,7 @@ function GoLive(p: {
   const chip = 'gbtn h-11 px-1 text-base flex-1 whitespace-nowrap'
   const ok = soundOk && phone && clean
   return (
-    <div className="h-full flex flex-col gap-3">
+    <div className="h-full flex flex-col justify-center gap-3">
       {p.canGoLive && <p className="hw-title text-2xl leading-tight">To go on air: 1. Tick all three. 2. Press Go live.</p>}
       {p.canGoLive ? (
         <div className="flex gap-2">
@@ -531,10 +527,26 @@ function GoLive(p: {
         </div>
       ) : <p className="lbl text-lg min-h-11 flex items-center">{p.reason}</p>}
       <button type="button" onClick={p.onGoLive} disabled={!!p.busy || !p.canGoLive || !p.ready || !ok}
-              className="gbtn gbtn-go flex-1 min-h-28 flex flex-col items-center justify-center gap-2">
-        <span className="hw-title text-5xl">{p.busy === 'live' ? 'Going live…' : 'Go live'}</span>
-        <span className="text-xl opacity-90">{!p.canGoLive ? 'Not available yet' : ok ? 'Starts the stream and the recording' : 'Tick all three first'}</span>
+              className="gbtn gbtn-go h-20 flex flex-col items-center justify-center">
+        <span className="hw-title text-3xl">{p.busy === 'live' ? 'Going live…' : 'Go live'}</span>
+        <span className="text-base opacity-90">{!p.canGoLive ? 'Not available yet' : ok ? 'Starts the stream and the recording' : 'Tick all three first'}</span>
       </button>
+    </div>
+  )
+}
+
+/** Shown instead of the track list while nobody is signed in. */
+function SignInInfo({ onSignIn }: { onSignIn: (create: boolean) => void }) {
+  return (
+    <div className="h-full flex items-center gap-6 min-h-0">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/booth/door-qr.svg" alt="QR code to sign in at the studio" className="h-full max-h-[260px] aspect-square rounded-xl bg-white shrink-0" />
+      <div className="min-w-0 flex-1 flex flex-col gap-3">
+        <p className="hw-title text-3xl leading-tight">Thanks for using the studio! Get more features by signing in!</p>
+        <p className="text-lg lbl">Scan the code with your phone, or sign in here.</p>
+        <button type="button" className="gbtn gbtn-go h-14 text-2xl w-full" onClick={() => onSignIn(false)}>Sign in with Babson Sound account</button>
+        <button type="button" className="gbtn h-11 px-5 text-lg self-start" onClick={() => onSignIn(true)}>Create an account</button>
+      </div>
     </div>
   )
 }

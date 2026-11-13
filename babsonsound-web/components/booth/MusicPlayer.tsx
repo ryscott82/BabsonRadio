@@ -12,7 +12,7 @@ const FADE_IN_MS = 1500, FADE_OUT_MS = 3000, GLIDE_MS = 400
 
 type SinkAudio = HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }
 
-export default function MusicPlayer({ getToken, live, output, idCue, adCue, onAired }: {
+export default function MusicPlayer({ getToken, live, output, idCue, adCue, onAired, onTrack, listSlot }: {
   getToken: () => Promise<string>
   live: boolean
   output: string
@@ -20,6 +20,10 @@ export default function MusicPlayer({ getToken, live, output, idCue, adCue, onAi
   adCue: number
   /** A track started on air while live (for the play log). */
   onAired: (t: Track) => void
+  /** The track that is playing now (null when nothing plays). */
+  onTrack?: (t: Track | null) => void
+  /** Shown instead of the search box and track list (the sign-in info while nobody is signed in). */
+  listSlot?: React.ReactNode
 }) {
   const main = useRef<SinkAudio | null>(null)
   const [all, setAll] = useState(false)
@@ -161,9 +165,12 @@ export default function MusicPlayer({ getToken, live, output, idCue, adCue, onAi
   }
   const fadeOut = async () => { const a = main.current; if (!a) return; queue.current = []; await ramp(0, FADE_OUT_MS); a.pause(); mult.current = 1 }
 
+  useEffect(() => { onTrack?.(playing ? cur : null) }, [cur, playing, onTrack])
   const pct = Math.round(volume * 100)
   return (
     <div className="h-full flex flex-col gap-3 min-h-0">
+      {listSlot ?? (
+        <>
       <div className="flex items-center gap-3">
         <p className="hw-title text-3xl leading-tight mr-1">Tracks</p>
         <button type="button" className="gbtn h-11 px-4 text-lg" aria-pressed={!all && !searching} onClick={() => { setAll(false); setQ('') }}>Beds</button>
@@ -190,6 +197,8 @@ export default function MusicPlayer({ getToken, live, output, idCue, adCue, onAi
           )
         })}
       </ul>
+        </>
+      )}
       {error && <p className="warn text-lg">{error}</p>}
 
       <div className="flex items-center gap-3">

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BYPASS_UID, canGoLiveOpenFloor, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
+import { BYPASS_UID, QUIET_REMIND_MS, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
 
 const S = 'test-secret-123'
 
@@ -200,4 +200,10 @@ test('open floor: needs radio training, a past live show, and no scheduled show 
   assert.equal(canGoLiveOpenFloor({ radio: true, hostedBefore: true, showRunning: true }), false)
   assert.equal(canGoLiveOpenFloor({ radio: true, hostedBefore: false, showRunning: false }), false)
   assert.equal(canGoLiveOpenFloor({ radio: false, hostedBefore: true, showRunning: false }), false)
+})
+
+test('quiet-hours reminder shows at first, hides when dismissed, and returns after half an hour', () => {
+  assert.equal(quietReminderDue(0, 1_000_000), true)
+  assert.equal(quietReminderDue(1_000_000, 1_000_000 + QUIET_REMIND_MS - 1), false)
+  assert.equal(quietReminderDue(1_000_000, 1_000_000 + QUIET_REMIND_MS), true)
 })

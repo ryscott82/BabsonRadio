@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { errText, library, trackUrl, type Track } from './helper'
 
-// A 3 × 3 sound board: station IDs, jingles and sound effects ("Soundboard", "Jingles", "Station IDs" playlists).
-// Tap a pad (or press 1–9) to fire it over everything on the music output; tap again to stop it.
+// A row of 8 sound pads: station IDs, jingles and sound effects ("Soundboard", "Jingles", "Station IDs" playlists).
+// Tap a pad (or press 1–8) to fire it over everything on the music output; tap again to stop it.
 
 type SinkAudio = HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }
-const PADS = 9
+const PADS = 8
 
 export default function Soundboard({ getToken, output }: { getToken: () => Promise<string>; output: string }) {
   const audio = useRef<SinkAudio | null>(null)
@@ -58,8 +58,7 @@ export default function Soundboard({ getToken, output }: { getToken: () => Promi
   const slots = Array.from({ length: PADS }, (_, i) => pads?.[i] ?? null)
   return (
     <div className="h-full flex flex-col gap-3 min-h-0">
-      <p className="hw-title text-3xl leading-tight">Sound board</p>
-      <div className="grid grid-cols-3 grid-rows-3 gap-3 flex-1 min-h-0">
+      <div className="grid grid-cols-8 gap-3 flex-1 min-h-0">
         {slots.map((t, i) => (
           <button key={t?.id ?? `empty-${i}`} type="button" className="gpad" disabled={!t} aria-pressed={!!t && on === t.id} onClick={() => t && hit(t)}>
             <span className="n">{i + 1}</span>

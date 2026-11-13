@@ -29,12 +29,12 @@ export default function LevelMeter({ frame, stats, error, deadAir, auto }: {
   const tip = error || (deadAir > 0 ? `${deadAir} seconds of silence on air.` : auto.on && (state === 'quiet' || state === 'loud') ? 'Auto level is adjusting.' : TIP[state])
   return (
     <div className="bp h-full flex flex-col px-6 py-5 min-h-0">
-      <p className="hw-title text-3xl leading-tight">Level</p>
-      <p className={`num mt-1 ${bad ? 'warn' : state === 'good' ? 'ok' : ''}`} style={{ fontSize: 'clamp(2.5rem, 3.6vw, 4.5rem)' }}>{deadAir > 0 ? 'Dead air' : WORD[state]}</p>
+      <p className="hw-title text-3xl leading-tight">Loudness meter</p>
+      <p className={`num mt-1 ${bad ? 'warn' : state === 'good' ? 'ok' : ''}`} style={{ fontSize: 'clamp(2.5rem, 4.4vw, 5.5rem)' }}>{deadAir > 0 ? 'Dead air' : WORD[state]}</p>
       <Bar frame={frame} gain={gain} />
-      <p className={`text-xl mt-2 ${bad ? 'warn' : 'lbl'}`}>{tip}</p>
-      <div className="mt-auto pt-3 border-t rule flex flex-col items-start gap-2">
-        <button type="button" className="gbtn h-12 px-5 text-xl" aria-pressed={auto.on} disabled={!auto.available} onClick={auto.toggle}>
+      <p className={`text-2xl mt-2 ${bad ? 'warn' : 'lbl'}`}>{tip}</p>
+      <div className="mt-auto pt-3 border-t rule flex flex-wrap items-center gap-3">
+        <button type="button" className="gbtn h-11 px-5 text-lg" aria-pressed={auto.on} disabled={!auto.available} onClick={auto.toggle}>
           Auto level {auto.on ? 'on' : 'off'}
         </button>
         <span className="lbl text-lg">
@@ -65,9 +65,9 @@ export function Bar({ frame, gain, compact = false }: { frame: RefObject<MeterFr
   }, [frame])
   return (
     <div className={compact ? '' : 'mt-2'}>
-      <div className={`relative ${compact ? 'h-7 rounded-lg' : 'h-14 rounded-xl'} overflow-hidden`} style={{ background: 'rgba(244,239,226,.08)', boxShadow: 'inset 0 2px 6px rgba(0,0,0,.6)' }}>
+      <div className={`relative ${compact ? 'h-7 rounded-lg' : 'h-20 rounded-xl'} overflow-hidden`} style={{ background: 'rgba(244,239,226,.08)', boxShadow: 'inset 0 2px 6px rgba(0,0,0,.6)' }}>
         <div className="absolute inset-y-0" style={{ left: pos(GOOD_LUFS[0]), width: `calc(${pos(GOOD_LUFS[1])} - ${pos(GOOD_LUFS[0])})`, background: 'rgba(31,191,127,.16)' }} />
-        <div ref={fill} className="absolute left-0 top-3 bottom-3 rounded-r" />
+        <div ref={fill} className="absolute left-0 top-5 bottom-5 rounded-r" />
         <div ref={tick} className="absolute inset-y-2 w-1.5 -ml-0.5 rounded" style={{ background: 'rgba(244,239,226,.9)' }} />
         <div className="absolute inset-y-0 w-0.5" style={{ left: pos(TARGET_LUFS), background: 'rgba(244,239,226,.75)' }} />
       </div>

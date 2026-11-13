@@ -73,6 +73,21 @@ If someone scans the door QR code while the booth panel isn't up (closed, Exit p
 - One notice per scan, only for scans under 60 seconds old, not for the scan already there when the helper starts, never in maintenance mode, and never while a booth window is open.
 - The booth itself claims a scan up to 60 seconds old when it opens, so the person is signed in once someone presses the button.
 
+## Update available
+
+Every 10 minutes the helper runs `git fetch` with the PC's read-only deploy key (GitHub only, nothing on Vercel) and counts the new
+commits on main under `tools/studio-helper`. `/ping` reports `update: { behind, checkedAt, error, updating }`. The booth's idle screen
+shows an **Update available** button when that count is above 0, or when babsonradio.com has deployed a newer version than the page
+that is open. Pressing it:
+
+- reloads the page if only the website changed;
+- otherwise calls `POST /update`. The helper refuses while a show is live or being recorded, and does nothing when GitHub has nothing
+  new. Otherwise it starts `C:\BabsonRadio\scripts\update-helper.cmd` (git pull, packages installed in `C:\BabsonRadio\npm-stage` and
+  swapped in if the lock file changed, node restarted). The page waits for the helper to come back, then reloads.
+
+`.env`: `UPDATE_CHECK=0` turns the check off, `UPDATE_CHECK_MS` changes how often, `UPDATE_SCRIPT`, `REPO_DIR`, `GIT_SSH_COMMAND` and
+`GIT_PATH` override the defaults. Log lines start with `UPDATE`; the script writes `C:\BabsonRadio\update.log`.
+
 ## Exit panel and maintenance
 **Exit panel** on the booth is for admins and E-board only. The website puts `x: true` in their control token, and the helper's `/exit-booth` refuses anyone else. The booth comes back by itself after 30 minutes, or straight away with the **Babson Radio Booth** shortcut. For maintenance, use `BR-stop-kiosk.cmd` on the Desktop (stops the booth, helper and watchdog) and `BR-resume-kiosk.cmd` afterwards.
 

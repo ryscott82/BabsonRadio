@@ -53,6 +53,7 @@ async function start() {
       FFMPEG_PATH: join(here, 'fake-ffmpeg.mjs'), FFPROBE_PATH: join(here, 'fake-ffmpeg.mjs'),
       AZURACAST_URL: `http://127.0.0.1:${azSrv.address().port}`, AZURACAST_API_KEY: 'k', AZURACAST_STATION_ID: 'babson_radio',
       SITE_URL: `http://127.0.0.1:${siteSrv.address().port}`, ARCHIVE_MIN_SECONDS: '5',
+      UPDATE_CHECK: '0', REPO_DIR: dir, UPDATE_SCRIPT: join(dir, 'no-update.cmd'),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
@@ -143,6 +144,15 @@ test('exit panel needs an admin or E-board token (x: true); cancel works for any
   assert.equal((await h.call('/exit-booth', { token: token({ u: 'stu', n: 'Student' }) })).status, 403, 'student')
   assert.equal((await h.call('/exit-booth', { token: token({ u: 'eb', n: 'E-board', x: true }) })).status, 200)
   assert.equal((await h.call('/exit-booth/cancel', {})).status, 200)
+})
+
+test('update: /ping reports it, /update does nothing when GitHub has nothing new (or cannot be reached)', { skip }, async () => {
+  const h = await start()
+  assert.equal((await h.call('/ping')).body.update.behind, 0)
+  const r = await h.call('/update', {})
+  assert.equal(r.status, 200)
+  assert.equal(r.body.nothing, true)
+  assert.notEqual((await h.call('/ping')).body.update.error, '', 'not a git repo here, so the check says why')
 })
 
 test('refuses other origins and bad tokens', { skip }, async () => {

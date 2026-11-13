@@ -16,6 +16,7 @@ import { createLiveArchive } from './lib/livearchive.mjs'
 import { normalizeOne } from './lib/normalize.mjs'
 import { createBrowser } from './lib/browser.mjs'
 import { createDoorWatch } from './lib/doorwatch.mjs'
+import { createUpdates, CHECK_MS } from './lib/updates.mjs'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 
@@ -273,6 +274,30 @@ const doorWatch = createDoorWatch({
   toast: () => new Promise(resolve => execFile('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', join(here, 'lib', 'door-toast.ps1')], { timeout: 20_000, windowsHide: true },
     err => { if (err) log('DOOR SCAN   notification failed:', err.message); resolve() })),
 })
+// Update available: GitHub is checked every 10 minutes with the read-only deploy key (git fetch, nothing on Vercel). The update itself is
+// scripts/update-helper.cmd, started detached because it stops node (helper-loop.cmd starts the new version 5 seconds later).
+const REPO_DIR = process.env.REPO_DIR || join(here, '..', '..')
+const UPDATE_SCRIPT = process.env.UPDATE_SCRIPT || 'C:\\BabsonRadio\\scripts\\update-helper.cmd'
+const GIT_SSH = process.env.GIT_SSH_COMMAND || 'ssh -i C:/BabsonRadio/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=C:/BabsonRadio/known_hosts'
+const updates = createUpdates({
+  now: Date.now, log,
+  git: args => new Promise((resolve, reject) => execFile(process.env.GIT_PATH || 'git', ['-C', REPO_DIR, ...args], { timeout: 60_000, windowsHide: true, env: { ...process.env, GIT_SSH_COMMAND: GIT_SSH } },
+    (err, out, errOut) => (err ? reject(new Error(String(errOut || err.message).trim().slice(-200))) : resolve(String(out))))),
+  busy: async () => {
+    if (await isLive()) return 'A show is live. Update after it ends.'
+    if (recorder.state().state !== 'idle') return 'A show is being recorded. Update after it is saved.'
+    return ''
+  },
+  runUpdate: () => {
+    const c = spawn('cmd.exe', ['/c', UPDATE_SCRIPT], { detached: true, stdio: 'ignore', windowsHide: true })
+    c.on('error', e => log('UPDATE ERROR', e.message)); c.unref()
+  },
+})
+if (process.env.UPDATE_CHECK !== '0') {
+  setTimeout(() => updates.check().catch(() => {}), 20_000).unref()
+  setInterval(() => updates.check().catch(() => {}), Number(process.env.UPDATE_CHECK_MS) || CHECK_MS).unref()
+}
+
 async function startDoorWatch() {
   const apiKey = process.env.FIREBASE_API_KEY || '', projectId = process.env.FIREBASE_PROJECT_ID || 'babson-radio'
   if (!apiKey || process.env.DOOR_NOTICE === '0') { log('Door scan notice off (set FIREBASE_API_KEY in .env to turn it on).'); return }
@@ -403,7 +428,7 @@ const server = createServer(async (req, res) => {
 
   const url = new URL(req.url, 'http://127.0.0.1')
   try {
-    if (req.method === 'GET' && url.pathname === '/ping') return send(res, 200, { ok: true, version: 1, browser: browser.state() }, origin)
+    if (req.method === 'GET' && url.pathname === '/ping') return send(res, 200, { ok: true, version: 1, browser: browser.state(), update: updates.state() }, origin)
 
     // Proves to the website that this sign-in is happening on the studio PC.
     if (req.method === 'GET' && url.pathname === '/attest') {
@@ -429,6 +454,14 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/exit-booth/cancel') {
       try { unlinkSync(process.env.BOOTH_EXIT_FLAG || 'C:\\BabsonRadio\\booth-exit.flag') } catch { /* none */ }
       return send(res, 200, { ok: true }, origin)
+    }
+
+    // Update button on the booth. No sign-in needed (the idle screen has nobody signed in): it only does anything when GitHub has a newer
+    // helper, and never during a live show or a recording.
+    if (req.method === 'POST' && url.pathname === '/update') {
+      await readBody(req)
+      const r = await updates.update()
+      return send(res, r.error ? 409 : 200, r, origin)
     }
 
     if (req.method === 'GET' && url.pathname === '/status') return send(res, 200, await status(), origin)

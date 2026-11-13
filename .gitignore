@@ -8,6 +8,7 @@ build/
 
 # Web app
 node_modules/
+node_modules.old/
 .next/
 .env*
 !.env.example

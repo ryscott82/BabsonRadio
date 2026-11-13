@@ -385,42 +385,31 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
   }
   return (
     <div className="fixed inset-0 z-[2] flex flex-col gap-3 px-8 pt-5 pb-6 overflow-hidden" style={area}>
-      {/* Top: ON AIR at the left, notices in the middle (time left, ad breaks, station ID, quiet hours, bookings), time and date at the right with the small buttons. */}
-      <header className="hw-desk-text grid grid-cols-[auto_1fr_auto] items-start gap-6 shrink-0">
-        <div className="hw-sign hw-sign-lg shrink-0" style={{ position: 'relative', left: 0, top: 0 }}>
+      {/* A slim strip: logo, the on-air light, the show (or what is next), who else is in the studio, the notices, and the time. */}
+      <header className="hw-desk-text flex items-center gap-5 shrink-0 min-h-[4.5rem]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/booth/logo.png" alt="Babson Sound" className="h-16 w-16 rounded-xl shrink-0" />
+        <div className="hw-sign shrink-0" style={{ position: 'relative', left: 0, top: 0 }}>
           <span style={live ? undefined : { color: '#4a2620', textShadow: 'none' }}>ON AIR</span>
         </div>
-        <div className="flex items-center justify-center gap-4 min-w-0 flex-wrap pt-1">
+        <p className="hw-title text-4xl leading-none truncate min-w-0 max-w-[34%]">
+          {live && showName ? showName : s?.show ? s.show.title : next ? `Next: ${next.title} at ${clock(next.startAt)}` : 'Nothing booked'}
+        </p>
+        {!bypass && <CrewPanel crew={s?.crew ?? []} driverName={s?.name ?? ''} onAir={live || connecting || recording} getToken={token} />}
+        <div className="flex items-center justify-center gap-3 min-w-0 flex-wrap flex-1">
           <ClockScreen show={s?.show ?? null} ads={s?.ads ?? null} live={live} lastMusicAt={lastMusicAt} onPlayId={() => setIdCue(n => n + 1)} />
           <StudioNotices status={studio.status} myBookingId={studio.myBookingId} />
         </div>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex items-baseline gap-4 shrink-0">
           <p className="hw-title text-5xl leading-none tabular-nums">{clock(now)}</p>
-          <p className="hw-title text-3xl leading-none">{date}</p>
-          <div className="flex items-center gap-2 flex-wrap justify-end mt-1">
-            {!bypass && <button type="button" className={sb} onClick={() => setModal('note')}>Leave a note</button>}
-            <button type="button" className={sb} onClick={() => setModal('sound')}>Audio setup</button>
-            {canExit && !live && !connecting && !recording && <button type="button" className={sb} onClick={onExitPanel}>Exit panel</button>}
-          </div>
-          <div className="flex items-center gap-2 justify-end">
-            <BrowserButtons state={browserSt} getToken={token} onError={setError} />
-          </div>
-          <div className="flex items-center gap-2 justify-end mt-1">
-            {confirmOut ? (
-              <>
-                <button type="button" className="gbtn h-20 px-8 text-3xl" onClick={() => setConfirmOut(false)}>Stay</button>
-                <button type="button" className="gbtn gbtn-stop h-20 px-8 text-3xl" onClick={signOutNow} disabled={!!busy}>{live ? 'End show and sign out' : 'Stop recording and sign out'}</button>
-              </>
-            ) : (
-              <button type="button" className="gbtn h-20 px-10 text-3xl" onClick={() => (live || recording ? setConfirmOut(true) : signOutNow())} disabled={!!busy}>{bypass ? 'Back to sign in' : 'Sign out'}</button>
-            )}
-          </div>
+          <p className="hw-title text-2xl leading-none">{date}</p>
         </div>
       </header>
 
       {/* The welcome stays 15 minutes after sign-in (and while nothing is booked), then it counts down to the next show. On air it gives way to the show's name. */}
-      {(welcomeBig || countdownBig || problem || s?.note || (live && showName)) && (
-        <div className="hw-desk-text text-center min-w-0 shrink-0">
+      <div className="flex items-center gap-6 shrink-0 min-h-[5rem]">
+      {(welcomeBig || countdownBig || problem || s?.note || (live && showName)) ? (
+        <div className="hw-desk-text text-center min-w-0 flex-1">
           {welcomeBig ? (
             <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(3rem, 9vh, 6.5rem)' }}>Welcome, {bypass ? 'Babson Sound user' : s?.firstName || '…'}</h1>
           ) : countdownBig && next ? (
@@ -433,7 +422,18 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
           ) : null}
           {(problem || s?.note) && <p className={`text-xl mt-1 line-clamp-1 ${problem ? 'text-[#FFB3A6]' : ''}`}>{problem || `Note from ${s?.note?.by || 'the last host'}: ${s?.note?.text}`}</p>}
         </div>
-      )}
+      ) : <div className="flex-1" />}
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            <BrowserButtons state={browserSt} getToken={token} onError={setError} />
+          </div>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {!bypass && <button type="button" className={sb} onClick={() => setModal('note')}>Leave a note</button>}
+            <button type="button" className={sb} onClick={() => setModal('sound')}>Audio setup</button>
+            {canExit && !live && !connecting && !recording && <button type="button" className={sb} onClick={onExitPanel}>Exit panel</button>}
+          </div>
+        </div>
+      </div>
 
       {/* Left: up next, the loudness meter, what is on, Go live. Right: tracks (or the sign-in info) with the sound board under them. */}
       <div className={`grid ${bl ? 'grid-cols-1' : 'grid-cols-[1fr_1.15fr]'} grid-rows-[minmax(0,1fr)] items-stretch gap-5 flex-1 min-h-0`}>
@@ -475,6 +475,14 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
             ) : (
               <RecordShow st={rec.st} reload={rec.reload} getToken={token} live={live || connecting} ready={ready} level={meter.stats.state} myUid={user?.uid ?? ''} />
             )}
+            {confirmOut ? (
+              <div className="flex gap-2">
+                <button type="button" className="gbtn h-20 px-8 text-3xl" onClick={() => setConfirmOut(false)}>Stay</button>
+                <button type="button" className="gbtn gbtn-stop h-20 flex-1 text-3xl" onClick={signOutNow} disabled={!!busy}>{live ? 'End show and sign out' : 'Stop recording and sign out'}</button>
+              </div>
+            ) : (
+              <button type="button" className="gbtn h-20 w-full text-3xl" onClick={() => (live || recording ? setConfirmOut(true) : signOutNow())} disabled={!!busy}>{bypass ? 'Back to sign in' : 'Sign out'}</button>
+            )}
           </div>
         </div>
 
@@ -510,7 +518,7 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
           </div>
         </div>
       )}
-      {bypass ? <DoorClaim /> : <CrewPanel crew={s?.crew ?? []} driverName={s?.name ?? ''} onAir={live || connecting || recording} getToken={token} />}
+      {bypass && <DoorClaim />}
       {signInOpen && bypass && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/85 px-8" role="dialog" aria-label="Sign in to go live">
           <div className="hw-screen max-w-4xl w-full p-10 space-y-6">

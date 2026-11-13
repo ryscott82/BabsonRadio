@@ -63,18 +63,14 @@ export default function CrewPanel({ crew, driverName, onAir, getToken }: { crew:
     <>
       {toast && <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[95] hw-screen px-8 py-4 text-3xl" role="status">{toast}</div>}
       {list.length > 0 && (
-        <div className="fixed left-4 bottom-4 z-40 hw-screen px-4 py-3 space-y-2 max-w-sm" aria-label="In the studio">
-          <p className="lbl text-lg">Also in the studio</p>
-          <ul className="space-y-1">
-            {list.map(p => (
-              <li key={p.uid} className="flex items-center justify-between gap-4 text-xl">
-                <span>{p.firstName || p.name}</span>
-                <button type="button" className="gbtn h-10 px-4 text-base" disabled={onAir} title={onAir ? 'End the show first' : undefined} onClick={() => { setErr(''); setPick(p) }}>Take control</button>
-              </li>
-            ))}
-          </ul>
-          {onAir && <p className="text-sm opacity-70">Take control opens when the show ends.</p>}
-        </div>
+        <ul className="flex items-center gap-2 flex-wrap" aria-label="Also in the studio">
+          {list.map(p => (
+            <li key={p.uid} className="flex items-center gap-2 rounded-full pl-4 pr-1.5 py-1 text-xl" style={{ background: 'rgba(0,0,0,.35)', boxShadow: 'inset 0 0 0 1px rgba(244,239,226,.25)' }}>
+              <span>{p.firstName || p.name}</span>
+              <button type="button" className="gbtn h-9 px-3 text-sm" disabled={onAir} title={onAir ? 'Take control opens when the show ends.' : `Take control as ${p.firstName || p.name}`} onClick={() => { setErr(''); setPick(p) }}>Take control</button>
+            </li>
+          ))}
+        </ul>
       )}
       {pick && (
         <div className="fixed inset-0 z-[96] grid place-items-center bg-black/85" role="alertdialog" aria-label="Take control">

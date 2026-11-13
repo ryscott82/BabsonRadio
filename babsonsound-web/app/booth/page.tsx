@@ -17,6 +17,7 @@ import MusicPlayer from '@/components/booth/MusicPlayer'
 import Soundboard from '@/components/booth/Soundboard'
 import ClockScreen from '@/components/booth/ClockScreen'
 import { useAutoGain } from '@/components/booth/useAutoGain'
+import CheckButton, { useMicCheck } from '@/components/booth/CheckButton'
 import { useShowInfo } from '@/components/booth/useShowInfo'
 import { BROWSER_ACTIVE_MS, BrowserButtons, closeBrowser, setBrowserLayout, type BrowserState } from '@/components/booth/StudioBrowser'
 import NoteBox from '@/components/booth/NoteBox'
@@ -577,18 +578,7 @@ function GoLive(p: {
   ads: AdPlan | null; onGoLive: () => void; onEnd: () => void; onPlayAds: () => void
 }) {
   const [clean, setClean] = useState(false)
-  const [soundOk, setSoundOk] = useState(false)
-  const goodSince = useRef(0)
-  useEffect(() => {
-    if (soundOk) return
-    const t = setInterval(() => {
-      if (p.level === 'off') { setSoundOk(true); return }
-      if (p.level !== 'good') { goodSince.current = 0; return }
-      goodSince.current ||= Date.now()
-      if (Date.now() - goodSince.current >= 3000) setSoundOk(true)
-    }, 250)
-    return () => clearInterval(t)
-  }, [p.level, soundOk])
+  const [soundOk, toggleMic] = useMicCheck(p.level)
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [])
   const ad = p.ads ? adBreak(p.ads, now) : null
@@ -615,24 +605,23 @@ function GoLive(p: {
       </div>
     )
   }
-  const chip = 'gbtn h-11 px-1 text-base flex-1 whitespace-nowrap'
   const ok = soundOk && clean
   return (
     <div className="h-full flex flex-col justify-center gap-3">
-      {p.canGoLive && <p className="hw-title text-2xl leading-tight">To go on air: 1. Tick the box. 2. Press Go live.</p>}
+      {p.canGoLive && <p className="hw-title text-2xl leading-tight">To go on air: 1. Tick both boxes. 2. Press Go live.</p>}
       {p.canGoLive ? (
         <div className="flex flex-col gap-2">
-          <p className="lbl text-base" aria-live="polite">{soundOk ? '✓ Mic check passed' : 'Mic check: speak into the mic, it passes by itself'}</p>
           <div className="flex gap-2">
-            <button type="button" className={chip} aria-pressed={clean} onClick={() => setClean(x => !x)}>{clean ? '✓ ' : ''}Clean music only</button>
+            <CheckButton label="Mic check" checked={soundOk} onToggle={toggleMic} />
+            <CheckButton label="Clean music only" checked={clean} onToggle={() => setClean(x => !x)} />
           </div>
-          <p className="lbl text-sm">Play only music without explicit lyrics.</p>
+          <p className="lbl text-sm">Mic check ticks itself when we hear you. Clean music means no explicit lyrics on air.</p>
         </div>
       ) : <p className="lbl text-lg min-h-11 flex items-center">{p.reason}</p>}
       <button type="button" onClick={p.onGoLive} disabled={!!p.busy || !p.canGoLive || !p.ready || !ok}
               className="gbtn gbtn-go h-20 flex flex-col items-center justify-center">
         <span className="hw-title text-3xl">{p.busy === 'live' ? 'Going live…' : 'Go live'}</span>
-        <span className="text-base opacity-90">{!p.canGoLive ? 'Not available yet' : ok ? 'Starts the stream and the recording' : soundOk ? 'Tick the clean music box first' : 'Waiting for the mic check'}</span>
+        <span className="text-base opacity-90">{!p.canGoLive ? 'Not available yet' : ok ? 'Starts the stream and the recording' : soundOk ? 'Tick the clean music box first' : 'Say something into the mic'}</span>
       </button>
     </div>
   )

@@ -19,7 +19,15 @@ const mac = (secret: string, msg: string) => createHmac('sha256', secret).update
 const same = (a: Buffer, b: Buffer) => a.length === b.length && timingSafeEqual(a, b)
 
 /** u: uid, n: name, s: studio session id, l: may go live (false = may only end the stream), r: may use Record a show (Studio badge), exp: ms. */
-export interface BoothClaims { u: string; n: string; s: string; l: boolean; r?: boolean; exp: number }
+export interface BoothClaims { u: string; n: string; s: string; l: boolean; r?: boolean; /** may use the helper's Exit panel (E-board and Admin only) */ x?: boolean; exp: number }
+
+/** What the booth page may show: students never see the Exit panel button; E-board and Admin do. */
+export type BoothRole = 'student' | 'eboard' | 'admin'
+export const boothRole = (level: string): BoothRole => (level === 'admin' ? 'admin' : level === 'director' ? 'eboard' : 'student')
+/** The control token flag the helper checks before /exit-booth. Only true for E-board and Admin; the bypass and students never get it. */
+export const mayExitPanel = (role: BoothRole) => role !== 'student'
+/** For the helper: a token without x:true must be refused at /exit-booth. */
+export const tokenMayExit = (c: BoothClaims | null) => !!c && c.x === true
 
 export function signToken(secret: string, c: BoothClaims): string {
   const body = b64(JSON.stringify(c))
@@ -351,3 +359,15 @@ export function cellZone(i: number, cells = METER_CELLS): CellZone {
   const mid = METER_MIN + ((i + 0.5) / cells) * (METER_MAX - METER_MIN)
   return mid < YELLOW_FROM_LUFS ? 'green' : mid < LOUD_LUFS ? 'yellow' : 'red'
 }
+
+/** A door scan is still claimable for this long (the claim itself expires after 60 s on the server). */
+export const DOOR_CLAIM_MS = 60_000
+/** Should the idle screen claim a door ping it sees? A new ping always; the first one it sees (the panel just opened) only if it is under 60 s old. */
+export function claimDoorPing(p: { first: boolean; claimId: string; lastId: string; at: number; now: number }): boolean {
+  if (!p.claimId || p.claimId === p.lastId) return false
+  if (!p.first) return true
+  return Number.isFinite(p.at) && p.now - p.at >= 0 - 5_000 && p.now - p.at < DOOR_CLAIM_MS
+}
+
+/** Sound is reaching the computer from the mic input (the meter is running and not silent): the mic check can tick itself. */
+export const micHeard = (level: LevelState) => level === 'quiet' || level === 'good' || level === 'near' || level === 'loud'

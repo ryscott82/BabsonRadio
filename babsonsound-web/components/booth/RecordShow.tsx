@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '@/lib/auth'
 import { BOOTH_HELPER_ORIGIN, type LevelState } from '@/lib/booth'
+import CheckButton, { useMicCheck } from './CheckButton'
 import { errText, helper, mmss } from './helper'
 import Modal from './Modal'
 
@@ -41,19 +42,8 @@ export default function RecordShow(p: {
 }) {
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
-  const [soundOk, setSoundOk] = useState(false)
   const [saving, setSaving] = useState<Take | null>(null)
-  const goodSince = useRef(0)
-  useEffect(() => {
-    if (soundOk) return
-    const t = setInterval(() => {
-      if (p.level === 'off') { setSoundOk(true); return }
-      if (p.level !== 'good') { goodSince.current = 0; return }
-      goodSince.current ||= Date.now()
-      if (Date.now() - goodSince.current >= 3000) setSoundOk(true)
-    }, 250)
-    return () => clearInterval(t)
-  }, [p.level, soundOk])
+  const [soundOk, toggleMic] = useMicCheck(p.level)
 
   const act = async (label: string, path: string, then?: (r: { id?: string; durationSec?: number; mine?: boolean }) => void) => {
     setBusy(label); setError('')
@@ -86,10 +76,11 @@ export default function RecordShow(p: {
     )
   } else {
     const ok = soundOk
-    const why = !p.st ? 'Waiting for the studio helper' : !p.st.canRecord ? 'Finish studio training to record' : p.live ? 'End the live show first' : !p.ready ? 'BUTT isn’t answering' : ok ? 'Records in BUTT only, nothing goes on air' : 'Waiting for the mic check'
+    const why = !p.st ? 'Waiting for the studio helper' : !p.st.canRecord ? 'Finish studio training to record' : p.live ? 'End the live show first' : !p.ready ? 'BUTT isn’t answering' : ok ? 'Records in BUTT only, nothing goes on air' : 'Say something into the mic'
     main = (
       <>
-        <p className="lbl text-lg" aria-live="polite">{soundOk ? '✓ Mic check passed' : 'Mic check: speak into the mic, it passes by itself'}</p>
+        <CheckButton label="Mic check" checked={soundOk} onToggle={toggleMic} />
+        <p className="lbl text-sm">Ticks itself when we hear you.</p>
         <button type="button" onClick={() => act('start', '/record/start')} disabled={!!busy || !ok || !p.st?.canRecord || p.live || !p.ready}
                 className="gbtn gbtn-go flex-1 min-h-24 flex flex-col items-center justify-center gap-2">
           <span className="hw-title text-5xl">{busy === 'start' ? 'Starting…' : 'Record'}</span>

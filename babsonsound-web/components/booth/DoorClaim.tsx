@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { signInWithCustomToken } from 'firebase/auth'
 import { auth, db } from '@/lib/firebase'
+import { claimDoorPing } from '@/lib/booth'
 import { attestHeaders, boothFetch } from './helper'
 
-/** Door QR: someone scanned the code. The first snapshot is whatever scan happened last (ignored); a new one is claimed right away, the PC says who
+/** Door QR: someone scanned the code. A new scan is claimed right away, and so is the last one if it is under 60 seconds old when the panel opens (a scan while it was closed); the PC says who
  *  is being signed in for 4 seconds (Cancel works), then signs in with the one-time token. Used on the idle screen and on the no-sign-in booth. */
 export default function DoorClaim() {
   const [door, setDoor] = useState<{ firstName: string; token: string; left: number } | null>(null)
@@ -14,8 +15,9 @@ export default function DoorClaim() {
     let first = true, last = ''
     return onSnapshot(doc(db, 'boothDoorPing', 'latest'), snap => {
       const claimId = String(snap.get('claimId') ?? '')
-      if (first) { first = false; last = claimId; return }
-      if (!claimId || claimId === last) return
+      const isFirst = first
+      first = false
+      if (!claimDoorPing({ first: isFirst, claimId, lastId: last, at: Number(snap.get('at') ?? 0), now: Date.now() })) { if (isFirst) last = claimId; return }
       last = claimId
       void (async () => {
         try {

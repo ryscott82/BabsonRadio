@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { METER_CELLS, cellZone, cellsLit, WELCOME_MS, countdownText, heroMode, BYPASS_UID, IDLE_OUT_MS, IDLE_WARN_MS, QUIET_REMIND_MS, idleStep, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, LONG_WINDOW_MS, levelWord, levelAdvice, newLoudTracker, stepLoud, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
+import { micHeard, claimDoorPing, METER_CELLS, cellZone, cellsLit, WELCOME_MS, countdownText, heroMode, BYPASS_UID, IDLE_OUT_MS, IDLE_WARN_MS, QUIET_REMIND_MS, idleStep, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, LONG_WINDOW_MS, levelWord, levelAdvice, newLoudTracker, stepLoud, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
 
 const S = 'test-secret-123'
 
@@ -299,4 +299,18 @@ test('segmented bar: green low, yellow near the top, red at the very top, no blu
   assert.equal(cellsLit(-35), 1); assert.equal(cellsLit(-14), 22); assert.equal(cellsLit(0), METER_CELLS)
   // the sweet spot (-14 LUFS) lights green and the first yellow cells; "too quiet" (-25) stays in green
   assert.equal(zones[cellsLit(-14) - 1], 'yellow'); assert.equal(zones[cellsLit(-25) - 1], 'green')
+})
+
+test('door scan while the panel was closed: claimed on the first snapshot only when under 60 seconds old', () => {
+  const now = 1_800_000_000_000
+  assert.equal(claimDoorPing({ first: true, claimId: 'a', lastId: '', at: now - 30_000, now }), true)
+  assert.equal(claimDoorPing({ first: true, claimId: 'a', lastId: '', at: now - 61_000, now }), false)
+  assert.equal(claimDoorPing({ first: true, claimId: '', lastId: '', at: now, now }), false)
+  assert.equal(claimDoorPing({ first: false, claimId: 'b', lastId: 'a', at: now - 500_000, now }), true)
+  assert.equal(claimDoorPing({ first: false, claimId: 'a', lastId: 'a', at: now, now }), false)
+})
+
+test('mic check ticks itself once sound reaches the input', () => {
+  for (const l of ['quiet', 'good', 'near', 'loud'] as const) assert.equal(micHeard(l), true)
+  for (const l of ['off', 'silent'] as const) assert.equal(micHeard(l), false)
 })

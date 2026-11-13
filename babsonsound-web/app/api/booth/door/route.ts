@@ -3,6 +3,8 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, requireUser } from '@/lib/server/http'
 import { accessOf } from '@/lib/server/access'
+import { addCrew, crewFresh } from '@/lib/crew'
+import { crewRef, loadCrew, logEvent } from '@/lib/server/booth'
 
 export const runtime = 'nodejs'
 
@@ -27,6 +29,22 @@ export async function POST(req: Request) {
     const u = await db.collection('users').doc(t.uid).get()
     const name = [u.get('firstName'), u.get('lastName')].filter(Boolean).join(' ') || String(u.get('displayName') ?? t.email ?? 'Member')
     const firstName = String(u.get('firstName') ?? '') || name.split(' ')[0]
+    // The booth is in use by someone else: join the studio crew instead of signing in (nobody is kicked out).
+    const crew = await loadCrew(db)
+    if (crewFresh(crew, now) && crew.driverUid !== t.uid) {
+      const r = addCrew(crew, { uid: t.uid, name, firstName }, now)
+      if (r.full) throw new HttpError(409, 'The studio crew is full.', 'BR-BTH-010')
+      if (r.added) {
+        await crewRef(db).update({ members: r.doc.members, updatedAt: now })
+        await logEvent(db, crew.sessionId, t.uid, name, 'crew_join', '', now)
+      }
+      const id = randomBytes(16).toString('hex')
+      const b2 = db.batch()
+      b2.set(db.collection('boothDoorClaims').doc(id), { uid: t.uid, name, firstName, at: now, exp: now + 60_000, used: false, crew: true, expiresAt: Timestamp.fromMillis(now + 24 * 3_600_000) })
+      b2.set(db.collection('boothDoorPing').doc('latest'), { claimId: id, at: now })
+      await b2.commit()
+      return { ok: true, firstName, crew: true, driverName: crew.driverName }
+    }
     const claimId = randomBytes(16).toString('hex')
     const batch = db.batch()
     batch.set(db.collection('boothDoorClaims').doc(claimId), { uid: t.uid, name, firstName, at: now, exp: now + 60_000, used: false, expiresAt: Timestamp.fromMillis(now + 24 * 3_600_000) })

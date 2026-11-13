@@ -192,6 +192,9 @@ Format: `BR-<AREA>-<NNN>`. Unexpected server errors also show a `ref`: search Ve
 | BR-BTH-001 | **Not the studio PC**: The go-live page was opened somewhere the studio helper is not running, or the helper's secret does not match the website's. | Use the studio PC. | On the studio PC, check the helper window is running. STUDIO_PC_SECRET in tools/studio-helper/.env must match the Vercel variable of the same name. |
 | BR-BTH-002 | **Studio helper refused**: The helper on the studio PC rejected the control token (expired, or signed with another secret). | Sign out and sign in again on the studio PC. | Check the PC clock is right and the two STUDIO_PC_SECRET values match. |
 | BR-BTH-003 | **Studio session over**: The studio PC session this request belongs to ended or belongs to someone else. | Sign in again on the studio PC. | — |
+| BR-BTH-010 | **Studio crew full**: Eight other people are already in the studio crew. | Ask someone to leave, or wait. | — |
+| BR-BTH-011 | **Studio crew gone**: The person who was running the studio signed out or the PC went quiet, so Take control no longer applies. | Scan the door code again. | — |
+| BR-BTH-012 | **Not in the crew**: That person is not in the studio crew. | Scan the door code first. | — |
 | BR-BTH-004 | **Studio PC not set up**: STUDIO_PC_SECRET is missing or too short on the website server. | Tell a station admin. | Add STUDIO_PC_SECRET (32+ random characters) in Vercel and redeploy. Use the same value in tools/studio-helper/.env. |
 
 ## Library worker

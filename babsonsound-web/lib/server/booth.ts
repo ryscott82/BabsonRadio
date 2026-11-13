@@ -77,7 +77,7 @@ export async function touchSession(db: Firestore, sessionId: string, info: Sessi
 
 export const EVENT_KINDS = ['live_start', 'live_stop', 'song', 'music', 'sign_out', 'idle_out', 'quiet_ack'] as const
 /** Logged by other routes, not sent by the page. */
-type OtherKind = 'note'
+type OtherKind = 'note' | 'crew_join' | 'handoff'
 export type EventKind = (typeof EVENT_KINDS)[number] | OtherKind | 'sign_in'
 
 export async function logEvent(db: Firestore, sessionId: string, uid: string, name: string, kind: EventKind, text: string, now = Date.now()) {
@@ -113,6 +113,11 @@ export async function recordEvent(db: Firestore, sessionId: string, uid: string,
     return String(d.get('name') ?? '')
   })
   await logEvent(db, sessionId, uid, name, kind, text, now)
+  // The driver left: the crew is forgotten.
+  if (kind === 'sign_out' || kind === 'idle_out') {
+    const c = await db.collection('boothCrew').doc('current').get().catch(() => null)
+    if (c?.exists && c.get('driverUid') === uid && c.get('sessionId') === sessionId) await c.ref.delete().catch(() => {})
+  }
   if (kind === 'live_start' && uid !== BYPASS_UID) await db.collection('users').doc(uid).set({ hostedLive: true }, { merge: true }).catch(() => {})
 }
 
@@ -187,4 +192,16 @@ export async function hostedBefore(db: Firestore, uid: string, flag: unknown): P
 /** Is a scheduled show (not Auto DJ) on air now? */
 export async function showOnAirNow(db: Firestore, now = Date.now()): Promise<boolean> {
   return !!(await currentOnAir(db, now).catch(() => null))?.isShow
+}
+
+
+// ── Studio crew (lib/crew.ts) ───────────────────────────────
+export const crewRef = (db: Firestore) => db.collection('boothCrew').doc('current')
+export async function loadCrew(db: Firestore): Promise<import('@/lib/crew').CrewDoc | null> {
+  const s = await crewRef(db).get()
+  if (!s.exists) return null
+  return {
+    driverUid: String(s.get('driverUid') ?? ''), driverName: String(s.get('driverName') ?? ''), sessionId: String(s.get('sessionId') ?? ''),
+    updatedAt: Number(s.get('updatedAt') ?? 0), members: (s.get('members') ?? {}) as Record<string, import('@/lib/crew').CrewPerson>,
+  }
 }

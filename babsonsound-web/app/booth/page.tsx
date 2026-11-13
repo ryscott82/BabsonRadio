@@ -6,6 +6,8 @@ import { api, signOut } from '@/lib/auth'
 import { idleStep, quietReminderDue, MIXING_HOLD_MS, MIXING_PEAK_DBFS, MIXING_SNOOZE_MS, adBreak, bookingLines, quietBanner, type AdPlan, type LevelState, type StudioStatus } from '@/lib/booth'
 import { boothFetch, errText, helper, loadPref, mmss, savePref, type Butt, type Track } from '@/components/booth/helper'
 import DoorClaim from '@/components/booth/DoorClaim'
+import CrewPanel from '@/components/booth/CrewPanel'
+import type { CrewPerson } from '@/lib/crew'
 import { openSignIn } from '@/lib/signInPrompt'
 import IdleScreen, { exitPanel } from '@/components/booth/IdleScreen'
 import { useInputMeter } from '@/components/booth/useInputMeter'
@@ -31,7 +33,7 @@ import { useStudioStatus } from '@/components/booth/useStudioStatus'
 interface Show { title: string; occId: string; startAt: number; endAt: number }
 interface Session {
   sessionId: string; name: string; firstName: string; level: string; canGoLive: boolean; canRecord?: boolean; reason: string
-  show: Show | null; nextShow: Show | null; token: string; tokenExp: number
+  show: Show | null; nextShow: Show | null; token: string; tokenExp: number; crew?: CrewPerson[]
   ads: AdPlan; note: { text: string; by: string; at: number } | null
   next: { title: string; hosts: string[]; startAt: number } | null
   signInToLive?: boolean
@@ -474,7 +476,7 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, night, onTogg
           </div>
         </div>
       )}
-      {bypass && <DoorClaim />}
+      {bypass ? <DoorClaim /> : <CrewPanel crew={s?.crew ?? []} driverName={s?.name ?? ''} onAir={live || connecting || recording} getToken={token} />}
       {signInOpen && bypass && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/85 px-8" role="dialog" aria-label="Sign in to go live">
           <div className="hw-screen max-w-4xl w-full p-10 space-y-6">

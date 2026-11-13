@@ -21,6 +21,7 @@ export default function DoorPage() {
   const { user, loading, isGuest } = useAuth()
   const [state, setState] = useState<State>('wait')
   const [name, setName] = useState('')
+  const [crew, setCrew] = useState('')
   const [error, setError] = useState('')
   const started = useRef(false)
   const router = useRouter()
@@ -28,8 +29,8 @@ export default function DoorPage() {
   const send = useCallback(async () => {
     setState('sending'); setError('')
     try {
-      const r = await api<{ firstName: string }>('/api/booth/door', {})
-      setName(r.firstName); setState('done')
+      const r = await api<{ firstName: string; crew?: boolean; driverName?: string }>('/api/booth/door', {})
+      setName(r.firstName); setCrew(r.crew ? (r.driverName || 'someone') : ''); setState('done')
     } catch (e) { setError(e instanceof Error ? e.message : 'Something went wrong.'); setState('error') }
   }, [])
 
@@ -64,8 +65,12 @@ export default function DoorPage() {
       {state === 'done' ? (
         <>
           <h1 className={title}>Hi {name}</h1>
-          <p className="text-xl">Look at the studio screen. You’ll be signed in in a few seconds.</p>
-          <p className="opacity-70">If someone else is using the booth, they need to sign out first.</p>
+          {crew ? (
+            <>
+              <p className="text-xl">You’re in the studio with {crew}.</p>
+              <p className="opacity-70">You’re added to the show. To run the studio yourself, use Take control on the studio screen when {crew} is done.</p>
+            </>
+          ) : <p className="text-xl">Look at the studio screen. You’ll be signed in in a few seconds.</p>}
           <GhostButton type="button" className="underline" onClick={() => { started.current = true; void send() }}>Scan didn’t work? Try again</GhostButton>
         </>
       ) : state === 'error' ? (

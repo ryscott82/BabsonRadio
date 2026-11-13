@@ -63,65 +63,89 @@ export const liveWindowOpen = (s: { startAt: number; endAt: number }, now: numbe
   now >= s.startAt - LIVE_EARLY_MS && now <= s.endAt + LIVE_LATE_MS
 
 // ── Level meter targets ──────────────────────────────────────
+// Four colours, one meaning each: blue = too quiet, green = good, yellow = getting loud (peaks are close to 0 dB), red = too loud, turn it down.
+// Nothing here is quick: a host should only ever be told something when it is really so.
 /** The station's music is normalized to -14 LUFS (tools/normalize_loudness.py), so live shows aim for the same. */
 export const TARGET_LUFS = -14
-export const GOOD_LUFS: [number, number] = [-17, -11]
-/** Too loud is judged fast, on the short-term (3 s) value. */
-export const LOUD_LUFS = -9
-/** "Too quiet" is judged on the gated loudness of the last 10 s (LONG_WINDOW_MS): pauses in speech do not drag it down, and it follows the
- *  fader within about 15 s. It must stay below QUIET_LUFS for QUIET_HOLD_MS, and clears once it is back above QUIET_CLEAR_LUFS (hysteresis,
- *  so it never flips near the limit). Normal speech sits above -17. */
+/** The green zone on the gauge, in LUFS of the last 10 s: from where "Too quiet" starts to where "Getting loud" starts. */
+export const GOOD_LUFS: [number, number] = [-19, -10]
+/** Yellow above this (10 s loudness), red above LOUD_LUFS. A loud part of a song for a few seconds is not red. */
+export const NEAR_LUFS = -10
+export const LOUD_LUFS = -7
+/** "Too quiet" is judged on the gated loudness of the last 10 s (LONG_WINDOW_MS): pauses in speech do not drag it down. It must stay below
+ *  QUIET_LUFS for a full QUIET_HOLD_MS (45 s) before the meter leaves "Good", and clears once it is back above QUIET_CLEAR_LUFS. */
 export const QUIET_LUFS = -19
 export const QUIET_CLEAR_LUFS = -17.5
 export const LONG_WINDOW_MS = 10_000
-export const QUIET_HOLD_MS = 4_000
+export const QUIET_HOLD_MS = 45_000
 /** No "Too quiet" this long after going live, after a track change, or when the meter starts (the 10 s window is still filling). */
 export const QUIET_WARMUP_MS = 12_000
+/** Peaks: yellow when the peak is within 1.5 dB of full scale in at least 5 of the last 10 seconds, red when it is clipping (within 0.5 dB)
+ *  in at least 5 of the last 10 seconds. Either one lasts at least a few seconds once it shows, so it never flickers. */
+export const NEAR_PEAK_DBFS = -1.5
+export const CLIP_DBFS = -0.5
+export const PEAK_SECONDS = 5
+export const PEAK_WINDOW_MS = 10_000
+export const NEAR_HOLD_MS = 10_000
+export const LOUD_HOLD_MS = 5_000
+/** Below this peak the input counts as silent. */
+export const SILENT_DBFS = -55
 /** BS.1770 gating: blocks below -70 LUFS are ignored, then blocks more than 10 LU under the running average. */
 export const ABS_GATE_LUFS = -70
 export const REL_GATE_LU = 10
-/** Peak level (dBFS) treated as clipping, and below which the input counts as silent. */
-export const CLIP_DBFS = -0.5
-export const SILENT_DBFS = -55
 
-export type LevelState = 'off' | 'silent' | 'quiet' | 'good' | 'loud' | 'clip'
+export type LevelState = 'off' | 'silent' | 'quiet' | 'good' | 'near' | 'loud'
+export type LoudLevel = 'ok' | 'near' | 'loud'
 
-/** One word for the host. Silent, clipping and too loud answer quickly (peak, last 2 s of clipping, short-term loudness).
- *  `quiet` comes from the slow tracker below (stepQuiet), never from the short-term value. */
-export function levelState(shortLufs: number, peakDb: number, clippedRecently: boolean, quiet = false): LevelState {
-  if (!Number.isFinite(peakDb) || peakDb < SILENT_DBFS) return 'silent'
-  if (clippedRecently) return 'clip'
-  if (shortLufs > LOUD_LUFS) return 'loud'
-  if (quiet) return 'quiet'
+/** One word for the host. Silent is judged on the raw input; red and yellow come from stepLoud, blue from stepQuiet (both slow on purpose). */
+export function levelState(i: { peakDb: number; quiet: boolean; loud: LoudLevel }): LevelState {
+  if (!Number.isFinite(i.peakDb) || i.peakDb < SILENT_DBFS) return 'silent'
+  if (i.loud === 'loud') return 'loud'
+  if (i.loud === 'near') return 'near'
+  if (i.quiet) return 'quiet'
   return 'good'
 }
 
-/** What the big word says, and its colour. The word follows the same number as the bar, so they never disagree:
- *  between "good" and "too quiet" it says "A bit low" (and "A bit loud" just under too loud) instead of a flat "Good". */
-export type Tone = 'ok' | 'warn' | 'info' | 'off'
-export function levelWord(state: LevelState, midLufs: number): { word: string; tone: Tone } {
+export interface LoudTracker { nearUntil: number; loudUntil: number; nearSecs: number[]; clipSecs: number[]; level: LoudLevel }
+export const newLoudTracker = (): LoudTracker => ({ nearUntil: 0, loudUntil: 0, nearSecs: [], clipSecs: [], level: 'ok' })
+
+/** Advance the loud tracker. `midLufs` is the gated 10 s loudness with BUTT's gain, `peakDb` the recent peak with BUTT's gain. */
+export function stepLoud(t: LoudTracker, now: number, i: { midLufs: number; peakDb: number }): LoudTracker {
+  const sec = Math.floor(now / 1000), oldest = Math.floor((now - PEAK_WINDOW_MS) / 1000)
+  const add = (xs: number[], hit: boolean) => (hit && xs[xs.length - 1] !== sec ? [...xs, sec] : xs).filter(x => x > oldest)
+  const nearSecs = add(t.nearSecs, i.peakDb >= NEAR_PEAK_DBFS), clipSecs = add(t.clipSecs, i.peakDb >= CLIP_DBFS)
+  let { nearUntil, loudUntil } = t
+  if (clipSecs.length >= PEAK_SECONDS || (Number.isFinite(i.midLufs) && i.midLufs > LOUD_LUFS)) loudUntil = now + LOUD_HOLD_MS
+  if (nearSecs.length >= PEAK_SECONDS || (Number.isFinite(i.midLufs) && i.midLufs > NEAR_LUFS)) nearUntil = now + NEAR_HOLD_MS
+  return { nearUntil, loudUntil, nearSecs, clipSecs, level: now < loudUntil ? 'loud' : now < nearUntil ? 'near' : 'ok' }
+}
+
+/** What the big word says, and its colour tone. */
+export type Tone = 'ok' | 'warn' | 'caution' | 'info' | 'off'
+export function levelWord(state: LevelState): { word: string; tone: Tone } {
   switch (state) {
     case 'off': return { word: 'Meter off', tone: 'off' }
     case 'silent': return { word: 'No sound', tone: 'warn' }
     case 'quiet': return { word: 'Too quiet', tone: 'info' }
-    case 'loud': case 'clip': return { word: 'Too loud', tone: 'warn' }
-    default:
-      if (Number.isFinite(midLufs) && midLufs < GOOD_LUFS[0]) return { word: 'A bit low', tone: 'info' }
-      if (Number.isFinite(midLufs) && midLufs > GOOD_LUFS[1]) return { word: 'A bit loud', tone: 'warn' }
-      return { word: 'Good', tone: 'ok' }
+    case 'near': return { word: 'Getting loud', tone: 'caution' }
+    case 'loud': return { word: 'Too loud', tone: 'warn' }
+    default: return { word: 'Good', tone: 'ok' }
   }
 }
 
-/** Which way to move the mixer and roughly how far, from the loudness going to the station (with BUTT's gain). Hosts don't think in LUFS,
- *  so the size is in words: under 6 dB "a little", under 11 "some", more "a lot". */
+/** Which way to move the mixer and roughly how far. Hosts don't think in LUFS, so the size is in words. Only given for blue, yellow and red. */
 export function levelAdvice(midLufs: number, state: LevelState): { dir: 'up' | 'down' | 'ok'; amount: string; db: number } {
-  if (state === 'clip') return { dir: 'down', amount: 'now', db: 6 }
-  if (!Number.isFinite(midLufs) || state === 'off' || state === 'silent') return { dir: 'ok', amount: '', db: 0 }
-  const err = TARGET_LUFS - midLufs // positive = too quiet
-  const lo = GOOD_LUFS[0] - TARGET_LUFS, hi = GOOD_LUFS[1] - TARGET_LUFS // -3 .. +3 around the target
-  if (err > -hi && err < -lo) return { dir: 'ok', amount: '', db: 0 }
-  const db = Math.abs(err)
-  return { dir: err > 0 ? 'up' : 'down', amount: db < 6 ? 'a little' : db < 11 ? 'some' : 'a lot', db: Math.round(db) }
+  if (state === 'near') return { dir: 'down', amount: 'a little', db: 2 }
+  if (state === 'loud') {
+    if (!Number.isFinite(midLufs)) return { dir: 'down', amount: 'now', db: 6 }
+    const db = Math.max(3, Math.round(midLufs - TARGET_LUFS))
+    return { dir: 'down', amount: db < 6 ? 'a little' : db < 10 ? 'some' : 'a lot', db }
+  }
+  if (state === 'quiet' && Number.isFinite(midLufs)) {
+    const db = Math.round(TARGET_LUFS - midLufs)
+    return { dir: 'up', amount: db < 6 ? 'a little' : db < 11 ? 'some' : 'a lot', db }
+  }
+  return { dir: 'ok', amount: '', db: 0 }
 }
 
 /** BS.1770 loudness from a mean square of K-weighted samples. */

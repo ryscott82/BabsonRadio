@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type MutableRefObject } from 'react'
-import { CLIP_DBFS, LONG_WINDOW_MS, dbOf, gatedLufs, levelState, lufsOf, newQuietTracker, stepQuiet, type LevelState } from '@/lib/booth'
+import { CLIP_DBFS, LONG_WINDOW_MS, SILENT_DBFS, dbOf, gatedLufs, levelState, lufsOf, newLoudTracker, newQuietTracker, stepLoud, stepQuiet, type LevelState } from '@/lib/booth'
 
 // Reads the studio input (the mixer feed BUTT streams) in the browser and measures it: peak and RMS per channel, and
 // approximate BS.1770 loudness (K-weighted) over 400 ms (momentary), 3 s (short-term) and a gated 10 s average (long: what the word, the advice
@@ -66,6 +66,7 @@ export function useInputMeter(deviceId: string, enabled: boolean, warmKey: strin
       const blocks: { t: number; v: number }[] = [] // 400 ms block mean squares, last LONG_WINDOW_MS (10 s)
       let blk = { start: 0, sum: 0, n: 0 }
       let quietTrack = newQuietTracker(Date.now())
+      let loudTrack = newLoudTracker()
       let lastHist = 0, silentSince = 0
 
       const tick = () => {
@@ -108,10 +109,12 @@ export function useInputMeter(deviceId: string, enabled: boolean, warmKey: strin
         const g = gainRef.current
         if (restart.current) { restart.current = false; blocks.length = 0; f.long = -Infinity; quietTrack = stepQuiet(quietTrack, Date.now(), f.long, true) }
         else quietTrack = stepQuiet(quietTrack, Date.now(), f.long + g)
-        const raw = levelState(f.short, peak, clipping) // silence is judged on the raw input
-        const state = ctx?.state !== 'running' ? 'off' : raw === 'silent' ? 'silent' : levelState(f.short + g, peak + g, clipping, quietTrack.quiet)
+        const silent = !Number.isFinite(peak) || peak < SILENT_DBFS // silence is judged on the raw input
+        const mid = Number.isFinite(f.long) ? f.long + g : -Infinity
+        loudTrack = stepLoud(loudTrack, Date.now(), { midLufs: mid, peakDb: peak + g })
+        const state = ctx?.state !== 'running' ? 'off' : silent ? 'silent' : levelState({ peakDb: peak + g, quiet: quietTrack.quiet, loud: loudTrack.level })
         if (state === 'silent') silentSince ||= Date.now(); else silentSince = 0
-        setStats({ state, short: f.short, mid: Number.isFinite(f.long) ? f.long + g : -Infinity, peak, clipping, silentFor: silentSince ? (Date.now() - silentSince) / 1000 : 0, on: ctx?.state === 'running' })
+        setStats({ state, short: f.short, mid, peak, clipping, silentFor: silentSince ? (Date.now() - silentSince) / 1000 : 0, on: ctx?.state === 'running' })
       }, 250)
     })()
 

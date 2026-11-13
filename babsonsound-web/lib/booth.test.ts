@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BYPASS_UID, IDLE_OUT_MS, IDLE_WARN_MS, QUIET_REMIND_MS, idleStep, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, LONG_WINDOW_MS, levelWord, levelAdvice, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
+import { BYPASS_UID, IDLE_OUT_MS, IDLE_WARN_MS, QUIET_REMIND_MS, idleStep, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, LONG_WINDOW_MS, levelWord, levelAdvice, newLoudTracker, stepLoud, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
 
 const S = 'test-secret-123'
 
@@ -36,14 +36,14 @@ test('live window opens 30 minutes early and closes 30 minutes late', () => {
 })
 
 test('level words: good, loud, clip, silent respond at once; quiet only comes from the slow tracker', () => {
-  assert.equal(levelState(-14, -6, false), 'good')
-  assert.equal(levelState(-25, -20, false), 'good') // a quiet short-term value alone is not "too quiet"
-  assert.equal(levelState(-25, -20, false, true), 'quiet')
-  assert.equal(levelState(-7, -1, false), 'loud')
-  assert.equal(levelState(-14, -0.2, true), 'clip')
-  assert.equal(levelState(-70, -60, false), 'silent')
-  assert.equal(levelState(-Infinity, -Infinity, false), 'silent')
-  assert.equal(levelState(-7, -1, false, true), 'loud') // loud wins over a stale quiet flag
+  const ok = { quiet: false, loud: 'ok' as const }
+  assert.equal(levelState({ peakDb: -6, ...ok }), 'good')
+  assert.equal(levelState({ peakDb: -20, quiet: true, loud: 'ok' }), 'quiet')
+  assert.equal(levelState({ peakDb: -3, quiet: false, loud: 'near' }), 'near')
+  assert.equal(levelState({ peakDb: -0.2, quiet: false, loud: 'loud' }), 'loud')
+  assert.equal(levelState({ peakDb: -60, ...ok }), 'silent')
+  assert.equal(levelState({ peakDb: -Infinity, ...ok }), 'silent')
+  assert.equal(levelState({ peakDb: -1, quiet: true, loud: 'loud' }), 'loud') // loud wins over a stale quiet flag
   assert.equal(TARGET_LUFS, -14)
 })
 
@@ -59,7 +59,7 @@ test('gated loudness ignores silence and quiet passages', () => {
   assert.equal(gatedLufs(Array(10).fill(ms(-90))), -Infinity)
 })
 
-test('too quiet follows the fader: a short warm-up, then a few seconds below the limit', () => {
+test('too quiet needs 45 s below the limit, after a short warm-up', () => {
   let t = newQuietTracker(0)
   // in the warm-up nothing shows, however quiet
   for (let s = 0; s < QUIET_WARMUP_MS; s += 1000) { t = stepQuiet(t, s, -30); assert.equal(t.quiet, false) }
@@ -68,35 +68,60 @@ test('too quiet follows the fader: a short warm-up, then a few seconds below the
   for (let s = 0; s < QUIET_HOLD_MS; s += 1000) { t = stepQuiet(t, start + s, -30); assert.equal(t.quiet, false) }
   t = stepQuiet(t, start + QUIET_HOLD_MS, -30)
   assert.equal(t.quiet, true)
-  assert.equal(levelState(-30, -20, false, t.quiet), 'quiet')
-  assert.ok(QUIET_WARMUP_MS + QUIET_HOLD_MS + LONG_WINDOW_MS <= 30_000, 'from a loud fader to "Too quiet" in well under half a minute')
+  assert.equal(levelState({ peakDb: -20, quiet: t.quiet, loud: 'ok' }), 'quiet')
+  assert.ok(QUIET_HOLD_MS >= 45_000, 'it never leaves Good for quiet in under 45 s')
 })
 
 test('too quiet: a recovery resets the timer, and healthy speech never triggers it', () => {
   let t = newQuietTracker(0)
   t = stepQuiet(t, 20_000, -30)
-  t = stepQuiet(t, 22_000, QUIET_LUFS + 0.5) // back above the limit before the hold is over
+  t = stepQuiet(t, 50_000, QUIET_LUFS + 0.5) // back above the limit before the hold is over
   assert.equal(t.belowSince, null)
-  t = stepQuiet(t, 23_000, -30)
-  t = stepQuiet(t, 25_000, -30)
-  assert.equal(t.quiet, false) // only 2 s since it dropped again
+  t = stepQuiet(t, 51_000, -30)
+  t = stepQuiet(t, 90_000, -30)
+  assert.equal(t.quiet, false) // only 39 s since it dropped again
   let h = newQuietTracker(0)
   for (let s = QUIET_WARMUP_MS; s < 600_000; s += 1000) h = stepQuiet(h, s, -17) // speech at -17 LUFS
   assert.equal(h.quiet, false)
 })
 
-test('the word and the advice agree with the gauge', () => {
-  assert.deepEqual(levelWord('good', -14), { word: 'Good', tone: 'ok' })
-  assert.equal(levelWord('good', -18).word, 'A bit low')
-  assert.equal(levelWord('good', -10).word, 'A bit loud')
-  assert.equal(levelWord('quiet', -25).word, 'Too quiet'); assert.equal(levelWord('clip', -5).word, 'Too loud'); assert.equal(levelWord('silent', -Infinity).word, 'No sound')
+test('the word and the advice: four colours, advice only for blue, yellow and red', () => {
+  assert.deepEqual(levelWord('good'), { word: 'Good', tone: 'ok' })
+  assert.deepEqual(levelWord('quiet'), { word: 'Too quiet', tone: 'info' })
+  assert.deepEqual(levelWord('near'), { word: 'Getting loud', tone: 'caution' })
+  assert.deepEqual(levelWord('loud'), { word: 'Too loud', tone: 'warn' })
+  assert.equal(levelWord('silent').word, 'No sound')
   assert.deepEqual(levelAdvice(-14, 'good'), { dir: 'ok', amount: '', db: 0 })
-  assert.deepEqual(levelAdvice(-16.5, 'good'), { dir: 'ok', amount: '', db: 0 })
-  assert.deepEqual(levelAdvice(-18, 'good'), { dir: 'up', amount: 'a little', db: 4 })
-  assert.deepEqual(levelAdvice(-24, 'quiet'), { dir: 'up', amount: 'some', db: 10 })
+  assert.deepEqual(levelAdvice(-20, 'quiet'), { dir: 'up', amount: 'some', db: 6 })
   assert.deepEqual(levelAdvice(-30, 'quiet'), { dir: 'up', amount: 'a lot', db: 16 })
-  assert.deepEqual(levelAdvice(-8, 'loud'), { dir: 'down', amount: 'some', db: 6 })
-  assert.equal(levelAdvice(-14, 'clip').dir, 'down'); assert.equal(levelAdvice(-Infinity, 'silent').dir, 'ok')
+  assert.equal(levelAdvice(-9, 'near').dir, 'down')
+  assert.deepEqual(levelAdvice(-5, 'loud'), { dir: 'down', amount: 'some', db: 9 })
+  assert.equal(levelAdvice(-Infinity, 'loud').amount, 'now'); assert.equal(levelAdvice(-Infinity, 'silent').dir, 'ok')
+})
+
+test('red means really too loud: a loud part of a song is not red, sustained loudness or clipping is', () => {
+  // 30 s at -9 LUFS (a bit over the goal): yellow, never red
+  let t = newLoudTracker()
+  for (let s = 0; s < 30_000; s += 250) { t = stepLoud(t, 1_000_000 + s, { midLufs: -9, peakDb: -4 }); assert.notEqual(t.level, 'loud') }
+  assert.equal(t.level, 'near')
+  // 30 s at -6 LUFS: red
+  t = newLoudTracker()
+  t = stepLoud(t, 2_000_000, { midLufs: -6, peakDb: -3 })
+  assert.equal(t.level, 'loud')
+  // a couple of peaks at the top is nothing; clipping in 5 of 10 seconds is red
+  t = newLoudTracker()
+  for (const s of [0, 3_000]) t = stepLoud(t, 3_000_000 + s, { midLufs: -14, peakDb: -0.2 })
+  assert.equal(t.level, 'ok')
+  for (const s of [4_000, 5_000, 6_000]) t = stepLoud(t, 3_000_000 + s, { midLufs: -14, peakDb: -0.2 })
+  assert.equal(t.level, 'loud')
+  // yellow clears about 10 s after the last trigger, not before
+  t = newLoudTracker(); t = stepLoud(t, 4_000_000, { midLufs: -9, peakDb: -4 })
+  assert.equal(stepLoud(t, 4_005_000, { midLufs: -14, peakDb: -10 }).level, 'near')
+  assert.equal(stepLoud(t, 4_011_000, { midLufs: -14, peakDb: -10 }).level, 'ok')
+  // normal levels never trigger
+  t = newLoudTracker()
+  for (let s = 0; s < 60_000; s += 250) t = stepLoud(t, 5_000_000 + s, { midLufs: -14, peakDb: -6 })
+  assert.equal(t.level, 'ok')
 })
 
 test('too quiet has hysteresis: it clears only above the clear level', () => {

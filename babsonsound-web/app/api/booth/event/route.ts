@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireUser, str } from '@/lib/server/http'
 import { BYPASS_UID, verifyAttest } from '@/lib/booth'
 import { EVENT_KINDS, boothSecret, clearBoothSong, recordEvent, setBoothSong } from '@/lib/server/booth'
+import { assertClean } from '@/lib/server/wordFilter'
 import { refreshNowPlaying } from '@/lib/server/nowplaying'
 
 export const runtime = 'nodejs'
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
     if (!sessionId) throw new HttpError(400, 'Missing session.')
     const title = str(b.title, 120), artist = str(b.artist, 120)
     if ((kind === 'song' || kind === 'music') && !title) throw new HttpError(400, 'Type the song title.')
+    if (kind === 'song') await assertClean(db, title, artist)
     await recordEvent(db, sessionId, uid, kind, kind === 'song' || kind === 'music' ? [artist, title].filter(Boolean).join(' - ') : kind === 'quiet_ack' ? 'quiet hours' : '')
     if (kind === 'music' || kind === 'quiet_ack') return { ok: true }
     if (kind === 'song') await setBoothSong(db, sessionId, title, artist)

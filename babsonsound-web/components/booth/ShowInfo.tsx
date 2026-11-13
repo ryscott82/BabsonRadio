@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { api } from '@/lib/auth'
 import { errText, helper } from './helper'
 import Modal from './Modal'
 
@@ -33,7 +34,7 @@ export default function ShowInfo({ getToken, live, onClose }: { getToken: () => 
     const s = latest.current
     if (!s) return
     setState('saving'); setError('')
-    try { await helper('/show/set', { token: await getToken(), title: s.title, hosts: s.hosts, description: s.description, category: s.category }); setState('saved') }
+    try { await api('/api/booth/check-text', { texts: [s.title, ...s.hosts, s.description] }); await helper('/show/set', { token: await getToken(), title: s.title, hosts: s.hosts, description: s.description, category: s.category }); setState('saved') }
     catch (e) { setError(errText(e)); setState('') }
   }
   const change = (patch: Partial<Show>) => {

@@ -635,7 +635,7 @@ html.hw-lite .hw-eq.hw-led > i { filter: none; }
 .booth-night .hw-screen { background: #000; box-shadow: 0 0 0 1px #2a2a28; }
 .booth-night .hw-screen::after { display: none; }
 .booth-night .hw-desk-text { color: #D8D2C2; text-shadow: none; }
-.booth-night .bp { background: #000; outline: 1px solid rgba(31,191,127,.28); box-shadow: 0 0 0 1px rgba(31,191,127,.6), 0 0 22px rgba(31,191,127,.22), inset 0 0 26px rgba(31,191,127,.07); }
+.booth-night .bp { background: #000; outline: none; box-shadow: 0 0 0 1px rgba(31,191,127,.6), 0 0 22px rgba(31,191,127,.22), inset 0 0 26px rgba(31,191,127,.07); }
 .booth-night .gbtn { filter: none; color: #C8F7E0; background: #040605; border-color: rgba(31,191,127,.5);
   box-shadow: 0 0 10px rgba(31,191,127,.2), inset 0 0 10px rgba(31,191,127,.08); }
 .booth-night .gbtn[aria-pressed="true"] { background: rgba(31,191,127,.22); border-color: var(--hw-eq); color: #E9FFF4; box-shadow: 0 0 16px rgba(31,191,127,.45), inset 0 0 12px rgba(31,191,127,.25); }

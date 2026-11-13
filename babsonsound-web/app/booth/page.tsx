@@ -313,7 +313,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
 
   const next = s?.next
   const welcomeBig = !live && !connecting && now - since < 60_000
-  const showName = info.show?.title || s?.show?.title || ''
+  const showName = info.show ? info.show.title : s?.show?.title || ''
   const hostsValue = hostsText ?? ((info.show?.hosts.length ? info.show.hosts.join(', ') : '') || (bypass ? '' : s?.name ?? ''))
   const canEditShow = !!s?.canGoLive || !!s?.canRecord || live
   const fieldCls = 'gfield h-10 px-3 text-2xl w-full min-w-0'
@@ -322,7 +322,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
     const text = (trackText ?? '').trim()
     if (!text || !live) return
     const [artist, title] = text.includes(' - ') ? [text.split(' - ')[0].trim(), text.split(' - ').slice(1).join(' - ').trim()] : ['', text]
-    void (async () => { try { await helper('/song', { token: await token(), text }); await report('song', { title, artist }) } catch (e) { setError(errText(e)) } })()
+    void (async () => { try { await report('song', { title, artist }); await helper('/song', { token: await token(), text }) } catch (e) { setError(errText(e)) } })()
   }
   return (
     <div className="fixed inset-0 z-[2] flex flex-col gap-3 px-8 pt-5 pb-6 overflow-hidden">
@@ -383,6 +383,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
             <span className="lbl text-lg">Host name</span>
             <input value={hostsValue} onChange={e => { setHostsText(e.target.value); info.change({ hosts: e.target.value.split(/[,;\n]+/).map(x => x.trim()).filter(Boolean) }) }}
                    readOnly={!canEditShow} placeholder={bypass ? 'Not signed in' : 'Who is on the show'} title={canEditShow ? 'Separate names with commas.' : 'Sign in to edit.'} className={fieldCls} />
+            {info.error && <p className="warn text-lg col-span-2">{info.error}</p>}
           </div>
           <div className="bp px-6 py-4 flex flex-col gap-3 shrink-0">
             {!bypass && !live && !connecting && !recording && (

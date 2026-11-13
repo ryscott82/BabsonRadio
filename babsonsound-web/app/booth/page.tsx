@@ -111,7 +111,7 @@ export default function BoothPage() {
         ) : (
           <Console butt={butt} buttRef={buttRef} buttErr={buttErr} key={user?.uid ?? 'bypass'} onExitPanel={leavePanel} night={theme.night} onToggleTheme={theme.toggle}
                    bypass={user ? null : bypass} onBypassEnd={() => { setBypass(null); setWantLive(false); setSnoozeUntil(Date.now() + MIXING_SNOOZE_MS) }}
-                   autoLive={wantLive} onWantLive={setWantLive} />
+                   autoLive={wantLive} onWantLive={setWantLive} onUnlock={pin => setBypass(b => (b ? { ...b, pin } : b))} />
         )}
       </div>
     </>
@@ -130,7 +130,7 @@ function Center({ title, text, children }: { title: string; text?: string; child
   )
 }
 
-function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, bypass, onBypassEnd, autoLive, onWantLive }: { butt: Butt | null; buttRef: React.MutableRefObject<Butt | null>; buttErr: string; onExitPanel: () => void; night: boolean; onToggleTheme: () => void; bypass: { pin: string; session: Session } | null; onBypassEnd: () => void; autoLive: boolean; onWantLive: (v: boolean) => void }) {
+function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, bypass, onBypassEnd, autoLive, onWantLive, onUnlock }: { butt: Butt | null; buttRef: React.MutableRefObject<Butt | null>; buttErr: string; onExitPanel: () => void; night: boolean; onToggleTheme: () => void; bypass: { pin: string; session: Session } | null; onBypassEnd: () => void; autoLive: boolean; onWantLive: (v: boolean) => void; onUnlock: (pin: string) => void }) {
   const { isGuest, user } = useAuth()
   const [s, setS] = useState<Session | null>(bypass?.session ?? null)
   const [error, setError] = useState('')
@@ -141,6 +141,9 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
   const [signInOpen, setSignInOpen] = useState(false)
   const [audioAt, setAudioAt] = useState(0)        // last time sound was on the input (no sign in only)
   const [thanksOff, setThanksOff] = useState(false)
+  const [pin, setPin] = useState('')
+  const [pinBusy, setPinBusy] = useState(false)
+  const [pinError, setPinError] = useState('')
   const audioSet = useRef(0)
   const [idCue, setIdCue] = useState(0)
   const [adCue, setAdCue] = useState(0)
@@ -186,6 +189,14 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
     const cur = sessionRef.current
     return (cur && cur.tokenExp - Date.now() > 60_000 ? cur : await refresh()).token
   }, [refresh])
+  /** Emergency PIN, from the Go live sign-in card: the same no-sign-in session, now allowed to go live. */
+  const unlock = async () => {
+    setPinBusy(true); setPinError('')
+    try {
+      const r = await boothFetch<Session>('/api/booth/bypass', { pin: pin.trim(), sessionId: sessionRef.current?.sessionId ?? '' })
+      sessionRef.current = r; setS(r); onUnlock(pin.trim()); setSignInOpen(false); setPin('')
+    } catch (e) { setPinError(errText(e)) } finally { setPinBusy(false) }
+  }
   const auto = useAutoGain(meter.frame, token)
   useEffect(() => { gainRef.current = auto.on ? auto.db : 0 }, [auto.on, auto.db])
   const studio = useStudioStatus(!isGuest && !bypass)
@@ -414,6 +425,14 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
                 <button type="button" className="gbtn h-12 px-5 text-xl" onClick={() => openSignIn(true)}>Create an account</button>
               </div>
             </div>
+            <form onSubmit={e => { e.preventDefault(); if (pin.trim()) void unlock() }} className="space-y-2">
+              <p className="text-xl lbl">Sign in down? Emergency access (E-board PIN). The show is logged as “Studio PC (emergency)”.</p>
+              <div className="flex gap-3">
+                <input aria-label="Emergency PIN" type="password" inputMode="numeric" autoComplete="off" placeholder="PIN" value={pin} onChange={e => setPin(e.target.value)} className="gfield h-12 px-4 text-xl w-48" />
+                <button type="submit" className="gbtn h-12 px-5 text-lg" disabled={pinBusy || !pin.trim()}>{pinBusy ? 'Checking…' : 'Go live with PIN'}</button>
+              </div>
+              {pinError && <p className="text-lg warn">{pinError}</p>}
+            </form>
             <button type="button" className="gbtn h-12 px-6 text-xl" onClick={() => { setSignInOpen(false); onWantLive(false) }}>Cancel</button>
           </div>
         </div>

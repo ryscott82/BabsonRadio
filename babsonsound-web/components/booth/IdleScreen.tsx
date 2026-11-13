@@ -25,7 +25,7 @@ export default function IdleScreen({ onExitPanel, night, onToggleTheme, onBypass
   const [now, setNow] = useState(() => Date.now())
   const [data, setData] = useState<Idle | null>(null)
   const [view, setView] = useState<'home' | 'signin' | 'guest' | 'video'>('home')
-  const [bypassOpen, setBypassOpen] = useState(false)
+  const [bypassErr, setBypassErr] = useState('')
   const [videoId, setVideoId] = useState('')
   const [drift, setDrift] = useState({ x: 0, y: 0 })
 
@@ -100,46 +100,15 @@ export default function IdleScreen({ onExitPanel, night, onToggleTheme, onBypass
             </div>
             <div className="flex flex-wrap items-center gap-2 mt-auto">
               <button type="button" className="gbtn h-9 px-3 text-sm" onClick={onToggleTheme} aria-pressed={night} title="Switch between the day and night look. It goes back to automatic at 7 am or 7 pm.">{night ? '☾ Night' : '☀ Day'}</button>
-              <button type="button" className="gbtn h-9 px-3 text-sm opacity-70" onClick={() => setBypassOpen(true)}>Bypass sign in</button>
+              <button type="button" className="gbtn h-9 px-3 text-sm opacity-70" onClick={() => { setBypassErr(''); boothFetch<object>('/api/booth/bypass', { pin: '' }).then(r => onBypass('', r)).catch(e => setBypassErr(errText(e))) }}>Bypass sign in</button>
               <button type="button" className="gbtn h-9 px-3 text-sm opacity-70" onClick={onExitPanel}>Exit panel</button>
             </div>
           </div>
         </div>
       </div>
-      {bypassOpen && <Bypass onClose={() => setBypassOpen(false)} onOpen={(pin, session) => { setBypassOpen(false); onBypass(pin, session) }} />}
+      {bypassErr && <p className="fixed bottom-2 left-1/2 -translate-x-1/2 text-lg warn">{bypassErr}</p>}
     </div>
     </>
-  )
-}
-
-/** "Bypass sign in": open the console with nobody signed in (no going live), or with the emergency PIN (can go live, logged as the studio PC). */
-function Bypass({ onClose, onOpen }: { onClose: () => void; onOpen: (pin: string, session: object) => void }) {
-  const [pin, setPin] = useState('')
-  const [busy, setBusy] = useState('')
-  const [error, setError] = useState('')
-  const go = async (withPin: boolean) => {
-    setBusy(withPin ? 'pin' : 'open'); setError('')
-    try { onOpen(withPin ? pin.trim() : '', await boothFetch<object>('/api/booth/bypass', { pin: withPin ? pin.trim() : '' })) }
-    catch (e) { setError(errText(e)); setBusy('') }
-  }
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/85 px-8" role="dialog" aria-label="Bypass sign in">
-      <div className="hw-screen max-w-2xl w-full p-10 space-y-6">
-        <h2 className="hw-title text-5xl leading-none">Bypass sign in</h2>
-        <button type="button" className="gbtn h-16 w-full text-2xl" disabled={!!busy} onClick={() => go(false)}>{busy === 'open' ? 'Opening…' : 'Open the booth without signing in'}</button>
-        <p className="text-xl lbl -mt-3">Music, sound board and the level meter work. Going live needs a sign in.</p>
-        <form onSubmit={e => { e.preventDefault(); if (pin.trim()) void go(true) }} className="space-y-3">
-          <p className="text-2xl">Emergency access (E-board PIN)</p>
-          <div className="flex gap-3">
-            <input aria-label="Emergency PIN" type="password" inputMode="numeric" autoComplete="off" placeholder="PIN" value={pin} onChange={e => setPin(e.target.value)} className="gfield h-14 px-5 text-2xl flex-1 min-w-0" />
-            <button type="submit" className="gbtn h-14 px-6 text-xl" disabled={!!busy || !pin.trim()}>{busy === 'pin' ? 'Checking…' : 'Open and allow going live'}</button>
-          </div>
-          <p className="text-lg lbl">For when sign in is down. The show is logged as “Studio PC (emergency)”.</p>
-        </form>
-        {error && <p className="text-xl warn">{error}</p>}
-        <button type="button" className="gbtn h-12 px-6 text-xl" onClick={onClose}>Cancel</button>
-      </div>
-    </div>
   )
 }
 

@@ -1,13 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { api } from '@/lib/auth'
+import { api, apiGet } from '@/lib/auth'
 import { openSignIn } from '@/lib/signInPrompt'
 import { GhostButton, PrimaryButton } from '@/components/AuthUI'
 
 // The page the QR code on the studio door opens (babsonradio.com/booth/door). Signed in already (website, or the app opens this link itself):
-// it asks the studio PC to sign you in, and that is all. Signed out: sign in here, and it carries on.
+// it asks the studio PC to sign you in. Not trained for the radio room yet: straight to the training (/training/studio).
+// Signed out: sign in, or create an account (which leads to the training).
 
 type State = 'wait' | 'sending' | 'done' | 'error'
 
@@ -21,6 +23,7 @@ export default function DoorPage() {
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const started = useRef(false)
+  const router = useRouter()
 
   const send = useCallback(async () => {
     setState('sending'); setError('')
@@ -33,8 +36,11 @@ export default function DoorPage() {
   useEffect(() => {
     if (loading || !user || isGuest || started.current) return
     started.current = true
-    void send()
-  }, [loading, user, isGuest, send])
+    // Training comes first: someone without the radio room badges goes to the training instead of the PC sign-in.
+    apiGet<{ trained: boolean }>('/api/studio/self-training')
+      .then(r => { if (r.trained) void send(); else router.replace('/training/studio') })
+      .catch(() => void send())
+  }, [loading, user, isGuest, send, router])
 
   // The panel: a direct child of <main> with a max-w class turns into the site's stitched leather panel (see .hw-main in hardware.css).
   const title = 'font-display text-4xl tracking-[0.15em]'
@@ -43,8 +49,10 @@ export default function DoorPage() {
     return (
       <Shell>
         <h1 className={title}>Studio sign-in</h1>
-        <p className="opacity-80">Sign in to Babson Radio and the studio computer will sign you in.</p>
+        <p className="opacity-80">Sign in and the studio computer will sign you in.</p>
         <PrimaryButton type="button" onClick={() => openSignIn()}>Sign in</PrimaryButton>
+        <p className="opacity-80 pt-2">New here? Make an account, then do the quick training.</p>
+        <GhostButton type="button" className="underline" onClick={() => openSignIn(true)}>Create account</GhostButton>
       </Shell>
     )
   }

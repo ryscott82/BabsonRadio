@@ -15,6 +15,7 @@ export async function POST(req: Request) {
     const t = await requireUser(req)
     const a = await accessOf(t)
     if (a.level === 'guest') throw new HttpError(403, 'This is for Babson, Olin and Wellesley students.', 'BR-PERM-001')
+    if (a.level === 'student' && !(a.studio && a.radio)) throw new HttpError(403, 'Do the radio room training first.', 'BR-STU-020')
     const db = adminDb()
     const now = Date.now()
 

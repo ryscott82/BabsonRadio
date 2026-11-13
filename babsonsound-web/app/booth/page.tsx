@@ -341,9 +341,11 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
   const date = new Date(now).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
 
   const next = s?.next
-  const hero = heroMode({ live, connecting, sinceMs: now - since, nextStartAt: next?.startAt ?? null, now })
+  const hero = heroMode({ live, connecting, sinceMs: now - since, nextStartAt: next?.startAt ?? null, now, show: s?.show ?? null })
+  const leftS = s?.show ? Math.round((s.show.endAt - now) / 1000) : 0 // seconds left in the booked show (negative: over time)
   const welcomeBig = hero === 'welcome'
   const countdownBig = hero === 'countdown' && !!next
+  const showBig = hero === 'show' || hero === 'ending' || hero === 'over'
   const showName = info.show ? info.show.title : s?.show?.title || ''
   const hostsValue = hostsText ?? ((info.show?.hosts.length ? info.show.hosts.join(', ') : '') || (bypass ? '' : s?.name ?? ''))
   const canEditShow = !!s?.canGoLive || !!s?.canRecord || live
@@ -397,7 +399,7 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
         </p>
         {!bypass && !bl && <CrewPanel crew={s?.crew ?? []} driverName={s?.name ?? ''} onAir={live || connecting || recording} getToken={token} />}
         <div className="flex items-center justify-center gap-3 min-w-0 flex-wrap flex-1" style={bl ? { display: 'none' } : undefined}>
-          <ClockScreen show={s?.show ?? null} ads={s?.ads ?? null} live={live} lastMusicAt={lastMusicAt} onPlayId={() => setIdCue(n => n + 1)} />
+          <ClockScreen ads={s?.ads ?? null} live={live} lastMusicAt={lastMusicAt} onPlayId={() => setIdCue(n => n + 1)} />
           <StudioNotices status={studio.status} myBookingId={studio.myBookingId} />
         </div>
         <div className={`flex items-baseline gap-4 shrink-0 ${bl ? 'ml-auto' : ''}`}>
@@ -407,7 +409,7 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
       </header>
 
       {/* The welcome stays 15 minutes after sign-in (and while nothing is booked), then it counts down to the next show. On air it gives way to the show's name. */}
-      <div className={`grid items-center gap-4 shrink-0 ${bl ? 'grid-cols-[1fr_auto] min-h-[4.5rem]' : 'grid-cols-[1fr_auto_1fr] gap-6 min-h-[6.5rem]'}`}>
+      <div className={`grid items-center gap-4 shrink-0 ${bl ? 'grid-cols-[auto_1fr_auto] min-h-[4.5rem]' : 'grid-cols-[1fr_auto_1fr] gap-6 min-h-[6.5rem]'}`}>
         <div className="flex flex-col items-start gap-2 min-w-0">
           <div className="flex items-center gap-2">
             <BrowserButtons state={browserSt} getToken={token} onError={setError} />
@@ -418,8 +420,8 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
             {canExit && !live && !connecting && !recording && <button type="button" className={sb} onClick={onExitPanel}>Exit panel</button>}
           </div>
         </div>
-      {(welcomeBig || countdownBig || problem || s?.note || (live && showName)) ? (
-        <div className={`hw-desk-text text-center min-w-0 max-w-[60vw] ${bl ? 'hidden' : ''}`}>
+      {(welcomeBig || countdownBig || showBig || problem || s?.note || (live && showName)) ? (
+        <div className="hw-desk-text text-center min-w-0 max-w-[60vw]">
           {welcomeBig ? (
             <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(3rem, 9vh, 6.5rem)' }}>Welcome, {bypass ? 'Babson Sound user' : s?.firstName || '…'}</h1>
           ) : countdownBig && next ? (
@@ -427,6 +429,18 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
               <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(3rem, 9vh, 6.5rem)' }}>{countdownText(next.startAt - now)}</h1>
               <p className="text-2xl mt-1 truncate">until {next.title}{next.hosts.length ? ` with ${next.hosts.join(', ')}` : ''} at {clock(next.startAt)}</p>
             </>
+          ) : showBig && s?.show ? (
+            hero === 'show' ? (
+              <>
+                <h1 className="hw-title leading-none truncate" style={{ fontSize: bl ? '2.25rem' : 'clamp(3rem, 8vh, 5.5rem)' }}>{showName || s.show.title}</h1>
+                <p className="num leading-none mt-1" style={{ fontSize: bl ? '2rem' : 'clamp(2.5rem, 7vh, 4.5rem)' }}>{mmss(leftS)} <span className="lbl" style={{ fontSize: '0.5em' }}>left</span></p>
+              </>
+            ) : (
+              <>
+                <p className={`num leading-none ${hero === 'over' || leftS <= 300 ? 'warn' : ''}`} style={{ fontSize: bl ? '3.5rem' : 'clamp(5rem, 15vh, 9.5rem)' }}>{hero === 'over' ? `+${mmss(-leftS)}` : mmss(leftS)}</p>
+                <p className="text-2xl mt-1 truncate">{hero === 'over' ? 'over time, wrap up' : leftS <= 300 ? 'left, wrap up' : 'left'} · {showName || s.show.title}</p>
+              </>
+            )
           ) : live && showName ? (
             <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(2.5rem, 6vh, 4.5rem)' }}>{showName}</h1>
           ) : null}

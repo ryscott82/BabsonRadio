@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { RETURN_TO_BOOTH_MS, shouldReturnToBooth, micHeard, claimDoorPing, METER_CELLS, cellZone, cellsLit, WELCOME_MS, countdownText, heroMode, BYPASS_UID, IDLE_OUT_MS, IDLE_WARN_MS, QUIET_REMIND_MS, idleStep, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, LONG_WINDOW_MS, levelWord, levelAdvice, newLoudTracker, stepLoud, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
+import { ENDING_MS, RETURN_TO_BOOTH_MS, shouldReturnToBooth, micHeard, claimDoorPing, METER_CELLS, cellZone, cellsLit, WELCOME_MS, countdownText, heroMode, BYPASS_UID, IDLE_OUT_MS, IDLE_WARN_MS, QUIET_REMIND_MS, idleStep, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, LONG_WINDOW_MS, levelWord, levelAdvice, newLoudTracker, stepLoud, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
 
 const S = 'test-secret-123'
 
@@ -324,4 +324,17 @@ test('return to the booth after 90 seconds without input, but never on air, reco
   assert.equal(shouldReturnToBooth({ ...base, recording: true }), false)
   assert.equal(shouldReturnToBooth({ ...base, soundOnInput: true }), false)
   assert.equal(shouldReturnToBooth({ ...base, signedIn: true }), false)
+})
+
+test('hero: the show name takes over while it runs, the countdown in the last 10 minutes, overtime after', () => {
+  const now = 1_800_000_000_000
+  const base = { live: false, connecting: false, sinceMs: 0, nextStartAt: null, now }
+  const run = { startAt: now - 30 * 60_000, endAt: now + 30 * 60_000 }
+  assert.equal(heroMode({ ...base, show: run }), 'show')
+  assert.equal(heroMode({ ...base, show: { ...run, endAt: now + ENDING_MS } }), 'ending')
+  assert.equal(heroMode({ ...base, show: { ...run, endAt: now + ENDING_MS + 1 } }), 'show')
+  assert.equal(heroMode({ ...base, live: true, show: { ...run, endAt: now - 1000 } }), 'over')
+  assert.equal(heroMode({ ...base, show: { ...run, endAt: now - 1000 } }), 'welcome')           // over and not on air: back to the welcome
+  assert.equal(heroMode({ ...base, show: { startAt: now + 60_000, endAt: now + 3_600_000 } }), 'welcome') // not started yet
+  assert.equal(heroMode({ ...base, live: true }), 'live')
 })

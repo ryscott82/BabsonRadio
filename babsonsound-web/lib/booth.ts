@@ -329,8 +329,18 @@ export function idleStep(quietMs: number): { warn: boolean; secondsLeft: number;
 /** The big message under the header. The welcome stays 15 minutes after sign-in, and for as long as nothing is booked; then a countdown to
  *  the next show; on air it is the show's name. */
 export const WELCOME_MS = 15 * 60_000
-export type Hero = 'live' | 'welcome' | 'countdown'
-export function heroMode(p: { live: boolean; connecting: boolean; sinceMs: number; nextStartAt: number | null; now: number }): Hero {
+export type Hero = 'live' | 'welcome' | 'countdown' | 'show' | 'ending' | 'over'
+/** The last stretch of a show, when its name gives way to the big countdown. */
+export const ENDING_MS = 10 * 60_000
+/** `show` is the signed-in person's show that is booked now. While it runs its name takes over the welcome; in the last ENDING_MS the big countdown
+ *  takes over from the name; past its end (still on air) it counts the overtime. Without a running show: live shows the typed name, then the welcome
+ *  for WELCOME_MS (and while nothing is booked), then a countdown to the next show. */
+export function heroMode(p: { live: boolean; connecting: boolean; sinceMs: number; nextStartAt: number | null; now: number; show?: { startAt: number; endAt: number } | null }): Hero {
+  const sh = p.show
+  if (sh && p.now >= sh.startAt) {
+    if (p.now <= sh.endAt) return sh.endAt - p.now <= ENDING_MS ? 'ending' : 'show'
+    if (p.live || p.connecting) return 'over'
+  }
   if (p.live || p.connecting) return 'live'
   if (p.sinceMs < WELCOME_MS) return 'welcome'
   return p.nextStartAt !== null && p.nextStartAt > p.now ? 'countdown' : 'welcome'

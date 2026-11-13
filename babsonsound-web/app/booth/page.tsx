@@ -367,7 +367,7 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
   if (bl === 'full') {
     return (
       <div className="fixed inset-0 z-[2] flex flex-col gap-4 p-4 overflow-hidden hw-desk-text" style={area}>
-        <div className="hw-sign shrink-0" style={{ position: 'relative', left: 0, top: 0 }}>
+        <div className="hw-sign hw-sign-lg shrink-0" style={{ position: 'relative', left: 0, top: 0 }}>
           <span style={live ? undefined : { color: '#4a2620', textShadow: 'none' }}>ON AIR</span>
         </div>
         <p className="hw-title text-4xl leading-none tabular-nums">{clock(now)}</p>
@@ -386,9 +386,9 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
   return (
     <div className="fixed inset-0 z-[2] flex flex-col gap-3 px-8 pt-5 pb-6 overflow-hidden" style={area}>
       {/* A slim strip: logo, the on-air light, the show (or what is next), who else is in the studio, the notices, and the time. */}
-      <header className="hw-desk-text flex items-center gap-5 shrink-0 min-h-[4.5rem]">
+      <header className="hw-desk-text flex items-center gap-5 shrink-0 min-h-[5.5rem]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/booth/logo.png" alt="Babson Sound" className="h-16 w-16 rounded-xl shrink-0" />
+        <img src="/booth/logo.png" alt="Babson Radio" className="h-20 w-20 object-contain shrink-0" />
         <div className="hw-sign shrink-0" style={{ position: 'relative', left: 0, top: 0 }}>
           <span style={live ? undefined : { color: '#4a2620', textShadow: 'none' }}>ON AIR</span>
         </div>
@@ -401,15 +401,25 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
           <StudioNotices status={studio.status} myBookingId={studio.myBookingId} />
         </div>
         <div className="flex items-baseline gap-4 shrink-0">
-          <p className="hw-title text-5xl leading-none tabular-nums">{clock(now)}</p>
-          <p className="hw-title text-2xl leading-none">{date}</p>
+          <p className="hw-title leading-none tabular-nums" style={{ fontSize: 'clamp(4rem, 8.5vh, 6rem)' }}>{clock(now)}</p>
+          <p className="hw-title text-3xl leading-none">{date}</p>
         </div>
       </header>
 
       {/* The welcome stays 15 minutes after sign-in (and while nothing is booked), then it counts down to the next show. On air it gives way to the show's name. */}
-      <div className="flex items-center gap-6 shrink-0 min-h-[5rem]">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-6 shrink-0 min-h-[6.5rem]">
+        <div className="flex flex-col items-start gap-2 min-w-0">
+          <div className="flex items-center gap-2">
+            <BrowserButtons state={browserSt} getToken={token} onError={setError} />
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {!bypass && <button type="button" className={sb} onClick={() => setModal('note')}>Leave a note</button>}
+            <button type="button" className={sb} onClick={() => setModal('sound')}>Audio setup</button>
+            {canExit && !live && !connecting && !recording && <button type="button" className={sb} onClick={onExitPanel}>Exit panel</button>}
+          </div>
+        </div>
       {(welcomeBig || countdownBig || problem || s?.note || (live && showName)) ? (
-        <div className="hw-desk-text text-center min-w-0 flex-1">
+        <div className="hw-desk-text text-center min-w-0 max-w-[60vw]">
           {welcomeBig ? (
             <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(3rem, 9vh, 6.5rem)' }}>Welcome, {bypass ? 'Babson Sound user' : s?.firstName || '…'}</h1>
           ) : countdownBig && next ? (
@@ -422,32 +432,32 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
           ) : null}
           {(problem || s?.note) && <p className={`text-xl mt-1 line-clamp-1 ${problem ? 'text-[#FFB3A6]' : ''}`}>{problem || `Note from ${s?.note?.by || 'the last host'}: ${s?.note?.text}`}</p>}
         </div>
-      ) : <div className="flex-1" />}
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <div className="flex items-center gap-2">
-            <BrowserButtons state={browserSt} getToken={token} onError={setError} />
-          </div>
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            {!bypass && <button type="button" className={sb} onClick={() => setModal('note')}>Leave a note</button>}
-            <button type="button" className={sb} onClick={() => setModal('sound')}>Audio setup</button>
-            {canExit && !live && !connecting && !recording && <button type="button" className={sb} onClick={onExitPanel}>Exit panel</button>}
-          </div>
+      ) : <div />}
+        <div className="flex items-center justify-end gap-2">
+          {confirmOut ? (
+            <>
+              <button type="button" className="gbtn h-20 px-6 text-3xl" onClick={() => setConfirmOut(false)}>Stay</button>
+              <button type="button" className="gbtn gbtn-stop h-20 px-6 text-3xl" onClick={signOutNow} disabled={!!busy}>{live ? 'End show and sign out' : 'Stop recording and sign out'}</button>
+            </>
+          ) : (
+            <button type="button" className="gbtn h-20 px-10 text-3xl" onClick={() => (live || recording ? setConfirmOut(true) : signOutNow())} disabled={!!busy}>{bypass ? 'Back to sign in' : 'Sign out'}</button>
+          )}
         </div>
       </div>
 
       {/* Left: up next, the loudness meter, what is on, Go live. Right: tracks (or the sign-in info) with the sound board under them. */}
       <div className={`grid ${bl ? 'grid-cols-1' : 'grid-cols-[1fr_1.15fr]'} grid-rows-[minmax(0,1fr)] items-stretch gap-5 flex-1 min-h-0`}>
         <div className="flex flex-col gap-3 min-h-0 h-full">
-          <div className="bp px-6 py-4 flex-1 min-h-0 flex flex-col justify-center gap-1">
-            <span className="lbl text-2xl">Up next</span>
+          <div className="bp px-6 py-3 flex-1 min-h-[5.5rem] overflow-hidden flex flex-col justify-center">
+            <span className="lbl text-xl">Up next</span>
             {next ? (
               <>
-                <p className="hw-title leading-tight line-clamp-2" style={{ fontSize: 'clamp(2rem, 5vh, 3.5rem)' }}>{next.title}</p>
+                <p className="hw-title leading-tight line-clamp-2" style={{ fontSize: 'clamp(1.75rem, 4.2vh, 3rem)' }}>{next.title}</p>
                 <p className="text-2xl lbl truncate">{next.hosts.length ? `with ${next.hosts.join(', ')} · ` : ''}{clock(next.startAt)}</p>
               </>
             ) : <p className="hw-title text-4xl leading-tight">Nothing booked</p>}
           </div>
-          <div className="basis-[34%] grow-0 shrink-0 min-h-0"><LevelMeter frame={meter.frame} stats={meter.stats} error={meter.error} deadAir={deadAir} auto={auto} staff={['admin', 'eboard', 'director'].includes(staffRole)} /></div>
+          <div className="h-[10.5rem] shrink-0"><LevelMeter frame={meter.frame} stats={meter.stats} error={meter.error} deadAir={deadAir} auto={auto} staff={['admin', 'eboard', 'director'].includes(staffRole)} /></div>
           <div className="bp px-6 py-3 grid grid-cols-[8.5rem_1fr] items-center gap-x-4 gap-y-2 shrink-0">
             <span className="lbl text-lg">Show name</span>
             <input value={showName} onChange={e => info.change({ title: e.target.value })} readOnly={!canEditShow} maxLength={80} placeholder="Name your show"
@@ -474,14 +484,6 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
                       level={meter.stats.state} ads={s?.ads ?? null} onGoLive={goLive} onEnd={endShow} onPlayAds={() => setAdCue(n => n + 1)} />
             ) : (
               <RecordShow st={rec.st} reload={rec.reload} getToken={token} live={live || connecting} ready={ready} level={meter.stats.state} myUid={user?.uid ?? ''} />
-            )}
-            {confirmOut ? (
-              <div className="flex gap-2">
-                <button type="button" className="gbtn h-20 px-8 text-3xl" onClick={() => setConfirmOut(false)}>Stay</button>
-                <button type="button" className="gbtn gbtn-stop h-20 flex-1 text-3xl" onClick={signOutNow} disabled={!!busy}>{live ? 'End show and sign out' : 'Stop recording and sign out'}</button>
-              </div>
-            ) : (
-              <button type="button" className="gbtn h-20 w-full text-3xl" onClick={() => (live || recording ? setConfirmOut(true) : signOutNow())} disabled={!!busy}>{bypass ? 'Back to sign in' : 'Sign out'}</button>
             )}
           </div>
         </div>
@@ -616,14 +618,12 @@ function GoLive(p: {
   const ok = soundOk && clean
   return (
     <div className="h-full flex flex-col justify-center gap-3">
-      {p.canGoLive && <p className="hw-title text-2xl leading-tight">To go on air: 1. Tick both boxes. 2. Press Go live.</p>}
       {p.canGoLive ? (
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <CheckButton label="Mic check" checked={soundOk} onToggle={toggleMic} />
             <CheckButton label="Clean music only" checked={clean} onToggle={() => setClean(x => !x)} />
           </div>
-          <p className="lbl text-sm">Mic check ticks itself when we hear you. Clean music means no explicit lyrics on air.</p>
         </div>
       ) : <p className="lbl text-lg min-h-11 flex items-center">{p.reason}</p>}
       <button type="button" onClick={p.onGoLive} disabled={!!p.busy || !p.canGoLive || !p.ready || !ok}

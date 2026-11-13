@@ -56,23 +56,19 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
   // What is playing: only while that song is still within its length (the page asks every 5 minutes, so an old song is never shown as current).
   const np = data?.nowPlaying
   const playing = np && np.playedAt && np.duration && now < (np.playedAt + np.duration) * 1000 + 15_000 && (np.live || onNow) ? np : null
-  const tip = TIPS[Math.floor(now / 20_000) % TIPS.length]
   const hostLine = (i: Item) => (firstNames(i.hosts).length ? `with ${join(firstNames(i.hosts))}` : '')
 
   return (
     <>
     <DoorClaim />
     <div className="fixed inset-0 z-[2] flex flex-col gap-5 px-10 pt-6 pb-6 overflow-hidden" style={{ transform: `translate(${drift.x}px, ${drift.y}px)`, transition: 'transform 2s' }}>
+      <h1 className="hw-desk-text hw-title text-center leading-none shrink-0" style={{ fontSize: 'clamp(3rem, 7vh, 5.5rem)' }}>Welcome to Babson Radio</h1>
       <div className="grid grid-cols-[1.05fr_1fr_1fr] gap-6 flex-1 min-h-0">
         {/* The time is the first thing a studio screen should say. */}
-        <section className="hw-desk-text flex flex-col justify-between min-w-0">
+        <section className="hw-desk-text flex flex-col min-w-0">
           <div>
             <p className="hw-title leading-[0.85] tabular-nums" style={{ fontSize: 'clamp(7rem, 26vh, 17rem)' }}>{h}:{m}<span className="text-[0.22em] ml-3 opacity-60">{ap}</span></p>
             <p className="hw-title text-5xl leading-tight mt-3">{d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-          </div>
-          <div className="space-y-2">
-            <p className="lbl text-xl">Tip</p>
-            <p className="text-3xl leading-snug min-h-[5.5rem]" aria-live="off">{tip}</p>
           </div>
         </section>
 
@@ -132,9 +128,7 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
 
       <footer className="hw-desk-text flex items-center gap-5 shrink-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/booth/logo.png" alt="Babson Sound" className="h-14 w-14 rounded-xl" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/booth/beaver.png" alt="Babson" className="h-14 w-14 object-contain" />
+        <img src="/booth/logo.png" alt="Babson Radio" className="h-16 w-16 object-contain" />
         <p className="text-2xl opacity-85">Keep it clean. Respect quiet hours. Leave the studio as you found it.</p>
       </footer>
       {bypassErr && <p className="fixed bottom-2 left-1/2 -translate-x-1/2 text-lg warn">{bypassErr}</p>}
@@ -142,12 +136,6 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
     </>
   )
 }
-
-const TIPS = [
-  'Mic check: speak into the mic. The box ticks itself when we hear you.',
-  'Clean music only: no explicit lyrics on air.',
-  'Leave a note in the booth for whoever comes next.',
-]
 
 function Frame({ title, text, children, onBack }: { title: string; text?: string; children: React.ReactNode; onBack: () => void }) {
   return (

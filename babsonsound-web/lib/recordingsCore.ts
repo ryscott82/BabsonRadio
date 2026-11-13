@@ -50,12 +50,12 @@ export function cleanLiveShow(v: unknown): LiveShowInfo | null {
 }
 
 /** The library episode for a finished live recording. Pure so the tests cover it. Private (Babson students only) until an admin makes it public. */
-export function liveEpisodeDoc(r: { title: string; uid: string; durationSec: number; azuracastPath: string; mediaId: number; uniqueId: string; live: LiveShowInfo; recordingId: string }) {
+export function liveEpisodeDoc(r: { title: string; uid: string; durationSec: number; azuracastPath: string; mediaId: number; uniqueId: string; live: LiveShowInfo; recordingId: string; crewUids?: string[] }) {
   const slug = r.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)
   return {
     title: r.title, showName: r.title, showSlug: slug, category: r.live.category, description: r.live.description,
     youtubeID: '', thumbnailURL: '', duration: r.durationSec, isNew: true, visibility: 'private' as const,
-    hostUids: [r.uid], contributors: r.live.hosts, source: 'live', recordingId: r.recordingId,
+    hostUids: [...new Set([r.uid, ...(r.crewUids ?? [])].filter(Boolean))].slice(0, 9), contributors: r.live.hosts, source: 'live', recordingId: r.recordingId,
     audioPath: r.azuracastPath, azMediaId: r.mediaId, azUniqueId: r.uniqueId,
   }
 }

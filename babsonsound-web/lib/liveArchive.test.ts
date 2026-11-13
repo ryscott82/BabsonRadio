@@ -28,6 +28,12 @@ test('the library episode for a live show is private, audio-only and filed under
     { vis: 'private', yt: '', slug: 'friday-night-mix', hosts: ['u1'], who: ['Pat'], uid: 'abc', dur: 3600, cat: 'Music' })
 })
 
+test('people who joined the studio crew are linked as hosts, so they can manage the episode from their own accounts', () => {
+  const d = liveEpisodeDoc({ title: 'BFA Podcast', uid: 'u1', durationSec: 3600, azuracastPath: 'x.mp3', mediaId: 7, uniqueId: 'abc', recordingId: 'rec1', crewUids: ['u2', 'u1', 'u3', ''],
+    live: { hosts: ['BFA', 'Alex'], description: '', category: 'Podcast', startedAt: NOW, endedAt: NOW + 1 } })
+  assert.deepEqual(d.hostUids, ['u1', 'u2', 'u3']); assert.deepEqual(d.contributors, ['BFA', 'Alex'])
+})
+
 test('the site wires it together: live recordings skip the show-attach flow, are hidden from "my recordings", and play from AzuraCast', () => {
   const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')
   assert.match(read('app/api/booth/recordings/start/route.ts'), /cleanLiveShow\(b\.live\)/)

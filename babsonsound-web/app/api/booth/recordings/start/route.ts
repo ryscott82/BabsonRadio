@@ -31,8 +31,14 @@ export async function POST(req: Request) {
       const rq = await db.collection('slotRequests').doc(requestId).get()
       if (!rq.exists || rq.get('requesterUid') !== who.uid || rq.get('type') !== 'prerecorded') throw new HttpError(404, 'Show not found.', 'BR-REC-003')
     }
+    // Live show: the people who joined the studio crew during the session are linked to the episode too, so they can manage it from their own accounts.
+    let crewUids: string[] = []
+    if (live && who.sessionId) {
+      const ss = await db.collection('boothSessions').doc(who.sessionId).get()
+      if (ss.exists && ss.get('uid') === who.uid) crewUids = ((ss.get('crewUids') as unknown[] | undefined) ?? []).map(String).filter(u => u && u !== who.uid).slice(0, 8)
+    }
     const doc = {
-      uid: who.uid, title, ...(bookingId ? { bookingId } : {}), ...(requestId ? { forRequestId: requestId, cleanConfirmed: b.cleanConfirmed === true } : {}),
+      uid: who.uid, title, ...(crewUids.length ? { crewUids } : {}), ...(bookingId ? { bookingId } : {}), ...(requestId ? { forRequestId: requestId, cleanConfirmed: b.cleanConfirmed === true } : {}),
       ...(live ? { kind: 'live', live } : {}), azuracastPath: '', durationSec: 0, status: 'recording', createdAt: Timestamp.now(), ...(who.viaPc ? { fromStudioPc: true } : {}),
     }
     const pcId = cleanRecordingId(b.id)

@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { Timestamp } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, requireUser } from '@/lib/server/http'
 import { accessOf } from '@/lib/server/access'
@@ -37,6 +37,7 @@ export async function POST(req: Request) {
       if (r.added) {
         await crewRef(db).update({ members: r.doc.members, updatedAt: now })
         await logEvent(db, crew.sessionId, t.uid, name, 'crew_join', '', now)
+        await db.collection('boothSessions').doc(crew.sessionId).update({ crewUids: FieldValue.arrayUnion(t.uid) }).catch(() => {})
       }
       const id = randomBytes(16).toString('hex')
       const b2 = db.batch()

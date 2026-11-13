@@ -1,3 +1,4 @@
+import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireUser, str } from '@/lib/server/http'
 import { accessOf } from '@/lib/server/access'
@@ -36,6 +37,8 @@ export async function POST(req: Request) {
     await crewRef(db).set({
       driverUid: t.uid, driverName: name, sessionId, updatedAt: now, members: keep ? prev.members : {},
     })
+    // After a takeover the new session keeps the crew (the old driver included), so they are linked to the show too.
+    if (keep && Object.keys(prev.members).length) await db.collection('boothSessions').doc(sessionId).update({ crewUids: FieldValue.arrayUnion(...Object.keys(prev.members)) }).catch(() => {})
     const tokenExp = now + TOKEN_TTL_MS
     const [ads, note, next] = await Promise.all([
       adPlan(db), latestNote(db, now).catch(() => null), nextOnAir(db, p.show?.endAt ?? now, now).catch(() => null),

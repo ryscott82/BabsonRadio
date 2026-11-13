@@ -36,6 +36,7 @@ export async function publishLiveEpisode(db: Firestore, recId: string): Promise<
   const doc = liveEpisodeDoc({
     title: String(rec.get('title') ?? 'Live show'), uid: String(rec.get('uid') ?? ''), durationSec: Number(rec.get('durationSec') ?? 0),
     azuracastPath: path, mediaId: media.id, uniqueId: media.uniqueId, live: live ?? { hosts: [], description: '', category: '', startedAt: 0, endedAt: 0 }, recordingId: recId,
+    crewUids: Array.isArray(rec.get('crewUids')) ? (rec.get('crewUids') as unknown[]).map(String) : [],
   })
   const at = Timestamp.fromMillis(live?.startedAt || rec.get('createdAt')?.toMillis?.() || Date.now())
   await epRef.set({ ...doc, publishedAt: at })

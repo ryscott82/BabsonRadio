@@ -66,26 +66,63 @@ export const liveWindowOpen = (s: { startAt: number; endAt: number }, now: numbe
 /** The station's music is normalized to -14 LUFS (tools/normalize_loudness.py), so live shows aim for the same. */
 export const TARGET_LUFS = -14
 export const GOOD_LUFS: [number, number] = [-17, -11]
-/** Below this (short-term) a show is too quiet; above LOUD it is too loud. */
-export const QUIET_LUFS = -20
+/** Too loud is judged fast, on the short-term (3 s) value. */
 export const LOUD_LUFS = -9
+/** Too quiet is judged slowly, on the gated 30 s loudness: it must stay below QUIET_LUFS for QUIET_HOLD_MS, and it clears
+ *  only once it is back above QUIET_CLEAR_LUFS (hysteresis, so it never flips near the limit). Healthy speech sits above -23. */
+export const QUIET_LUFS = -23
+export const QUIET_CLEAR_LUFS = -21
+export const LONG_WINDOW_MS = 30_000
+export const QUIET_HOLD_MS = 60_000
+/** No "Too quiet" this long after going live, after a track change, or when the meter starts (the 30 s window is still filling). */
+export const QUIET_WARMUP_MS = 30_000
+/** BS.1770 gating: blocks below -70 LUFS are ignored, then blocks more than 10 LU under the running average. */
+export const ABS_GATE_LUFS = -70
+export const REL_GATE_LU = 10
 /** Peak level (dBFS) treated as clipping, and below which the input counts as silent. */
 export const CLIP_DBFS = -0.5
 export const SILENT_DBFS = -55
 
 export type LevelState = 'off' | 'silent' | 'quiet' | 'good' | 'loud' | 'clip'
 
-/** One word for the host, from the short-term loudness, the recent peak, and whether anything clipped in the last 2 seconds. */
-export function levelState(shortLufs: number, peakDb: number, clippedRecently: boolean): LevelState {
+/** One word for the host. Silent, clipping and too loud answer quickly (peak, last 2 s of clipping, short-term loudness).
+ *  `quiet` comes from the slow tracker below (stepQuiet), never from the short-term value. */
+export function levelState(shortLufs: number, peakDb: number, clippedRecently: boolean, quiet = false): LevelState {
   if (!Number.isFinite(peakDb) || peakDb < SILENT_DBFS) return 'silent'
   if (clippedRecently) return 'clip'
   if (shortLufs > LOUD_LUFS) return 'loud'
-  if (shortLufs < QUIET_LUFS) return 'quiet'
+  if (quiet) return 'quiet'
   return 'good'
 }
 
 /** BS.1770 loudness from a mean square of K-weighted samples. */
 export const lufsOf = (meanSquare: number) => (meanSquare > 0 ? -0.691 + 10 * Math.log10(meanSquare) : -Infinity)
+
+/** Gated loudness over a window of 400 ms block mean squares (BS.1770-style): drops blocks under -70 LUFS, then blocks more than
+ *  10 LU under the average of what is left, so silent gaps and quiet passages do not drag the average down. -Infinity if nothing is left. */
+export function gatedLufs(blocks: number[]): number {
+  const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
+  const loud = blocks.filter(b => lufsOf(b) > ABS_GATE_LUFS)
+  if (!loud.length) return -Infinity
+  const floor = lufsOf(mean(loud)) - REL_GATE_LU
+  const kept = loud.filter(b => lufsOf(b) > floor)
+  return kept.length ? lufsOf(mean(kept)) : -Infinity
+}
+
+/** The slow "Too quiet" decision. `belowSince` is when the long average first dropped under QUIET_LUFS; `warmFrom` is when the
+ *  warm-up started (going live, a track change, or the meter starting). */
+export interface QuietTracker { belowSince: number | null; quiet: boolean; warmFrom: number }
+export const newQuietTracker = (now: number): QuietTracker => ({ belowSince: null, quiet: false, warmFrom: now })
+
+/** Advance the tracker. `longLufs` is the gated 30 s loudness (with BUTT's gain added). Pass restart on going live or a new track. */
+export function stepQuiet(t: QuietTracker, now: number, longLufs: number, restart = false): QuietTracker {
+  if (restart) return newQuietTracker(now)
+  if (now - t.warmFrom < QUIET_WARMUP_MS) return { ...t, belowSince: null, quiet: false }
+  if (t.quiet) return longLufs > QUIET_CLEAR_LUFS ? { ...t, belowSince: null, quiet: false } : t
+  if (!Number.isFinite(longLufs) || longLufs >= QUIET_LUFS) return t.belowSince === null ? t : { ...t, belowSince: null }
+  const since = t.belowSince ?? now
+  return { ...t, belowSince: since, quiet: now - since >= QUIET_HOLD_MS }
+}
 export const dbOf = (amp: number) => (amp > 0 ? 20 * Math.log10(amp) : -Infinity)
 
 // ── Ad breaks ───────────────────────────────────────────────

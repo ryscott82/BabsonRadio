@@ -120,7 +120,8 @@ function Console({ butt, buttRef, buttErr, onExitPanel }: { butt: Butt | null; b
   const lastActive = useRef(0)
   const live = !!butt?.connected
   const connecting = !!butt?.connecting
-  const meter = useInputMeter(devices.input, !isGuest)
+  const gainRef = useRef(0)
+  const meter = useInputMeter(devices.input, !isGuest, `${live ? 1 : 0}:${lastMusicAt}`, gainRef)
   const audience = useListeners()
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 5_000); return () => clearInterval(t) }, [])
 
@@ -149,6 +150,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel }: { butt: Butt | null; b
     return (cur && cur.tokenExp - Date.now() > 60_000 ? cur : await refresh()).token
   }, [refresh])
   const auto = useAutoGain(meter.frame, token)
+  useEffect(() => { gainRef.current = auto.on ? auto.db : 0 }, [auto.on, auto.db])
   const studio = useStudioStatus(!isGuest)
   const rec = useRecState(token)
   const recording = !!rec.st && rec.st.recorder.state !== 'idle'

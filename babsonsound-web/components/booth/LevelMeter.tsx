@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, type RefObject } from 'react'
-import { GOOD_LUFS, LOUD_LUFS, QUIET_LUFS, TARGET_LUFS, levelState, type LevelState } from '@/lib/booth'
+import { GOOD_LUFS, LOUD_LUFS, TARGET_LUFS, type LevelState } from '@/lib/booth'
 import type { MeterFrame, MeterStats } from './useInputMeter'
 
 // Level read-out: what goes to the station (the mixer input plus BUTT's gain), one big bar against the target, what to do,
@@ -24,7 +24,7 @@ export default function LevelMeter({ frame, stats, error, deadAir, auto }: {
   frame: RefObject<MeterFrame>; stats: MeterStats; error: string; deadAir: number; auto: AutoLevel
 }) {
   const gain = auto.on ? auto.db : 0
-  const state: LevelState = stats.state === 'off' || stats.state === 'silent' ? stats.state : levelState(stats.short + gain, stats.peak + gain, stats.clipping)
+  const state: LevelState = stats.state // already includes BUTT's gain (see useInputMeter)
   const bad = deadAir > 0 || state === 'clip' || state === 'loud' || state === 'silent'
   const tip = error || (deadAir > 0 ? `${deadAir} seconds of silence on air.` : auto.on && (state === 'quiet' || state === 'loud') ? 'Auto level is adjusting.' : TIP[state])
   return (
@@ -55,7 +55,7 @@ function Bar({ frame, gain }: { frame: RefObject<MeterFrame>; gain: number }) {
     const draw = () => {
       const f = frame.current
       const st = Number.isFinite(f.short) ? f.short + g.current : -60, mo = Number.isFinite(f.momentary) ? f.momentary + g.current : -60
-      const color = st > LOUD_LUFS || Date.now() - f.clipAt < 2000 ? '#FF6A55' : st < QUIET_LUFS ? 'rgba(244,239,226,.45)' : 'var(--hw-eq)'
+      const color = st > LOUD_LUFS || Date.now() - f.clipAt < 2000 ? '#FF6A55' : 'var(--hw-eq)'
       if (fill.current) { fill.current.style.width = pos(st); fill.current.style.background = color }
       if (tick.current) tick.current.style.left = pos(mo)
       raf = requestAnimationFrame(draw)

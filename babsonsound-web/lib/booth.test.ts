@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { QUIET_BANNER, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
+import { type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
 
 const S = 'test-secret-123'
 
@@ -35,13 +35,72 @@ test('live window opens 30 minutes early and closes 30 minutes late', () => {
   assert.equal(liveWindowOpen(s, s.endAt + 31 * 60_000), false)
 })
 
-test('level words follow loudness, peaks and clipping', () => {
+test('level words: good, loud, clip, silent respond at once; quiet only comes from the slow tracker', () => {
   assert.equal(levelState(-14, -6, false), 'good')
-  assert.equal(levelState(-25, -20, false), 'quiet')
+  assert.equal(levelState(-25, -20, false), 'good') // a quiet short-term value alone is not "too quiet"
+  assert.equal(levelState(-25, -20, false, true), 'quiet')
   assert.equal(levelState(-7, -1, false), 'loud')
   assert.equal(levelState(-14, -0.2, true), 'clip')
   assert.equal(levelState(-70, -60, false), 'silent')
   assert.equal(levelState(-Infinity, -Infinity, false), 'silent')
+  assert.equal(levelState(-7, -1, false, true), 'loud') // loud wins over a stale quiet flag
+  assert.equal(TARGET_LUFS, -14)
+})
+
+const ms = (lufs: number) => Math.pow(10, (lufs + 0.691) / 10)
+
+test('gated loudness ignores silence and quiet passages', () => {
+  const speech = Array(40).fill(ms(-20))
+  assert.ok(Math.abs(gatedLufs(speech) - -20) < 0.01)
+  // silence (below -70) and a passage more than 10 LU under the rest do not pull the average down
+  const mixed = [...speech, ...Array(30).fill(ms(-80)), ...Array(10).fill(ms(-38))]
+  assert.ok(Math.abs(gatedLufs(mixed) - -20) < 0.01)
+  assert.equal(gatedLufs([]), -Infinity)
+  assert.equal(gatedLufs(Array(10).fill(ms(-90))), -Infinity)
+})
+
+test('too quiet needs 60 s below the limit, after a 30 s warm-up', () => {
+  let t = newQuietTracker(0)
+  // in the warm-up nothing shows, however quiet
+  for (let s = 0; s < QUIET_WARMUP_MS; s += 1000) { t = stepQuiet(t, s, -30); assert.equal(t.quiet, false) }
+  // then it has to stay below for the full hold
+  const start = QUIET_WARMUP_MS
+  for (let s = 0; s < QUIET_HOLD_MS; s += 1000) { t = stepQuiet(t, start + s, -30); assert.equal(t.quiet, false) }
+  t = stepQuiet(t, start + QUIET_HOLD_MS, -30)
+  assert.equal(t.quiet, true)
+  assert.equal(levelState(-30, -20, false, t.quiet), 'quiet')
+})
+
+test('too quiet: a recovery resets the timer, and healthy speech never triggers it', () => {
+  let t = newQuietTracker(0)
+  t = stepQuiet(t, 40_000, -30)
+  t = stepQuiet(t, 90_000, QUIET_LUFS + 0.5) // back above the limit before 60 s
+  assert.equal(t.belowSince, null)
+  t = stepQuiet(t, 100_000, -30)
+  t = stepQuiet(t, 150_000, -30)
+  assert.equal(t.quiet, false) // only 50 s since it dropped again
+  let h = newQuietTracker(0)
+  for (let s = 30_000; s < 600_000; s += 1000) h = stepQuiet(h, s, -21.5) // speech at -21.5 LUFS
+  assert.equal(h.quiet, false)
+})
+
+test('too quiet has hysteresis: it clears only above the clear level', () => {
+  let t: QuietTracker = { belowSince: 0, quiet: true, warmFrom: 0 }
+  t = stepQuiet(t, 200_000, QUIET_LUFS + 0.5) // just over the enter limit, still under the clear level
+  assert.equal(t.quiet, true)
+  t = stepQuiet(t, 201_000, QUIET_CLEAR_LUFS + 0.5)
+  assert.equal(t.quiet, false)
+  t = stepQuiet(t, 202_000, QUIET_LUFS + 0.5) // and it does not flip straight back
+  assert.equal(t.quiet, false)
+})
+
+test('going live or a track change restarts the warm-up and hides Too quiet', () => {
+  let t: QuietTracker = { belowSince: 0, quiet: true, warmFrom: 0 }
+  t = stepQuiet(t, 500_000, -30, true)
+  assert.equal(t.quiet, false)
+  t = stepQuiet(t, 500_000 + QUIET_WARMUP_MS - 1000, -30)
+  assert.equal(t.quiet, false)
+  assert.equal(t.belowSince, null)
 })
 
 test('a full-scale sine reads about -3 LUFS and -0 dBFS peak', () => {

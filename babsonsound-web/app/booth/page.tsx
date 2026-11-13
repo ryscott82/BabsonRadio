@@ -9,7 +9,7 @@ import DoorClaim from '@/components/booth/DoorClaim'
 import { openSignIn } from '@/lib/signInPrompt'
 import IdleScreen, { exitPanel } from '@/components/booth/IdleScreen'
 import { useInputMeter } from '@/components/booth/useInputMeter'
-import LevelMeter from '@/components/booth/LevelMeter'
+import LevelMeter, { Bar as MiniMeter } from '@/components/booth/LevelMeter'
 import DeviceSettings, { type Devices } from '@/components/booth/DeviceSettings'
 import MusicPlayer from '@/components/booth/MusicPlayer'
 import Soundboard from '@/components/booth/Soundboard'
@@ -139,6 +139,9 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
   const [devices, setDevices] = useState<Devices>(() => ({ input: loadPref('input'), music: loadPref('music') }))
   const [modal, setModal] = useState<'' | 'sound' | 'note'>('')
   const [signInOpen, setSignInOpen] = useState(false)
+  const [audioAt, setAudioAt] = useState(0)        // last time sound was on the input (no sign in only)
+  const [thanksOff, setThanksOff] = useState(false)
+  const audioSet = useRef(0)
   const [idCue, setIdCue] = useState(0)
   const [adCue, setAdCue] = useState(0)
   const [lastMusicAt, setLastMusicAt] = useState(0)
@@ -262,7 +265,11 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
   }, [live, connecting, recording, leave])
   useEffect(() => { if (live || recording) lastActive.current = Date.now() }, [live, recording])
   // With nobody signed in, sound on the input counts as someone being there.
-  useEffect(() => { if (bypass && meter.stats.on && meter.stats.state !== 'silent') lastActive.current = Date.now() }, [bypass, meter.stats])
+  useEffect(() => {
+    if (!bypass || !meter.stats.on || meter.stats.state === 'silent') return
+    lastActive.current = Date.now()
+    if (Date.now() - audioSet.current > 2_000) { audioSet.current = Date.now(); queueMicrotask(() => setAudioAt(Date.now())) }
+  }, [bypass, meter.stats])
   // They pressed Go live before signing in: once signed in and the session is loaded, go live right away (or show why not).
   const autoDone = useRef(false)
   useEffect(() => {
@@ -386,6 +393,14 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
         </div>
       )}
       {bypass && <DoorClaim />}
+      {bypass && !thanksOff && !signInOpen && now - audioAt < 12_000 && (
+        <div className="fixed left-1/2 -translate-x-1/2 top-28 z-40 bp px-8 py-5 w-[640px] max-w-[90vw] space-y-3" role="status">
+          <button type="button" className="absolute right-4 top-3 text-2xl lbl z-10" aria-label="Close" onClick={() => setThanksOff(true)}>×</button>
+          <p className="hw-title text-3xl leading-tight pr-8">Thanks for using the studio! Get more features by signing in!</p>
+          <MiniMeter frame={meter.frame} gain={0} compact />
+          <button type="button" className="gbtn gbtn-go h-14 px-8 text-2xl" onClick={() => { onWantLive(false); setSignInOpen(true) }}>Sign in</button>
+        </div>
+      )}
       {signInOpen && bypass && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/85 px-8" role="dialog" aria-label="Sign in to go live">
           <div className="hw-screen max-w-4xl w-full p-10 space-y-6">

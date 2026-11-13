@@ -46,7 +46,7 @@ export default function LevelMeter({ frame, stats, error, deadAir, auto }: {
 }
 
 /** Short-term loudness (bar) and momentary loudness (tick), with BUTT's gain added, redrawn every frame. */
-function Bar({ frame, gain }: { frame: RefObject<MeterFrame>; gain: number }) {
+export function Bar({ frame, gain, compact = false }: { frame: RefObject<MeterFrame>; gain: number; compact?: boolean }) {
   const fill = useRef<HTMLDivElement>(null), tick = useRef<HTMLDivElement>(null)
   const g = useRef(gain)
   useEffect(() => { g.current = gain }, [gain])
@@ -64,14 +64,14 @@ function Bar({ frame, gain }: { frame: RefObject<MeterFrame>; gain: number }) {
     return () => cancelAnimationFrame(raf)
   }, [frame])
   return (
-    <div className="mt-2">
-      <div className="relative h-14 rounded-xl overflow-hidden" style={{ background: 'rgba(244,239,226,.08)', boxShadow: 'inset 0 2px 6px rgba(0,0,0,.6)' }}>
+    <div className={compact ? '' : 'mt-2'}>
+      <div className={`relative ${compact ? 'h-7 rounded-lg' : 'h-14 rounded-xl'} overflow-hidden`} style={{ background: 'rgba(244,239,226,.08)', boxShadow: 'inset 0 2px 6px rgba(0,0,0,.6)' }}>
         <div className="absolute inset-y-0" style={{ left: pos(GOOD_LUFS[0]), width: `calc(${pos(GOOD_LUFS[1])} - ${pos(GOOD_LUFS[0])})`, background: 'rgba(31,191,127,.16)' }} />
         <div ref={fill} className="absolute left-0 top-3 bottom-3 rounded-r" />
         <div ref={tick} className="absolute inset-y-2 w-1.5 -ml-0.5 rounded" style={{ background: 'rgba(244,239,226,.9)' }} />
         <div className="absolute inset-y-0 w-0.5" style={{ left: pos(TARGET_LUFS), background: 'rgba(244,239,226,.75)' }} />
       </div>
-      <div className="lbl flex justify-between text-lg mt-1"><span>Quiet</span><span>Target</span><span>Loud</span></div>
+      {!compact && <div className="lbl flex justify-between text-lg mt-1"><span>Quiet</span><span>Target</span><span>Loud</span></div>}
     </div>
   )
 }

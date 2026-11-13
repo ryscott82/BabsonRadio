@@ -17,7 +17,8 @@ export async function POST(req: Request) {
     const now = Date.now()
     const secret = boothSecret()
     const b = await readJson(req)
-    if (!verifyAttest(secret, str(b.nonce, 100), str(b.sig, 100), now)) throw new HttpError(403, 'Open this page on the studio PC.', 'BR-BTH-001')
+    const nonce = req.headers.get('x-booth-nonce') ?? str(b.nonce, 100), sig = req.headers.get('x-booth-sig') ?? str(b.sig, 100)
+    if (!verifyAttest(secret, nonce.slice(0, 100), sig.slice(0, 100), now)) throw new HttpError(403, 'Open this page on the studio PC.', 'BR-BTH-001')
 
     const pin = str(b.pin, 20)
     let emergency = false

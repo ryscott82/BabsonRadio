@@ -4,68 +4,45 @@ import { useEffect, useState } from 'react'
 import { adBreak, type AdPlan } from '@/lib/booth'
 import { mmss } from './helper'
 
-// The main read-out: the show's name, time left (big), then the next ad break, how long the host has been
-// talking, and how long the stream has been on. Station ID reminder at the top of each hour while live.
+// Small notices for the top of the booth: time left in the show, an ad break coming up, talking for too long, and the station ID reminder
+// at the top of each hour while live. Nothing shows when there is nothing to say.
 
 interface Show { title: string; startAt: number; endAt: number }
-interface Next { title: string; hosts: string[]; startAt: number }
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 const TALK_LONG_S = 5 * 60
+const AD_NOTICE_MS = 5 * 60_000
 
-export default function ClockScreen(p: {
-  show: Show | null; next: Next | null; ads: AdPlan | null
-  live: boolean; onAirSeconds: number; lastMusicAt: number; onPlayId: () => void
-}) {
+export default function ClockScreen(p: { show: Show | null; ads: AdPlan | null; live: boolean; lastMusicAt: number; onPlayId: () => void }) {
   const [now, setNow] = useState(() => Date.now())
   const [idDone, setIdDone] = useState(-1)
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 500); return () => clearInterval(t) }, [])
 
-  let label = 'No show on right now', value = '', red = false, sub = ''
-  if (p.show && now < p.show.startAt) { label = 'Starts in'; value = mmss((p.show.startAt - now) / 1000); sub = `${clock(p.show.startAt)} to ${clock(p.show.endAt)}` }
-  else if (p.show && now <= p.show.endAt) { const left = (p.show.endAt - now) / 1000; label = left <= 300 ? 'Time left · wrap up' : 'Time left'; value = mmss(left); red = left <= 300; sub = `ends ${clock(p.show.endAt)}` }
-  else if (p.show) { label = 'Over time'; value = `+${mmss((now - p.show.endAt) / 1000)}`; red = true; sub = `ended ${clock(p.show.endAt)}` }
+  let timeLabel = '', timeValue = '', timeWarn = false
+  if (p.show && now < p.show.startAt) { timeLabel = `Starts at ${clock(p.show.startAt)} in`; timeValue = mmss((p.show.startAt - now) / 1000) }
+  else if (p.show && now <= p.show.endAt) { const left = (p.show.endAt - now) / 1000; timeLabel = left <= 300 ? 'Time left, wrap up' : 'Time left'; timeValue = mmss(left); timeWarn = left <= 300 }
+  else if (p.show) { timeLabel = 'Over time'; timeValue = `+${mmss((now - p.show.endAt) / 1000)}`; timeWarn = true }
 
   const ad = p.ads ? adBreak(p.ads, now) : null
-  const adSoon = !!ad && (ad.now || ad.start - now <= 60_000)
+  const adShown = !!ad && (ad.now || ad.start - now <= AD_NOTICE_MS)
   const talking = p.live && p.lastMusicAt ? (now - p.lastMusicAt) / 1000 : 0
 
   const d = new Date(now), min = d.getMinutes(), hourKey = d.getHours() + (min >= 58 ? 1 : 0)
   const idDue = p.live && (min >= 58 || min <= 2) && idDone !== hourKey
 
+  const pill = 'bp px-4 py-1.5 flex items-center gap-3 text-xl'
   return (
-    <div className="bp w-full px-8 py-2 flex items-center gap-8">
-      <div className="min-w-0 flex-1">
-        <p className={`lbl text-xl ${red ? 'warn' : ''}`}>{label}{sub ? ` · ${sub}` : ''}</p>
-      </div>
-      {value && <p className={`num shrink-0 ${red ? 'warn' : ''}`} style={{ fontSize: 'clamp(2.5rem, 6vh, 4rem)' }}>{value}</p>}
-      <div className="grid grid-cols-3 gap-8 shrink-0">
-        <Readout label={!ad ? 'Ad breaks' : ad.now ? 'Ad break · back in' : 'Next ad break'} value={!ad ? 'Off' : mmss(((ad.now ? ad.end : ad.start) - now) / 1000)} warn={adSoon} />
-        <Readout label="Talking" value={p.live ? mmss(talking) : '–'} warn={talking >= TALK_LONG_S} />
-        <Readout label="On air" value={p.live ? mmss(p.onAirSeconds) : 'Off'} />
-      </div>
-      {(idDue || p.next) && (
-        <div className="flex items-center gap-3 text-lg min-w-0 max-w-[32%]">
-          {idDue ? (
-            <>
-              <span className="ok">Play the station ID</span>
-              <button type="button" className="gbtn h-10 px-4 text-lg" onClick={() => { p.onPlayId(); setIdDone(hourKey) }}>Play ID</button>
-              <button type="button" className="gbtn h-10 px-4 text-lg" onClick={() => setIdDone(hourKey)}>Done</button>
-            </>
-          ) : p.next && (
-            <span className="lbl truncate">Next: {p.next.title} at {clock(p.next.startAt)}</span>
-          )}
+    <>
+      {timeValue && <div className={pill}><span className="lbl">{timeLabel}</span><span className={`num text-3xl ${timeWarn ? 'warn' : ''}`}>{timeValue}</span></div>}
+      {adShown && ad && <div className={pill}><span className="lbl">{ad.now ? 'Ad break, back in' : 'Ad break in'}</span><span className="num text-3xl warn">{mmss(((ad.now ? ad.end : ad.start) - now) / 1000)}</span></div>}
+      {talking >= TALK_LONG_S && <div className={pill}><span className="lbl">Talking</span><span className="num text-3xl warn">{mmss(talking)}</span></div>}
+      {idDue && (
+        <div className={pill}>
+          <span className="ok">Play the station ID</span>
+          <button type="button" className="gbtn h-9 px-3 text-base" onClick={() => { p.onPlayId(); setIdDone(hourKey) }}>Play ID</button>
+          <button type="button" className="gbtn h-9 px-3 text-base" onClick={() => setIdDone(hourKey)}>Done</button>
         </div>
       )}
-    </div>
-  )
-}
-
-function Readout({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
-  return (
-    <div>
-      <p className={`lbl text-lg ${warn ? 'warn' : ''}`}>{label}</p>
-      <p className={`num text-3xl ${warn ? 'warn' : ''}`}>{value}</p>
-    </div>
+    </>
   )
 }

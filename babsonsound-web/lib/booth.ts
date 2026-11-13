@@ -247,3 +247,13 @@ export const MIXING_SNOOZE_MS = 5 * 60_000
 /** The small "Reminder: Quiet Hours are in Effect" notice comes back this long after it was dismissed. */
 export const QUIET_REMIND_MS = 30 * 60_000
 export const quietReminderDue = (dismissedAt: number, now: number) => !dismissedAt || now - dismissedAt >= QUIET_REMIND_MS
+
+// ── Auto sign-out ───────────────────────────────────────────
+/** After this long with no touch, no sound on the input and no music playing, ask "are you still using the studio?"; a minute later, sign out. */
+export const IDLE_OUT_MS = 30 * 60_000
+export const IDLE_WARN_MS = 60_000
+export function idleStep(quietMs: number): { warn: boolean; secondsLeft: number; out: boolean } {
+  if (quietMs >= IDLE_OUT_MS) return { warn: false, secondsLeft: 0, out: true }
+  if (quietMs >= IDLE_OUT_MS - IDLE_WARN_MS) return { warn: true, secondsLeft: Math.ceil((IDLE_OUT_MS - quietMs) / 1000), out: false }
+  return { warn: false, secondsLeft: 0, out: false }
+}

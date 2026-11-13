@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BYPASS_UID, QUIET_REMIND_MS, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
+import { BYPASS_UID, IDLE_OUT_MS, IDLE_WARN_MS, QUIET_REMIND_MS, idleStep, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
 
 const S = 'test-secret-123'
 
@@ -206,4 +206,11 @@ test('quiet-hours reminder shows at first, hides when dismissed, and returns aft
   assert.equal(quietReminderDue(0, 1_000_000), true)
   assert.equal(quietReminderDue(1_000_000, 1_000_000 + QUIET_REMIND_MS - 1), false)
   assert.equal(quietReminderDue(1_000_000, 1_000_000 + QUIET_REMIND_MS), true)
+})
+
+test('auto sign-out: quiet for 29 minutes warns with a 60 second countdown, 30 minutes signs out', () => {
+  assert.deepEqual(idleStep(10 * 60_000), { warn: false, secondsLeft: 0, out: false })
+  assert.deepEqual(idleStep(IDLE_OUT_MS - IDLE_WARN_MS), { warn: true, secondsLeft: 60, out: false })
+  assert.deepEqual(idleStep(IDLE_OUT_MS - 1_500), { warn: true, secondsLeft: 2, out: false })
+  assert.deepEqual(idleStep(IDLE_OUT_MS), { warn: false, secondsLeft: 0, out: true })
 })

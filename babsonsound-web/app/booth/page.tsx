@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, signOut } from '@/lib/auth'
-import { quietReminderDue, MIXING_HOLD_MS, MIXING_PEAK_DBFS, MIXING_SNOOZE_MS, adBreak, bookingLines, quietBanner, type AdPlan, type LevelState, type StudioStatus } from '@/lib/booth'
+import { idleStep, quietReminderDue, MIXING_HOLD_MS, MIXING_PEAK_DBFS, MIXING_SNOOZE_MS, adBreak, bookingLines, quietBanner, type AdPlan, type LevelState, type StudioStatus } from '@/lib/booth'
 import { boothFetch, errText, helper, loadPref, mmss, savePref, type Butt, type Track } from '@/components/booth/helper'
 import DoorClaim from '@/components/booth/DoorClaim'
 import { openSignIn } from '@/lib/signInPrompt'
@@ -14,9 +14,8 @@ import DeviceSettings, { type Devices } from '@/components/booth/DeviceSettings'
 import MusicPlayer from '@/components/booth/MusicPlayer'
 import Soundboard from '@/components/booth/Soundboard'
 import ClockScreen from '@/components/booth/ClockScreen'
-import EmojiGlyph from '@/components/EmojiGlyph'
 import { useAutoGain } from '@/components/booth/useAutoGain'
-import { useListeners } from '@/components/booth/useListeners'
+import { useShowInfo } from '@/components/booth/useShowInfo'
 import NoteBox from '@/components/booth/NoteBox'
 import ShowInfo from '@/components/booth/ShowInfo'
 import RecordShow, { useRecState } from '@/components/booth/RecordShow'
@@ -37,7 +36,6 @@ interface Session {
   signInToLive?: boolean
 }
 
-const IDLE_MS = 10 * 60_000
 const REFRESH_MS = 4 * 60_000
 const DEAD_AIR_S = 10
 
@@ -141,6 +139,11 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
   const [modal, setModal] = useState<'' | 'sound' | 'note' | 'show'>('')
   const [signInOpen, setSignInOpen] = useState(false)
   const [nowTrack, setNowTrack] = useState<Track | null>(null)
+  const nowTrackRef = useRef<Track | null>(null)
+  useEffect(() => { nowTrackRef.current = nowTrack }, [nowTrack])
+  const [since] = useState(() => Date.now())
+  const [trackText, setTrackText] = useState<string | null>(null) // typed track title; null follows what is playing
+  const [hostsText, setHostsText] = useState<string | null>(null)
   const [pin, setPin] = useState('')
   const [pinBusy, setPinBusy] = useState(false)
   const [pinError, setPinError] = useState('')
@@ -159,7 +162,6 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
     return () => { html.style.overflow = prev }
   }, [])
   const meter = useInputMeter(devices.input, !isGuest, `${live ? 1 : 0}:${lastMusicAt}`, gainRef)
-  const audience = useListeners()
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 5_000); return () => clearInterval(t) }, [])
 
   const changeDevices = (d: Devices) => { setDevices(d); savePref('input', d.input); savePref('music', d.music) }
@@ -196,6 +198,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
       sessionRef.current = r; setS(r); onUnlock(pin.trim()); setSignInOpen(false); setPin('')
     } catch (e) { setPinError(errText(e)) } finally { setPinBusy(false) }
   }
+  const info = useShowInfo(token, !!s)
   const auto = useAutoGain(meter.frame, token)
   useEffect(() => { gainRef.current = auto.on ? auto.db : 0 }, [auto.on, auto.db])
   const studio = useStudioStatus(!isGuest, !!bypass)
@@ -260,7 +263,8 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
     await leave('sign_out')
   })
 
-  // Sign out by itself after 10 quiet minutes (with a 60 second "Still there?" first), but never while on air or recording.
+  // Sign out by itself after 30 minutes with no touch, no sound on the input and no music (with a 60 second "Are you still using the studio?" first),
+  // but never while on air or recording.
   const [stillThere, setStillThere] = useState(0)
   useEffect(() => {
     const touch = () => { lastActive.current = Date.now(); setStillThere(0) }
@@ -270,17 +274,17 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
     const t = setInterval(() => {
       const quiet = Date.now() - lastActive.current
       if (live || connecting || recording) { setStillThere(0); return }
-      if (quiet > IDLE_MS) leave('idle_out').catch(() => {})
-      else if (quiet > IDLE_MS - 60_000) setStillThere(Math.ceil((IDLE_MS - quiet) / 1000))
+      if (nowTrackRef.current) { lastActive.current = Date.now(); setStillThere(0); return } // music is playing: someone is using it
+      const st = idleStep(quiet)
+      if (st.out) leave('idle_out').catch(() => {})
+      else setStillThere(st.warn ? st.secondsLeft : 0)
     }, 1_000)
     return () => { evs.forEach(e => window.removeEventListener(e, touch)); clearInterval(t) }
   }, [live, connecting, recording, leave])
   useEffect(() => { if (live || recording) lastActive.current = Date.now() }, [live, recording])
-  // With nobody signed in, sound on the input counts as someone being there.
-  useEffect(() => {
-    if (!bypass || !meter.stats.on || meter.stats.state === 'silent') return
-    lastActive.current = Date.now()
-  }, [bypass, meter.stats])
+  // Sound on the input counts as someone being there.
+  useEffect(() => { if (meter.stats.on && meter.stats.state !== 'silent') lastActive.current = Date.now() }, [meter.stats])
+  useEffect(() => { queueMicrotask(() => setTrackText(null)) }, [nowTrack])
   // They pressed Go live before signing in: once signed in and the session is loaded, go live right away (or show why not).
   const autoDone = useRef(false)
   useEffect(() => {
@@ -303,32 +307,38 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
   const deadAir = live && silentFor >= DEAD_AIR_S ? Math.floor(silentFor) : 0
   const ready = !!butt && !buttErr
   const problem = error || (buttErr ? 'BUTT isn’t answering. Open BUTT on this computer.' : '')
-  const top = Object.entries(audience?.recentReactions ?? {}).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]).slice(0, 3)
   const sb = 'gbtn h-9 px-3 text-sm'
 
   const date = new Date(now).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
 
   const next = s?.next
+  const welcomeBig = !live && !connecting && now - since < 60_000
+  const showName = info.show?.title || s?.show?.title || ''
+  const hostsValue = hostsText ?? ((info.show?.hosts.length ? info.show.hosts.join(', ') : '') || (bypass ? '' : s?.name ?? ''))
+  const canEditShow = !!s?.canGoLive || !!s?.canRecord || live
+  const fieldCls = 'gfield h-10 px-3 text-2xl w-full min-w-0'
+  /** A typed track title goes to the site and app while live ("Artist - Title" or just a title). */
+  const sendTrack = () => {
+    const text = (trackText ?? '').trim()
+    if (!text || !live) return
+    const [artist, title] = text.includes(' - ') ? [text.split(' - ')[0].trim(), text.split(' - ').slice(1).join(' - ').trim()] : ['', text]
+    void (async () => { try { await helper('/song', { token: await token(), text }); await report('song', { title, artist }) } catch (e) { setError(errText(e)) } })()
+  }
   return (
     <div className="fixed inset-0 z-[2] flex flex-col gap-3 px-8 pt-5 pb-6 overflow-hidden">
-      {/* Top: time left, notifications in the middle (ON AIR, listeners, quiet hours, bookings), date and small buttons right. */}
+      {/* Top: ON AIR at the left, notices in the middle (time left, ad breaks, station ID, quiet hours, bookings), time and date at the right with the small buttons. */}
       <header className="hw-desk-text grid grid-cols-[auto_1fr_auto] items-start gap-6 shrink-0">
-        <p className="hw-title text-5xl leading-none tabular-nums">{clock(now)}</p>
-        <div className="flex items-center justify-center gap-6 min-w-0 flex-wrap">
-          <div className="hw-sign hw-sign-lg shrink-0" style={{ position: 'relative', left: 0, top: 0 }}>
-            <span style={live ? undefined : { color: '#4a2620', textShadow: 'none' }}>ON AIR</span>
-          </div>
-          {audience && (
-            <div className="flex items-center gap-3 text-2xl">
-              <span><span className="hw-title text-3xl tabular-nums">{audience.listeners}</span> listening</span>
-              {top.map(([e, n]) => <span key={e} className="flex items-center gap-1"><EmojiGlyph e={e} size={24} />{n}</span>)}
-            </div>
-          )}
+        <div className="hw-sign hw-sign-lg shrink-0" style={{ position: 'relative', left: 0, top: 0 }}>
+          <span style={live ? undefined : { color: '#4a2620', textShadow: 'none' }}>ON AIR</span>
+        </div>
+        <div className="flex items-center justify-center gap-4 min-w-0 flex-wrap pt-1">
+          <ClockScreen show={s?.show ?? null} ads={s?.ads ?? null} live={live} lastMusicAt={lastMusicAt} onPlayId={() => setIdCue(n => n + 1)} />
           <StudioNotices status={studio.status} myBookingId={studio.myBookingId} />
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <p className="hw-title text-4xl leading-none">{date}</p>
-          <div className="flex items-center gap-2 flex-wrap justify-end">
+        <div className="flex flex-col items-end gap-1">
+          <p className="hw-title text-5xl leading-none tabular-nums">{clock(now)}</p>
+          <p className="hw-title text-3xl leading-none">{date}</p>
+          <div className="flex items-center gap-2 flex-wrap justify-end mt-1">
             {!bypass && <button type="button" className={sb} onClick={() => setModal('note')}>Leave a note</button>}
             <button type="button" className={sb} onClick={() => setModal('sound')}>Audio setup</button>
             <button type="button" className={sb} onClick={onToggleTheme} aria-pressed={night} title="Switch between the day and night look. It goes back to automatic at 7 am or 7 pm.">{night ? '☾ Night' : '☀ Day'}</button>
@@ -345,23 +355,34 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
         </div>
       </header>
 
-      <div className="hw-desk-text text-center min-w-0 shrink-0">
-        <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(3rem, 9vh, 6.5rem)' }}>Welcome, {bypass ? 'Babson Sound user' : s?.firstName || '…'}</h1>
-        {(problem || s?.note) && <p className={`text-xl mt-1 line-clamp-1 ${problem ? 'text-[#FFB3A6]' : ''}`}>{problem || `Note from ${s?.note?.by || 'the last host'}: ${s?.note?.text}`}</p>}
-      </div>
-
-      <ClockScreen show={s?.show ?? null} next={s?.next ?? null} ads={s?.ads ?? null} live={live}
-                   onAirSeconds={butt?.streamSeconds ?? 0} lastMusicAt={lastMusicAt} onPlayId={() => setIdCue(n => n + 1)} />
+      {/* The welcome only greets for the first minute. On air it gives way to the show's name; otherwise the space goes to the controls. */}
+      {(welcomeBig || problem || s?.note || (live && showName)) && (
+        <div className="hw-desk-text text-center min-w-0 shrink-0">
+          {welcomeBig ? (
+            <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(3rem, 9vh, 6.5rem)' }}>Welcome, {bypass ? 'Babson Sound user' : s?.firstName || '…'}</h1>
+          ) : live && showName ? (
+            <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(2.5rem, 6vh, 4.5rem)' }}>{showName}</h1>
+          ) : null}
+          {(problem || s?.note) && <p className={`text-xl mt-1 line-clamp-1 ${problem ? 'text-[#FFB3A6]' : ''}`}>{problem || `Note from ${s?.note?.by || 'the last host'}: ${s?.note?.text}`}</p>}
+        </div>
+      )}
 
       {/* Left: up next, the loudness meter, what is on, Go live. Right: tracks (or the sign-in info) with the sound board under them. */}
       <div className="grid grid-cols-[1fr_1.15fr] gap-5 flex-1 min-h-0">
         <div className="flex flex-col gap-3 min-h-0">
           <p className="hw-desk-text text-2xl truncate shrink-0">Up next: <span className="opacity-90">{next ? `${next.title}${next.hosts.length ? ` with ${next.hosts.join(', ')}` : ''} at ${clock(next.startAt)}` : 'nothing booked'}</span></p>
           <div className="flex-1 min-h-0"><LevelMeter frame={meter.frame} stats={meter.stats} error={meter.error} deadAir={deadAir} auto={auto} /></div>
-          <div className="bp px-6 py-3 grid grid-cols-[8.5rem_1fr] items-center gap-x-4 gap-y-1 shrink-0">
-            <span className="lbl text-lg">Show name</span><span className="text-2xl truncate">{s?.show?.title ?? 'No show booked'}</span>
-            <span className="lbl text-lg">Track title</span><span className="text-2xl truncate">{nowTrack ? `${nowTrack.title}${nowTrack.artist ? ` · ${nowTrack.artist}` : ''}` : 'Nothing playing'}</span>
-            <span className="lbl text-lg">Host name</span><span className="text-2xl truncate">{bypass ? 'Not signed in' : s?.name ?? '…'}</span>
+          <div className="bp px-6 py-3 grid grid-cols-[8.5rem_1fr] items-center gap-x-4 gap-y-2 shrink-0">
+            <span className="lbl text-lg">Show name</span>
+            <input value={showName} onChange={e => info.change({ title: e.target.value })} readOnly={!canEditShow} maxLength={80} placeholder="Name your show"
+                   title={canEditShow ? '' : 'Sign in to name the show.'} className={fieldCls} />
+            <span className="lbl text-lg">Track title</span>
+            <input value={trackText ?? (nowTrack ? `${nowTrack.title}${nowTrack.artist ? ` · ${nowTrack.artist}` : ''}` : '')} placeholder="Nothing playing. Type a track."
+                   onChange={e => setTrackText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} onBlur={sendTrack}
+                   title={live ? 'Press Enter to show this on the site and app.' : ''} className={fieldCls} />
+            <span className="lbl text-lg">Host name</span>
+            <input value={hostsValue} onChange={e => { setHostsText(e.target.value); info.change({ hosts: e.target.value.split(/[,;\n]+/).map(x => x.trim()).filter(Boolean) }) }}
+                   readOnly={!canEditShow} placeholder={bypass ? 'Not signed in' : 'Who is on the show'} title={canEditShow ? 'Separate names with commas.' : 'Sign in to edit.'} className={fieldCls} />
           </div>
           <div className="bp px-6 py-4 flex flex-col gap-3 shrink-0">
             {!bypass && !live && !connecting && !recording && (
@@ -402,8 +423,9 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
       {stillThere > 0 && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/80" role="alertdialog" aria-label="Still there?">
           <div className="hw-screen p-12 text-center space-y-5">
-            <p className="hw-title text-6xl">Still there?</p>
-            <p className="text-3xl lbl">Signing out in {stillThere} seconds. Touch anything to stay.</p>
+            <p className="hw-title text-6xl">Are you still using the studio?</p>
+            <p className="text-3xl lbl">Signing out in {stillThere} seconds.</p>
+            <button type="button" className="gbtn gbtn-go h-20 px-10 text-3xl" onClick={() => setStillThere(0)} autoFocus>Yes, I’m still here</button>
           </div>
         </div>
       )}

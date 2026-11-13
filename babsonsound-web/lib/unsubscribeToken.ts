@@ -33,3 +33,16 @@ export async function uidFromUnsubscribeToken(token: string): Promise<string | n
   const want = await hmac('unsub', uid)
   return want && safeEqual(sig, want.slice(0, 40)) ? uid : null
 }
+
+// One-tap "turn off show reminders" links in reminder emails. Same signing secret, a different label, so an unsubscribe link cannot be used here or the other way round.
+export async function reminderOffToken(uid: string): Promise<string | null> {
+  const sig = await hmac('remind-off', uid)
+  return sig ? `${uid}.${sig.slice(0, 40)}` : null
+}
+export async function uidFromReminderOffToken(token: string): Promise<string | null> {
+  const i = token.lastIndexOf('.')
+  if (i < 1) return null
+  const uid = token.slice(0, i), sig = token.slice(i + 1)
+  const want = await hmac('remind-off', uid)
+  return want && safeEqual(sig, want.slice(0, 40)) ? uid : null
+}

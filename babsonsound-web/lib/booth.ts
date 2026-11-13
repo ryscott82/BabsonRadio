@@ -70,7 +70,8 @@ export const liveWindowOpen = (s: { startAt: number; endAt: number }, now: numbe
   now >= s.startAt - LIVE_EARLY_MS && now <= s.endAt + LIVE_LATE_MS
 
 // ── Level meter targets ──────────────────────────────────────
-// Four colours, one meaning each: blue = too quiet, green = good, yellow = getting loud (peaks are close to 0 dB), red = too loud, turn it down.
+// Three colours on a segmented bar, one shade each: green at the bottom, yellow near the top (the sweet spot: aim for the top of green into yellow), red at
+// the very top (clipping, or loud for a sustained time). Too quiet is just the bar sitting low in green, with a line of advice. No blue.
 // Nothing here is quick: a host should only ever be told something when it is really so.
 /** The station's music is normalized to -14 LUFS (tools/normalize_loudness.py), so live shows aim for the same. */
 export const TARGET_LUFS = -14
@@ -128,21 +129,20 @@ export function stepLoud(t: LoudTracker, now: number, i: { midLufs: number; peak
 }
 
 /** What the big word says, and its colour tone. */
-export type Tone = 'ok' | 'warn' | 'caution' | 'info' | 'off'
+export type Tone = 'ok' | 'warn' | 'caution' | 'off'
 export function levelWord(state: LevelState): { word: string; tone: Tone } {
   switch (state) {
     case 'off': return { word: 'Meter off', tone: 'off' }
     case 'silent': return { word: 'No sound', tone: 'warn' }
-    case 'quiet': return { word: 'Too quiet', tone: 'info' }
-    case 'near': return { word: 'Getting loud', tone: 'caution' }
+    case 'quiet': return { word: 'Too quiet', tone: 'ok' }
+    case 'near': return { word: 'Strong level', tone: 'caution' }
     case 'loud': return { word: 'Too loud', tone: 'warn' }
     default: return { word: 'Good', tone: 'ok' }
   }
 }
 
-/** Which way to move the mixer and roughly how far. Hosts don't think in LUFS, so the size is in words. Only given for blue, yellow and red. */
+/** Which way to move the mixer and roughly how far. Hosts don't think in LUFS, so the size is in words. Only given for too quiet and too loud (yellow is the sweet spot, so no advice there). */
 export function levelAdvice(midLufs: number, state: LevelState): { dir: 'up' | 'down' | 'ok'; amount: string; db: number } {
-  if (state === 'near') return { dir: 'down', amount: 'a little', db: 2 }
   if (state === 'loud') {
     if (!Number.isFinite(midLufs)) return { dir: 'down', amount: 'now', db: 6 }
     const db = Math.max(3, Math.round(midLufs - TARGET_LUFS))
@@ -332,4 +332,22 @@ export function countdownText(ms: number): string {
   const t = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60
   const two = (n: number) => String(n).padStart(2, '0')
   return h ? `${h}:${two(m)}:${two(sec)}` : `${m}:${two(sec)}`
+}
+
+// ── The segmented bar ───────────────────────────────────────
+/** The bar spans METER_MIN to METER_MAX LUFS in METER_CELLS cells (one LU each). Green below YELLOW_FROM_LUFS, yellow up to LOUD_LUFS, red above. */
+export const METER_MIN = -36
+export const METER_MAX = -4
+export const METER_CELLS = 32
+export const YELLOW_FROM_LUFS = -16
+export type CellZone = 'green' | 'yellow' | 'red'
+/** How many cells are lit for a loudness (0 to METER_CELLS). Silence and NaN light none. */
+export function cellsLit(lufs: number, cells = METER_CELLS): number {
+  if (!Number.isFinite(lufs)) return 0
+  return Math.max(0, Math.min(cells, Math.floor(((lufs - METER_MIN) / (METER_MAX - METER_MIN)) * cells + 1e-9)))
+}
+/** The colour of cell `i` (0 is the bottom one), by where its middle sits. */
+export function cellZone(i: number, cells = METER_CELLS): CellZone {
+  const mid = METER_MIN + ((i + 0.5) / cells) * (METER_MAX - METER_MIN)
+  return mid < YELLOW_FROM_LUFS ? 'green' : mid < LOUD_LUFS ? 'yellow' : 'red'
 }

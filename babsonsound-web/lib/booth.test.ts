@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { WELCOME_MS, countdownText, heroMode, BYPASS_UID, IDLE_OUT_MS, IDLE_WARN_MS, QUIET_REMIND_MS, idleStep, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, LONG_WINDOW_MS, levelWord, levelAdvice, newLoudTracker, stepLoud, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
+import { METER_CELLS, cellZone, cellsLit, WELCOME_MS, countdownText, heroMode, BYPASS_UID, IDLE_OUT_MS, IDLE_WARN_MS, QUIET_REMIND_MS, idleStep, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, LONG_WINDOW_MS, levelWord, levelAdvice, newLoudTracker, stepLoud, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
 
 const S = 'test-secret-123'
 
@@ -87,14 +87,14 @@ test('too quiet: a recovery resets the timer, and healthy speech never triggers 
 
 test('the word and the advice: four colours, advice only for blue, yellow and red', () => {
   assert.deepEqual(levelWord('good'), { word: 'Good', tone: 'ok' })
-  assert.deepEqual(levelWord('quiet'), { word: 'Too quiet', tone: 'info' })
-  assert.deepEqual(levelWord('near'), { word: 'Getting loud', tone: 'caution' })
+  assert.deepEqual(levelWord('quiet'), { word: 'Too quiet', tone: 'ok' })
+  assert.deepEqual(levelWord('near'), { word: 'Strong level', tone: 'caution' })
   assert.deepEqual(levelWord('loud'), { word: 'Too loud', tone: 'warn' })
   assert.equal(levelWord('silent').word, 'No sound')
   assert.deepEqual(levelAdvice(-14, 'good'), { dir: 'ok', amount: '', db: 0 })
   assert.deepEqual(levelAdvice(-20, 'quiet'), { dir: 'up', amount: 'some', db: 6 })
   assert.deepEqual(levelAdvice(-30, 'quiet'), { dir: 'up', amount: 'a lot', db: 16 })
-  assert.equal(levelAdvice(-9, 'near').dir, 'down')
+  assert.equal(levelAdvice(-9, 'near').dir, 'ok')
   assert.deepEqual(levelAdvice(-5, 'loud'), { dir: 'down', amount: 'some', db: 9 })
   assert.equal(levelAdvice(-Infinity, 'loud').amount, 'now'); assert.equal(levelAdvice(-Infinity, 'silent').dir, 'ok')
 })
@@ -288,4 +288,15 @@ test('countdown text', () => {
   assert.equal(countdownText(65_000), '1:05')
   assert.equal(countdownText(3_725_000), '1:02:05')
   assert.equal(countdownText(-5), '0:00')
+})
+
+test('segmented bar: green low, yellow near the top, red at the very top, no blue', () => {
+  assert.equal(METER_CELLS, 32)
+  const zones = Array.from({ length: METER_CELLS }, (_, i) => cellZone(i))
+  assert.equal(zones[0], 'green'); assert.equal(zones[19], 'green'); assert.equal(zones[20], 'yellow'); assert.equal(zones[28], 'yellow'); assert.equal(zones[29], 'red'); assert.equal(zones[31], 'red')
+  assert.deepEqual([...new Set(zones)], ['green', 'yellow', 'red'])
+  assert.equal(cellsLit(-Infinity), 0); assert.equal(cellsLit(NaN), 0); assert.equal(cellsLit(-60), 0); assert.equal(cellsLit(-36), 0)
+  assert.equal(cellsLit(-35), 1); assert.equal(cellsLit(-14), 22); assert.equal(cellsLit(0), METER_CELLS)
+  // the sweet spot (-14 LUFS) lights green and the first yellow cells; "too quiet" (-25) stays in green
+  assert.equal(zones[cellsLit(-14) - 1], 'yellow'); assert.equal(zones[cellsLit(-25) - 1], 'green')
 })

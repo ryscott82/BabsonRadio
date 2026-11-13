@@ -14,11 +14,16 @@ export function useAutoGain(frame: RefObject<MeterFrame>, getToken: () => Promis
   const [on, setOn] = useState(() => loadPref('autoLevel', '1') === '1')
   const dbRef = useRef(0)
 
+  // Asks the helper if the MIDI add-on is ready: now, and once a minute until it is (the control appears by itself, no site change needed).
   useEffect(() => {
-    helper<{ available: boolean; db: number; error: string }>('/gain')
-      .then(r => { setAvailable(r.available); setError(r.error); setDb(r.db); dbRef.current = r.db })
-      .catch(() => setAvailable(false))
-  }, [])
+    let stop = false
+    const ask = () => helper<{ available: boolean; db: number; error: string }>('/gain')
+      .then(r => { if (stop) return; setAvailable(r.available); setError(r.error); setDb(r.db); dbRef.current = r.db })
+      .catch(() => { if (!stop) setAvailable(false) })
+    ask()
+    const t = available ? null : setInterval(ask, 60_000)
+    return () => { stop = true; if (t) clearInterval(t) }
+  }, [available])
 
   const send = useCallback(async (value: number) => {
     const r = await helper<{ db: number }>('/gain', { token: await getToken(), db: value })

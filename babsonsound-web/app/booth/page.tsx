@@ -446,7 +446,7 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
               </>
             ) : <p className="hw-title text-4xl leading-tight">Nothing booked</p>}
           </div>
-          <div className="basis-[34%] grow-0 shrink-0 min-h-0"><LevelMeter frame={meter.frame} stats={meter.stats} error={meter.error} deadAir={deadAir} auto={auto} /></div>
+          <div className="basis-[34%] grow-0 shrink-0 min-h-0"><LevelMeter frame={meter.frame} stats={meter.stats} error={meter.error} deadAir={deadAir} auto={auto} staff={['admin', 'eboard', 'director'].includes(staffRole)} /></div>
           <div className="bp px-6 py-3 grid grid-cols-[8.5rem_1fr] items-center gap-x-4 gap-y-2 shrink-0">
             <span className="lbl text-lg">Show name</span>
             <input value={showName} onChange={e => info.change({ title: e.target.value })} readOnly={!canEditShow} maxLength={80} placeholder="Name your show"

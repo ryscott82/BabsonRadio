@@ -12,5 +12,8 @@
   },
   "optionalDependencies": {
     "@julusian/midi": "3.8.1"
+  },
+  "dependencies": {
+    "firebase": "12.19.0"
   }
 }

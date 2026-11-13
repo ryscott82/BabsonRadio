@@ -133,6 +133,10 @@ service cloud.firestore {
     match /boothEvents/{id}   { allow read, write: if false; }
     match /boothNowPlaying/{id} { allow read, write: if false; }
     match /boothNotes/{id}    { allow read, write: if false; }
+    // Door QR: the studio PC listens to the one ping doc (a random claim id only, nothing about who). Claims are server only.
+    match /boothDoorPing/{id}   { allow read: if true; allow write: if false; }
+    match /boothDoorClaims/{id} { allow read, write: if false; }
+    match /boothDoorCooldown/{id} { allow read, write: if false; }
     match /boothGuests/{id}   { allow read, write: if false; } // studio PC idle screen: emails of people who watched the training
     match /feedback/{id}      { allow read, write: if false; }
     match /autoBlocks/{id}    { allow read, write: if false; }

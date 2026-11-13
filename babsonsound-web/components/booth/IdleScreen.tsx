@@ -1,8 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { doc, onSnapshot } from 'firebase/firestore'
+import { signInWithCustomToken } from 'firebase/auth'
 import { signIn } from '@/lib/auth'
-import { boothFetch, errText, helper } from './helper'
+import { auth, db } from '@/lib/firebase'
+import { attestHeaders, boothFetch, errText, helper } from './helper'
 
 // What the studio PC shows when nobody is signed in: a big clock, a greeting, what is on now and next. Useful even when nobody is
 // doing radio. Sign in, or (no account needed) type an email and watch the quick equipment training.
@@ -25,6 +28,7 @@ export default function IdleScreen({ onExitPanel }: { onExitPanel: () => void })
   const [view, setView] = useState<'home' | 'signin' | 'guest' | 'video'>('home')
   const [videoId, setVideoId] = useState('')
   const [drift, setDrift] = useState({ x: 0, y: 0 })
+  const [door, setDoor] = useState<{ firstName: string; token: string; left: number } | null>(null)
 
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [])
   useEffect(() => {
@@ -34,6 +38,31 @@ export default function IdleScreen({ onExitPanel }: { onExitPanel: () => void })
     const t = setInterval(load, 5 * 60_000)
     return () => { stop = true; clearInterval(t) }
   }, [])
+  // Door QR: someone scanned the code on the door. The first snapshot is whatever scan happened last (ignored); a new one is claimed right away,
+  // the PC says who is being signed in for 4 seconds (Cancel works), then signs in with the one-time token.
+  useEffect(() => {
+    let first = true, last = ''
+    return onSnapshot(doc(db, 'boothDoorPing', 'latest'), snap => {
+      const claimId = String(snap.get('claimId') ?? '')
+      if (first) { first = false; last = claimId; return }
+      if (!claimId || claimId === last) return
+      last = claimId
+      void (async () => {
+        try {
+          const h = await attestHeaders()
+          const r = await boothFetch<{ customToken: string; firstName: string }>('/api/booth/door-claim', { claimId, nonce: h['x-booth-nonce'], sig: h['x-booth-sig'] })
+          setDoor({ firstName: r.firstName, token: r.customToken, left: 4 })
+        } catch { /* expired or not for this PC */ }
+      })()
+    }, () => {})
+  }, [])
+  useEffect(() => {
+    if (!door) return
+    if (door.left <= 0) { const t = door.token; setDoor(null); signInWithCustomToken(auth, t).catch(() => {}); return }
+    const t = setTimeout(() => setDoor(d => (d ? { ...d, left: d.left - 1 } : d)), 1000)
+    return () => clearTimeout(t)
+  }, [door])
+
   // Burn-in protection: shift everything a few pixels every few minutes.
   useEffect(() => {
     const t = setInterval(() => setDrift({ x: Math.round(Math.random() * 24 - 12), y: Math.round(Math.random() * 24 - 12) }), 4 * 60_000)
@@ -54,6 +83,16 @@ export default function IdleScreen({ onExitPanel }: { onExitPanel: () => void })
   const h = d.getHours() % 12 || 12, m = String(d.getMinutes()).padStart(2, '0'), ap = d.getHours() < 12 ? 'AM' : 'PM'
 
   return (
+    <>
+    {door && (
+      <div className="fixed inset-0 z-50 grid place-items-center bg-black/85" role="alertdialog" aria-label="Signing in">
+        <div className="hw-screen p-12 text-center space-y-6">
+          <p className="hw-title text-7xl">Hello {door.firstName}</p>
+          <p className="text-3xl lbl">Signing you in…</p>
+          <button type="button" className="gbtn h-16 px-10 text-2xl" onClick={() => setDoor(null)}>Not me, cancel</button>
+        </div>
+      </div>
+    )}
     <div className="min-h-dvh flex flex-col justify-between py-10" style={{ transform: `translate(${drift.x}px, ${drift.y}px)`, transition: 'transform 2s' }}>
       <div className="hw-desk-text text-center">
         <p className="text-4xl">{d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
@@ -83,6 +122,7 @@ export default function IdleScreen({ onExitPanel }: { onExitPanel: () => void })
         </div>
       </div>
     </div>
+    </>
   )
 }
 

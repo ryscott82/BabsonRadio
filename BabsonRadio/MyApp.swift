@@ -69,9 +69,19 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         UITabBarItem.appearance().setTitleTextAttributes([.font: tabLabel], for: .selected)
     }
 
+    @State private var doorMessage: String?
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+                // The QR code on the studio door (babsonradio.com/booth/door): ask the studio PC to sign this person in.
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    guard let url = activity.webpageURL, url.path == "/booth/door" else { return }
+                    Task { @MainActor in doorMessage = await DoorSignIn.run() }
+                }
+                .alert("Studio sign-in", isPresented: Binding(get: { doorMessage != nil }, set: { if !$0 { doorMessage = nil } })) {
+                    Button("OK", role: .cancel) {}
+                } message: { Text(doorMessage ?? "") }
         }
     }
 }

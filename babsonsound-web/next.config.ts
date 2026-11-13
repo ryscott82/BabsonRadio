@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders() },
+      // Apple fetches this file with no extension: it must be served as JSON.
+      { source: "/.well-known/apple-app-site-association", headers: [{ key: "Content-Type", value: "application/json" }] },
       // The studio PC page reads the mixer input for its level meter and picks audio outputs. Same policy, with the microphone allowed.
       { source: "/booth", headers: [{ key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=()" }] },
     ];

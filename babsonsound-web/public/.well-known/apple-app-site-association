@@ -1,0 +1,7 @@
+{
+  "applinks": {
+    "details": [
+      { "appIDs": ["K72PN2TGHP.com.babsonradio.app"], "components": [ { "/": "/booth/door", "comment": "Studio door QR: opens the app, which signs you in at the studio PC" } ] }
+    ]
+  }
+}

@@ -28,6 +28,11 @@ enum PushKind: String, CaseIterable, Identifiable {
 
 nonisolated private struct KindsReply: Decodable { let kinds: [String] }
 
+/// Show reminders (email, app notification, which ones). Same fields as GET and PATCH /api/me/reminders; everything is on until turned off.
+nonisolated struct ShowReminderPrefs: Decodable, Equatable {
+    var email = true, push = true, dayBefore = true, hourBefore = true, bookingQuarter = true
+}
+
 nonisolated private struct MyPushReply: Decodable { let birthday: Bool; let announcements: Bool }
 
 @MainActor
@@ -80,6 +85,35 @@ final class PushManager: ObservableObject {
     // ── Personal choices (everyone): the happy-birthday message and station announcements ──
     @Published var birthdayOn = false
     @Published var announcementsOn = false
+
+    // ── Show reminders (hosts and anyone with a booking): email and app notification, and which reminders ──
+    @Published var reminderPrefs: ShowReminderPrefs?
+
+    func loadReminders() async {
+        if let r: ShowReminderPrefs = try? await BackendAPI.get("/api/me/reminders") { reminderPrefs = r }
+    }
+
+    /// Change one reminder choice. Turning the app notification on asks iOS for permission first (with our own explanation). A failed save puts the switch back.
+    func setReminder(_ key: String, on: Bool) async {
+        guard let before = reminderPrefs else { return }
+        if key == "push" && on {
+            let granted = await authorizeAfterExplaining()
+            guard granted else { status = "Turn on notifications in Settings."; return }
+            UIApplication.shared.registerForRemoteNotifications()
+        }
+        var next = before
+        switch key {
+        case "email": next.email = on
+        case "push": next.push = on
+        case "dayBefore": next.dayBefore = on
+        case "hourBefore": next.hourBefore = on
+        case "bookingQuarter": next.bookingQuarter = on
+        default: return
+        }
+        reminderPrefs = next; status = ""
+        do { reminderPrefs = try await BackendAPI.patch("/api/me/reminders", [key: on]) }
+        catch { reminderPrefs = before; status = (error as? BackendError)?.message ?? error.localizedDescription }
+    }
 
     func loadMine() async {
 #if canImport(FirebaseMessaging)

@@ -1782,7 +1782,7 @@ struct AboutYouSection: View {
 }
 
 
-// MARK: - Notifications everyone can choose (birthday message, station announcements)
+// MARK: - Notifications everyone can choose (birthday message, station announcements) and show reminders for signed-in members
 
 struct NotificationChoicesSection: View {
     @Environment(\.colorScheme) var scheme
@@ -1797,6 +1797,15 @@ struct NotificationChoicesSection: View {
             }
             Toggle("Happy birthday message", isOn: Binding(get: { push.birthdayOn }, set: { v in Task { await push.setMine(birthday: v) } }))
             Toggle("Station announcements (live events and news)", isOn: Binding(get: { push.announcementsOn }, set: { v in Task { await push.setMine(announcements: v) } }))
+            if let r = push.reminderPrefs {
+                Text("Show reminders").font(BRFont.body(15, .semibold))
+                    .foregroundColor(scheme == .dark ? .brDkText : .brLtText).padding(.top, 6)
+                reminderToggle("Email", "email", r.email)
+                reminderToggle("App notification", "push", r.push)
+                reminderToggle("The day before", "dayBefore", r.dayBefore)
+                reminderToggle("1 hour before", "hourBefore", r.hourBefore)
+                reminderToggle("Studio booking, 15 minutes before", "bookingQuarter", r.bookingQuarter)
+            }
             if !push.status.isEmpty {
                 Text(push.status).font(BRFont.body(12, .regular)).foregroundColor(.brErrorText)
             }
@@ -1806,7 +1815,11 @@ struct NotificationChoicesSection: View {
         .padding(bare ? 12 : 18)
         .modifier(CardIf(on: !bare))
         .disabled(push.busy || !PushManager.available)
-        .task { await push.loadMine() }
+        .task { await push.loadMine(); await push.loadReminders() }
+    }
+
+    private func reminderToggle(_ title: String, _ key: String, _ on: Bool) -> some View {
+        Toggle(title, isOn: Binding(get: { on }, set: { v in Task { await push.setReminder(key, on: v) } }))
     }
 }
 

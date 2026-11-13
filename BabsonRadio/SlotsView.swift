@@ -293,6 +293,16 @@ struct ScheduleView: View {
         return end < limit
     }
 
+    /// Opens the show a tapped reminder was about (matched by its key), then forgets the tap. With no key it just leaves the Schedule tab showing.
+    private func openReminderShow() {
+        guard let key = reminders.openShowKey else { return }
+        if key.isEmpty { reminders.openShowKey = nil; return }
+        let now = Date()
+        guard let entry = slots.feed.filter({ $0.reminderKey == key && $0.endAt > now }).min(by: { $0.startAt < $1.startAt }) else { return }
+        selected = entry
+        reminders.openShowKey = nil
+    }
+
     private func move(_ days: Int) {
         if let d = cal.date(byAdding: .day, value: days, to: first) { first = max(d, minDay) }
     }
@@ -358,6 +368,9 @@ struct ScheduleView: View {
             }
         }
         .sheet(item: $selected) { ScheduleDetailView(entry: $0) }
+        // A tapped show reminder: open that show once the schedule has loaded.
+        .onChange(of: reminders.openShowKey) { _, _ in openReminderShow() }
+        .onChange(of: slots.feed.count) { _, _ in openReminderShow() }
         .sheet(isPresented: $showAuto) { calendarSheet }
         .alert("Reminders", isPresented: Binding(get: { reminders.notice != nil }, set: { if !$0 { reminders.notice = nil } })) {
             Button("OK", role: .cancel) {}

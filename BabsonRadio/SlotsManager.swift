@@ -91,8 +91,27 @@ final class ReminderManager: NSObject, ObservableObject, UNUserNotificationCente
         super.init()
     }
 
+    /// The category the server puts on show reminders (aps.category). Tapping one opens that show in the Schedule tab.
+    static let showCategory = "SHOW_REMINDER"
+    /// Set when a show reminder is tapped: the show's key (weekly:<show>, slot:<id>, or empty to just open the schedule). The Schedule tab reads it and clears it.
+    @Published var openShowKey: String?
+
     /// Call once at launch so reminders also show while the app is open.
-    func start() { UNUserNotificationCenter.current().delegate = self }
+    func start() {
+        let center = UNUserNotificationCenter.current()
+        center.delegate = self
+        // Needs no new permission: it only gives show reminders an "Open show" action.
+        let open = UNNotificationAction(identifier: "OPEN_SHOW", title: "Open show", options: [.foreground])
+        center.setNotificationCategories([UNNotificationCategory(identifier: Self.showCategory, actions: [open], intentIdentifiers: [], options: [])])
+    }
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        let content = response.notification.request.content
+        let info = content.userInfo
+        guard content.categoryIdentifier == ReminderManager.showCategory || (info["kind"] as? String) == "reminder" else { return }
+        let key = (info["showKey"] as? String) ?? ""
+        await MainActor.run { ReminderManager.shared.openShowKey = key }
+    }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         [.banner, .sound]

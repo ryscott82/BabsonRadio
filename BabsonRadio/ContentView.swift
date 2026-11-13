@@ -12,6 +12,7 @@ struct ContentView: View {
     @ObservedObject private var profile = ProfileStore.shared
     @ObservedObject private var listen = ListenGuard.shared
     @ObservedObject private var push = PushManager.shared
+    @ObservedObject private var reminders = ReminderManager.shared
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var theme = ArtTheme.shared
     @State private var tab = 0
@@ -37,6 +38,8 @@ struct ContentView: View {
         // hidden only while you are on Live with the full screen board up, shown in every other case.
         let hideBar = tab == 0 && board.open
         return chrome(tabs(hideBar: hideBar, sideW: sideW))
+            // A tapped show reminder opens the Schedule tab (the Schedule view opens the show itself).
+            .onChange(of: reminders.openShowKey) { _, key in if key != nil && !isGuest { tab = 1 } }
     }
 
     /// Guests only get Live. Anything else they reach for sends them to sign in.

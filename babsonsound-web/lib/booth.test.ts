@@ -4,6 +4,16 @@ import { ENDING_MS, RETURN_TO_BOOTH_MS, shouldReturnToBooth, micHeard, claimDoor
 
 const S = 'test-secret-123'
 
+test('control token keeps the exit panel flag, and a forged flag fails', () => {
+  const now = 1_800_000_000_000
+  const t = signToken(S, { u: 'abc', n: 'Ryan', s: 's', l: false, x: true, exp: now + 60_000 })
+  assert.equal(verifyToken(S, t, now)?.x, true)
+  assert.equal(verifyToken(S, signToken(S, { u: 'abc', n: 'Ryan', s: 's', l: false, x: false, exp: now + 60_000 }), now)?.x, false)
+  const [, sig] = t.split('.')
+  const forged = Buffer.from(JSON.stringify({ u: 'abc', n: 'Ryan', s: 's', l: false, x: true, exp: now + 1e9 })).toString('base64url')
+  assert.equal(verifyToken(S, `${forged}.${sig}`, now), null)
+})
+
 test('control token round trip, expiry and tampering', () => {
   const now = 1_800_000_000_000
   const t = signToken(S, { u: 'abc', n: 'Ryan', s: 'sess1', l: true, exp: now + 60_000 })

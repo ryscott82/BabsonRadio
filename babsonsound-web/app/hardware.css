@@ -618,3 +618,9 @@ html.hw-lite .hw-eq.hw-led > i { filter: none; }
 .gfader::-moz-range-track { height: 14px; border-radius: 8px; background: rgba(244,239,226,.14); }
 .gfader::-moz-range-progress { height: 14px; border-radius: 8px; background: var(--hw-eq); }
 .gfader::-moz-range-thumb { width: 30px; height: 52px; border-radius: 6px; background: #e8e5de; border: 1px solid rgba(0,0,0,.5); }
+
+/* Studio PC at night (/booth, 7 pm to 7 am): everything pure black, so the room stays dark and the screen does not glare. */
+.booth-night .hw-screen { background: #000; box-shadow: 0 0 0 1px #2a2a28; }
+.booth-night .hw-screen::after { display: none; }
+.booth-night .hw-desk-text { color: #D8D2C2; text-shadow: none; }
+.booth-night .gbtn { filter: brightness(.78); }

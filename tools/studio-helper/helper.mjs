@@ -327,6 +327,21 @@ const server = createServer(async (req, res) => {
       return send(res, 200, { sig: mac(`attest:${nonce}`).toString('hex') }, origin)
     }
 
+    // "Exit booth panel": the studio PC watchdog (scripts/booth-watchdog.ps1) keeps the booth in front and reopens it. This file tells it to
+    // stand down for 30 minutes, then the helper closes the booth window so the computer can be used normally. /exit-booth/cancel brings it back.
+    if (req.method === 'POST' && url.pathname === '/exit-booth') {
+      const flag = process.env.BOOTH_EXIT_FLAG || 'C:\\BabsonRadio\\booth-exit.flag'
+      try { writeFileSync(flag, new Date().toISOString()) } catch (e) { return send(res, 500, { error: `Could not write ${flag}: ${e.message}` }, origin) }
+      execFile('powershell', ['-NoProfile', '-Command',
+        "Get-CimInstance Win32_Process -Filter \"name='chrome.exe'\" | Where-Object { $_.CommandLine -like '*BabsonRadioKiosk*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"], { windowsHide: true }, () => {})
+      log('EXIT BOOTH PANEL')
+      return send(res, 200, { ok: true, minutes: 30 }, origin)
+    }
+    if (req.method === 'POST' && url.pathname === '/exit-booth/cancel') {
+      try { unlinkSync(process.env.BOOTH_EXIT_FLAG || 'C:\\BabsonRadio\\booth-exit.flag') } catch { /* none */ }
+      return send(res, 200, { ok: true }, origin)
+    }
+
     if (req.method === 'GET' && url.pathname === '/status') return send(res, 200, await status(), origin)
     if (req.method === 'GET' && url.pathname === '/gain') return send(res, 200, { available: !!midi(), db: gainDb, error: midiError }, origin)
 

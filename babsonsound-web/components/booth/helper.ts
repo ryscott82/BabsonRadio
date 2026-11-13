@@ -48,3 +48,25 @@ export function loadPref(key: string, fallback = ''): string {
 export function savePref(key: string, value: string) {
   try { localStorage.setItem(`booth.${key}`, value) } catch { /* not saved */ }
 }
+
+/** Proof (from the helper) that this page is on the studio PC, for the booth routes that run before anyone signs in. */
+export async function attestHeaders(): Promise<Record<string, string>> {
+  const nonce = `${Date.now()}.${crypto.getRandomValues(new Uint32Array(3)).join('').slice(0, 24)}`
+  const { sig } = await helper<{ sig: string }>(`/attest?nonce=${encodeURIComponent(nonce)}`)
+  return { 'x-booth-nonce': nonce, 'x-booth-sig': sig }
+}
+
+/** Call one of our /api/booth routes as the studio PC (nobody signed in). */
+export async function boothFetch<T>(path: string, body?: Record<string, unknown>): Promise<T> {
+  const res = await fetch(path, {
+    method: body ? 'POST' : 'GET',
+    headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(await attestHeaders()) },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error ?? 'Something went wrong.')
+  return data as T
+}
+
+/** Night on the booth: from 7 pm to 7 am the whole page goes pure black. */
+export const isNight = (ms: number) => { const h = new Date(ms).getHours(); return h >= 19 || h < 7 }

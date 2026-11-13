@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { api, signIn, signOut } from '@/lib/auth'
+import { api, signOut } from '@/lib/auth'
 import { QUIET_BANNER, adBreak, bookingLines, quietBanner, type AdPlan, type LevelState, type StudioStatus } from '@/lib/booth'
-import { errText, helper, loadPref, mmss, savePref, type Butt, type Track } from '@/components/booth/helper'
+import { errText, helper, isNight, loadPref, mmss, savePref, type Butt, type Track } from '@/components/booth/helper'
+import IdleScreen, { exitPanel } from '@/components/booth/IdleScreen'
 import { useInputMeter } from '@/components/booth/useInputMeter'
 import LevelMeter from '@/components/booth/LevelMeter'
 import DeviceSettings, { type Devices } from '@/components/booth/DeviceSettings'
@@ -42,30 +43,52 @@ export default function BoothPage() {
   const [helperUp, setHelperUp] = useState<boolean | null>(null)
   const [butt, setButt] = useState<Butt | null>(null)
   const [buttErr, setButtErr] = useState('')
+  const [now, setNow] = useState(() => Date.now())
+  const [exited, setExited] = useState(false)
+  const buttRef = useRef<Butt | null>(null)
+  const errSince = useRef(0)
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t) }, [])
+  useEffect(() => { buttRef.current = butt }, [butt])
 
-  // Helper and BUTT status, every 2 seconds, signed in or not.
+  // Helper and BUTT status, every 2 seconds, signed in or not. BUTT is slow to answer (it takes a few seconds after it starts or after a
+  // command), so "BUTT isn’t answering" only shows after it has been silent for 10 seconds in a row.
   useEffect(() => {
     let stop = false
     const tick = async () => {
       try { await helper('/ping'); if (!stop) setHelperUp(true) } catch { if (!stop) { setHelperUp(false); setButt(null) } return }
-      try { const b = await helper<Butt>('/status'); if (!stop) { setButt(b); setButtErr('') } }
-      catch (e) { if (!stop) { setButt(null); setButtErr(errText(e)) } }
+      try { const b = await helper<Butt>('/status'); if (!stop) { setButt(b); setButtErr(''); errSince.current = 0 } }
+      catch (e) {
+        if (stop) return
+        errSince.current ||= Date.now()
+        if (Date.now() - errSince.current >= 10_000) { setButt(null); setButtErr(errText(e)) }
+      }
     }
     tick()
     const t = setInterval(tick, 2_000)
     return () => { stop = true; clearInterval(t) }
   }, [])
 
+  const leavePanel = async () => {
+    setExited(true)
+    try { await exitPanel() } catch { setExited(false) }
+  }
+
   return (
-    <div className="-mt-16 -mb-12 min-h-dvh px-8 py-6 text-lg">
-      {helperUp === false ? (
-        <Center title="The studio helper isn’t running" text="Open “start-helper” on this computer and wait a few seconds." />
-      ) : loading ? null : !user ? (
-        <SignInBox />
-      ) : (
-        <Console butt={butt} buttErr={buttErr} key={user.uid} />
-      )}
-    </div>
+    <>
+      {/* Pure black from 7 pm to 7 am, over the oak desk. */}
+      {isNight(now) && <div className="fixed inset-0 z-[1] bg-black" aria-hidden />}
+      <div className={`relative z-[2] -mt-16 -mb-12 min-h-dvh px-8 py-6 text-lg ${isNight(now) ? 'booth-night' : ''}`}>
+        {exited ? (
+          <Center title="Booth panel closed" text="The panel comes back by itself in about 30 minutes." />
+        ) : helperUp === false ? (
+          <Center title="The studio helper isn’t running" text="Open “start-helper” on this computer and wait a few seconds." />
+        ) : loading ? null : !user ? (
+          <IdleScreen onExitPanel={leavePanel} />
+        ) : (
+          <Console butt={butt} buttRef={buttRef} buttErr={buttErr} key={user.uid} onExitPanel={leavePanel} />
+        )}
+      </div>
+    </>
   )
 }
 
@@ -81,34 +104,7 @@ function Center({ title, text, children }: { title: string; text?: string; child
   )
 }
 
-function SignInBox() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    setError(''); setBusy(true)
-    try { await signIn(email.trim().toLowerCase(), password) } catch (err) { setError(errText(err)); setPassword('') } finally { setBusy(false) }
-  }
-  const field = 'gfield w-full px-5 h-16 text-2xl'
-  return (
-    <div className="min-h-[80dvh] grid place-items-center">
-      <form onSubmit={submit} className="hw-screen max-w-xl w-full space-y-6 p-10">
-        <div className="space-y-2">
-          <h1 className="hw-title text-6xl leading-none">Welcome to the studio</h1>
-          <p className="text-2xl lbl">Sign in with your Babson Radio account. Each show is recorded.</p>
-        </div>
-        <input aria-label="Email" placeholder="Email" type="email" autoComplete="off" autoCapitalize="none" spellCheck={false} value={email} onChange={e => setEmail(e.target.value)} className={field} />
-        <input aria-label="Password" placeholder="Password" type="password" autoComplete="off" value={password} onChange={e => setPassword(e.target.value)} className={field} />
-        {error && <p className="text-xl warn">{error}</p>}
-        <button type="submit" disabled={busy || !email || !password} className="gbtn gbtn-go w-full h-20 text-3xl">{busy ? 'Signing in…' : 'Sign in'}</button>
-      </form>
-    </div>
-  )
-}
-
-function Console({ butt, buttErr }: { butt: Butt | null; buttErr: string }) {
+function Console({ butt, buttRef, buttErr, onExitPanel }: { butt: Butt | null; buttRef: React.MutableRefObject<Butt | null>; buttErr: string; onExitPanel: () => void }) {
   const { isGuest, user } = useAuth()
   const [s, setS] = useState<Session | null>(null)
   const [error, setError] = useState('')
@@ -170,13 +166,19 @@ function Console({ butt, buttErr }: { butt: Butt | null; buttErr: string }) {
   }
 
   // Going live also starts BUTT's recording; ending stops it (the helper does both).
+  /** BUTT takes a moment to answer: wait up to 6 seconds (checking every half second) for its status to match, before the page decides anything. */
+  const waitButt = async (want: (b: Butt) => boolean) => {
+    for (let i = 0; i < 12; i++) { const b = buttRef.current; if (b && want(b)) return; await new Promise(r => setTimeout(r, 500)) }
+  }
   const goLive = () => act('live', async () => {
     await helper('/live/start', { token: await token() })
+    await waitButt(b => b.connected || b.connecting)
     setLastMusicAt(Date.now())
     await report('live_start').catch(() => {})
   })
   const endShow = () => act('stop', async () => {
     await helper('/live/stop', { token: await token() })
+    await waitButt(b => !b.connected && !b.connecting)
     await report('live_stop').catch(() => {})
   })
 
@@ -200,15 +202,19 @@ function Console({ butt, buttErr }: { butt: Butt | null; buttErr: string }) {
     await leave('sign_out')
   })
 
-  // Sign out by itself after 10 quiet minutes, but never while on air or recording.
+  // Sign out by itself after 10 quiet minutes (with a 60 second "Still there?" first), but never while on air or recording.
+  const [stillThere, setStillThere] = useState(0)
   useEffect(() => {
-    const touch = () => { lastActive.current = Date.now() }
-    if (!lastActive.current) touch()
+    const touch = () => { lastActive.current = Date.now(); setStillThere(0) }
+    if (!lastActive.current) lastActive.current = Date.now()
     const evs = ['pointerdown', 'keydown'] as const
     evs.forEach(e => window.addEventListener(e, touch))
     const t = setInterval(() => {
-      if (!live && !connecting && !recording && Date.now() - lastActive.current > IDLE_MS) leave('idle_out').catch(() => {})
-    }, 15_000)
+      const quiet = Date.now() - lastActive.current
+      if (live || connecting || recording) { setStillThere(0); return }
+      if (quiet > IDLE_MS) leave('idle_out').catch(() => {})
+      else if (quiet > IDLE_MS - 60_000) setStillThere(Math.ceil((IDLE_MS - quiet) / 1000))
+    }, 1_000)
     return () => { evs.forEach(e => window.removeEventListener(e, touch)); clearInterval(t) }
   }, [live, connecting, recording, leave])
   useEffect(() => { if (live || recording) lastActive.current = Date.now() }, [live, recording])
@@ -251,6 +257,7 @@ function Console({ butt, buttErr }: { butt: Butt | null; buttErr: string }) {
         <p className="hw-desk-text hw-title text-5xl tabular-nums shrink-0">{clock(now)}</p>
         <button type="button" className={hb} onClick={() => setModal('note')}>Leave a note</button>
         <button type="button" className={hb} onClick={() => setModal('sound')}>Audio setup</button>
+        {!live && !connecting && !recording && <button type="button" className={hb} onClick={onExitPanel}>Exit panel</button>}
         {confirmOut ? (
           <>
             <button type="button" className={hb} onClick={() => setConfirmOut(false)}>Stay</button>
@@ -293,6 +300,14 @@ function Console({ butt, buttErr }: { butt: Butt | null; buttErr: string }) {
         </div>
       </div>
 
+      {stillThere > 0 && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/80" role="alertdialog" aria-label="Still there?">
+          <div className="hw-screen p-12 text-center space-y-5">
+            <p className="hw-title text-6xl">Still there?</p>
+            <p className="text-3xl lbl">Signing out in {stillThere} seconds. Touch anything to stay.</p>
+          </div>
+        </div>
+      )}
       {modal === 'sound' && <DeviceSettings value={devices} onChange={changeDevices} refresh={meter.devicesChanged} onClose={() => setModal('')} />}
       {modal === 'note' && s && <NoteBox sessionId={s.sessionId} onClose={() => setModal('')} />}
     </div>

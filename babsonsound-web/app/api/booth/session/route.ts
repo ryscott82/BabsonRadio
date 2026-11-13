@@ -1,7 +1,7 @@
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireUser, str } from '@/lib/server/http'
 import { accessOf } from '@/lib/server/access'
-import { adPlan, boothPermit, boothSecret, latestNote, nextOnAir, touchSession } from '@/lib/server/booth'
+import { adPlan, boothPermit, boothSecret, hostedBefore, latestNote, nextOnAir, showOnAirNow, touchSession } from '@/lib/server/booth'
 import { signToken, TOKEN_TTL_MS, verifyAttest } from '@/lib/booth'
 
 export const runtime = 'nodejs'
@@ -24,7 +24,8 @@ export async function POST(req: Request) {
 
     const u = await db.collection('users').doc(t.uid).get()
     const name = [u.get('firstName'), u.get('lastName')].filter(Boolean).join(' ') || String(u.get('displayName') ?? t.email ?? 'Member')
-    const p = await boothPermit(db, t.uid, a, now)
+    const [hosted, showRunning] = await Promise.all([hostedBefore(db, t.uid, u.get('hostedLive')), showOnAirNow(db, now)])
+    const p = await boothPermit(db, t.uid, a, now, { hostedBefore: hosted, showRunning })
     const sessionId = await touchSession(db, str(b.sessionId, 64), {
       uid: t.uid, name, email: t.email ?? '', level: a.level, canGoLive: p.canGoLive,
     }, now)

@@ -4,7 +4,7 @@ import type { Access } from './access'
 import { hostShows, occurrenceId } from './host'
 import { currentOnAir } from './live'
 import { HttpError } from './http'
-import { cleanAdPlan, liveWindowOpen, verifyAttest, type AdPlan } from '../booth'
+import { BYPASS_UID, canGoLiveOpenFloor, cleanAdPlan, liveWindowOpen, verifyAttest, type AdPlan } from '../booth'
 import { accessOf as accessOfUser } from './access'
 import { requireUser } from './http'
 import { buildScheduleFeed } from './scheduleFeed'
@@ -28,7 +28,7 @@ const asShow = (s: { key: string; title: string; startAt: number; endAt: number 
  * Directors and admins can always go live. Students need an active Radio badge and one of their own shows starting within
  * 30 minutes or still running (until 30 minutes after it ends). `show` is the airing the pinned message is for.
  */
-export async function boothPermit(db: Firestore, uid: string, a: Access, now = Date.now()): Promise<BoothPermit> {
+export async function boothPermit(db: Firestore, uid: string, a: Access, now = Date.now(), open: { hostedBefore: boolean; showRunning: boolean } = { hostedBefore: false, showRunning: true }): Promise<BoothPermit> {
   const shows = await hostShows(db, uid, now, 1)
   const mine = shows.find(s => liveWindowOpen(s, now))
   const next = shows.find(s => s.startAt > now)
@@ -43,6 +43,9 @@ export async function boothPermit(db: Firestore, uid: string, a: Access, now = D
   }
   if (!a.radio) {
     return { canGoLive: false, reason: a.radioExpired ? 'Your radio training ran out. Renew it to go live.' : 'Finish radio training to go live.', show: null, nextShow }
+  }
+  if (!mine && canGoLiveOpenFloor({ radio: a.radio, hostedBefore: open.hostedBefore, showRunning: open.showRunning })) {
+    return { canGoLive: true, reason: '', show: null, nextShow }
   }
   if (!mine) {
     return { canGoLive: false, reason: next ? 'You can go live 30 minutes before your show.' : "You don't have a show booked right now.", show: null, nextShow }
@@ -110,6 +113,7 @@ export async function recordEvent(db: Firestore, sessionId: string, uid: string,
     return String(d.get('name') ?? '')
   })
   await logEvent(db, sessionId, uid, name, kind, text, now)
+  if (kind === 'live_start' && uid !== BYPASS_UID) await db.collection('users').doc(uid).set({ hostedLive: true }, { merge: true }).catch(() => {})
 }
 
 // ── Song typed on the studio PC ─────────────────────────────
@@ -168,4 +172,19 @@ export async function requireBoothCaller(req: Request, now = Date.now()): Promis
   if (nonce && sig && verifyAttest(boothSecret(), nonce.slice(0, 100), sig.slice(0, 100), now)) return
   const t = await requireUser(req)
   if ((await accessOfUser(t)).level === 'guest') throw new HttpError(403, 'This is for Babson, Olin and Wellesley students.', 'BR-PERM-001')
+}
+
+/** Has this person gone live from the studio before? Remembered on their user record (users/{uid}.hostedLive); the first time, the old session log is checked once. */
+export async function hostedBefore(db: Firestore, uid: string, flag: unknown): Promise<boolean> {
+  if (flag === true) return true
+  if (flag === false) return false
+  const snap = await db.collection('boothSessions').where('uid', '==', uid).limit(50).get()
+  const yes = snap.docs.some(d => Number(d.get('liveCount') ?? 0) > 0)
+  await db.collection('users').doc(uid).set({ hostedLive: yes }, { merge: true }).catch(() => {})
+  return yes
+}
+
+/** Is a scheduled show (not Auto DJ) on air now? */
+export async function showOnAirNow(db: Firestore, now = Date.now()): Promise<boolean> {
+  return !!(await currentOnAir(db, now).catch(() => null))?.isShow
 }

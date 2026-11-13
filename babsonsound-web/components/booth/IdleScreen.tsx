@@ -1,11 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { doc, onSnapshot } from 'firebase/firestore'
-import { signInWithCustomToken } from 'firebase/auth'
 import { signIn } from '@/lib/auth'
-import { auth, db } from '@/lib/firebase'
-import { attestHeaders, boothFetch, errText, helper } from './helper'
+import { openSignIn } from '@/lib/signInPrompt'
+import DoorClaim from './DoorClaim'
+import { boothFetch, errText, helper } from './helper'
 
 // What the studio PC shows when nobody is signed in: a big clock, a greeting, what is on now and next. Useful even when nobody is
 // doing radio. Sign in, or (no account needed) type an email and watch the quick equipment training.
@@ -22,13 +21,13 @@ const dayWord = (ms: number, now: number) => {
 const firstNames = (hosts: string[]) => hosts.map(h => h.split(/\s+/)[0]).filter(Boolean)
 const join = (n: string[]) => (n.length <= 1 ? n.join('') : `${n.slice(0, -1).join(', ')} and ${n[n.length - 1]}`)
 
-export default function IdleScreen({ onExitPanel, night, onToggleTheme }: { onExitPanel: () => void; night: boolean; onToggleTheme: () => void }) {
+export default function IdleScreen({ onExitPanel, night, onToggleTheme, onBypass }: { onExitPanel: () => void; night: boolean; onToggleTheme: () => void; onBypass: (pin: string, session: object) => void }) {
   const [now, setNow] = useState(() => Date.now())
   const [data, setData] = useState<Idle | null>(null)
   const [view, setView] = useState<'home' | 'signin' | 'guest' | 'video'>('home')
+  const [bypassOpen, setBypassOpen] = useState(false)
   const [videoId, setVideoId] = useState('')
   const [drift, setDrift] = useState({ x: 0, y: 0 })
-  const [door, setDoor] = useState<{ firstName: string; token: string; left: number } | null>(null)
 
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [])
   useEffect(() => {
@@ -38,31 +37,6 @@ export default function IdleScreen({ onExitPanel, night, onToggleTheme }: { onEx
     const t = setInterval(load, 5 * 60_000)
     return () => { stop = true; clearInterval(t) }
   }, [])
-  // Door QR: someone scanned the code on the door. The first snapshot is whatever scan happened last (ignored); a new one is claimed right away,
-  // the PC says who is being signed in for 4 seconds (Cancel works), then signs in with the one-time token.
-  useEffect(() => {
-    let first = true, last = ''
-    return onSnapshot(doc(db, 'boothDoorPing', 'latest'), snap => {
-      const claimId = String(snap.get('claimId') ?? '')
-      if (first) { first = false; last = claimId; return }
-      if (!claimId || claimId === last) return
-      last = claimId
-      void (async () => {
-        try {
-          const h = await attestHeaders()
-          const r = await boothFetch<{ customToken: string; firstName: string }>('/api/booth/door-claim', { claimId, nonce: h['x-booth-nonce'], sig: h['x-booth-sig'] })
-          setDoor({ firstName: r.firstName, token: r.customToken, left: 4 })
-        } catch { /* expired or not for this PC */ }
-      })()
-    }, () => {})
-  }, [])
-  useEffect(() => {
-    if (!door) return
-    if (door.left <= 0) { const t = door.token; queueMicrotask(() => setDoor(null)); signInWithCustomToken(auth, t).catch(() => {}); return }
-    const t = setTimeout(() => setDoor(d => (d ? { ...d, left: d.left - 1 } : d)), 1000)
-    return () => clearTimeout(t)
-  }, [door])
-
   // Burn-in protection: shift everything a few pixels every few minutes.
   useEffect(() => {
     const t = setInterval(() => setDrift({ x: Math.round(Math.random() * 24 - 12), y: Math.round(Math.random() * 24 - 12) }), 4 * 60_000)
@@ -78,21 +52,13 @@ export default function IdleScreen({ onExitPanel, night, onToggleTheme }: { onEx
   const next = upcoming.filter(i => i.startAt > now).slice(0, 4)
   const soon = onNow ?? next.find(i => i.startAt - now <= 30 * 60_000)
   const names = soon ? firstNames(soon.hosts) : []
-  const hello = names.length ? `Hello ${join(names)}` : 'Hello Babson Sound Member'
+  const hello = names.length ? `Hello, ${join(names)}` : 'Hello, Babson Sound Member'
   const d = new Date(now)
   const h = d.getHours() % 12 || 12, m = String(d.getMinutes()).padStart(2, '0'), ap = d.getHours() < 12 ? 'AM' : 'PM'
 
   return (
     <>
-    {door && (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-black/85" role="alertdialog" aria-label="Signing in">
-        <div className="hw-screen p-12 text-center space-y-6">
-          <p className="hw-title text-7xl">Hello {door.firstName}</p>
-          <p className="text-3xl lbl">Signing you in…</p>
-          <button type="button" className="gbtn h-16 px-10 text-2xl" onClick={() => setDoor(null)}>Not me, cancel</button>
-        </div>
-      </div>
-    )}
+    <DoorClaim />
     <div className="fixed inset-0 z-[2] flex flex-col gap-4 px-8 pt-5 pb-6 overflow-hidden" style={{ transform: `translate(${drift.x}px, ${drift.y}px)`, transition: 'transform 2s' }}>
       {/* Top: time left, date right (small). Middle: the greeting. Bottom half: coming up, and the QR code to sign in. */}
       <header className="hw-desk-text flex items-center justify-between shrink-0">
@@ -105,41 +71,75 @@ export default function IdleScreen({ onExitPanel, night, onToggleTheme }: { onEx
         <p className="text-3xl opacity-80">{soon ? `${onNow ? 'On air now' : `Starts at ${time(soon.startAt)}`}: ${soon.title}` : '\u00A0'}</p>
       </section>
 
-      <div className="grid grid-cols-[1.5fr_1fr] gap-5 h-[47%] shrink-0 min-h-0">
+      <div className="grid grid-cols-[1fr_1.6fr] gap-5 h-[47%] shrink-0 min-h-0">
         <div className="bp p-7 min-h-0 overflow-hidden">
           <p className="lbl text-2xl mb-3">{onNow ? 'On air now, then next' : 'Coming up'}</p>
           {(onNow ? [onNow, ...next].slice(0, 4) : next).length ? (
             <ul className="space-y-3">
               {(onNow ? [onNow, ...next].slice(0, 4) : next).map(i => (
-                <li key={i.id} className="flex items-baseline gap-5 text-3xl">
-                  <span className="num w-56 shrink-0">{i === onNow ? 'Now' : `${dayWord(i.startAt, now)}${time(i.startAt)}`}</span>
+                <li key={i.id} className="flex items-baseline gap-4 text-2xl">
+                  <span className="num w-40 shrink-0">{i === onNow ? 'Now' : `${dayWord(i.startAt, now)}${time(i.startAt)}`}</span>
                   <span className="truncate">{i.title}{firstNames(i.hosts).length ? <span className="lbl"> · {join(firstNames(i.hosts))}</span> : null}</span>
                 </li>
               ))}
             </ul>
-          ) : <p className="text-3xl lbl">{data ? 'Nothing scheduled right now. Music from Auto DJ.' : 'Loading the schedule…'}</p>}
+          ) : <p className="text-2xl lbl">{data ? 'Nothing scheduled right now. Music from Auto DJ.' : 'Loading the schedule…'}</p>}
         </div>
 
-        {/* The way in: scan the code. Your phone is already signed in to Babson Radio, so there is nothing to type. */}
-        <div className="bp p-6 min-h-0 flex items-center gap-6">
+        {/* How to go on air: scan the code (your phone is already signed in, nothing to type), or sign in with your account, or make one here. */}
+        <div className="bp p-7 min-h-0 flex items-stretch gap-7">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/booth/door-qr.svg" alt="QR code to sign in at the studio" className="h-full max-h-full aspect-square rounded-xl bg-white shrink-0" />
-          <div className="min-w-0 flex flex-col gap-3">
-            <p className="hw-title text-4xl leading-tight">Scan to sign in</p>
-            <p className="text-xl lbl">Point your phone camera here. The studio signs you in by itself.</p>
-            <div className="flex flex-wrap gap-2 mt-1">
-              <button type="button" className="gbtn h-10 px-4 text-base" onClick={() => setView('signin')}>Use a password</button>
-              <button type="button" className="gbtn h-10 px-4 text-base" onClick={() => setView('guest')}>New here? Training</button>
-            </div>
+          <img src="/booth/door-qr.svg" alt="QR code to sign in at the studio" className="h-full max-h-full aspect-square self-center rounded-xl bg-white shrink-0" />
+          <div className="min-w-0 flex-1 flex flex-col gap-3 justify-center">
+            <p className="hw-title text-4xl leading-tight">Scan to sign in and go live</p>
+            <p className="text-xl lbl">Point your phone camera at the code. Or sign in on this computer:</p>
+            <button type="button" className="gbtn gbtn-go h-20 text-3xl w-full" onClick={() => setView('signin')}>Sign in with Babson Sound account</button>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className="gbtn h-10 px-4 text-base" onClick={onToggleTheme} aria-pressed={night} title="Switch between the day and night look. It goes back to automatic at 7 am or 7 pm.">{night ? '☾ Night' : '☀ Day'}</button>
-              <button type="button" className="gbtn h-10 px-4 text-base opacity-70" onClick={onExitPanel}>Exit panel</button>
+              <button type="button" className="gbtn h-12 px-5 text-xl" onClick={() => openSignIn(true)}>Create an account</button>
+              <button type="button" className="gbtn h-12 px-5 text-xl" onClick={() => setView('guest')}>New here? Training</button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 mt-auto">
+              <button type="button" className="gbtn h-9 px-3 text-sm" onClick={onToggleTheme} aria-pressed={night} title="Switch between the day and night look. It goes back to automatic at 7 am or 7 pm.">{night ? '☾ Night' : '☀ Day'}</button>
+              <button type="button" className="gbtn h-9 px-3 text-sm opacity-70" onClick={() => setBypassOpen(true)}>Bypass sign in</button>
+              <button type="button" className="gbtn h-9 px-3 text-sm opacity-70" onClick={onExitPanel}>Exit panel</button>
             </div>
           </div>
         </div>
       </div>
+      {bypassOpen && <Bypass onClose={() => setBypassOpen(false)} onOpen={(pin, session) => { setBypassOpen(false); onBypass(pin, session) }} />}
     </div>
     </>
+  )
+}
+
+/** "Bypass sign in": open the console with nobody signed in (no going live), or with the emergency PIN (can go live, logged as the studio PC). */
+function Bypass({ onClose, onOpen }: { onClose: () => void; onOpen: (pin: string, session: object) => void }) {
+  const [pin, setPin] = useState('')
+  const [busy, setBusy] = useState('')
+  const [error, setError] = useState('')
+  const go = async (withPin: boolean) => {
+    setBusy(withPin ? 'pin' : 'open'); setError('')
+    try { onOpen(withPin ? pin.trim() : '', await boothFetch<object>('/api/booth/bypass', { pin: withPin ? pin.trim() : '' })) }
+    catch (e) { setError(errText(e)); setBusy('') }
+  }
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/85 px-8" role="dialog" aria-label="Bypass sign in">
+      <div className="hw-screen max-w-2xl w-full p-10 space-y-6">
+        <h2 className="hw-title text-5xl leading-none">Bypass sign in</h2>
+        <button type="button" className="gbtn h-16 w-full text-2xl" disabled={!!busy} onClick={() => go(false)}>{busy === 'open' ? 'Opening…' : 'Open the booth without signing in'}</button>
+        <p className="text-xl lbl -mt-3">Music, sound board and the level meter work. Going live needs a sign in.</p>
+        <form onSubmit={e => { e.preventDefault(); if (pin.trim()) void go(true) }} className="space-y-3">
+          <p className="text-2xl">Emergency access (E-board PIN)</p>
+          <div className="flex gap-3">
+            <input aria-label="Emergency PIN" type="password" inputMode="numeric" autoComplete="off" placeholder="PIN" value={pin} onChange={e => setPin(e.target.value)} className="gfield h-14 px-5 text-2xl flex-1 min-w-0" />
+            <button type="submit" className="gbtn h-14 px-6 text-xl" disabled={!!busy || !pin.trim()}>{busy === 'pin' ? 'Checking…' : 'Open and allow going live'}</button>
+          </div>
+          <p className="text-lg lbl">For when sign in is down. The show is logged as “Studio PC (emergency)”.</p>
+        </form>
+        {error && <p className="text-xl warn">{error}</p>}
+        <button type="button" className="gbtn h-12 px-6 text-xl" onClick={onClose}>Cancel</button>
+      </div>
+    </div>
   )
 }
 

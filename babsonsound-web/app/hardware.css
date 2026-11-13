@@ -621,12 +621,10 @@ html.hw-lite .hw-eq.hw-led > i { filter: none; }
 
 /* Studio PC at night (/booth, 7 pm to 7 am): everything pure black, so the room stays dark and the screen does not glare. */
 /* Booth panels. Day: black leather with a stitched edge, set into the oak desk. Night: pure black, self-lit green outlines like a lit hardware panel. */
-.bp { position: relative; overflow: hidden; border-radius: 20px; color: #F4EFE2;
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .16 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
-    radial-gradient(120% 90% at 50% 0%, #2a2724, #141211 70%);
-  box-shadow: 0 0 0 1px #000, 0 12px 20px rgba(24,16,8,.5), inset 0 1px 0 rgba(255,255,255,.10), inset 0 -4px 10px rgba(0,0,0,.6); }
-.bp::before { content: ''; position: absolute; inset: 8px; border: 2px dashed rgba(222,196,150,.5); border-radius: 14px; pointer-events: none; z-index: 2; }
+.bp { position: relative; isolation: isolate; overflow: hidden; border-radius: 20px; color: #F4EFE2;
+  background: var(--hw-wear), linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.30)), #1A1A18 url(/hw/leather-black.jpg) center / 300px auto;
+  box-shadow: inset 0 0 22px rgba(240,230,205,.07), 0 14px 24px rgba(24,16,8,.45), 0 2px 4px rgba(24,16,8,.3), inset 0 1px 0 rgba(250,246,236,.5), inset 0 -2px 0 rgba(24,26,18,.14);
+  outline: 1.5px dashed rgba(232,212,160,.38); outline-offset: -12px; }
 .bp > * { position: relative; z-index: 1; }
 .bp .lbl { font-family: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif; color: rgba(244,239,226,.66); }
 .bp .num { font-family: 'Barlow Semi Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; line-height: .95; letter-spacing: .01em; }
@@ -637,8 +635,7 @@ html.hw-lite .hw-eq.hw-led > i { filter: none; }
 .booth-night .hw-screen { background: #000; box-shadow: 0 0 0 1px #2a2a28; }
 .booth-night .hw-screen::after { display: none; }
 .booth-night .hw-desk-text { color: #D8D2C2; text-shadow: none; }
-.booth-night .bp { background: #000; box-shadow: 0 0 0 1px rgba(31,191,127,.6), 0 0 22px rgba(31,191,127,.22), inset 0 0 26px rgba(31,191,127,.07); }
-.booth-night .bp::before { border: 1px solid rgba(31,191,127,.28); }
+.booth-night .bp { background: #000; outline: 1px solid rgba(31,191,127,.28); box-shadow: 0 0 0 1px rgba(31,191,127,.6), 0 0 22px rgba(31,191,127,.22), inset 0 0 26px rgba(31,191,127,.07); }
 .booth-night .gbtn { filter: none; color: #C8F7E0; background: #040605; border-color: rgba(31,191,127,.5);
   box-shadow: 0 0 10px rgba(31,191,127,.2), inset 0 0 10px rgba(31,191,127,.08); }
 .booth-night .gbtn[aria-pressed="true"] { background: rgba(31,191,127,.22); border-color: var(--hw-eq); color: #E9FFF4; box-shadow: 0 0 16px rgba(31,191,127,.45), inset 0 0 12px rgba(31,191,127,.25); }

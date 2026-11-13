@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { nextThemeSwitch, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
+import { BYPASS_UID, canGoLiveOpenFloor, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
 
 const S = 'test-secret-123'
 
@@ -185,4 +185,19 @@ test('day/night: the clock decides, and a forced choice lasts until the next aut
   assert.equal(themeNow(at(23), forcedDay), false)
   assert.equal(themeNow(at(7, 1, 31), forcedDay), false)
   assert.equal(themeNow(at(20, 0, 31), forcedDay), true) // next evening it is automatic again
+})
+
+test('emergency PIN: exact match only, never an empty PIN', () => {
+  assert.equal(pinMatches('4821', '4821'), true)
+  assert.equal(pinMatches('4821', '4822'), false)
+  assert.equal(pinMatches('4821', '482'), false)
+  assert.equal(pinMatches('', ''), false)
+  assert.equal(BYPASS_UID, 'studio-pc')
+})
+
+test('open floor: needs radio training, a past live show, and no scheduled show running', () => {
+  assert.equal(canGoLiveOpenFloor({ radio: true, hostedBefore: true, showRunning: false }), true)
+  assert.equal(canGoLiveOpenFloor({ radio: true, hostedBefore: true, showRunning: true }), false)
+  assert.equal(canGoLiveOpenFloor({ radio: true, hostedBefore: false, showRunning: false }), false)
+  assert.equal(canGoLiveOpenFloor({ radio: false, hostedBefore: true, showRunning: false }), false)
 })

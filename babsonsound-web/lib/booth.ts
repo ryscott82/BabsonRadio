@@ -222,3 +222,23 @@ export function nextThemeSwitch(ms: number): number {
 export function themeNow(ms: number, force: { night: boolean; until: number } | null): boolean {
   return force && ms < force.until ? force.night : isNightAt(ms)
 }
+
+// ── Booth without an account ────────────────────────────────
+/** Names the studio PC uses for sessions that have no signed-in person. */
+export const BYPASS_UID = 'studio-pc'
+/** Constant-time PIN check (the emergency PIN lives in BOOTH_EMERGENCY_PIN on the server). */
+export function pinMatches(expected: string, given: string): boolean {
+  const a = Buffer.from(expected), b = Buffer.from(given)
+  return a.length > 0 && a.length === b.length && timingSafeEqual(a, b)
+}
+
+// ── Open floor: going live without a booked show ───────────
+/** When no scheduled show is on air, a trained host who has gone live from the studio before may go live without booking one. */
+export const canGoLiveOpenFloor = (o: { radio: boolean; hostedBefore: boolean; showRunning: boolean }) => o.radio && o.hostedBefore && !o.showRunning
+
+// ── Audio on the idle screen ────────────────────────────────
+/** The idle screen opens the booth by itself when the mixer feed carries sound (peak above this) for MIXING_HOLD_MS. */
+export const MIXING_PEAK_DBFS = -45
+export const MIXING_HOLD_MS = 3_000
+/** After someone leaves the booth, audio does not reopen it for this long. */
+export const MIXING_SNOOZE_MS = 5 * 60_000

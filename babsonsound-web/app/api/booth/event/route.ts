@@ -1,7 +1,8 @@
 import { after } from 'next/server'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireUser, str } from '@/lib/server/http'
-import { EVENT_KINDS, clearBoothSong, recordEvent, setBoothSong } from '@/lib/server/booth'
+import { BYPASS_UID, verifyAttest } from '@/lib/booth'
+import { EVENT_KINDS, boothSecret, clearBoothSong, recordEvent, setBoothSong } from '@/lib/server/booth'
 import { refreshNowPlaying } from '@/lib/server/nowplaying'
 
 export const runtime = 'nodejs'
@@ -11,7 +12,12 @@ export const runtime = 'nodejs'
 // from the station library while live) carries { title, artist } too, but is only logged, for the play log.
 export async function POST(req: Request) {
   return handle(async () => {
-    const t = await requireUser(req)
+    // No sign-in header: the studio PC itself (signed nonce) reporting on a "no sign-in" session. recordEvent only accepts the studio-pc session owner.
+    let uid = BYPASS_UID
+    if (req.headers.get('authorization')) uid = (await requireUser(req)).uid
+    else if (!verifyAttest(boothSecret(), (req.headers.get('x-booth-nonce') ?? '').slice(0, 100), (req.headers.get('x-booth-sig') ?? '').slice(0, 100))) {
+      throw new HttpError(403, 'Open this page on the studio PC.', 'BR-BTH-001')
+    }
     const db = adminDb()
     const b = await readJson(req)
     const kind = str(b.kind, 20) as (typeof EVENT_KINDS)[number]
@@ -20,7 +26,7 @@ export async function POST(req: Request) {
     if (!sessionId) throw new HttpError(400, 'Missing session.')
     const title = str(b.title, 120), artist = str(b.artist, 120)
     if ((kind === 'song' || kind === 'music') && !title) throw new HttpError(400, 'Type the song title.')
-    await recordEvent(db, sessionId, t.uid, kind, kind === 'song' || kind === 'music' ? [artist, title].filter(Boolean).join(' - ') : kind === 'quiet_ack' ? 'quiet hours' : '')
+    await recordEvent(db, sessionId, uid, kind, kind === 'song' || kind === 'music' ? [artist, title].filter(Boolean).join(' - ') : kind === 'quiet_ack' ? 'quiet hours' : '')
     if (kind === 'music' || kind === 'quiet_ack') return { ok: true }
     if (kind === 'song') await setBoothSong(db, sessionId, title, artist)
     else if (kind !== 'live_start') await clearBoothSong(db, sessionId)

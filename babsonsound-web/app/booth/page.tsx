@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, signOut } from '@/lib/auth'
-import { QUIET_BANNER, adBreak, bookingLines, quietBanner, type AdPlan, type LevelState, type StudioStatus } from '@/lib/booth'
-import { errText, helper, loadPref, mmss, savePref, type Butt, type Track } from '@/components/booth/helper'
+import { MIXING_HOLD_MS, MIXING_PEAK_DBFS, MIXING_SNOOZE_MS, QUIET_BANNER, adBreak, bookingLines, quietBanner, type AdPlan, type LevelState, type StudioStatus } from '@/lib/booth'
+import { boothFetch, errText, helper, loadPref, mmss, savePref, type Butt, type Track } from '@/components/booth/helper'
+import DoorClaim from '@/components/booth/DoorClaim'
+import { openSignIn } from '@/lib/signInPrompt'
 import IdleScreen, { exitPanel } from '@/components/booth/IdleScreen'
 import { useInputMeter } from '@/components/booth/useInputMeter'
 import LevelMeter from '@/components/booth/LevelMeter'
@@ -31,6 +33,7 @@ interface Session {
   show: Show | null; nextShow: Show | null; token: string; tokenExp: number
   ads: AdPlan; note: { text: string; by: string; at: number } | null
   next: { title: string; hosts: string[]; startAt: number } | null
+  signInToLive?: boolean
 }
 
 const IDLE_MS = 10 * 60_000
@@ -46,11 +49,30 @@ export default function BoothPage() {
   const [buttErr, setButtErr] = useState('')
   const [now, setNow] = useState(() => Date.now())
   const [exited, setExited] = useState(false)
+  const [bypass, setBypass] = useState<{ pin: string; session: Session } | null>(null)
+  const [wantLive, setWantLive] = useState(false)   // someone pressed Go live with nobody signed in: go live by itself once they have signed in
+  const [snoozeUntil, setSnoozeUntil] = useState(0) // after leaving the booth, audio does not reopen it for a few minutes
+  const [idleInput] = useState(() => loadPref('input'))
+  const idleGain = useRef(0)
   const theme = useBoothTheme(now)
+
+  // Idle screen: if the studio input carries sound for a few seconds, someone is mixing. Open the booth (no sign in needed to look around).
+  const watching = helperUp === true && !loading && !user && !bypass && !exited && now >= snoozeUntil
+  const idleMeter = useInputMeter(idleInput, watching, 'idle', idleGain)
+  const loudSince = useRef(0), opening = useRef(false)
+  useEffect(() => {
+    const st = idleMeter.stats
+    if (!watching || !st.on || !(st.peak > MIXING_PEAK_DBFS)) { loudSince.current = 0; return }
+    loudSince.current ||= Date.now()
+    if (Date.now() - loudSince.current < MIXING_HOLD_MS || opening.current) return
+    opening.current = true
+    boothFetch<Session>('/api/booth/bypass', { pin: '' }).then(session => setBypass({ pin: '', session })).catch(() => {}).finally(() => { opening.current = false })
+  }, [idleMeter.stats, watching])
   const buttRef = useRef<Butt | null>(null)
   const errSince = useRef(0)
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t) }, [])
   useEffect(() => { buttRef.current = butt }, [butt])
+  useEffect(() => { if (user) queueMicrotask(() => setBypass(null)) }, [user])
 
   // Helper and BUTT status, every 2 seconds, signed in or not. BUTT is slow to answer (it takes a few seconds after it starts or after a
   // command), so "BUTT isn’t answering" only shows after it has been silent for 10 seconds in a row.
@@ -84,10 +106,12 @@ export default function BoothPage() {
           <Center title="Booth panel closed" text="The panel comes back by itself in about 30 minutes." />
         ) : helperUp === false ? (
           <Center title="The studio helper isn’t running" text="Open “start-helper” on this computer and wait a few seconds." />
-        ) : loading ? null : !user ? (
-          <IdleScreen onExitPanel={leavePanel} night={theme.night} onToggleTheme={theme.toggle} />
+        ) : loading ? null : !user && !bypass ? (
+          <IdleScreen onExitPanel={leavePanel} night={theme.night} onToggleTheme={theme.toggle} onBypass={(pin, session) => setBypass({ pin, session: session as Session })} />
         ) : (
-          <Console butt={butt} buttRef={buttRef} buttErr={buttErr} key={user.uid} onExitPanel={leavePanel} night={theme.night} onToggleTheme={theme.toggle} />
+          <Console butt={butt} buttRef={buttRef} buttErr={buttErr} key={user?.uid ?? 'bypass'} onExitPanel={leavePanel} night={theme.night} onToggleTheme={theme.toggle}
+                   bypass={user ? null : bypass} onBypassEnd={() => { setBypass(null); setWantLive(false); setSnoozeUntil(Date.now() + MIXING_SNOOZE_MS) }}
+                   autoLive={wantLive} onWantLive={setWantLive} />
         )}
       </div>
     </>
@@ -106,19 +130,20 @@ function Center({ title, text, children }: { title: string; text?: string; child
   )
 }
 
-function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme }: { butt: Butt | null; buttRef: React.MutableRefObject<Butt | null>; buttErr: string; onExitPanel: () => void; night: boolean; onToggleTheme: () => void }) {
+function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, bypass, onBypassEnd, autoLive, onWantLive }: { butt: Butt | null; buttRef: React.MutableRefObject<Butt | null>; buttErr: string; onExitPanel: () => void; night: boolean; onToggleTheme: () => void; bypass: { pin: string; session: Session } | null; onBypassEnd: () => void; autoLive: boolean; onWantLive: (v: boolean) => void }) {
   const { isGuest, user } = useAuth()
-  const [s, setS] = useState<Session | null>(null)
+  const [s, setS] = useState<Session | null>(bypass?.session ?? null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState('')
   const [confirmOut, setConfirmOut] = useState(false)
   const [devices, setDevices] = useState<Devices>(() => ({ input: loadPref('input'), music: loadPref('music') }))
   const [modal, setModal] = useState<'' | 'sound' | 'note'>('')
+  const [signInOpen, setSignInOpen] = useState(false)
   const [idCue, setIdCue] = useState(0)
   const [adCue, setAdCue] = useState(0)
   const [lastMusicAt, setLastMusicAt] = useState(0)
   const [now, setNow] = useState(() => Date.now())
-  const sessionRef = useRef<Session | null>(null)
+  const sessionRef = useRef<Session | null>(bypass?.session ?? null)
   const lastActive = useRef(0)
   const live = !!butt?.connected
   const connecting = !!butt?.connecting
@@ -137,11 +162,13 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme }: 
   const refresh = useCallback(async () => {
     const nonce = `${Date.now()}.${crypto.getRandomValues(new Uint32Array(3)).join('').slice(0, 24)}`
     const { sig } = await helper<{ sig: string }>(`/attest?nonce=${encodeURIComponent(nonce)}`)
-    const r = await api<Session>('/api/booth/session', { nonce, sig, sessionId: sessionRef.current?.sessionId ?? '' })
+    const sid = sessionRef.current?.sessionId ?? ''
+    const r = bypass ? await boothFetch<Session>('/api/booth/bypass', { pin: bypass.pin, sessionId: sid })
+                     : await api<Session>('/api/booth/session', { nonce, sig, sessionId: sid })
     sessionRef.current = r
     setS(r)
     return r
-  }, [])
+  }, [bypass])
 
   useEffect(() => {
     if (isGuest) return
@@ -158,16 +185,17 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme }: 
   }, [refresh])
   const auto = useAutoGain(meter.frame, token)
   useEffect(() => { gainRef.current = auto.on ? auto.db : 0 }, [auto.on, auto.db])
-  const studio = useStudioStatus(!isGuest)
+  const studio = useStudioStatus(!isGuest && !bypass)
   const rec = useRecState(token)
   const recording = !!rec.st && rec.st.recorder.state !== 'idle'
   const [mode, setMode] = useState<'live' | 'record'>('live')
-  const shownMode = live || connecting ? 'live' : recording ? 'record' : mode
+  const shownMode = bypass || live || connecting ? 'live' : recording ? 'record' : mode
 
   const report = useCallback((kind: string, extra: Record<string, unknown> = {}) => {
     const id = sessionRef.current?.sessionId
-    return id ? api('/api/booth/event', { sessionId: id, kind, ...extra }) : Promise.resolve()
-  }, [])
+    if (!id) return Promise.resolve()
+    return bypass ? boothFetch('/api/booth/event', { sessionId: id, kind, ...extra }) : api('/api/booth/event', { sessionId: id, kind, ...extra })
+  }, [bypass])
 
   // Quiet hours: when someone is signed in during quiet hours they must tap OK, and the tap is logged on their session (once per quiet stretch).
   const quietNow = quietBanner(studio.status, now)
@@ -205,8 +233,8 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme }: 
   const leave = useCallback(async (kind: 'sign_out' | 'idle_out') => {
     await report(kind).catch(() => {})
     sessionRef.current = null
-    await signOut()
-  }, [report])
+    if (bypass) onBypassEnd(); else await signOut()
+  }, [report, bypass, onBypassEnd])
   const signOutNow = () => act('out', async () => {
     if (live || connecting) {
       await helper('/live/stop', { token: await token() })
@@ -233,6 +261,16 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme }: 
     return () => { evs.forEach(e => window.removeEventListener(e, touch)); clearInterval(t) }
   }, [live, connecting, recording, leave])
   useEffect(() => { if (live || recording) lastActive.current = Date.now() }, [live, recording])
+  // With nobody signed in, sound on the input counts as someone being there.
+  useEffect(() => { if (bypass && meter.stats.on && meter.stats.state !== 'silent') lastActive.current = Date.now() }, [bypass, meter.stats])
+  // They pressed Go live before signing in: once signed in and the session is loaded, go live right away (or show why not).
+  const autoDone = useRef(false)
+  useEffect(() => {
+    if (!autoLive || bypass || autoDone.current || !s || !butt || buttErr) return
+    autoDone.current = true
+    if (s.canGoLive && !live && !connecting) queueMicrotask(() => { void goLive() })
+    queueMicrotask(() => onWantLive(false))
+  })
 
   if (isGuest) {
     return (
@@ -284,7 +322,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme }: 
         <ClockScreen show={s?.show ?? null} next={s?.next ?? null} ads={s?.ads ?? null} live={live}
                      onAirSeconds={butt?.streamSeconds ?? 0} lastMusicAt={lastMusicAt} onPlayId={() => setIdCue(n => n + 1)} />
         <div className="flex items-center gap-3 flex-wrap justify-center">
-          <button type="button" className={hb} onClick={() => setModal('note')}>Leave a note</button>
+          {!bypass && <button type="button" className={hb} onClick={() => setModal('note')}>Leave a note</button>}
           <button type="button" className={hb} onClick={() => setModal('sound')}>Audio setup</button>
           <button type="button" className={hb} onClick={onToggleTheme} aria-pressed={night} title="Switch between the day and night look. It goes back to automatic at 7 am or 7 pm.">
             {night ? '☾ Night' : '☀ Day'}
@@ -296,7 +334,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme }: 
               <button type="button" className={`${hb} gbtn-stop`} onClick={signOutNow} disabled={!!busy}>{live ? 'End show and sign out' : 'Stop recording and sign out'}</button>
             </>
           ) : (
-            <button type="button" className={hb} onClick={() => (live || recording ? setConfirmOut(true) : signOutNow())} disabled={!!busy}>Sign out</button>
+            <button type="button" className={hb} onClick={() => (live || recording ? setConfirmOut(true) : signOutNow())} disabled={!!busy}>{bypass ? 'Back to sign in' : 'Sign out'}</button>
           )}
         </div>
       </section>
@@ -304,7 +342,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme }: 
       {/* Bottom half: four panels. */}
       <div className="grid grid-cols-[1.05fr_1fr_1.65fr_1fr] gap-5 h-[47%] shrink-0 min-h-0">
         <div className="bp p-6 flex flex-col gap-3 min-h-0">
-          {!live && !connecting && !recording && (
+          {!bypass && !live && !connecting && !recording && (
             <div className="flex gap-2" role="group" aria-label="Mode">
               <button type="button" className="gbtn h-11 flex-1 text-lg" aria-pressed={shownMode === 'live'} onClick={() => setMode('live')}>Go live</button>
               <button type="button" className="gbtn h-11 flex-1 text-lg" aria-pressed={shownMode === 'record'} onClick={() => setMode('record')}>Record a show</button>
@@ -313,7 +351,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme }: 
           <div className="flex-1 min-h-0">
             {shownMode === 'live' ? (
               <GoLive live={live} connecting={connecting} recording={!!butt?.recording} onAirSeconds={butt?.streamSeconds ?? 0}
-                      canGoLive={!!s?.canGoLive} reason={s?.reason ?? ''} ready={ready} busy={busy}
+                      canGoLive={!!s?.canGoLive} signInToLive={!!bypass && !!s?.signInToLive} onSignIn={() => { onWantLive(true); setSignInOpen(true) }} reason={s?.reason ?? ''} ready={ready} busy={busy}
                       level={meter.stats.state} ads={s?.ads ?? null} onGoLive={goLive} onEnd={endShow} onPlayAds={() => setAdCue(n => n + 1)} />
             ) : (
               <RecordShow st={rec.st} reload={rec.reload} getToken={token} live={live || connecting} ready={ready} level={meter.stats.state} myUid={user?.uid ?? ''} />
@@ -344,6 +382,24 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme }: 
           <div className="hw-screen p-12 text-center space-y-5">
             <p className="hw-title text-6xl">Still there?</p>
             <p className="text-3xl lbl">Signing out in {stillThere} seconds. Touch anything to stay.</p>
+          </div>
+        </div>
+      )}
+      {bypass && <DoorClaim />}
+      {signInOpen && bypass && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/85 px-8" role="dialog" aria-label="Sign in to go live">
+          <div className="hw-screen max-w-4xl w-full p-10 space-y-6">
+            <h2 className="hw-title text-5xl leading-none">Sign in to go live</h2>
+            <div className="flex items-center gap-8">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/booth/door-qr.svg" alt="QR code to sign in at the studio" className="h-64 w-64 rounded-xl bg-white shrink-0" />
+              <div className="space-y-4 min-w-0 flex-1">
+                <p className="text-2xl">Scan the code with your phone. You go live as soon as you are signed in.</p>
+                <button type="button" className="gbtn gbtn-go h-20 w-full text-2xl" onClick={() => openSignIn()}>Sign in with Babson Sound account</button>
+                <button type="button" className="gbtn h-12 px-5 text-xl" onClick={() => openSignIn(true)}>Create an account</button>
+              </div>
+            </div>
+            <button type="button" className="gbtn h-12 px-6 text-xl" onClick={() => { setSignInOpen(false); onWantLive(false) }}>Cancel</button>
           </div>
         </div>
       )}
@@ -381,7 +437,7 @@ function StudioNotices({ status, myBookingId }: { status: StudioStatus | null; m
  *  On air: End show, with the time on air and whether BUTT is recording. */
 function GoLive(p: {
   live: boolean; connecting: boolean; recording: boolean; onAirSeconds: number
-  canGoLive: boolean; reason: string; ready: boolean; busy: string; level: LevelState
+  canGoLive: boolean; signInToLive: boolean; onSignIn: () => void; reason: string; ready: boolean; busy: string; level: LevelState
   ads: AdPlan | null; onGoLive: () => void; onEnd: () => void; onPlayAds: () => void
 }) {
   const [phone, setPhone] = useState(false)
@@ -412,10 +468,22 @@ function GoLive(p: {
       </div>
     )
   }
+  if (p.signInToLive) {
+    return (
+      <div className="h-full flex flex-col gap-3">
+        <p className="hw-title text-2xl leading-tight">Mixing? Press Go live, then sign in.</p>
+        <button type="button" onClick={p.onSignIn} disabled={!p.ready} className="gbtn gbtn-go flex-1 min-h-28 flex flex-col items-center justify-center gap-2">
+          <span className="hw-title text-5xl">Go live</span>
+          <span className="text-xl opacity-90">{p.ready ? 'You sign in next' : 'Waiting for BUTT…'}</span>
+        </button>
+      </div>
+    )
+  }
   const chip = 'gbtn h-11 px-1 text-base flex-1 whitespace-nowrap'
   const ok = soundOk && phone && clean
   return (
     <div className="h-full flex flex-col gap-3">
+      {p.canGoLive && <p className="hw-title text-2xl leading-tight">To go on air: 1. Tick all three. 2. Press Go live.</p>}
       {p.canGoLive ? (
         <div className="flex gap-2">
           <button type="button" className={chip} aria-pressed={soundOk} onClick={() => setSoundOk(x => !x)}>{soundOk ? '✓ ' : ''}Mic check</button>

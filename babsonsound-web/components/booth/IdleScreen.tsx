@@ -65,19 +65,19 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
   return (
     <>
     <DoorClaim />
-    <div className="fixed inset-0 z-[2] flex flex-col gap-5 px-10 pt-6 pb-6 overflow-hidden" style={{ transform: `translate(${drift.x}px, ${drift.y}px)`, transition: 'transform 2s' }}>
+    <div className="fixed inset-0 z-[2] flex flex-col gap-[2vh] px-10 pt-[2vh] pb-[2vh] overflow-hidden" style={{ transform: `translate(${drift.x}px, ${drift.y}px)`, transition: 'transform 2s' }}>
       <FitTitle as="h1" lines={1} min={0.3} text="Welcome to the Radio Room" className="hw-desk-text hw-title text-center leading-none text-[clamp(3rem,7vh,5.5rem)]" />
       <div className="grid grid-cols-[1.05fr_1fr_1fr] gap-6 flex-1 min-h-0">
         {/* The time is the first thing a studio screen should say. */}
-        <section className="hw-desk-text flex flex-col min-w-0">
+        <section className="hw-desk-text flex flex-col min-w-0 min-h-0 overflow-hidden">
           <div>
-            <p className="hw-title leading-[0.85] tabular-nums" style={{ fontSize: 'clamp(7rem, 26vh, 17rem)' }}>{h}:{m}<span className="text-[0.22em] ml-3 opacity-60">{ap}</span></p>
-            <p className="hw-title text-5xl leading-tight mt-3">{d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+            <p className="hw-title leading-[0.85] tabular-nums" style={{ fontSize: 'clamp(5rem, 21vh, 17rem)' }}>{h}:{m}<span className="text-[0.22em] ml-3 opacity-60">{ap}</span></p>
+            <p className="hw-title text-[clamp(1.5rem,4vh,3rem)] leading-tight mt-[1vh]">{d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
             {/* Only when more than two people are tuned in. */}
-            {playing && (playing.listeners ?? 0) > 2 && <p className="hw-title text-4xl leading-tight mt-1 opacity-90">{playing.listeners} listening</p>}
+            {playing && (playing.listeners ?? 0) > 2 && <p className="hw-title text-[clamp(1.25rem,3.2vh,2.25rem)] leading-tight mt-1 opacity-90">{playing.listeners} listening</p>}
           </div>
           {playing?.art && (
-            <div className="flex-1 min-h-0 mt-6 flex items-start">
+            <div className="flex-1 min-h-0 mt-[2vh] flex items-start">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={playing.art} alt={`Cover for ${playing.title}`} className="h-full max-h-full aspect-square object-cover rounded-2xl" style={{ boxShadow: '0 14px 28px rgba(0,0,0,.5)' }} />
             </div>
@@ -85,33 +85,33 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
         </section>
 
         {/* On now, Up next, Later today. */}
-        <section className="flex flex-col gap-4 min-h-0 min-w-0">
-          <div className="bp px-7 py-5 shrink-0">
-            <p className="lbl text-2xl">On now</p>
+        <section className="flex flex-col gap-[1.6vh] min-h-0 min-w-0">
+          <div className="bp px-6 py-[1.6vh] shrink-0">
+            <p className="lbl text-[clamp(1rem,2.2vh,1.5rem)]">On now</p>
             {onNow ? (
               <>
-                <p className="hw-title text-5xl leading-tight line-clamp-2">{onNow.title}</p>
-                <p className="text-2xl lbl truncate">{hostLine(onNow)}{hostLine(onNow) ? ' · ' : ''}until {time(onNow.endAt)}</p>
+                <p className="hw-title text-[clamp(1.5rem,4.2vh,3rem)] leading-tight line-clamp-2">{onNow.title}</p>
+                <p className="text-[clamp(1rem,2.2vh,1.5rem)] lbl truncate">{hostLine(onNow)}{hostLine(onNow) ? ' · ' : ''}until {time(onNow.endAt)}</p>
               </>
-            ) : <p className="hw-title text-4xl leading-tight">{data ? 'Music from Babson Sound' : 'Loading…'}</p>}
-            {playing && <p className="text-2xl mt-2 truncate"><span className="lbl">Now playing </span>{playing.title}{playing.artist ? ` · ${playing.artist}` : ''}</p>}
+            ) : <p className="hw-title text-[clamp(1.4rem,3.6vh,2.25rem)] leading-tight">{data ? 'Music from Babson Sound' : 'Loading…'}</p>}
+            {playing && <p className="text-[clamp(1rem,2.2vh,1.5rem)] mt-2 truncate"><span className="lbl">Now playing </span>{playing.title}{playing.artist ? ` · ${playing.artist}` : ''}</p>}
           </div>
-          <div className="bp px-7 py-5 shrink-0">
-            <p className="lbl text-2xl">Up next</p>
+          <div className="bp px-6 py-[1.6vh] shrink-0">
+            <p className="lbl text-[clamp(1rem,2.2vh,1.5rem)]">Up next</p>
             {upNext ? (
               <>
-                <p className="hw-title text-4xl leading-tight line-clamp-2">{upNext.title}</p>
-                <p className="text-2xl lbl truncate">{dayWord(upNext.startAt, now)}{time(upNext.startAt)}{hostLine(upNext) ? ` · ${hostLine(upNext)}` : ''}</p>
+                <p className="hw-title text-[clamp(1.4rem,3.6vh,2.25rem)] leading-tight line-clamp-2">{upNext.title}</p>
+                <p className="text-[clamp(1rem,2.2vh,1.5rem)] lbl truncate">{dayWord(upNext.startAt, now)}{time(upNext.startAt)}{hostLine(upNext) ? ` · ${hostLine(upNext)}` : ''}</p>
               </>
-            ) : <p className="hw-title text-4xl leading-tight">{data ? 'Studio is free' : 'Loading…'}</p>}
+            ) : <p className="hw-title text-[clamp(1.4rem,3.6vh,2.25rem)] leading-tight">{data ? 'Studio is free' : 'Loading…'}</p>}
           </div>
           {rest.length > 0 && (
-          <div className="bp px-7 py-5 flex-1 min-h-0 overflow-hidden">
-            <p className="lbl text-2xl mb-2">Later today</p>
+          <div className="bp px-6 py-[1.6vh] flex-1 min-h-0 overflow-hidden">
+            <p className="lbl text-[clamp(1rem,2.2vh,1.5rem)] mb-2">Later today</p>
             {rest.length ? (
-              <ul className="space-y-2">
+              <ul className="space-y-[0.8vh]">
                 {rest.map(i => (
-                  <li key={i.id} className="flex items-baseline gap-4 text-2xl">
+                  <li key={i.id} className="flex items-baseline gap-4 text-[clamp(1rem,2.2vh,1.5rem)]">
                     <span className="num w-36 shrink-0">{dayWord(i.startAt, now)}{time(i.startAt)}</span>
                     <span className="truncate">{i.title}{firstNames(i.hosts).length ? <span className="lbl"> · {join(firstNames(i.hosts))}</span> : null}</span>
                   </li>
@@ -123,23 +123,23 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
         </section>
 
         {/* How to go on air: scan the code (your phone is already signed in, nothing to type) or sign in on this computer. */}
-        <section className="bp px-7 py-6 min-h-0 min-w-0 flex flex-col items-center gap-4 text-center">
-          <p className="hw-title text-5xl leading-tight">Scan to sign in</p>
+        <section className="bp px-6 py-[1.6vh] min-h-0 min-w-0 overflow-hidden flex flex-col items-center gap-[1.4vh] text-center">
+          <p className="hw-title text-[clamp(1.5rem,4.2vh,3rem)] leading-tight">Scan to sign in</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/booth/door-qr.svg" alt="QR code to sign in at the studio" className="min-h-0 flex-1 max-h-[42vh] aspect-square rounded-xl bg-white" />
-          <button type="button" className="gbtn gbtn-go h-20 text-3xl w-full" onClick={() => setView('signin')}>Sign in with Babson Sound account</button>
+          <img src="/booth/door-qr.svg" alt="QR code to sign in at the studio" className="min-h-0 flex-1 max-h-[40vh] aspect-square rounded-xl bg-white" />
+          <button type="button" className="gbtn gbtn-go h-[clamp(3.25rem,7vh,5rem)] text-[clamp(1.25rem,2.8vh,1.875rem)] w-full" onClick={() => setView('signin')}>Sign in with Babson Sound account</button>
           <div className="flex items-center gap-2">
-            <button type="button" className="gbtn h-12 px-5 text-xl" onClick={() => router.push('/slots')}>Book a show</button>
-            <button type="button" className="gbtn h-12 px-5 text-xl" onClick={() => setView('guest')}>New here? Training</button>
-            <button type="button" className="gbtn h-12 px-4 text-base opacity-70" onClick={() => { setBypassErr(''); boothFetch<object>('/api/booth/bypass', { pin: '' }).then(r => onBypass('', r)).catch(e => setBypassErr(errText(e))) }}>Bypass sign in</button>
+            <button type="button" className="gbtn h-[clamp(2.5rem,4.8vh,3rem)] px-5 text-[clamp(1rem,2vh,1.25rem)]" onClick={() => router.push('/slots')}>Book a show</button>
+            <button type="button" className="gbtn h-[clamp(2.5rem,4.8vh,3rem)] px-5 text-[clamp(1rem,2vh,1.25rem)]" onClick={() => setView('guest')}>New here? Training</button>
+            <button type="button" className="gbtn h-[clamp(2.5rem,4.8vh,3rem)] px-4 text-base opacity-70" onClick={() => { setBypassErr(''); boothFetch<object>('/api/booth/bypass', { pin: '' }).then(r => onBypass('', r)).catch(e => setBypassErr(errText(e))) }}>Bypass sign in</button>
           </div>
         </section>
       </div>
 
       <footer className="hw-desk-text flex items-center gap-5 shrink-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/booth/logo.png" alt="Babson Radio" className="h-16 w-16 object-contain" />
-        <p className="text-2xl opacity-85">Keep it clean. Respect quiet hours. Leave the studio as you found it.</p>
+        <img src="/booth/logo.png" alt="Babson Radio" className="h-[clamp(2.5rem,6vh,4rem)] w-[clamp(2.5rem,6vh,4rem)] object-contain" />
+        <p className="text-[clamp(1rem,2.2vh,1.5rem)] opacity-85">Keep it clean. Respect quiet hours. Leave the studio as you found it.</p>
         {/* The internet needs a sign-in: a tap on any of these goes to the sign-in page. */}
         <div className="ml-auto flex items-center gap-2" role="group" aria-label="Internet. Sign in to use it.">
           <span className="text-xl opacity-85 mr-2">Sign in to browse</span>

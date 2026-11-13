@@ -317,3 +317,19 @@ export function idleStep(quietMs: number): { warn: boolean; secondsLeft: number;
   if (quietMs >= IDLE_OUT_MS - IDLE_WARN_MS) return { warn: true, secondsLeft: Math.ceil((IDLE_OUT_MS - quietMs) / 1000), out: false }
   return { warn: false, secondsLeft: 0, out: false }
 }
+
+/** The big message under the header. The welcome stays 15 minutes after sign-in, and for as long as nothing is booked; then a countdown to
+ *  the next show; on air it is the show's name. */
+export const WELCOME_MS = 15 * 60_000
+export type Hero = 'live' | 'welcome' | 'countdown'
+export function heroMode(p: { live: boolean; connecting: boolean; sinceMs: number; nextStartAt: number | null; now: number }): Hero {
+  if (p.live || p.connecting) return 'live'
+  if (p.sinceMs < WELCOME_MS) return 'welcome'
+  return p.nextStartAt !== null && p.nextStartAt > p.now ? 'countdown' : 'welcome'
+}
+/** 1:12:05 for an hour or more, 12:05 below. */
+export function countdownText(ms: number): string {
+  const t = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60
+  const two = (n: number) => String(n).padStart(2, '0')
+  return h ? `${h}:${two(m)}:${two(sec)}` : `${m}:${two(sec)}`
+}

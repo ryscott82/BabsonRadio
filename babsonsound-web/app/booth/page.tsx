@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, signOut } from '@/lib/auth'
-import { idleStep, quietReminderDue, MIXING_HOLD_MS, MIXING_PEAK_DBFS, MIXING_SNOOZE_MS, adBreak, bookingLines, quietBanner, type AdPlan, type LevelState, type StudioStatus } from '@/lib/booth'
+import { countdownText, heroMode, idleStep, quietReminderDue, MIXING_HOLD_MS, MIXING_PEAK_DBFS, MIXING_SNOOZE_MS, adBreak, bookingLines, quietBanner, type AdPlan, type LevelState, type StudioStatus } from '@/lib/booth'
 import { boothFetch, errText, helper, loadPref, mmss, savePref, type Butt, type Track } from '@/components/booth/helper'
 import DoorClaim from '@/components/booth/DoorClaim'
 import CrewPanel from '@/components/booth/CrewPanel'
@@ -325,7 +325,9 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, night, onTogg
   const date = new Date(now).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
 
   const next = s?.next
-  const welcomeBig = !live && !connecting && now - since < 60_000
+  const hero = heroMode({ live, connecting, sinceMs: now - since, nextStartAt: next?.startAt ?? null, now })
+  const welcomeBig = hero === 'welcome'
+  const countdownBig = hero === 'countdown' && !!next
   const showName = info.show ? info.show.title : s?.show?.title || ''
   const hostsValue = hostsText ?? ((info.show?.hosts.length ? info.show.hosts.join(', ') : '') || (bypass ? '' : s?.name ?? ''))
   const canEditShow = !!s?.canGoLive || !!s?.canRecord || live
@@ -397,11 +399,16 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, night, onTogg
         </div>
       </header>
 
-      {/* The welcome only greets for the first minute. On air it gives way to the show's name; otherwise the space goes to the controls. */}
-      {(welcomeBig || problem || s?.note || (live && showName)) && (
+      {/* The welcome stays 15 minutes after sign-in (and while nothing is booked), then it counts down to the next show. On air it gives way to the show's name. */}
+      {(welcomeBig || countdownBig || problem || s?.note || (live && showName)) && (
         <div className="hw-desk-text text-center min-w-0 shrink-0">
           {welcomeBig ? (
             <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(3rem, 9vh, 6.5rem)' }}>Welcome, {bypass ? 'Babson Sound user' : s?.firstName || '…'}</h1>
+          ) : countdownBig && next ? (
+            <>
+              <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(3rem, 9vh, 6.5rem)' }}>{countdownText(next.startAt - now)}</h1>
+              <p className="text-2xl mt-1 truncate">until {next.title}{next.hosts.length ? ` with ${next.hosts.join(', ')}` : ''} at {clock(next.startAt)}</p>
+            </>
           ) : live && showName ? (
             <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(2.5rem, 6vh, 4.5rem)' }}>{showName}</h1>
           ) : null}
@@ -412,8 +419,16 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, night, onTogg
       {/* Left: up next, the loudness meter, what is on, Go live. Right: tracks (or the sign-in info) with the sound board under them. */}
       <div className={`grid ${bl ? 'grid-cols-1' : 'grid-cols-[1fr_1.15fr]'} grid-rows-[minmax(0,1fr)] items-stretch gap-5 flex-1 min-h-0`}>
         <div className="flex flex-col gap-3 min-h-0 h-full">
-          <p className="hw-desk-text text-2xl truncate shrink-0">Up next: <span className="opacity-90">{next ? `${next.title}${next.hosts.length ? ` with ${next.hosts.join(', ')}` : ''} at ${clock(next.startAt)}` : 'nothing booked'}</span></p>
-          <div className="flex-1 min-h-0"><LevelMeter frame={meter.frame} stats={meter.stats} error={meter.error} deadAir={deadAir} auto={auto} /></div>
+          <div className="bp px-6 py-4 flex-1 min-h-0 flex flex-col justify-center gap-1">
+            <span className="lbl text-2xl">Up next</span>
+            {next ? (
+              <>
+                <p className="hw-title leading-tight line-clamp-2" style={{ fontSize: 'clamp(2rem, 5vh, 3.5rem)' }}>{next.title}</p>
+                <p className="text-2xl lbl truncate">{next.hosts.length ? `with ${next.hosts.join(', ')} · ` : ''}{clock(next.startAt)}</p>
+              </>
+            ) : <p className="hw-title text-4xl leading-tight">Nothing booked</p>}
+          </div>
+          <div className="basis-[34%] grow-0 shrink-0 min-h-0"><LevelMeter frame={meter.frame} stats={meter.stats} error={meter.error} deadAir={deadAir} auto={auto} /></div>
           <div className="bp px-6 py-3 grid grid-cols-[8.5rem_1fr] items-center gap-x-4 gap-y-2 shrink-0">
             <span className="lbl text-lg">Show name</span>
             <input value={showName} onChange={e => info.change({ title: e.target.value })} readOnly={!canEditShow} maxLength={80} placeholder="Name your show"

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BYPASS_UID, IDLE_OUT_MS, IDLE_WARN_MS, QUIET_REMIND_MS, idleStep, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, LONG_WINDOW_MS, levelWord, levelAdvice, newLoudTracker, stepLoud, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
+import { WELCOME_MS, countdownText, heroMode, BYPASS_UID, IDLE_OUT_MS, IDLE_WARN_MS, QUIET_REMIND_MS, idleStep, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, LONG_WINDOW_MS, levelWord, levelAdvice, newLoudTracker, stepLoud, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
 
 const S = 'test-secret-123'
 
@@ -272,4 +272,20 @@ test('booth track titles: tidied the same way as the helper, signed by the site 
   assert.match(helperSrc, /if \(!cleanOk\(text, b\.cleanSig\)\)/); assert.match(helperSrc, /mac\(`clean:\$\{text\}`\)/)
   const start = src('app/api/booth/recordings/start/route.ts')
   assert.match(start, /hosts: raw\.hosts\.map\(censor\), description: censor\(raw\.description\)/); assert.match(start, /if \(!live\) await assertClean/)
+})
+
+test('hero message: welcome for 15 minutes, or while nothing is booked, then a countdown, show name when live', () => {
+  const now = 1_800_000_000_000, next = now + 3_600_000
+  assert.equal(heroMode({ live: false, connecting: false, sinceMs: 0, nextStartAt: next, now }), 'welcome')
+  assert.equal(heroMode({ live: false, connecting: false, sinceMs: WELCOME_MS - 1, nextStartAt: next, now }), 'welcome')
+  assert.equal(heroMode({ live: false, connecting: false, sinceMs: WELCOME_MS, nextStartAt: next, now }), 'countdown')
+  assert.equal(heroMode({ live: false, connecting: false, sinceMs: WELCOME_MS * 4, nextStartAt: null, now }), 'welcome')
+  assert.equal(heroMode({ live: false, connecting: false, sinceMs: WELCOME_MS * 4, nextStartAt: now - 1, now }), 'welcome')
+  assert.equal(heroMode({ live: true, connecting: false, sinceMs: 0, nextStartAt: next, now }), 'live')
+  assert.equal(heroMode({ live: false, connecting: true, sinceMs: WELCOME_MS * 4, nextStartAt: null, now }), 'live')
+})
+test('countdown text', () => {
+  assert.equal(countdownText(65_000), '1:05')
+  assert.equal(countdownText(3_725_000), '1:02:05')
+  assert.equal(countdownText(-5), '0:00')
 })

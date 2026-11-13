@@ -34,25 +34,27 @@ export default function ClockScreen(p: {
   const idDue = p.live && (min >= 58 || min <= 2) && idDone !== hourKey
 
   return (
-    <div className="hw-screen h-full flex flex-col px-9 py-7">
-      <p className="hw-title text-5xl leading-[1.35] truncate -mt-1">{p.show?.title ?? 'No show booked'}</p>
-      <p className={`lbl text-2xl ${red ? 'warn' : ''}`}>{label}{sub ? ` · ${sub}` : ''}</p>
-      <p className={`num ${red ? 'warn' : ''}`} style={{ fontSize: 'clamp(6rem, 11vw, 15rem)' }}>{value}</p>
-      <div className="mt-auto grid grid-cols-3 border-t rule">
+    <div className="bp w-full max-w-[1500px] px-8 py-3 flex items-center gap-8">
+      <div className="min-w-0 flex-1">
+        <p className="hw-title text-3xl leading-tight truncate">{p.show?.title ?? 'No show booked'}</p>
+        <p className={`lbl text-xl ${red ? 'warn' : ''}`}>{label}{sub ? ` · ${sub}` : ''}</p>
+      </div>
+      <p className={`num shrink-0 ${red ? 'warn' : ''}`} style={{ fontSize: 'clamp(3.5rem, 8vh, 5.5rem)' }}>{value}</p>
+      <div className="grid grid-cols-3 gap-8 shrink-0">
         <Readout label={!ad ? 'Ad breaks' : ad.now ? 'Ad break · back in' : 'Next ad break'} value={!ad ? 'Off' : mmss(((ad.now ? ad.end : ad.start) - now) / 1000)} warn={adSoon} />
         <Readout label="Talking" value={p.live ? mmss(talking) : '–'} warn={talking >= TALK_LONG_S} />
         <Readout label="On air" value={p.live ? mmss(p.onAirSeconds) : 'Off'} />
       </div>
       {(idDue || p.next) && (
-        <div className="pt-3 flex items-center gap-4 text-xl">
+        <div className="flex items-center gap-3 text-lg min-w-0 max-w-[32%]">
           {idDue ? (
             <>
-              <span className="ok">Station ID: “You’re listening to Babson Radio.”</span>
-              <button type="button" className="gbtn h-11 px-4 text-lg ml-auto" onClick={() => { p.onPlayId(); setIdDone(hourKey) }}>Play ID</button>
-              <button type="button" className="gbtn h-11 px-4 text-lg" onClick={() => setIdDone(hourKey)}>Done</button>
+              <span className="ok">Play the station ID</span>
+              <button type="button" className="gbtn h-10 px-4 text-lg" onClick={() => { p.onPlayId(); setIdDone(hourKey) }}>Play ID</button>
+              <button type="button" className="gbtn h-10 px-4 text-lg" onClick={() => setIdDone(hourKey)}>Done</button>
             </>
           ) : p.next && (
-            <span className="lbl">Next on air: {p.next.title}{p.next.hosts.length ? ` with ${p.next.hosts.join(', ')}` : ''} at {clock(p.next.startAt)}</span>
+            <span className="lbl truncate">Next: {p.next.title} at {clock(p.next.startAt)}</span>
           )}
         </div>
       )}
@@ -62,9 +64,9 @@ export default function ClockScreen(p: {
 
 function Readout({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
-    <div className="pt-3 pr-6">
-      <p className={`lbl text-xl ${warn ? 'warn' : ''}`}>{label}</p>
-      <p className={`num text-6xl ${warn ? 'warn' : ''}`}>{value}</p>
+    <div>
+      <p className={`lbl text-lg ${warn ? 'warn' : ''}`}>{label}</p>
+      <p className={`num text-4xl ${warn ? 'warn' : ''}`}>{value}</p>
     </div>
   )
 }

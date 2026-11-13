@@ -22,7 +22,7 @@ const dayWord = (ms: number, now: number) => {
 const firstNames = (hosts: string[]) => hosts.map(h => h.split(/\s+/)[0]).filter(Boolean)
 const join = (n: string[]) => (n.length <= 1 ? n.join('') : `${n.slice(0, -1).join(', ')} and ${n[n.length - 1]}`)
 
-export default function IdleScreen({ onExitPanel }: { onExitPanel: () => void }) {
+export default function IdleScreen({ onExitPanel, night, onToggleTheme }: { onExitPanel: () => void; night: boolean; onToggleTheme: () => void }) {
   const [now, setNow] = useState(() => Date.now())
   const [data, setData] = useState<Idle | null>(null)
   const [view, setView] = useState<'home' | 'signin' | 'guest' | 'video'>('home')
@@ -58,7 +58,7 @@ export default function IdleScreen({ onExitPanel }: { onExitPanel: () => void })
   }, [])
   useEffect(() => {
     if (!door) return
-    if (door.left <= 0) { const t = door.token; setDoor(null); signInWithCustomToken(auth, t).catch(() => {}); return }
+    if (door.left <= 0) { const t = door.token; queueMicrotask(() => setDoor(null)); signInWithCustomToken(auth, t).catch(() => {}); return }
     const t = setTimeout(() => setDoor(d => (d ? { ...d, left: d.left - 1 } : d)), 1000)
     return () => clearTimeout(t)
   }, [door])
@@ -93,16 +93,20 @@ export default function IdleScreen({ onExitPanel }: { onExitPanel: () => void })
         </div>
       </div>
     )}
-    <div className="min-h-dvh flex flex-col justify-between py-10" style={{ transform: `translate(${drift.x}px, ${drift.y}px)`, transition: 'transform 2s' }}>
-      <div className="hw-desk-text text-center">
-        <p className="text-4xl">{d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-        <p className="hw-title tabular-nums leading-none" style={{ fontSize: 'clamp(9rem, 26vw, 30rem)' }}>{h}:{m}<span className="text-[0.22em] ml-4 opacity-60">{ap}</span></p>
-        <p className="hw-title text-6xl mt-2">{hello}</p>
-        {soon && <p className="text-3xl mt-3 opacity-80">{onNow ? 'On air now' : `Starts at ${time(soon.startAt)}`}: {soon.title}</p>}
-      </div>
+    <div className="fixed inset-0 z-[2] flex flex-col gap-4 px-8 pt-5 pb-6 overflow-hidden" style={{ transform: `translate(${drift.x}px, ${drift.y}px)`, transition: 'transform 2s' }}>
+      {/* Top: time left, date right (small). Middle: the greeting. Bottom half: coming up, and the QR code to sign in. */}
+      <header className="hw-desk-text flex items-center justify-between shrink-0">
+        <p className="hw-title text-5xl leading-none tabular-nums">{h}:{m}<span className="text-[0.4em] ml-2 opacity-60">{ap}</span></p>
+        <p className="hw-title text-4xl leading-none">{d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+      </header>
 
-      <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr] px-8">
-        <div className="hw-screen p-8">
+      <section className="hw-desk-text flex-1 min-h-0 flex flex-col items-center justify-center text-center gap-2">
+        <h1 className="hw-title leading-none max-w-full truncate" style={{ fontSize: 'clamp(3.5rem, 14vh, 10rem)' }}>{hello}</h1>
+        <p className="text-3xl opacity-80">{soon ? `${onNow ? 'On air now' : `Starts at ${time(soon.startAt)}`}: ${soon.title}` : '\u00A0'}</p>
+      </section>
+
+      <div className="grid grid-cols-[1.5fr_1fr] gap-5 h-[47%] shrink-0 min-h-0">
+        <div className="bp p-7 min-h-0 overflow-hidden">
           <p className="lbl text-2xl mb-3">{onNow ? 'On air now, then next' : 'Coming up'}</p>
           {(onNow ? [onNow, ...next].slice(0, 4) : next).length ? (
             <ul className="space-y-3">
@@ -115,10 +119,23 @@ export default function IdleScreen({ onExitPanel }: { onExitPanel: () => void })
             </ul>
           ) : <p className="text-3xl lbl">{data ? 'Nothing scheduled right now. Music from Auto DJ.' : 'Loading the schedule…'}</p>}
         </div>
-        <div className="hw-screen p-8 flex flex-col gap-4 justify-center">
-          <button type="button" className="gbtn gbtn-go h-24 text-4xl" onClick={() => setView('signin')}>Sign in to go on air</button>
-          <button type="button" className="gbtn h-20 text-3xl" onClick={() => setView('guest')}>New here? Watch the training</button>
-          <button type="button" className="gbtn h-12 text-xl opacity-70" onClick={onExitPanel}>Exit Babson Sound panel</button>
+
+        {/* The way in: scan the code. Your phone is already signed in to Babson Radio, so there is nothing to type. */}
+        <div className="bp p-6 min-h-0 flex items-center gap-6">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/booth/door-qr.svg" alt="QR code to sign in at the studio" className="h-full max-h-full aspect-square rounded-xl bg-white shrink-0" />
+          <div className="min-w-0 flex flex-col gap-3">
+            <p className="hw-title text-4xl leading-tight">Scan to sign in</p>
+            <p className="text-xl lbl">Point your phone camera here. The studio signs you in by itself.</p>
+            <div className="flex flex-wrap gap-2 mt-1">
+              <button type="button" className="gbtn h-10 px-4 text-base" onClick={() => setView('signin')}>Use a password</button>
+              <button type="button" className="gbtn h-10 px-4 text-base" onClick={() => setView('guest')}>New here? Training</button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="gbtn h-10 px-4 text-base" onClick={onToggleTheme} aria-pressed={night} title="Switch between the day and night look. It goes back to automatic at 7 am or 7 pm.">{night ? '☾ Night' : '☀ Day'}</button>
+              <button type="button" className="gbtn h-10 px-4 text-base opacity-70" onClick={onExitPanel}>Exit panel</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

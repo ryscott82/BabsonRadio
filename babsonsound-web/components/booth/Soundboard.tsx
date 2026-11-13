@@ -58,7 +58,7 @@ export default function Soundboard({ getToken, output }: { getToken: () => Promi
   const slots = Array.from({ length: PADS }, (_, i) => pads?.[i] ?? null)
   return (
     <div className="h-full flex flex-col gap-3 min-h-0">
-      <p className="hw-title text-4xl leading-tight">Sound board</p>
+      <p className="hw-title text-3xl leading-tight">Sound board</p>
       <div className="grid grid-cols-3 grid-rows-3 gap-3 flex-1 min-h-0">
         {slots.map((t, i) => (
           <button key={t?.id ?? `empty-${i}`} type="button" className="gpad" disabled={!t} aria-pressed={!!t && on === t.id} onClick={() => t && hit(t)}>

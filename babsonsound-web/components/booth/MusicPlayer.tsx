@@ -165,25 +165,25 @@ export default function MusicPlayer({ getToken, live, output, idCue, adCue, onAi
   return (
     <div className="h-full flex flex-col gap-3 min-h-0">
       <div className="flex items-center gap-3">
-        <p className="hw-title text-4xl leading-tight mr-2">Tracks</p>
-        <button type="button" className="gbtn h-12 px-5 text-xl" aria-pressed={!all && !searching} onClick={() => { setAll(false); setQ('') }}>Beds</button>
-        <button type="button" className="gbtn h-12 px-5 text-xl" aria-pressed={all && !searching} onClick={() => { setAll(true); setQ('') }}>All</button>
+        <p className="hw-title text-3xl leading-tight mr-1">Tracks</p>
+        <button type="button" className="gbtn h-11 px-4 text-lg" aria-pressed={!all && !searching} onClick={() => { setAll(false); setQ('') }}>Beds</button>
+        <button type="button" className="gbtn h-11 px-4 text-lg" aria-pressed={all && !searching} onClick={() => { setAll(true); setQ('') }}>All</button>
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search songs or artists" autoComplete="off" aria-label="Search the library"
-               className="gfield h-12 px-4 text-xl flex-1 min-w-0" />
+               className="gfield h-11 px-4 text-lg flex-1 min-w-0" />
       </div>
 
       <ul className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-[rgba(244,239,226,.1)] divide-y divide-[rgba(244,239,226,.08)]">
-        {loading && !tracks?.length && <li className="lbl text-xl px-4 py-3">Loading…</li>}
+        {loading && !tracks?.length && <li className="lbl text-lg px-4 py-3">Loading…</li>}
         {tracks?.length === 0 && !loading && !error && (
-          <li className="lbl text-xl px-4 py-3">{searching ? 'Nothing found.' : all ? 'The library is empty.' : 'No beds yet. Add tracks to a “Beds” playlist.'}</li>
+          <li className="lbl text-lg px-4 py-3">{searching ? 'Nothing found.' : all ? 'The library is empty.' : 'No beds yet. Add tracks to a “Beds” playlist.'}</li>
         )}
         {tracks?.map(t => {
           const on = cur?.id === t.id
           return (
             <li key={t.id}>
-              <button type="button" onClick={() => start(t)} className={`w-full text-left flex items-center gap-4 px-4 py-2.5 hover:bg-white/5 ${on ? 'bg-[rgba(31,191,127,.14)]' : ''}`}>
-                <span className={`w-6 shrink-0 text-xl ${on ? 'ok' : 'lbl'}`}>{on && playing ? '▶' : ''}</span>
-                <span className="min-w-0 flex-1 truncate text-xl">{t.title}{t.artist && <span className="lbl"> · {t.artist}</span>}</span>
+              <button type="button" onClick={() => start(t)} className={`w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-white/5 ${on ? 'bg-[rgba(31,191,127,.14)]' : ''}`}>
+                <span className={`w-5 shrink-0 text-lg ${on ? 'ok' : 'lbl'}`}>{on && playing ? '▶' : ''}</span>
+                <span className="min-w-0 flex-1 truncate text-lg">{t.title}{t.artist && <span className="lbl"> · {t.artist}</span>}</span>
                 <span className="lbl text-lg tabular-nums shrink-0">{on && playing ? `-${mmss(Math.max(0, dur - pos))}` : mmss(t.length)}</span>
               </button>
             </li>
@@ -193,16 +193,16 @@ export default function MusicPlayer({ getToken, live, output, idCue, adCue, onAi
       {error && <p className="warn text-lg">{error}</p>}
 
       <div className="flex items-center gap-3">
-        <button type="button" className="gbtn h-14 w-36 text-2xl" onClick={playPause} disabled={!cur}>{playing ? 'Pause' : 'Play'}</button>
-        <button type="button" className="gbtn h-14 px-6 text-2xl" onClick={fadeOut} disabled={!playing}>Fade out</button>
-        <button type="button" className="gbtn h-14 px-6 text-2xl" onClick={() => setDucked(d => !d)} aria-pressed={ducked}>Talk over</button>
-        <span className="lbl text-xl truncate min-w-0">{cur ? cur.title : 'Tap a track to play it'}</span>
+        <button type="button" className="gbtn h-12 w-28 text-xl" onClick={playPause} disabled={!cur}>{playing ? 'Pause' : 'Play'}</button>
+        <button type="button" className="gbtn h-12 px-5 text-xl" onClick={fadeOut} disabled={!playing}>Fade out</button>
+        <button type="button" className="gbtn h-12 px-5 text-xl" onClick={() => setDucked(d => !d)} aria-pressed={ducked}>Talk over</button>
+        <span className="lbl text-lg truncate min-w-0">{cur ? cur.title : 'Tap a track to play it'}</span>
       </div>
-      <label className="flex items-center gap-5">
-        <span className="text-2xl shrink-0 w-44">Music volume</span>
+      <label className="flex items-center gap-4">
+        <span className="text-xl shrink-0">Music volume</span>
         <input type="range" min={0} max={1} step={0.01} value={volume} onChange={e => setVolume(Number(e.target.value))}
                className="gfader flex-1" style={{ ['--v' as string]: `${pct}%` }} aria-label="Music volume (tracks only, not the mics)" />
-        <span className="num text-4xl w-20 text-right">{pct}%</span>
+        <span className="num text-3xl w-16 text-right">{pct}%</span>
       </label>
     </div>
   )

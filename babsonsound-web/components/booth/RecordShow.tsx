@@ -71,7 +71,7 @@ export default function RecordShow(p: {
     main = (
       <div className="flex-1 flex flex-col gap-3">
         <div className="text-center">
-          <p className="hw-title text-6xl tabular-nums">{mmss(rec.elapsedSec)}</p>
+          <p className="hw-title text-5xl tabular-nums">{mmss(rec.elapsedSec)}</p>
           <p className="text-xl lbl">{rec.state === 'paused' ? 'Paused' : 'Recording'}{mine ? '' : ` · started by ${rec.name}`} · not on air</p>
         </div>
         <div className="flex gap-3 flex-1">
@@ -95,8 +95,8 @@ export default function RecordShow(p: {
           <button type="button" className={chip} aria-pressed={phone} onClick={() => setPhone(x => !x)}>{phone ? '✓ ' : ''}Phone silent</button>
         </div>
         <button type="button" onClick={() => act('start', '/record/start')} disabled={!!busy || !ok || !p.st?.canRecord || p.live || !p.ready}
-                className="gbtn gbtn-go flex-1 min-h-32 flex flex-col items-center justify-center gap-2">
-          <span className="hw-title text-6xl">{busy === 'start' ? 'Starting…' : 'Record'}</span>
+                className="gbtn gbtn-go flex-1 min-h-24 flex flex-col items-center justify-center gap-2">
+          <span className="hw-title text-5xl">{busy === 'start' ? 'Starting…' : 'Record'}</span>
           <span className="text-2xl opacity-90">{why}</span>
         </button>
       </>

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
+import { nextThemeSwitch, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
 
 const S = 'test-secret-123'
 
@@ -168,4 +168,21 @@ test('booking lines: booked now by someone else, next within 90 minutes, nothing
   assert.deepEqual(bookingLines({ bookings: [{ ...next, startAt: now + 90 * 60_000 }] }, '', now, t), ['Next booking: T90, Jo'])
   assert.deepEqual(bookingLines({ bookings: [next] }, 'b2', now, t), [])
   assert.deepEqual(bookingLines(null, '', now, t), [])
+})
+
+test('day/night: the clock decides, and a forced choice lasts until the next automatic switch', () => {
+  const at = (h: number, m = 0, d = 30) => new Date(2026, 9, d, h, m).getTime()
+  assert.equal(nextThemeSwitch(at(10)), at(19))
+  assert.equal(nextThemeSwitch(at(20)), at(7, 0, 31))
+  assert.equal(nextThemeSwitch(at(3)), at(7))
+  assert.equal(nextThemeSwitch(at(19)), at(7, 0, 31)) // exactly at a switch: the next one
+  assert.equal(themeNow(at(10), null), false)
+  assert.equal(themeNow(at(20), null), true)
+  const forcedNight = { night: true, until: nextThemeSwitch(at(10)) } // forced dark at 10 am
+  assert.equal(themeNow(at(15), forcedNight), true)
+  assert.equal(themeNow(at(19, 1), forcedNight), true) // 7 pm is night anyway
+  const forcedDay = { night: false, until: nextThemeSwitch(at(21)) } // forced light at 9 pm: ends at 7 am
+  assert.equal(themeNow(at(23), forcedDay), false)
+  assert.equal(themeNow(at(7, 1, 31), forcedDay), false)
+  assert.equal(themeNow(at(20, 0, 31), forcedDay), true) // next evening it is automatic again
 })

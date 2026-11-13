@@ -607,7 +607,7 @@ html.hw-lite .hw-eq.hw-led > i { filter: none; }
 .gpad[aria-pressed="true"] { background: linear-gradient(#2bd08f, #12925f); color: #06150e; border-color: rgba(255,255,255,.35); }
 .gpad:disabled { opacity: .35; }
 .gpad .n { font-size: 15px; opacity: .65; }
-.gpad .t { font-size: 21px; font-weight: 700; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gpad .t { font-size: 18px; font-weight: 700; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .gpad .run { position: absolute; left: 0; bottom: 0; height: 6px; background: rgba(6,21,14,.55); }
 
 /* Big fader (music volume). */
@@ -620,7 +620,30 @@ html.hw-lite .hw-eq.hw-led > i { filter: none; }
 .gfader::-moz-range-thumb { width: 30px; height: 52px; border-radius: 6px; background: #e8e5de; border: 1px solid rgba(0,0,0,.5); }
 
 /* Studio PC at night (/booth, 7 pm to 7 am): everything pure black, so the room stays dark and the screen does not glare. */
+/* Booth panels. Day: black leather with a stitched edge, set into the oak desk. Night: pure black, self-lit green outlines like a lit hardware panel. */
+.bp { position: relative; overflow: hidden; border-radius: 20px; color: #F4EFE2;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .16 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(120% 90% at 50% 0%, #2a2724, #141211 70%);
+  box-shadow: 0 0 0 1px #000, 0 12px 20px rgba(24,16,8,.5), inset 0 1px 0 rgba(255,255,255,.10), inset 0 -4px 10px rgba(0,0,0,.6); }
+.bp::before { content: ''; position: absolute; inset: 8px; border: 2px dashed rgba(222,196,150,.5); border-radius: 14px; pointer-events: none; z-index: 2; }
+.bp > * { position: relative; z-index: 1; }
+.bp .lbl { font-family: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif; color: rgba(244,239,226,.66); }
+.bp .num { font-family: 'Barlow Semi Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; line-height: .95; letter-spacing: .01em; }
+.bp .warn { color: #FF6A55; }
+.bp .ok { color: var(--hw-eq); }
+.bp .rule { border-color: rgba(244,239,226,.14); }
+
 .booth-night .hw-screen { background: #000; box-shadow: 0 0 0 1px #2a2a28; }
 .booth-night .hw-screen::after { display: none; }
 .booth-night .hw-desk-text { color: #D8D2C2; text-shadow: none; }
-.booth-night .gbtn { filter: brightness(.78); }
+.booth-night .bp { background: #000; box-shadow: 0 0 0 1px rgba(31,191,127,.6), 0 0 22px rgba(31,191,127,.22), inset 0 0 26px rgba(31,191,127,.07); }
+.booth-night .bp::before { border: 1px solid rgba(31,191,127,.28); }
+.booth-night .gbtn { filter: none; color: #C8F7E0; background: #040605; border-color: rgba(31,191,127,.5);
+  box-shadow: 0 0 10px rgba(31,191,127,.2), inset 0 0 10px rgba(31,191,127,.08); }
+.booth-night .gbtn[aria-pressed="true"] { background: rgba(31,191,127,.22); border-color: var(--hw-eq); color: #E9FFF4; box-shadow: 0 0 16px rgba(31,191,127,.45), inset 0 0 12px rgba(31,191,127,.25); }
+.booth-night .gbtn-go { color: #fff; background: linear-gradient(#17a571, #0b7a52); box-shadow: 0 0 22px rgba(31,191,127,.5); }
+.booth-night .gbtn-stop { color: #fff; background: linear-gradient(#d0392f, #9e211a); border-color: rgba(255,120,100,.7); box-shadow: 0 0 22px rgba(255,106,85,.45); }
+.booth-night .gpad { background: #040605; border-color: rgba(31,191,127,.4); box-shadow: 0 0 10px rgba(31,191,127,.16), inset 0 0 10px rgba(31,191,127,.06); }
+.booth-night .gpad[aria-pressed="true"] { background: linear-gradient(#2bd08f, #12925f); }
+.booth-night .gfield { background: #000; border-color: rgba(31,191,127,.35); }

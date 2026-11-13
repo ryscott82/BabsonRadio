@@ -203,3 +203,22 @@ export function bookingLines(st: Pick<StudioStatus, 'bookings'> | null, myBookin
   if (next && next.startAt - now <= BOOKING_SOON_MS && next.id !== myBookingId) out.push(`Next booking: ${time(next.startAt)}, ${next.name}`)
   return out
 }
+
+// ── Day / night on the booth panel ──────────────────────────
+/** Night is 7 pm to 7 am. A host can force day or night from the panel; the choice lasts until the next automatic switch. */
+export const NIGHT_FROM_HOUR = 19
+export const NIGHT_TO_HOUR = 7
+export const isNightAt = (ms: number) => { const h = new Date(ms).getHours(); return h >= NIGHT_FROM_HOUR || h < NIGHT_TO_HOUR }
+/** The next 7 am or 7 pm (local time) after `ms`. */
+export function nextThemeSwitch(ms: number): number {
+  const d = new Date(ms)
+  for (const h of [NIGHT_TO_HOUR, NIGHT_FROM_HOUR]) {
+    const t = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, 0, 0, 0).getTime()
+    if (t > ms) return t
+  }
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, NIGHT_TO_HOUR, 0, 0, 0).getTime()
+}
+/** Night or day right now: a forced choice wins until it runs out, otherwise the clock decides. */
+export function themeNow(ms: number, force: { night: boolean; until: number } | null): boolean {
+  return force && ms < force.until ? force.night : isNightAt(ms)
+}

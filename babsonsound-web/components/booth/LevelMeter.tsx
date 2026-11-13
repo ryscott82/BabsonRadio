@@ -28,16 +28,16 @@ export default function LevelMeter({ frame, stats, error, deadAir, auto }: {
   const bad = deadAir > 0 || state === 'clip' || state === 'loud' || state === 'silent'
   const tip = error || (deadAir > 0 ? `${deadAir} seconds of silence on air.` : auto.on && (state === 'quiet' || state === 'loud') ? 'Auto level is adjusting.' : TIP[state])
   return (
-    <div className="hw-screen h-full flex flex-col px-9 py-7">
-      <p className="hw-title text-5xl leading-tight pb-1">Level</p>
-      <p className={`num mt-1 ${bad ? 'warn' : state === 'good' ? 'ok' : ''}`} style={{ fontSize: 'clamp(4.5rem, 7vw, 9rem)' }}>{deadAir > 0 ? 'Dead air' : WORD[state]}</p>
+    <div className="bp h-full flex flex-col px-6 py-5 min-h-0">
+      <p className="hw-title text-3xl leading-tight">Level</p>
+      <p className={`num mt-1 ${bad ? 'warn' : state === 'good' ? 'ok' : ''}`} style={{ fontSize: 'clamp(2.5rem, 3.6vw, 4.5rem)' }}>{deadAir > 0 ? 'Dead air' : WORD[state]}</p>
       <Bar frame={frame} gain={gain} />
-      <p className={`text-2xl mt-3 ${bad ? 'warn' : 'lbl'}`}>{tip}</p>
-      <div className="mt-auto pt-4 border-t rule flex items-center gap-4">
-        <button type="button" className="gbtn h-14 px-6 text-2xl" aria-pressed={auto.on} disabled={!auto.available} onClick={auto.toggle}>
+      <p className={`text-xl mt-2 ${bad ? 'warn' : 'lbl'}`}>{tip}</p>
+      <div className="mt-auto pt-3 border-t rule flex flex-col items-start gap-2">
+        <button type="button" className="gbtn h-12 px-5 text-xl" aria-pressed={auto.on} disabled={!auto.available} onClick={auto.toggle}>
           Auto level {auto.on ? 'on' : 'off'}
         </button>
-        <span className="lbl text-xl">
+        <span className="lbl text-lg">
           {!auto.available ? (auto.error || 'Not set up on this PC.') : auto.on ? `BUTT gain ${auto.db > 0 ? '+' : ''}${auto.db.toFixed(1)} dB` : 'Set the level with the mixer.'}
         </span>
       </div>
@@ -65,13 +65,13 @@ function Bar({ frame, gain }: { frame: RefObject<MeterFrame>; gain: number }) {
   }, [frame])
   return (
     <div className="mt-2">
-      <div className="relative h-20 rounded-xl overflow-hidden" style={{ background: 'rgba(244,239,226,.08)', boxShadow: 'inset 0 2px 6px rgba(0,0,0,.6)' }}>
+      <div className="relative h-14 rounded-xl overflow-hidden" style={{ background: 'rgba(244,239,226,.08)', boxShadow: 'inset 0 2px 6px rgba(0,0,0,.6)' }}>
         <div className="absolute inset-y-0" style={{ left: pos(GOOD_LUFS[0]), width: `calc(${pos(GOOD_LUFS[1])} - ${pos(GOOD_LUFS[0])})`, background: 'rgba(31,191,127,.16)' }} />
-        <div ref={fill} className="absolute left-0 top-4 bottom-4 rounded-r" />
+        <div ref={fill} className="absolute left-0 top-3 bottom-3 rounded-r" />
         <div ref={tick} className="absolute inset-y-2 w-1.5 -ml-0.5 rounded" style={{ background: 'rgba(244,239,226,.9)' }} />
         <div className="absolute inset-y-0 w-0.5" style={{ left: pos(TARGET_LUFS), background: 'rgba(244,239,226,.75)' }} />
       </div>
-      <div className="lbl flex justify-between text-xl mt-1.5"><span>Quiet</span><span>Target</span><span>Loud</span></div>
+      <div className="lbl flex justify-between text-lg mt-1"><span>Quiet</span><span>Target</span><span>Loud</span></div>
     </div>
   )
 }

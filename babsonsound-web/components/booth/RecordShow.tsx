@@ -41,13 +41,13 @@ export default function RecordShow(p: {
 }) {
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
-  const [phone, setPhone] = useState(false)
   const [soundOk, setSoundOk] = useState(false)
   const [saving, setSaving] = useState<Take | null>(null)
   const goodSince = useRef(0)
   useEffect(() => {
     if (soundOk) return
     const t = setInterval(() => {
+      if (p.level === 'off') { setSoundOk(true); return }
       if (p.level !== 'good') { goodSince.current = 0; return }
       goodSince.current ||= Date.now()
       if (Date.now() - goodSince.current >= 3000) setSoundOk(true)
@@ -64,7 +64,6 @@ export default function RecordShow(p: {
   const rec = p.st?.recorder
   const mine = !!rec && rec.uid === p.myUid
   const going = rec && rec.state !== 'idle'
-  const chip = 'gbtn h-12 px-2 text-lg flex-1 whitespace-nowrap'
 
   let main: React.ReactNode
   if (going) {
@@ -86,14 +85,11 @@ export default function RecordShow(p: {
       </div>
     )
   } else {
-    const ok = soundOk && phone
-    const why = !p.st ? 'Waiting for the studio helper' : !p.st.canRecord ? 'Finish studio training to record' : p.live ? 'End the live show first' : !p.ready ? 'BUTT isn’t answering' : ok ? 'Records in BUTT only, nothing goes on air' : 'Tick both first'
+    const ok = soundOk
+    const why = !p.st ? 'Waiting for the studio helper' : !p.st.canRecord ? 'Finish studio training to record' : p.live ? 'End the live show first' : !p.ready ? 'BUTT isn’t answering' : ok ? 'Records in BUTT only, nothing goes on air' : 'Waiting for the mic check'
     main = (
       <>
-        <div className="flex gap-2">
-          <button type="button" className={chip} aria-pressed={soundOk} onClick={() => setSoundOk(x => !x)}>{soundOk ? '✓ ' : ''}Mic check</button>
-          <button type="button" className={chip} aria-pressed={phone} onClick={() => setPhone(x => !x)}>{phone ? '✓ ' : ''}Phone silent</button>
-        </div>
+        <p className="lbl text-lg" aria-live="polite">{soundOk ? '✓ Mic check passed' : 'Mic check: speak into the mic, it passes by itself'}</p>
         <button type="button" onClick={() => act('start', '/record/start')} disabled={!!busy || !ok || !p.st?.canRecord || p.live || !p.ready}
                 className="gbtn gbtn-go flex-1 min-h-24 flex flex-col items-center justify-center gap-2">
           <span className="hw-title text-5xl">{busy === 'start' ? 'Starting…' : 'Record'}</span>

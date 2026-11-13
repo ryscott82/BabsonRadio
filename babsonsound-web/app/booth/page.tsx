@@ -368,8 +368,8 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
       )}
 
       {/* Left: up next, the loudness meter, what is on, Go live. Right: tracks (or the sign-in info) with the sound board under them. */}
-      <div className="grid grid-cols-[1fr_1.15fr] gap-5 flex-1 min-h-0">
-        <div className="flex flex-col gap-3 min-h-0">
+      <div className="grid grid-cols-[1fr_1.15fr] grid-rows-[minmax(0,1fr)] items-stretch gap-5 flex-1 min-h-0">
+        <div className="flex flex-col gap-3 min-h-0 h-full">
           <p className="hw-desk-text text-2xl truncate shrink-0">Up next: <span className="opacity-90">{next ? `${next.title}${next.hosts.length ? ` with ${next.hosts.join(', ')}` : ''} at ${clock(next.startAt)}` : 'nothing booked'}</span></p>
           <div className="flex-1 min-h-0"><LevelMeter frame={meter.frame} stats={meter.stats} error={meter.error} deadAir={deadAir} auto={auto} /></div>
           <div className="bp px-6 py-3 grid grid-cols-[8.5rem_1fr] items-center gap-x-4 gap-y-2 shrink-0">
@@ -401,12 +401,15 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
           </div>
         </div>
 
-        <div className="bp p-6 flex flex-col gap-3 min-h-0">
-          <div className="flex-1 min-h-0">
-            <MusicPlayer getToken={token} live={live} output={devices.music} idCue={idCue} adCue={adCue} onAired={onAired} onTrack={setNowTrack}
-                         listSlot={bypass ? <SignInInfo onSignIn={create => openSignIn(create)} /> : undefined} />
-          </div>
-          <div className="h-32 shrink-0"><Soundboard getToken={token} output={devices.music} /></div>
+        <div className="bp p-6 flex flex-col gap-3 min-h-0 h-full overflow-hidden">
+          {bypass ? <SignInInfo onSignIn={() => openSignIn(false)} /> : (
+            <>
+              <div className="flex-1 min-h-0">
+                <MusicPlayer getToken={token} live={live} output={devices.music} idCue={idCue} adCue={adCue} onAired={onAired} onTrack={setNowTrack} />
+              </div>
+              <div className="h-32 shrink-0"><Soundboard getToken={token} output={devices.music} /></div>
+            </>
+          )}
         </div>
       </div>
 
@@ -440,7 +443,6 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
               <div className="space-y-4 min-w-0 flex-1">
                 <p className="text-2xl">Scan the code with your phone. You go live as soon as you are signed in.</p>
                 <button type="button" className="gbtn gbtn-go h-20 w-full text-2xl" onClick={() => openSignIn()}>Sign in with Babson Sound account</button>
-                <button type="button" className="gbtn h-12 px-5 text-xl" onClick={() => openSignIn(true)}>Create an account</button>
               </div>
             </div>
             <form onSubmit={e => { e.preventDefault(); if (pin.trim()) void unlock() }} className="space-y-2">
@@ -497,13 +499,13 @@ function GoLive(p: {
   canGoLive: boolean; signInToLive: boolean; onSignIn: () => void; reason: string; ready: boolean; busy: string; level: LevelState
   ads: AdPlan | null; onGoLive: () => void; onEnd: () => void; onPlayAds: () => void
 }) {
-  const [phone, setPhone] = useState(false)
   const [clean, setClean] = useState(false)
   const [soundOk, setSoundOk] = useState(false)
   const goodSince = useRef(0)
   useEffect(() => {
     if (soundOk) return
     const t = setInterval(() => {
+      if (p.level === 'off') { setSoundOk(true); return }
       if (p.level !== 'good') { goodSince.current = 0; return }
       goodSince.current ||= Date.now()
       if (Date.now() - goodSince.current >= 3000) setSoundOk(true)
@@ -537,38 +539,37 @@ function GoLive(p: {
     )
   }
   const chip = 'gbtn h-11 px-1 text-base flex-1 whitespace-nowrap'
-  const ok = soundOk && phone && clean
+  const ok = soundOk && clean
   return (
     <div className="h-full flex flex-col justify-center gap-3">
-      {p.canGoLive && <p className="hw-title text-2xl leading-tight">To go on air: 1. Tick all three. 2. Press Go live.</p>}
+      {p.canGoLive && <p className="hw-title text-2xl leading-tight">To go on air: 1. Tick the box. 2. Press Go live.</p>}
       {p.canGoLive ? (
-        <div className="flex gap-2">
-          <button type="button" className={chip} aria-pressed={soundOk} onClick={() => setSoundOk(x => !x)}>{soundOk ? '✓ ' : ''}Mic check</button>
-          <button type="button" className={chip} aria-pressed={phone} onClick={() => setPhone(x => !x)}>{phone ? '✓ ' : ''}Phone silent</button>
-          <button type="button" className={chip} aria-pressed={clean} onClick={() => setClean(x => !x)}>{clean ? '✓ ' : ''}Clean music</button>
+        <div className="flex flex-col gap-2">
+          <p className="lbl text-base" aria-live="polite">{soundOk ? '✓ Mic check passed' : 'Mic check: speak into the mic, it passes by itself'}</p>
+          <div className="flex gap-2">
+            <button type="button" className={chip} aria-pressed={clean} onClick={() => setClean(x => !x)}>{clean ? '✓ ' : ''}Clean music only</button>
+          </div>
+          <p className="lbl text-sm">Play only music without explicit lyrics.</p>
         </div>
       ) : <p className="lbl text-lg min-h-11 flex items-center">{p.reason}</p>}
       <button type="button" onClick={p.onGoLive} disabled={!!p.busy || !p.canGoLive || !p.ready || !ok}
               className="gbtn gbtn-go h-20 flex flex-col items-center justify-center">
         <span className="hw-title text-3xl">{p.busy === 'live' ? 'Going live…' : 'Go live'}</span>
-        <span className="text-base opacity-90">{!p.canGoLive ? 'Not available yet' : ok ? 'Starts the stream and the recording' : 'Tick all three first'}</span>
+        <span className="text-base opacity-90">{!p.canGoLive ? 'Not available yet' : ok ? 'Starts the stream and the recording' : soundOk ? 'Tick the clean music box first' : 'Waiting for the mic check'}</span>
       </button>
     </div>
   )
 }
 
-/** Shown instead of the track list while nobody is signed in. */
-function SignInInfo({ onSignIn }: { onSignIn: (create: boolean) => void }) {
+/** Fills the right side while nobody is signed in: no controls until then. */
+function SignInInfo({ onSignIn }: { onSignIn: () => void }) {
   return (
-    <div className="h-full flex items-center gap-6 min-h-0">
+    <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-5 text-center">
+      <p className="hw-title text-4xl leading-tight">Thanks for using the studio! Get more features by signing in!</p>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/booth/door-qr.svg" alt="QR code to sign in at the studio" className="h-full max-h-[260px] aspect-square rounded-xl bg-white shrink-0" />
-      <div className="min-w-0 flex-1 flex flex-col gap-3">
-        <p className="hw-title text-3xl leading-tight">Thanks for using the studio! Get more features by signing in!</p>
-        <p className="text-lg lbl">Scan the code with your phone, or sign in here.</p>
-        <button type="button" className="gbtn gbtn-go h-14 text-2xl w-full" onClick={() => onSignIn(false)}>Sign in with Babson Sound account</button>
-        <button type="button" className="gbtn h-11 px-5 text-lg self-start" onClick={() => onSignIn(true)}>Create an account</button>
-      </div>
+      <img src="/booth/door-qr.svg" alt="QR code to sign in at the studio" className="min-h-0 flex-1 max-h-[380px] aspect-square rounded-xl bg-white" />
+      <p className="text-xl lbl">Scan the code with your phone, or sign in here.</p>
+      <button type="button" className="gbtn gbtn-go h-20 text-3xl w-full max-w-xl" onClick={onSignIn}>Sign in with Babson Sound account</button>
     </div>
   )
 }

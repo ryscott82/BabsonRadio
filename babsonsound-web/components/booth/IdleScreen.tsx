@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { signIn } from '@/lib/auth'
-import { openSignIn } from '@/lib/signInPrompt'
 import DoorClaim from './DoorClaim'
 import { boothFetch, errText, helper } from './helper'
 
@@ -95,7 +94,6 @@ export default function IdleScreen({ onExitPanel, night, onToggleTheme, onBypass
             <p className="text-xl lbl">Point your phone camera at the code. Or sign in on this computer:</p>
             <button type="button" className="gbtn gbtn-go h-20 text-3xl w-full" onClick={() => setView('signin')}>Sign in with Babson Sound account</button>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className="gbtn h-12 px-5 text-xl" onClick={() => openSignIn(true)}>Create an account</button>
               <button type="button" className="gbtn h-12 px-5 text-xl" onClick={() => setView('guest')}>New here? Training</button>
             </div>
             <div className="flex flex-wrap items-center gap-2 mt-auto">

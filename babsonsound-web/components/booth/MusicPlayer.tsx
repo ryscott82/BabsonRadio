@@ -4,10 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { errText, library, loadPref, mmss, savePref, trackUrl, type Track } from './helper'
 
 // Tracks from the station's library (through the studio helper): beds for talk shows, or search the whole library.
-// Tap a track to play it (it fades in). Talk over dips the music under voices. The fader sets the music's volume only.
+// Tap a track to play it (it fades in). The fader sets the music's volume only.
 // Also plays a station ID (from the clock) and the ad break (the Ads playlist, one after another).
 
-const DUCK = 0.22
 const FADE_IN_MS = 1500, FADE_OUT_MS = 3000, GLIDE_MS = 400
 
 type SinkAudio = HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }
@@ -36,7 +35,6 @@ export default function MusicPlayer({ getToken, live, output, idCue, adCue, onAi
   const [pos, setPos] = useState(0)
   const [dur, setDur] = useState(0)
   const [volume, setVolume] = useState(() => Number(loadPref('musicVolume', '0.6')) || 0.6)
-  const [ducked, setDucked] = useState(false)
   const fade = useRef(0), mult = useRef(1)
   const curRef = useRef<Track | null>(null)
   const queue = useRef<Track[]>([])
@@ -65,7 +63,7 @@ export default function MusicPlayer({ getToken, live, output, idCue, adCue, onAi
     return () => { stop = true; clearTimeout(t) }
   }, [all, q, searching, getToken])
 
-  const target = useCallback(() => volume * (ducked ? DUCK : 1), [volume, ducked])
+  const target = useCallback(() => volume, [volume])
   const apply = useCallback(() => { if (main.current) main.current.volume = Math.max(0, Math.min(1, target() * mult.current)) }, [target])
   useEffect(() => { savePref('musicVolume', String(volume)) }, [volume])
 
@@ -204,7 +202,6 @@ export default function MusicPlayer({ getToken, live, output, idCue, adCue, onAi
       <div className="flex items-center gap-3">
         <button type="button" className="gbtn h-12 w-28 text-xl" onClick={playPause} disabled={!cur}>{playing ? 'Pause' : 'Play'}</button>
         <button type="button" className="gbtn h-12 px-5 text-xl" onClick={fadeOut} disabled={!playing}>Fade out</button>
-        <button type="button" className="gbtn h-12 px-5 text-xl" onClick={() => setDucked(d => !d)} aria-pressed={ducked}>Talk over</button>
         <span className="lbl text-lg truncate min-w-0">{cur ? cur.title : 'Tap a track to play it'}</span>
       </div>
       <label className="flex items-center gap-4">

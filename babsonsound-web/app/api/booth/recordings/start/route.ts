@@ -2,7 +2,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, str } from '@/lib/server/http'
 import { recordingCaller } from '@/lib/server/boothRecordings'
-import { cleanRecordingId } from '@/lib/recordingsCore'
+import { cleanLiveShow, cleanRecordingId } from '@/lib/recordingsCore'
 import { assertClean } from '@/lib/server/wordFilter'
 
 export const runtime = 'nodejs'
@@ -14,12 +14,13 @@ export const runtime = 'nodejs'
 export async function POST(req: Request) {
   return handle(async () => {
     const b = await readJson(req)
-    const who = await recordingCaller(req, b)
+    const live = cleanLiveShow(b.live)
+    const who = await recordingCaller(req, b, Date.now(), !!live)
     const title = str(b.title, 80)
     if (!title) throw new HttpError(400, 'Give the recording a title.')
     const db = adminDb()
     await assertClean(db, title, '')
-    const bookingId = str(b.bookingId, 100), requestId = str(b.requestId, 100)
+    const bookingId = live ? '' : str(b.bookingId, 100), requestId = live ? '' : str(b.requestId, 100)
     if (bookingId) {
       const bk = await db.collection('studioBookings').doc(bookingId).get()
       if (!bk.exists || bk.get('uid') !== who.uid) throw new HttpError(404, 'Booking not found.', 'BR-BKG-006')
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
     }
     const doc = {
       uid: who.uid, title, ...(bookingId ? { bookingId } : {}), ...(requestId ? { forRequestId: requestId, cleanConfirmed: b.cleanConfirmed === true } : {}),
-      azuracastPath: '', durationSec: 0, status: 'recording', createdAt: Timestamp.now(), ...(who.viaPc ? { fromStudioPc: true } : {}),
+      ...(live ? { kind: 'live', live } : {}), azuracastPath: '', durationSec: 0, status: 'recording', createdAt: Timestamp.now(), ...(who.viaPc ? { fromStudioPc: true } : {}),
     }
     const pcId = cleanRecordingId(b.id)
     if (!pcId) return { id: (await db.collection('recordings').add(doc)).id }

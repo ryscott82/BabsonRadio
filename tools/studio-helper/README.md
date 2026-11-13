@@ -110,3 +110,16 @@ Exit kiosk Chrome with Alt+F4.
 
 ## Testing on a laptop
 Set `ALLOW_LOCALHOST=1` in `.env`, run `npm run dev` in `babsonsound-web`, and open `http://localhost:3000/booth`. Use the same `STUDIO_PC_SECRET` in `.env.local`.
+
+## Live shows are archived automatically
+
+BUTT already records every show (`RECORD_SHOWS`, on by default). When a host goes live the helper notes who is on air and where BUTT is writing;
+when the show ends (`/live/stop`, or the helper restarting after a crash) BUTT's file goes into the same upload queue as "Record a show": AzuraCast
+folder `UPLOAD_FOLDER`, then the website, which makes a **private** (Babson students only) audio episode in the library.
+
+- The booth's **Show info** button (it opens by itself after Go live if the show has no name) sets the show name, who is on it, the type and a
+  description. It is saved on this PC as you type and can be changed during the show; the archive gets whatever it says when the show ends.
+  Blank name = "Live show <date>"; blank contributors = the host who went live.
+- `ARCHIVE_LIVE_SHOWS=0` turns it off. `ARCHIVE_MIN_SECONDS` (default 60): shorter shows are not kept.
+- State is in `recordings/live.json`. Site side needs "Enable on-demand streaming" on the station in AzuraCast; the site creates a switched-off
+  playlist called "Show archive" (`ARCHIVE_PLAYLIST_NAME`) with on-demand on, and the library plays files from AzuraCast directly.

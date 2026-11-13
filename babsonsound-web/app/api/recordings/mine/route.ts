@@ -10,6 +10,6 @@ export async function GET(req: Request) {
   return handle(async () => {
     const t = await requireMember(req)
     const snap = await adminDb().collection('recordings').where('uid', '==', t.uid).get()
-    return { recordings: snap.docs.map(recRow).sort((a, b) => b.createdAt - a.createdAt).slice(0, 50) }
+    return { recordings: snap.docs.filter(d => d.get('kind') !== 'live').map(recRow).sort((a, b) => b.createdAt - a.createdAt).slice(0, 50) }
   }, { 'Cache-Control': 'private, no-store' })
 }

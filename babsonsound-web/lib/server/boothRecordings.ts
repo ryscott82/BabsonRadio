@@ -12,13 +12,13 @@ import { pcRecorderProblem } from '../recordingsCore'
  *    The PC keeps a finished recording and retries until this site answers, so the person may have signed out long ago.
  *  - the person, signed in, with the Studio badge (the old way; still works).
  */
-export async function recordingCaller(req: Request, b: Record<string, unknown>, now = Date.now()): Promise<{ uid: string; email: string; viaPc: boolean }> {
+export async function recordingCaller(req: Request, b: Record<string, unknown>, now = Date.now(), live = false): Promise<{ uid: string; email: string; viaPc: boolean }> {
   const nonce = req.headers.get('x-booth-nonce') ?? '', sig = req.headers.get('x-booth-sig') ?? ''
   if (nonce || sig) {
     const secret = boothSecret()
     if (!verifyAttest(secret, nonce.slice(0, 100), sig.slice(0, 100), now)) throw new HttpError(403, 'Open this page on the studio PC.', 'BR-BTH-001')
     const c = readToken(secret, str(b.token, 3000))
-    const bad = pcRecorderProblem(c, now, RECORDING_TOKEN_MAX_AGE_MS)
+    const bad = pcRecorderProblem(c, now, RECORDING_TOKEN_MAX_AGE_MS, live)
     if (bad) throw new HttpError(bad.status, bad.message, bad.code)
     const uid = c!.u
     const u = await adminDb().collection('users').doc(uid).get()

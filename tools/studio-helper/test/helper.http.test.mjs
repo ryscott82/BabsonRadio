@@ -52,7 +52,7 @@ async function start() {
       FAKE_BUTT_STATE: join(dir, 'butt.json'), FAKE_BUTT_DIR: dir, FAKE_BUTT_RATELIMIT: '1', RECORDINGS_DIR: join(dir, 'recordings'),
       FFMPEG_PATH: join(here, 'fake-ffmpeg.mjs'), FFPROBE_PATH: join(here, 'fake-ffmpeg.mjs'),
       AZURACAST_URL: `http://127.0.0.1:${azSrv.address().port}`, AZURACAST_API_KEY: 'k', AZURACAST_STATION_ID: 'babson_radio',
-      SITE_URL: `http://127.0.0.1:${siteSrv.address().port}`,
+      SITE_URL: `http://127.0.0.1:${siteSrv.address().port}`, ARCHIVE_MIN_SECONDS: '5',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
@@ -123,4 +123,24 @@ test('refuses other origins and bad tokens', { skip }, async () => {
   assert.equal(r.status, 403)
   assert.equal((await h.call('/record/start', { token: 'x.y' })).status, 401)
   assert.equal((await h.call('/record/state?token=nope')).status, 401)
+})
+
+test('a live show is archived on its own: show info (editable live) goes with the recording to the website', { skip }, async () => {
+  const h = await start()
+  const host = token({ u: 'u9', n: 'Pat Doe', l: true, r: true }), other = token({ u: 'u8', n: 'Kim Roe', l: false, r: true }), nobody = token({ u: 'u7', n: 'No', l: false, r: false })
+  assert.equal((await h.call('/show/set', { token: nobody, title: 'x' })).status, 403)
+  assert.equal((await h.call('/show/set', { token: other, title: 'Before', hosts: 'Pat, Kim' })).status, 200, 'set before going live')
+  assert.equal((await h.call('/live/start', { token: host })).status, 200)
+  let r = await h.call('/show/get', { token: host })
+  assert.equal(r.body.onAir, true); assert.equal(r.body.title, 'Before')
+  // changed during the show, by someone else
+  r = await h.call('/show/set', { token: other, title: 'Friday Night Mix', hosts: ['Pat Doe', 'Kim Roe', 'pat doe'], description: 'Two hours of  songs', category: 'music' })
+  assert.deepEqual({ title: r.body.title, hosts: r.body.hosts, category: r.body.category }, { title: 'Friday Night Mix', hosts: ['Pat Doe', 'Kim Roe'], category: 'Music' })
+  assert.equal((await h.call('/live/stop', { token: other })).status, 200)
+  let rec
+  for (let i = 0; i < 60; i++) { rec = [...site.recs.values()].find(x => x.live); if (rec?.status === 'uploaded') break; await sleep(250) }
+  assert.equal(rec?.status, 'uploaded', h.log())
+  assert.equal(rec.title, 'Friday Night Mix'); assert.equal(rec.token, host, "filed under the host who went live, not whoever pressed stop")
+  assert.deepEqual({ hosts: rec.live.hosts, description: rec.live.description, category: rec.live.category }, { hosts: ['Pat Doe', 'Kim Roe'], description: 'Two hours of songs', category: 'Music' })
+  assert.equal((await h.call('/show/get', { token: host })).body.title, '', 'the next show starts blank')
 })

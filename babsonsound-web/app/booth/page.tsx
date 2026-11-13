@@ -18,6 +18,7 @@ import EmojiGlyph from '@/components/EmojiGlyph'
 import { useAutoGain } from '@/components/booth/useAutoGain'
 import { useListeners } from '@/components/booth/useListeners'
 import NoteBox from '@/components/booth/NoteBox'
+import ShowInfo from '@/components/booth/ShowInfo'
 import RecordShow, { useRecState } from '@/components/booth/RecordShow'
 import { useBoothTheme } from '@/components/booth/useBoothTheme'
 import { useStudioStatus } from '@/components/booth/useStudioStatus'
@@ -137,7 +138,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
   const [busy, setBusy] = useState('')
   const [confirmOut, setConfirmOut] = useState(false)
   const [devices, setDevices] = useState<Devices>(() => ({ input: loadPref('input'), music: loadPref('music') }))
-  const [modal, setModal] = useState<'' | 'sound' | 'note'>('')
+  const [modal, setModal] = useState<'' | 'sound' | 'note' | 'show'>('')
   const [signInOpen, setSignInOpen] = useState(false)
   const [audioAt, setAudioAt] = useState(0)        // last time sound was on the input (no sign in only)
   const [thanksOff, setThanksOff] = useState(false)
@@ -232,6 +233,8 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
     await waitButt(b => b.connected || b.connecting)
     setLastMusicAt(Date.now())
     await report('live_start').catch(() => {})
+    // Nobody has named the show yet: open Show info so the archive gets a proper title and contributors (it can be changed during the show).
+    helper<{ title: string }>('/show/get', { token: await token() }).then(sh => { if (!sh.title) setModal('show') }).catch(() => {})
   })
   const endShow = () => act('stop', async () => {
     await helper('/live/stop', { token: await token() })
@@ -341,6 +344,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
                      onAirSeconds={butt?.streamSeconds ?? 0} lastMusicAt={lastMusicAt} onPlayId={() => setIdCue(n => n + 1)} />
         <div className="flex items-center gap-3 flex-wrap justify-center">
           {!bypass && <button type="button" className={hb} onClick={() => setModal('note')}>Leave a note</button>}
+          {!bypass && <button type="button" className={hb} onClick={() => setModal('show')}>Show info</button>}
           <button type="button" className={hb} onClick={() => setModal('sound')}>Audio setup</button>
           <button type="button" className={hb} onClick={onToggleTheme} aria-pressed={night} title="Switch between the day and night look. It goes back to automatic at 7 am or 7 pm.">
             {night ? '☾ Night' : '☀ Day'}
@@ -438,6 +442,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
         </div>
       )}
       {modal === 'sound' && <DeviceSettings value={devices} onChange={changeDevices} refresh={meter.devicesChanged} onClose={() => setModal('')} />}
+      {modal === 'show' && <ShowInfo getToken={token} live={live || connecting} onClose={() => setModal('')} />}
       {modal === 'note' && s && <NoteBox sessionId={s.sessionId} onClose={() => setModal('')} />}
     </div>
   )

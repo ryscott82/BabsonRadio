@@ -3,7 +3,7 @@ import { az, azuraConfigured, station } from './azuracast'
 
 // The station's music library in AzuraCast: upload, list, put in playlists, delete. The API key needs the "Manage Station Media" permission.
 
-export interface MediaFile { id: number; path: string; title: string; artist: string; playlists: { id: number; name: string }[] }
+export interface MediaFile { id: number; uniqueId: string; path: string; title: string; artist: string; playlists: { id: number; name: string }[] }
 export interface PlaylistInfo { id: number; name: string }
 
 const need = () => { if (!azuraConfigured()) throw new Error('AzuraCast is not configured') }
@@ -17,11 +17,12 @@ export async function azPlaylistList(): Promise<PlaylistInfo[]> {
 /** Every file in the library (AzuraCast has no folder filter on this list, so callers filter). */
 export async function azMediaList(): Promise<MediaFile[]> {
   need()
-  type Row = { id: number; path?: string; title?: string; artist?: string; text?: string; playlists?: ({ id?: number; name?: string } | number)[] }
+  type Row = { id: number; unique_id?: string; path?: string; title?: string; artist?: string; text?: string; playlists?: ({ id?: number; name?: string } | number)[] }
   const raw = await az<Row[] | { rows?: Row[] }>(`/station/${station()}/files`)
   const rows = Array.isArray(raw) ? raw : (raw.rows ?? [])
   return rows.map(r => ({
     id: r.id,
+    uniqueId: r.unique_id ?? '',
     path: r.path ?? '',
     title: r.title ?? r.text ?? '',
     artist: r.artist ?? '',

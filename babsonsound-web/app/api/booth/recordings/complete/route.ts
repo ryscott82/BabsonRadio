@@ -5,6 +5,7 @@ import { HttpError, handle, readJson, str } from '@/lib/server/http'
 import { recordingCaller } from '@/lib/server/boothRecordings'
 import { attachRecording, cleanPath } from '@/lib/server/recordings'
 import { recordingReadyMail, sendMail } from '@/lib/server/mailer'
+import { publishLiveEpisode } from '@/lib/server/liveEpisode'
 
 export const runtime = 'nodejs'
 
@@ -14,7 +15,7 @@ export const runtime = 'nodejs'
 export async function POST(req: Request) {
   return handle(async () => {
     const b = await readJson(req)
-    const who = await recordingCaller(req, b)
+    const who = await recordingCaller(req, b, Date.now(), true)
     const id = str(b.id, 100), path = cleanPath(b.azuracastPath), dur = Math.round(Number(b.durationSec))
     if (!id || !path || !Number.isFinite(dur) || dur < 1 || dur > 86_400) throw new HttpError(400, 'Send the recording id, its AzuraCast path and its length in seconds.')
     const db = adminDb()
@@ -27,6 +28,12 @@ export async function POST(req: Request) {
       return { first: true, title: String(d.get('title') ?? 'Your recording'), forRequestId: String(d.get('forRequestId') ?? ''), clean: d.get('cleanConfirmed') === true }
     })
     let attached = false, warning = ''
+    // A live show archived by the studio PC goes straight into the library. If AzuraCast is slow to list the file, the PC calls again later and this retries.
+    const isLive = (await ref.get()).get('kind') === 'live'
+    if (isLive) {
+      try { await publishLiveEpisode(db, id) } catch (e) { throw new HttpError(503, `The recording is saved; the library entry will be made on the next try. ${e instanceof Error ? e.message : ''}`.trim()) }
+      return { ok: true, attached: false }
+    }
     if (r.first && r.forRequestId && r.clean) {
       try { const a = await attachRecording(db, who.uid, id, r.forRequestId, true); attached = true; warning = a.warning ?? '' }
       catch (e) { warning = e instanceof Error ? `Saved, but not attached to the show: ${e.message}` : 'Saved, but not attached to the show.' }

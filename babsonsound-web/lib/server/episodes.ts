@@ -16,6 +16,9 @@ export interface EpisodeOut {
   /** 'public' = anyone on the internet; anything else (the default) = Babson students only. */
   visibility: 'public' | 'private'
   hostUids: string[]
+  /** True for audio episodes (live-show archives) played from AzuraCast; false for YouTube ones. */
+  audio: boolean
+  contributors: string[]
 }
 
 /** The 11-character video id from any common YouTube link (watch, youtu.be, shorts, embed), or a bare id. */
@@ -47,6 +50,7 @@ export function toEpisode(id: string, d: DocumentData): EpisodeOut {
     duration: Number(d.duration) || 0, publishedAt: at?.toMillis?.() ?? 0, isNew: d.isNew === true,
     visibility: d.visibility === 'public' ? 'public' : 'private',
     hostUids: Array.isArray(d.hostUids) ? d.hostUids.map(String) : [],
+    audio: !!d.azUniqueId, contributors: Array.isArray(d.contributors) ? d.contributors.map(String) : [],
   }
 }
 

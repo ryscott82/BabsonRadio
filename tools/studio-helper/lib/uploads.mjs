@@ -53,7 +53,7 @@ export function createUploads(deps) {
     const filename = recordingFileName(t.title, t.createdAt || now, t.id, t.ext)
     const it = {
       id: t.id, uid: t.uid, name: t.name || '', token: t.token, title: t.title, bookingId: t.bookingId || '', requestId: t.requestId || '',
-      cleanConfirmed: t.cleanConfirmed === true, durationSec: Math.max(1, Math.round(t.durationSec || 1)), file: t.file, size: deps.fs.size(t.file),
+      cleanConfirmed: t.cleanConfirmed === true, live: t.live || null, durationSec: Math.max(1, Math.round(t.durationSec || 1)), file: t.file, size: deps.fs.size(t.file),
       createdAt: t.createdAt || now, savedAt: now, filename, azPath: `${deps.az.dir}/${filename}`,
       upload: { state: 'queued', sent: 0, tries: 0, nextAt: 0, error: '' },
       site: { state: 'waiting', tries: 0, nextAt: 0, error: '', recId: '', attached: false, warning: '' },
@@ -109,6 +109,7 @@ export function createUploads(deps) {
       if (!it.site.recId) {
         const r = await post('/api/booth/recordings/start', {
           id: it.id, token: it.token, title: it.title, bookingId: it.bookingId || undefined, requestId: it.requestId || undefined, cleanConfirmed: it.cleanConfirmed,
+          ...(it.live ? { live: it.live } : {}),
         })
         it.site.recId = String(r.id || it.id)
         save()

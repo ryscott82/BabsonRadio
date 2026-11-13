@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { apiGet } from '@/lib/auth'
 
 export interface Ep {
   id: string; title: string; showName: string; showSlug: string; category: string; description: string
   youtubeID: string; thumbnailURL: string; duration: number; publishedAt: number; isNew: boolean
+  audio?: boolean; contributors?: string[]
 }
 
 export const ago = (ms: number) => {
@@ -19,6 +21,7 @@ export function EpisodeRow({ ep, saved, onSave, onPlay }: { ep: Ep; saved: boole
       <button onClick={() => onPlay(ep)} aria-label={`Play ${ep.title}`} className="relative shrink-0 w-28 h-16 rounded-lg overflow-hidden bg-[#1B1B18] bg-[url(/hw/leather-black.jpg)] bg-[length:240px_auto] shadow-[inset_0_0_0_1px_rgba(232,212,160,.35),inset_0_2px_6px_rgba(0,0,0,.6)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {ep.thumbnailURL && <img src={ep.thumbnailURL} alt="" className="absolute inset-0 w-full h-full object-cover" />}
+        {!ep.thumbnailURL && ep.audio && <span aria-hidden className="absolute inset-0 flex items-center justify-center text-3xl text-br-gold/40">♪</span>}
         <span className="absolute inset-0 flex items-center justify-center">
           <span className="w-8 h-8 rounded-full flex items-center justify-center text-[#1a1710] text-[13px] pl-0.5 bg-[url(/hw/steel.jpg)] bg-[length:90px_auto] shadow-[0_2px_0_#6f6d65,0_4px_6px_rgba(0,0,0,.5),inset_0_1px_0_rgba(255,255,255,.55)]">▶</span>
         </span>
@@ -50,20 +53,39 @@ export function PlayerDialog({ ep, onClose }: { ep: Ep | null; onClose: () => vo
     <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
       <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={ep.title} onClick={e => e.stopPropagation()}
            className="sk-raised rounded-2xl w-full max-w-3xl overflow-hidden outline-none">
-        <div className="aspect-video bg-black">
-          <iframe className="w-full h-full" title={ep.title} allowFullScreen
-                  src={`https://www.youtube-nocookie.com/embed/${ep.youtubeID}?autoplay=1&rel=0`}
-                  allow="autoplay; encrypted-media; picture-in-picture" />
-        </div>
+        {ep.audio ? <AudioPane ep={ep} /> : (
+          <div className="aspect-video bg-black">
+            <iframe className="w-full h-full" title={ep.title} allowFullScreen
+                    src={`https://www.youtube-nocookie.com/embed/${ep.youtubeID}?autoplay=1&rel=0`}
+                    allow="autoplay; encrypted-media; picture-in-picture" />
+          </div>
+        )}
         <div className="p-4 flex items-start justify-between gap-4">
           <div>
             <p className="text-br-dk-text">{ep.title}</p>
             <p className="text-sm text-br-dk-sub mt-1">{ep.showName}{ep.category ? ` · ${ep.category}` : ''}</p>
+            {!!ep.contributors?.length && <p className="text-sm text-br-dk-sub mt-1">With {ep.contributors.join(', ')}</p>}
             {ep.description && <p className="text-sm text-br-dk-sub mt-2">{ep.description}</p>}
           </div>
           <button onClick={onClose} className="sk-key rounded-lg px-3 h-9 text-sm font-display tracking-widest text-br-dk-text shrink-0">Close</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+/** An audio episode (a live show from the archive): the site hands over a link to the file in AzuraCast and the browser plays it from there. */
+function AudioPane({ ep }: { ep: Ep }) {
+  const [url, setUrl] = useState('')
+  const [err, setErr] = useState('')
+  useEffect(() => {
+    let off = false
+    apiGet<{ url: string }>(`/api/episodes/${encodeURIComponent(ep.id)}/audio`).then(r => { if (!off) setUrl(r.url) }).catch(e => { if (!off) setErr((e as Error).message) })
+    return () => { off = true }
+  }, [ep.id])
+  return (
+    <div className="bg-black/60 p-6">
+      {err ? <p className="text-sm text-red-400">{err}</p> : url ? <audio controls autoPlay preload="auto" src={url} className="w-full" /> : <p className="text-sm text-br-dk-sub">Loading…</p>}
     </div>
   )
 }

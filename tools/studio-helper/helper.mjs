@@ -10,8 +10,9 @@ import { execFile } from 'node:child_process'
 import { copyFileSync, createReadStream, existsSync, mkdirSync, openSync, readFileSync, readSync, closeSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, extname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { createRecorder } from './lib/recorder.mjs'
+import { createRecorder, newId } from './lib/recorder.mjs'
 import { createUploads } from './lib/uploads.mjs'
+import { createLiveArchive } from './lib/livearchive.mjs'
 import { normalizeOne } from './lib/normalize.mjs'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
@@ -233,6 +234,18 @@ setInterval(pump, 3000).unref?.()
 setTimeout(() => { uploads.cleanup(); pump() }, 2000)
 setInterval(() => uploads.cleanup(), 3_600_000).unref?.()
 
+// Live shows: who is on air + the booth's "Show info", and the automatic archive of BUTT's recording when the show ends.
+const ARCHIVE_LIVE = process.env.ARCHIVE_LIVE_SHOWS !== '0'
+const liveArchive = createLiveArchive({
+  store: jsonStore(join(REC_DIR, 'live.json')), dir: REC_DIR, now: Date.now, newId, sleep: ms => new Promise(r => setTimeout(r, ms)), log,
+  minSec: Number(process.env.ARCHIVE_MIN_SECONDS ?? 60),
+  files: { mkdir: d => mkdirSync(d, { recursive: true }), move: async (a, b) => moveFile(a, b), remove: f => rmSync(f, { force: true }), join, ext: f => extname(f).toLowerCase() },
+  uploads: { add: t => { uploads.add(t); pump() } },
+  probe: async f => Number((await run(FFPROBE, ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f], 30_000)).trim()) || 0,
+})
+// A show that was on air when the PC or helper restarted: archive it once BUTT is no longer recording.
+setTimeout(() => { if (ARCHIVE_LIVE) liveArchive.recover(() => status().then(s => s.recording)).then(r => r !== 'none' && log(`LIVE ARCHIVE recovered: ${r}`)).catch(() => {}) }, 5000)
+
 const cleanTitle = v => String(v || '').replace(/[\u0000-\u001f]+/g, ' ').trim().slice(0, 80)
 const cleanRef = v => (/^[A-Za-z0-9_-]{1,100}$/.test(String(v || '')) ? String(v) : '')
 
@@ -413,13 +426,20 @@ const server = createServer(async (req, res) => {
         if (RECORD && !now.recording) await butt(['-r']).catch(() => {})
         return status()
       })
+      if (ARCHIVE_LIVE && RECORD) {
+        // BUTT opens its file a moment after -r: ask where it is writing, so the archive knows even if BUTT is restarted later.
+        liveArchive.begin({ uid: c.u, name: c.n, token: String(b.token || '') }, st.recordPath || '')
+        if (!st.recordPath) setTimeout(() => status().then(s => liveArchive.setPiecePath(s.recordPath)).catch(() => {}), 1500)
+      }
       log(`LIVE START  ${c.n} (${c.u})`)
       return send(res, 200, st, origin)
     }
     if (url.pathname === '/live/stop') {
       const st = await serial(async () => {
+        const before = await status().catch(() => null) // BUTT's recording path, read before it stops
         await butt(['-d'])
         if (RECORD) await butt(['-t']).catch(() => {})
+        if (ARCHIVE_LIVE && RECORD) await liveArchive.finish(before?.recordPath || '').catch(e => log('LIVE ARCHIVE ERROR', e.message))
         return status()
       })
       log(`LIVE STOP   ${c.n} (${c.u})`)
@@ -465,6 +485,15 @@ const server = createServer(async (req, res) => {
       uploads.retry(it.id)
       pump()
       return send(res, 200, { ok: true, uploads: uploads.list(c.u) }, origin)
+    }
+
+    // Show info (title, contributors, description, category): anyone signed in can read and change it, before or during a show.
+    if (url.pathname === '/show/get') return send(res, 200, liveArchive.show(), origin)
+    if (url.pathname === '/show/set') {
+      if (!c.l && c.r !== true) return send(res, 403, { error: "You can't edit the show info right now." }, origin)
+      const out = liveArchive.setShow(b)
+      log(`SHOW INFO   ${c.n}: "${out.title}"`)
+      return send(res, 200, out, origin)
     }
 
     if (url.pathname === '/song') {

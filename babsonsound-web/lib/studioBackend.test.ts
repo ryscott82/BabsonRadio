@@ -274,9 +274,9 @@ test('attaching a recording needs the clean tick, an owner and an upcoming pre-r
 })
 test('recordings: the website only stores details, and the right people can call each route', () => {
   const rec = src('lib/server/recordings.ts'); assert.ok(!/azUploadChunk|file_data|formData/i.test(rec)) // no audio through Vercel functions
-  for (const f of ['app/api/booth/recordings/start/route.ts', 'app/api/booth/recordings/complete/route.ts']) assert.match(src(f), /await recordingCaller\(req, b\)/, f)
+  for (const f of ['app/api/booth/recordings/start/route.ts', 'app/api/booth/recordings/complete/route.ts']) assert.match(src(f), /await recordingCaller\(req, b(, Date\.now\(\), (!!live|true))?\)/, f)
   const who = src('lib/server/boothRecordings.ts')
-  assert.match(who, /requireStudioBadge\(t\)/); assert.match(who, /verifyAttest\(secret/); assert.match(who, /pcRecorderProblem\(c, now, RECORDING_TOKEN_MAX_AGE_MS\)/)
+  assert.match(who, /requireStudioBadge\(t\)/); assert.match(who, /verifyAttest\(secret/); assert.match(who, /pcRecorderProblem\(c, now, RECORDING_TOKEN_MAX_AGE_MS, live\)/)
   assert.match(src('app/api/booth/session/route.ts'), /r: canRecord/)
   assert.match(src('app/api/booth/recordings/complete/route.ts'), /recordingReadyMail/)
   assert.match(src('app/api/recordings/[id]/route.ts'), /staff: a\.level === 'director' \|\| a\.level === 'admin'/)

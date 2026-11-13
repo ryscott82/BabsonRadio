@@ -36,8 +36,8 @@ export function createBrowser(deps) {
     if (!href) throw new Error('That is not a web address.')
     const lay = LAYOUTS.includes(layout) ? layout : 'split'
     const cur = state().open ? get() : null
-    // Already open: the same profile opens the page as a new tab in that window.
-    const args = [`--user-data-dir=${deps.profileDir}`, '--no-first-run', '--no-default-browser-check', ...(cur ? [] : ['--new-window']), href]
+    // Always an incognito window (nothing is remembered between people). Already open: the page opens as a new tab in that window.
+    const args = [`--user-data-dir=${deps.profileDir}`, '--incognito', '--no-first-run', '--no-default-browser-check', ...(cur ? [] : ['--new-window']), href]
     const child = deps.spawn(deps.chrome, args)
     const pid = await deps.place(cur?.pid || child.pid, lay)
     if (!pid) throw new Error('The browser window did not open. Try again.')

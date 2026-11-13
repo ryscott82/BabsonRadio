@@ -18,6 +18,7 @@ import Soundboard from '@/components/booth/Soundboard'
 import ClockScreen from '@/components/booth/ClockScreen'
 import { useAutoGain } from '@/components/booth/useAutoGain'
 import CheckButton, { useMicCheck } from '@/components/booth/CheckButton'
+import FitTitle from '@/components/FitTitle'
 import { useShowInfo } from '@/components/booth/useShowInfo'
 import { BROWSER_ACTIVE_MS, BrowserButtons, closeBrowser, setBrowserLayout, type BrowserState } from '@/components/booth/StudioBrowser'
 import NoteBox from '@/components/booth/NoteBox'
@@ -394,9 +395,10 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
         <div className="hw-sign shrink-0" style={{ position: 'relative', left: 0, top: 0 }}>
           <span style={live ? undefined : { color: '#4a2620', textShadow: 'none' }}>ON AIR</span>
         </div>
-        <p className={`hw-title text-4xl leading-none truncate min-w-0 max-w-[34%] ${bl ? 'hidden' : ''}`}>
-          {live && showName ? showName : s?.show ? s.show.title : next ? `Next: ${next.title} at ${clock(next.startAt)}` : 'Nothing booked'}
-        </p>
+        <div className={`min-w-0 max-w-[34%] ${bl ? 'hidden' : ''}`}>
+          <FitTitle as="p" lines={1} min={0.45} className="hw-title text-4xl leading-none"
+                    text={live && showName ? showName : s?.show ? s.show.title : next ? `Next: ${next.title} at ${clock(next.startAt)}` : 'Nothing booked'} />
+        </div>
         {!bypass && !bl && <CrewPanel crew={s?.crew ?? []} driverName={s?.name ?? ''} onAir={live || connecting || recording} getToken={token} />}
         <div className="flex items-center justify-center gap-3 min-w-0 flex-wrap flex-1" style={bl ? { display: 'none' } : undefined}>
           <ClockScreen ads={s?.ads ?? null} live={live} lastMusicAt={lastMusicAt} onPlayId={() => setIdCue(n => n + 1)} />
@@ -423,26 +425,26 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
       {(welcomeBig || countdownBig || showBig || problem || s?.note || (live && showName)) ? (
         <div className="hw-desk-text text-center min-w-0 max-w-[60vw]">
           {welcomeBig ? (
-            <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(3rem, 9vh, 6.5rem)' }}>Welcome, {bypass ? 'Babson Sound user' : s?.firstName || '…'}</h1>
+            <FitTitle as="h1" lines={1} min={0.3} className="hw-title leading-none text-[clamp(3rem,9vh,6.5rem)]" text={`Welcome, ${bypass ? 'Babson Sound user' : s?.firstName || '…'}`} />
           ) : countdownBig && next ? (
             <>
               <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(3rem, 9vh, 6.5rem)' }}>{countdownText(next.startAt - now)}</h1>
-              <p className="text-2xl mt-1 truncate">until {next.title}{next.hosts.length ? ` with ${next.hosts.join(', ')}` : ''} at {clock(next.startAt)}</p>
+              <FitTitle as="p" lines={1} min={0.5} className="text-2xl mt-1" text={`until ${next.title}${next.hosts.length ? ` with ${next.hosts.join(', ')}` : ''} at ${clock(next.startAt)}`} />
             </>
           ) : showBig && s?.show ? (
             hero === 'show' ? (
               <>
-                <h1 className="hw-title leading-none truncate" style={{ fontSize: bl ? '2.25rem' : 'clamp(3rem, 8vh, 5.5rem)' }}>{showName || s.show.title}</h1>
+                <FitTitle as="h1" lines={1} min={0.25} className={`hw-title leading-none ${bl ? 'text-4xl' : 'text-[clamp(3rem,8vh,5.5rem)]'}`} text={showName || s.show.title} />
                 <p className="num leading-none mt-1" style={{ fontSize: bl ? '2rem' : 'clamp(2.5rem, 7vh, 4.5rem)' }}>{mmss(leftS)} <span className="lbl" style={{ fontSize: '0.5em' }}>left</span></p>
               </>
             ) : (
               <>
                 <p className={`num leading-none ${hero === 'over' || leftS <= 300 ? 'warn' : ''}`} style={{ fontSize: bl ? '3.5rem' : 'clamp(5rem, 15vh, 9.5rem)' }}>{hero === 'over' ? `+${mmss(-leftS)}` : mmss(leftS)}</p>
-                <p className="text-2xl mt-1 truncate">{hero === 'over' ? 'over time, wrap up' : leftS <= 300 ? 'left, wrap up' : 'left'} · {showName || s.show.title}</p>
+                <FitTitle as="p" lines={1} min={0.5} className="text-2xl mt-1" text={`${hero === 'over' ? 'over time, wrap up' : leftS <= 300 ? 'left, wrap up' : 'left'} · ${showName || s.show.title}`} />
               </>
             )
           ) : live && showName ? (
-            <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(2.5rem, 6vh, 4.5rem)' }}>{showName}</h1>
+            <FitTitle as="h1" lines={1} min={0.25} className="hw-title leading-none text-[clamp(2.5rem,6vh,4.5rem)]" text={showName} />
           ) : null}
           {(problem || s?.note) && <p className={`text-xl mt-1 line-clamp-1 ${problem ? 'text-[#FFB3A6]' : ''}`}>{problem || `Note from ${s?.note?.by || 'the last host'}: ${s?.note?.text}`}</p>}
         </div>

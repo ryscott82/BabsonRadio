@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     // The song on the stream (already cached by the site), so the idle screen can say what is playing while the station is on air.
     const np = await getNowPlaying().catch(() => null)
     return {
-      nowPlaying: np && np.configured && np.title ? { title: np.title, artist: np.artist, playedAt: np.playedAt, duration: np.duration, live: np.isLive, streamer: np.streamer } : null,
+      nowPlaying: np && np.configured && np.title ? { title: np.title, artist: np.artist, playedAt: np.playedAt, duration: np.duration, live: np.isLive, streamer: np.streamer, art: np.art, listeners: np.listeners } : null,
       items: items
         .filter(i => i.endAt > now && i.startAt < now + 36 * 3_600_000)
         .sort((a, b) => a.startAt - b.startAt)

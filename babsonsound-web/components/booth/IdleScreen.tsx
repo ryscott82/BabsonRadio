@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation'
 import { signIn } from '@/lib/auth'
 import DoorClaim from './DoorClaim'
 import { boothFetch, errText, helper } from './helper'
+import FitTitle from '@/components/FitTitle'
 import { BrowserButtons } from './StudioBrowser'
 
 // What the studio PC shows when nobody is signed in: a big clock, a greeting, what is on now and next. Useful even when nobody is
 // doing radio. Sign in, or (no account needed) type an email and watch the quick equipment training.
 
 interface Item { id: string; title: string; hosts: string[]; startAt: number; endAt: number; category: string; source: string }
-interface Idle { items: Item[]; trainingVideoId: string; nowPlaying?: { title: string; artist: string; playedAt: number; duration: number; live: boolean; streamer: string } | null }
+interface Idle { items: Item[]; trainingVideoId: string; nowPlaying?: { title: string; artist: string; playedAt: number; duration: number; live: boolean; streamer: string; art?: string; listeners?: number } | null }
 
 const time = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 const dayWord = (ms: number, now: number) => {
@@ -65,14 +66,22 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
     <>
     <DoorClaim />
     <div className="fixed inset-0 z-[2] flex flex-col gap-5 px-10 pt-6 pb-6 overflow-hidden" style={{ transform: `translate(${drift.x}px, ${drift.y}px)`, transition: 'transform 2s' }}>
-      <h1 className="hw-desk-text hw-title text-center leading-none shrink-0" style={{ fontSize: 'clamp(3rem, 7vh, 5.5rem)' }}>Welcome to the Radio Room</h1>
+      <FitTitle as="h1" lines={1} min={0.3} text="Welcome to the Radio Room" className="hw-desk-text hw-title text-center leading-none text-[clamp(3rem,7vh,5.5rem)]" />
       <div className="grid grid-cols-[1.05fr_1fr_1fr] gap-6 flex-1 min-h-0">
         {/* The time is the first thing a studio screen should say. */}
         <section className="hw-desk-text flex flex-col min-w-0">
           <div>
             <p className="hw-title leading-[0.85] tabular-nums" style={{ fontSize: 'clamp(7rem, 26vh, 17rem)' }}>{h}:{m}<span className="text-[0.22em] ml-3 opacity-60">{ap}</span></p>
             <p className="hw-title text-5xl leading-tight mt-3">{d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+            {/* Only when more than two people are tuned in. */}
+            {playing && (playing.listeners ?? 0) > 2 && <p className="hw-title text-4xl leading-tight mt-1 opacity-90">{playing.listeners} listening</p>}
           </div>
+          {playing?.art && (
+            <div className="flex-1 min-h-0 mt-6 flex items-start">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={playing.art} alt={`Cover for ${playing.title}`} className="h-full max-h-full aspect-square object-cover rounded-2xl" style={{ boxShadow: '0 14px 28px rgba(0,0,0,.5)' }} />
+            </div>
+          )}
         </section>
 
         {/* On now, Up next, Later today. */}

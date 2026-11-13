@@ -28,6 +28,7 @@ test('opens split by default with its own profile, a second link becomes a tab i
   const s = setup()
   assert.deepEqual(s.b.state(), { open: false, layout: '', railPx: 260 })
   const o = await s.b.open('https://docs.google.com'); assert.equal(o.open, true); assert.equal(o.layout, 'split'); assert.ok(o.since > 0)
+  assert.ok(s.calls[0].spawn.includes('--incognito'), 'always an incognito window')
   assert.ok(s.calls[0].spawn.includes('--user-data-dir=C:\\p\\BabsonRadioBrowser') && s.calls[0].spawn.includes('--new-window'))
   await s.b.open('https://www.notion.so', 'split')
   assert.ok(!s.calls[2].spawn.includes('--new-window'), 'a tab, not another window')

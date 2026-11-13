@@ -305,9 +305,10 @@ export function pinMatches(expected: string, given: string): boolean {
 export const canGoLiveOpenFloor = (o: { radio: boolean; hostedBefore: boolean; showRunning: boolean }) => o.radio && o.hostedBefore && !o.showRunning
 
 // ── Audio on the idle screen ────────────────────────────────
-/** The idle screen opens the booth by itself when the mixer feed carries sound (peak above this) for MIXING_HOLD_MS. */
+/** The idle screen opens the booth by itself when the mixer feed carries sound (peak above this) for MIXING_HOLD_MS: two minutes, so a test tone or a
+ *  bump of the mixer never jumps the screen. */
 export const MIXING_PEAK_DBFS = -45
-export const MIXING_HOLD_MS = 3_000
+export const MIXING_HOLD_MS = 120_000
 /** After someone leaves the booth, audio does not reopen it for this long. */
 export const MIXING_SNOOZE_MS = 5 * 60_000
 

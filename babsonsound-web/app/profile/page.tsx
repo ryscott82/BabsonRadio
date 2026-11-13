@@ -14,6 +14,7 @@ import { AVATAR_COLORS, discStyle } from '@/lib/profile'
 import { normalizeUS } from '@/lib/phone'
 import { cleanInstagram } from '@/lib/instagram'
 import InstagramLink from '@/components/InstagramLink'
+import ShowReminders from '@/components/ShowReminders'
 
 /** How many other members use the same phone number / Instagram handle. A count only, never who. */
 function useShared(refresh: unknown) {
@@ -404,6 +405,8 @@ export default function ProfilePage() {
         )}
 
         {showAbout && <AboutYou onSaved={loadMe} />}
+
+        {member && <ShowReminders />}
 
         {member && <Row title="My ratings" open={open === 'ratings'} onToggle={() => toggle('ratings')}><MyRatings /></Row>}
 

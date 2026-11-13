@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, signOut } from '@/lib/auth'
-import { countdownText, heroMode, idleStep, quietReminderDue, MIXING_HOLD_MS, MIXING_PEAK_DBFS, MIXING_SNOOZE_MS, adBreak, bookingLines, quietBanner, type AdPlan, type LevelState, type StudioStatus } from '@/lib/booth'
+import { countdownText, heroMode, idleStep, quietReminderDue, MIXING_HOLD_MS, MIXING_PEAK_DBFS, MIXING_SNOOZE_MS, adBreak, bookingLines, quietBanner, type AdPlan, type HelperUpdate, type LevelState, type StudioStatus } from '@/lib/booth'
 import { boothFetch, errText, helper, loadPref, mmss, savePref, type Butt, type Track } from '@/components/booth/helper'
 import DoorClaim from '@/components/booth/DoorClaim'
 import CrewPanel from '@/components/booth/CrewPanel'
 import type { CrewPerson } from '@/lib/crew'
 import { openSignIn } from '@/lib/signInPrompt'
 import IdleScreen, { exitPanel } from '@/components/booth/IdleScreen'
+import UpdateButton from '@/components/booth/UpdateButton'
 import { useInputMeter } from '@/components/booth/useInputMeter'
 import LevelMeter from '@/components/booth/LevelMeter'
 import DeviceSettings, { type Devices } from '@/components/booth/DeviceSettings'
@@ -85,6 +86,7 @@ export default function BoothPage() {
     opening.current = true
     boothFetch<Session>('/api/booth/bypass', { pin: '' }).then(session => setBypass({ pin: '', session })).catch(() => {}).finally(() => { opening.current = false })
   }, [idleMeter.stats, watching])
+  const [helperUpdate, setHelperUpdate] = useState<HelperUpdate | null>(null)
   const buttRef = useRef<Butt | null>(null)
   const errSince = useRef(0)
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t) }, [])
@@ -96,7 +98,7 @@ export default function BoothPage() {
   useEffect(() => {
     let stop = false
     const tick = async () => {
-      try { const p = await helper<{ browser?: BrowserState }>('/ping'); if (!stop) { setHelperUp(true); setBrowserSt(p.browser ?? null) } } catch { if (!stop) { setHelperUp(false); setButt(null) } return }
+      try { const p = await helper<{ browser?: BrowserState; update?: HelperUpdate }>('/ping'); if (!stop) { setHelperUp(true); setBrowserSt(p.browser ?? null); setHelperUpdate(p.update ?? null) } } catch { if (!stop) { setHelperUp(false); setButt(null) } return }
       try { const b = await helper<Butt>('/status'); if (!stop) { setButt(b); setButtErr(''); errSince.current = 0; savePref('studioPc', '1') } }
       catch (e) {
         if (stop) return
@@ -124,6 +126,8 @@ export default function BoothPage() {
     <>
       {/* Pure black from 7 pm to 7 am, over the oak desk. */}
       {theme.night && <div className="fixed inset-0 z-[1] bg-black" aria-hidden />}
+      {/* Nobody signed in: offer the update (the button stays while the helper restarts, so it can reload the page after). */}
+      {!loading && !user && !bypass && !exited && <UpdateButton helperUpdate={helperUpdate} />}
       {exitErr && <p role="alert" className="fixed top-3 left-1/2 -translate-x-1/2 z-[95] hw-screen px-6 py-3 text-2xl warn">Couldn’t close the panel: {exitErr}</p>}
       <div className={`relative z-[2] -mt-16 -mb-12 min-h-dvh px-8 py-6 text-lg ${theme.night ? 'booth-night' : ''}`}>
         {exited ? (
@@ -340,6 +344,7 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
   const sb = 'gbtn h-9 px-3 text-sm'
   const staffRole = s?.role ?? s?.level ?? ''  // the session's role when the server sends one, else the access level (director is the E-board)
   const canExit = !bypass && ['admin', 'eboard', 'director'].includes(staffRole)
+  const isAdmin = !bypass && staffRole === 'admin'
 
   const date = new Date(now).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
 
@@ -422,6 +427,8 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
             {!bypass && <button type="button" className={sb} onClick={() => setModal('note')}>Leave a note</button>}
             <button type="button" className={sb} onClick={() => setModal('sound')}>Audio setup</button>
             {canExit && !live && !connecting && !recording && <button type="button" className={sb} onClick={async () => { let tk = ''; try { tk = await token() } catch { /* the helper decides */ } void onExitPanel(tk) }}>Exit panel</button>}
+            {/* Admins: the babsonradio.com Settings panel in this window (already signed in). "Back to the booth" brings them back. */}
+            {isAdmin && !live && !connecting && !recording && <a href="/admin" className={`${sb} grid place-items-center`}>Admin settings</a>}
           </div>
         </div>
       {(welcomeBig || countdownBig || showBig || problem || s?.note || (live && showName)) ? (

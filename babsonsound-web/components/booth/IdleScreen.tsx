@@ -124,7 +124,7 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
 
         {/* How to go on air: scan the code (your phone is already signed in, nothing to type) or sign in on this computer. */}
         <section className="bp px-6 py-[1.6vh] min-h-0 min-w-0 overflow-hidden flex flex-col items-center gap-[1.4vh] text-center">
-          <p className="hw-title text-[clamp(1.5rem,4.2vh,3rem)] leading-tight">Scan to sign in</p>
+          <p className="hw-title text-[clamp(1.5rem,4.2vh,3rem)] leading-tight">Scan to use equipment</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/booth/door-qr.svg" alt="QR code to sign in at the studio" className="min-h-0 flex-1 max-h-[40vh] aspect-square rounded-xl bg-white" />
           <button type="button" className="gbtn gbtn-go h-[clamp(3.25rem,7vh,5rem)] text-[clamp(1.25rem,2.8vh,1.875rem)] w-full" onClick={() => setView('signin')}>Sign in with Babson Sound account</button>

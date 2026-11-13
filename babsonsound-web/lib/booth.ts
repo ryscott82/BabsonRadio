@@ -392,3 +392,18 @@ export function shouldReturnToBooth(p: { pathname: string; idleMs: number; onAir
   if (p.onAir || p.recording || p.soundOnInput || p.signedIn) return false
   return p.idleMs >= RETURN_TO_BOOTH_MS
 }
+
+/** What the studio helper says about updates in /ping (tools/studio-helper/lib/updates.mjs). */
+export interface HelperUpdate { behind: number; checkedAt: number; error: string; updating: boolean }
+/** How often the idle booth checks /version.json (a static file on the CDN, no function time). */
+export const SITE_VERSION_CHECK_MS = 5 * 60_000
+/**
+ * The booth's "Update available" button. 'helper' when GitHub has newer studio-helper commits than the PC (the helper updates itself,
+ * then the page reloads); 'site' when babsonradio.com has deployed a different commit than the page that is open (just reload);
+ * '' for nothing. Unknown commits (a local build, or the check not done yet) never show the button.
+ */
+export function updateKind(p: { buildSha: string; liveSha: string; helperBehind: number }): '' | 'site' | 'helper' {
+  if (p.helperBehind > 0) return 'helper'
+  if (p.buildSha && p.liveSha && p.buildSha !== p.liveSha) return 'site'
+  return ''
+}

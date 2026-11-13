@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BYPASS_UID, IDLE_OUT_MS, IDLE_WARN_MS, QUIET_REMIND_MS, idleStep, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
+import { BYPASS_UID, IDLE_OUT_MS, IDLE_WARN_MS, QUIET_REMIND_MS, idleStep, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, LONG_WINDOW_MS, levelWord, levelAdvice, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
 
 const S = 'test-secret-123'
 
@@ -59,7 +59,7 @@ test('gated loudness ignores silence and quiet passages', () => {
   assert.equal(gatedLufs(Array(10).fill(ms(-90))), -Infinity)
 })
 
-test('too quiet needs 60 s below the limit, after a 30 s warm-up', () => {
+test('too quiet follows the fader: a short warm-up, then a few seconds below the limit', () => {
   let t = newQuietTracker(0)
   // in the warm-up nothing shows, however quiet
   for (let s = 0; s < QUIET_WARMUP_MS; s += 1000) { t = stepQuiet(t, s, -30); assert.equal(t.quiet, false) }
@@ -69,19 +69,34 @@ test('too quiet needs 60 s below the limit, after a 30 s warm-up', () => {
   t = stepQuiet(t, start + QUIET_HOLD_MS, -30)
   assert.equal(t.quiet, true)
   assert.equal(levelState(-30, -20, false, t.quiet), 'quiet')
+  assert.ok(QUIET_WARMUP_MS + QUIET_HOLD_MS + LONG_WINDOW_MS <= 30_000, 'from a loud fader to "Too quiet" in well under half a minute')
 })
 
 test('too quiet: a recovery resets the timer, and healthy speech never triggers it', () => {
   let t = newQuietTracker(0)
-  t = stepQuiet(t, 40_000, -30)
-  t = stepQuiet(t, 90_000, QUIET_LUFS + 0.5) // back above the limit before 60 s
+  t = stepQuiet(t, 20_000, -30)
+  t = stepQuiet(t, 22_000, QUIET_LUFS + 0.5) // back above the limit before the hold is over
   assert.equal(t.belowSince, null)
-  t = stepQuiet(t, 100_000, -30)
-  t = stepQuiet(t, 150_000, -30)
-  assert.equal(t.quiet, false) // only 50 s since it dropped again
+  t = stepQuiet(t, 23_000, -30)
+  t = stepQuiet(t, 25_000, -30)
+  assert.equal(t.quiet, false) // only 2 s since it dropped again
   let h = newQuietTracker(0)
-  for (let s = 30_000; s < 600_000; s += 1000) h = stepQuiet(h, s, -21.5) // speech at -21.5 LUFS
+  for (let s = QUIET_WARMUP_MS; s < 600_000; s += 1000) h = stepQuiet(h, s, -17) // speech at -17 LUFS
   assert.equal(h.quiet, false)
+})
+
+test('the word and the advice agree with the gauge', () => {
+  assert.deepEqual(levelWord('good', -14), { word: 'Good', tone: 'ok' })
+  assert.equal(levelWord('good', -18).word, 'A bit low')
+  assert.equal(levelWord('good', -10).word, 'A bit loud')
+  assert.equal(levelWord('quiet', -25).word, 'Too quiet'); assert.equal(levelWord('clip', -5).word, 'Too loud'); assert.equal(levelWord('silent', -Infinity).word, 'No sound')
+  assert.deepEqual(levelAdvice(-14, 'good'), { dir: 'ok', amount: '', db: 0 })
+  assert.deepEqual(levelAdvice(-16.5, 'good'), { dir: 'ok', amount: '', db: 0 })
+  assert.deepEqual(levelAdvice(-18, 'good'), { dir: 'up', amount: 'a little', db: 4 })
+  assert.deepEqual(levelAdvice(-24, 'quiet'), { dir: 'up', amount: 'some', db: 10 })
+  assert.deepEqual(levelAdvice(-30, 'quiet'), { dir: 'up', amount: 'a lot', db: 16 })
+  assert.deepEqual(levelAdvice(-8, 'loud'), { dir: 'down', amount: 'some', db: 6 })
+  assert.equal(levelAdvice(-14, 'clip').dir, 'down'); assert.equal(levelAdvice(-Infinity, 'silent').dir, 'ok')
 })
 
 test('too quiet has hysteresis: it clears only above the clear level', () => {

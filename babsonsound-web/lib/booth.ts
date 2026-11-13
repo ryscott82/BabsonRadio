@@ -68,14 +68,15 @@ export const TARGET_LUFS = -14
 export const GOOD_LUFS: [number, number] = [-17, -11]
 /** Too loud is judged fast, on the short-term (3 s) value. */
 export const LOUD_LUFS = -9
-/** Too quiet is judged slowly, on the gated 30 s loudness: it must stay below QUIET_LUFS for QUIET_HOLD_MS, and it clears
- *  only once it is back above QUIET_CLEAR_LUFS (hysteresis, so it never flips near the limit). Healthy speech sits above -23. */
-export const QUIET_LUFS = -23
-export const QUIET_CLEAR_LUFS = -21
-export const LONG_WINDOW_MS = 30_000
-export const QUIET_HOLD_MS = 60_000
-/** No "Too quiet" this long after going live, after a track change, or when the meter starts (the 30 s window is still filling). */
-export const QUIET_WARMUP_MS = 30_000
+/** "Too quiet" is judged on the gated loudness of the last 10 s (LONG_WINDOW_MS): pauses in speech do not drag it down, and it follows the
+ *  fader within about 15 s. It must stay below QUIET_LUFS for QUIET_HOLD_MS, and clears once it is back above QUIET_CLEAR_LUFS (hysteresis,
+ *  so it never flips near the limit). Normal speech sits above -17. */
+export const QUIET_LUFS = -19
+export const QUIET_CLEAR_LUFS = -17.5
+export const LONG_WINDOW_MS = 10_000
+export const QUIET_HOLD_MS = 4_000
+/** No "Too quiet" this long after going live, after a track change, or when the meter starts (the 10 s window is still filling). */
+export const QUIET_WARMUP_MS = 12_000
 /** BS.1770 gating: blocks below -70 LUFS are ignored, then blocks more than 10 LU under the running average. */
 export const ABS_GATE_LUFS = -70
 export const REL_GATE_LU = 10
@@ -93,6 +94,34 @@ export function levelState(shortLufs: number, peakDb: number, clippedRecently: b
   if (shortLufs > LOUD_LUFS) return 'loud'
   if (quiet) return 'quiet'
   return 'good'
+}
+
+/** What the big word says, and its colour. The word follows the same number as the bar, so they never disagree:
+ *  between "good" and "too quiet" it says "A bit low" (and "A bit loud" just under too loud) instead of a flat "Good". */
+export type Tone = 'ok' | 'warn' | 'info' | 'off'
+export function levelWord(state: LevelState, midLufs: number): { word: string; tone: Tone } {
+  switch (state) {
+    case 'off': return { word: 'Meter off', tone: 'off' }
+    case 'silent': return { word: 'No sound', tone: 'warn' }
+    case 'quiet': return { word: 'Too quiet', tone: 'info' }
+    case 'loud': case 'clip': return { word: 'Too loud', tone: 'warn' }
+    default:
+      if (Number.isFinite(midLufs) && midLufs < GOOD_LUFS[0]) return { word: 'A bit low', tone: 'info' }
+      if (Number.isFinite(midLufs) && midLufs > GOOD_LUFS[1]) return { word: 'A bit loud', tone: 'warn' }
+      return { word: 'Good', tone: 'ok' }
+  }
+}
+
+/** Which way to move the mixer and roughly how far, from the loudness going to the station (with BUTT's gain). Hosts don't think in LUFS,
+ *  so the size is in words: under 6 dB "a little", under 11 "some", more "a lot". */
+export function levelAdvice(midLufs: number, state: LevelState): { dir: 'up' | 'down' | 'ok'; amount: string; db: number } {
+  if (state === 'clip') return { dir: 'down', amount: 'now', db: 6 }
+  if (!Number.isFinite(midLufs) || state === 'off' || state === 'silent') return { dir: 'ok', amount: '', db: 0 }
+  const err = TARGET_LUFS - midLufs // positive = too quiet
+  const lo = GOOD_LUFS[0] - TARGET_LUFS, hi = GOOD_LUFS[1] - TARGET_LUFS // -3 .. +3 around the target
+  if (err > -hi && err < -lo) return { dir: 'ok', amount: '', db: 0 }
+  const db = Math.abs(err)
+  return { dir: err > 0 ? 'up' : 'down', amount: db < 6 ? 'a little' : db < 11 ? 'some' : 'a lot', db: Math.round(db) }
 }
 
 /** BS.1770 loudness from a mean square of K-weighted samples. */

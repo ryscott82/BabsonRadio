@@ -4,17 +4,17 @@ import { useEffect, useRef, useState, type MutableRefObject } from 'react'
 import { CLIP_DBFS, LONG_WINDOW_MS, dbOf, gatedLufs, levelState, lufsOf, newQuietTracker, stepQuiet, type LevelState } from '@/lib/booth'
 
 // Reads the studio input (the mixer feed BUTT streams) in the browser and measures it: peak and RMS per channel, and
-// approximate BS.1770 loudness (K-weighted) over 400 ms (momentary), 3 s (short-term) and a gated 30 s average (long, used only for
-// "Too quiet"). Nothing is played back.
+// approximate BS.1770 loudness (K-weighted) over 400 ms (momentary), 3 s (short-term) and a gated 10 s average (long: what the word, the advice
+// and "Too quiet" are judged on). Nothing is played back.
 
 export interface MeterFrame {
   peak: [number, number]; rms: [number, number]; hold: [number, number]
   momentary: number; short: number; long: number; clipAt: number
-  history: number[] // short-term loudness, one value per 500 ms, last 2 minutes
+  history: number[] // gated 10 s loudness (without BUTT's gain), one value per 500 ms, last 2 minutes
 }
-export interface MeterStats { state: LevelState; short: number; peak: number; silentFor: number; clipping: boolean; on: boolean }
+export interface MeterStats { state: LevelState; short: number; /** Gated loudness of the last 10 s with BUTT's gain: what the word and the advice are about. */ mid: number; peak: number; silentFor: number; clipping: boolean; on: boolean }
 
-const OFF: MeterStats = { state: 'off', short: -Infinity, peak: -Infinity, silentFor: 0, clipping: false, on: false }
+const OFF: MeterStats = { state: 'off', short: -Infinity, mid: -Infinity, peak: -Infinity, silentFor: 0, clipping: false, on: false }
 const HOLD_MS = 1500
 
 /** `warmKey` changes on going live or a new track (restarts the quiet warm-up); `gainRef` holds BUTT's gain in dB, added to what the meter hears. */
@@ -63,7 +63,7 @@ export function useInputMeter(deviceId: string, enabled: boolean, warmKey: strin
       const buf = new Float32Array(2048)
       const ms: { t: number; v: number }[] = []
       const holdAt = [0, 0]
-      const blocks: { t: number; v: number }[] = [] // 400 ms block mean squares, last 30 s
+      const blocks: { t: number; v: number }[] = [] // 400 ms block mean squares, last LONG_WINDOW_MS (10 s)
       let blk = { start: 0, sum: 0, n: 0 }
       let quietTrack = newQuietTracker(Date.now())
       let lastHist = 0, silentSince = 0
@@ -95,7 +95,7 @@ export function useInputMeter(deviceId: string, enabled: boolean, warmKey: strin
           while (blocks.length && now - blocks[0].t > LONG_WINDOW_MS) blocks.shift()
           f.long = gatedLufs(blocks.map(b => b.v))
         }
-        if (now - lastHist >= 500) { lastHist = now; f.history.push(f.short); if (f.history.length > 240) f.history.shift() }
+        if (now - lastHist >= 500) { lastHist = now; f.history.push(Number.isFinite(f.long) ? f.long : f.short); if (f.history.length > 240) f.history.shift() }
         raf = requestAnimationFrame(tick)
       }
       raf = requestAnimationFrame(tick)
@@ -111,7 +111,7 @@ export function useInputMeter(deviceId: string, enabled: boolean, warmKey: strin
         const raw = levelState(f.short, peak, clipping) // silence is judged on the raw input
         const state = ctx?.state !== 'running' ? 'off' : raw === 'silent' ? 'silent' : levelState(f.short + g, peak + g, clipping, quietTrack.quiet)
         if (state === 'silent') silentSince ||= Date.now(); else silentSince = 0
-        setStats({ state, short: f.short, peak, clipping, silentFor: silentSince ? (Date.now() - silentSince) / 1000 : 0, on: ctx?.state === 'running' })
+        setStats({ state, short: f.short, mid: Number.isFinite(f.long) ? f.long + g : -Infinity, peak, clipping, silentFor: silentSince ? (Date.now() - silentSince) / 1000 : 0, on: ctx?.state === 'running' })
       }, 250)
     })()
 

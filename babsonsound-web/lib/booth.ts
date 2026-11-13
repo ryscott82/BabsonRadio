@@ -49,6 +49,13 @@ export function readToken(secret: string, token: string): BoothClaims | null {
 /** A recording made on the studio PC can reach this site up to this long after its token ran out (the PC keeps retrying while the site is down). */
 export const RECORDING_TOKEN_MAX_AGE_MS = 14 * 86_400_000
 
+// ── Words that go out to listeners ───────────────────────────
+/** How a typed track title is tidied before it is checked and sent (the studio helper does exactly the same, in helper.mjs). */
+export const songText = (v: unknown) => String(v ?? '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 200)
+/** The site's signature on text that passed the word filter. The helper only sends a track title to BUTT (the stream) with this signature,
+ *  so nothing typed at the booth reaches listeners without being checked against Admin > Blocked words. */
+export const cleanSig = (secret: string, text: string) => mac(secret, `clean:${text}`).toString('hex')
+
 /** Nonce made by the page: "<ms>.<random>". */
 export const attestSig = (secret: string, nonce: string) => mac(secret, `attest:${nonce}`).toString('hex')
 

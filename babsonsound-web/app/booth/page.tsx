@@ -322,7 +322,13 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
     const text = (trackText ?? '').trim()
     if (!text || !live) return
     const [artist, title] = text.includes(' - ') ? [text.split(' - ')[0].trim(), text.split(' - ').slice(1).join(' - ').trim()] : ['', text]
-    void (async () => { try { await report('song', { title, artist }); await helper('/song', { token: await token(), text }) } catch (e) { setError(errText(e)) } })()
+    // The site checks the words (Admin > Blocked words) and signs the title; the helper only puts a signed title on the stream.
+    void (async () => {
+      try {
+        const r = await report('song', { title, artist, text }) as { text?: string; sig?: string } | undefined
+        if (r?.sig) await helper('/song', { token: await token(), text: r.text, cleanSig: r.sig })
+      } catch (e) { setError(errText(e)) }
+    })()
   }
   return (
     <div className="fixed inset-0 z-[2] flex flex-col gap-3 px-8 pt-5 pb-6 overflow-hidden">

@@ -117,6 +117,18 @@ test('BUTT answers one status request a second: callers in the same second share
   for (let i = 0; i < 4; i++) { assert.equal((await h.call('/status')).status, 200); await sleep(600) }
 })
 
+test('a track title only reaches BUTT with the website\'s word-filter signature', { skip }, async () => {
+  const h = await start()
+  const host = token({ u: 'u1', n: 'Sam', l: true, r: true })
+  const text = 'Artist - Clean Song'
+  assert.equal((await h.call('/song', { token: host, text })).status, 400, 'unsigned')
+  assert.equal((await h.call('/song', { token: host, text, cleanSig: 'f'.repeat(64) })).status, 400, 'wrong signature')
+  const sig = mac(`clean:${text}`).toString('hex')
+  assert.equal((await h.call('/song', { token: host, text: text + ' extra', cleanSig: sig })).status, 400, 'signature for other text')
+  const ok = await h.call('/song', { token: host, text, cleanSig: sig })
+  assert.equal(ok.status, 200, JSON.stringify(ok.body))
+})
+
 test('refuses other origins and bad tokens', { skip }, async () => {
   const h = await start()
   const r = await fetch(`${h.base}/ping`, { headers: { origin: 'https://evil.example' } })

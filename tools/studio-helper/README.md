@@ -57,6 +57,9 @@ For students with the **Studio badge** (E-board and admins always). The stream i
 
 Ad break times are set in **Settings → Studio PC log → Ad breaks** (minutes past each hour and length).
 
+## Word filter on track titles
+A track title typed at the booth goes out on the stream (BUTT's song title) and to the site and app. Before sending, the page reports it to the website (`/api/booth/event`), which checks it with the same filter as everywhere else plus Admin > Blocked words, and signs a title that passes. Show name and hosts are checked the same way before they are saved (`/api/booth/check-text`). The helper only puts signed titles on the stream. A blocked word shows a plain message and nothing is sent. If the website can't be reached, the title isn't sent; the show itself carries on. Show info saved with a live-show recording (title, hosts, description) has blocked words starred out when it reaches the library.
+
 ## Who can go live
 - Directors and admins: any time.
 - Students: an active Radio badge and one of their own shows starting within 30 minutes (or still running, up to 30 minutes after it ends).

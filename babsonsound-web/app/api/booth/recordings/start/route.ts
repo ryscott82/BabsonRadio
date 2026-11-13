@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, str } from '@/lib/server/http'
 import { recordingCaller } from '@/lib/server/boothRecordings'
 import { cleanLiveShow, cleanRecordingId } from '@/lib/recordingsCore'
-import { assertClean } from '@/lib/server/wordFilter'
+import { assertClean, censor } from '@/lib/server/wordFilter'
 
 export const runtime = 'nodejs'
 
@@ -14,12 +14,14 @@ export const runtime = 'nodejs'
 export async function POST(req: Request) {
   return handle(async () => {
     const b = await readJson(req)
-    const live = cleanLiveShow(b.live)
+    const raw = cleanLiveShow(b.live)
+    // A live show archived by the PC after it ended: never refused for a word (the PC would retry forever), the words are starred out instead.
+    const live = raw && { ...raw, hosts: raw.hosts.map(censor), description: censor(raw.description) }
     const who = await recordingCaller(req, b, Date.now(), !!live)
-    const title = str(b.title, 80)
+    const title = live ? censor(str(b.title, 80)) : str(b.title, 80)
     if (!title) throw new HttpError(400, 'Give the recording a title.')
     const db = adminDb()
-    await assertClean(db, title, '')
+    if (!live) await assertClean(db, title, '')
     const bookingId = live ? '' : str(b.bookingId, 100), requestId = live ? '' : str(b.requestId, 100)
     if (bookingId) {
       const bk = await db.collection('studioBookings').doc(bookingId).get()

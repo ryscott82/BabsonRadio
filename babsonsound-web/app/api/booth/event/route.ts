@@ -1,7 +1,7 @@
 import { after } from 'next/server'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, requireUser, str } from '@/lib/server/http'
-import { BYPASS_UID, verifyAttest } from '@/lib/booth'
+import { BYPASS_UID, cleanSig, songText, verifyAttest } from '@/lib/booth'
 import { EVENT_KINDS, boothSecret, clearBoothSong, recordEvent, setBoothSong } from '@/lib/server/booth'
 import { assertClean } from '@/lib/server/wordFilter'
 import { refreshNowPlaying } from '@/lib/server/nowplaying'
@@ -27,10 +27,12 @@ export async function POST(req: Request) {
     if (!sessionId) throw new HttpError(400, 'Missing session.')
     const title = str(b.title, 120), artist = str(b.artist, 120)
     if ((kind === 'song' || kind === 'music') && !title) throw new HttpError(400, 'Type the song title.')
-    if (kind === 'song') await assertClean(db, title, artist)
+    // A typed track title: checked against the word filter, then signed so the studio helper will put exactly this text on the stream.
+    const text = kind === 'song' ? songText(b.text) || [artist, title].filter(Boolean).join(' - ') : ''
+    if (kind === 'song') await assertClean(db, title, artist, text)
     await recordEvent(db, sessionId, uid, kind, kind === 'song' || kind === 'music' ? [artist, title].filter(Boolean).join(' - ') : kind === 'quiet_ack' ? 'quiet hours' : '')
     if (kind === 'music' || kind === 'quiet_ack') return { ok: true }
-    if (kind === 'song') await setBoothSong(db, sessionId, title, artist)
+    if (kind === 'song') { await setBoothSong(db, sessionId, title, artist); after(() => refreshNowPlaying().catch(() => {})); return { ok: true, text, sig: cleanSig(boothSecret(), text) } }
     else if (kind !== 'live_start') await clearBoothSong(db, sessionId)
     if (kind !== 'live_start') after(() => refreshNowPlaying().catch(() => {}))
     return { ok: true }

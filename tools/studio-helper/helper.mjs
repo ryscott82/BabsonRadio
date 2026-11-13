@@ -100,6 +100,12 @@ function verifyToken(token) {
   } catch { return null }
 }
 
+/** The website's signature on a title that passed its word filter (same as cleanSig in babsonsound-web/lib/booth.ts). */
+function cleanOk(text, sig) {
+  if (typeof sig !== 'string' || !/^[0-9a-f]{64}$/.test(sig)) return false
+  return same(Buffer.from(sig, 'hex'), mac(`clean:${text}`))
+}
+
 // ── BUTT (its own command line talks to the running BUTT on its command port) ──
 let statusShared = { at: 0, p: null }
 function butt(args) {
@@ -500,6 +506,8 @@ const server = createServer(async (req, res) => {
       if (!c.l) return send(res, 403, { error: "You can't send songs right now." }, origin)
       const text = String(b.text || '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 200)
       if (!text) return send(res, 400, { error: 'Type a song.' }, origin)
+      // Only text the website checked against the word filter goes out on the stream (it signs it: /api/booth/clean, lib/booth.ts cleanSig).
+      if (!cleanOk(text, b.cleanSig)) return send(res, 400, { error: 'That track title wasn’t checked, so it wasn’t sent.', code: 'BR-HST-004' }, origin)
       await serial(() => butt(['-u', text]))
       log(`SONG        ${c.n}: ${text}`)
       return send(res, 200, { ok: true }, origin)

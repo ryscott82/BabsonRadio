@@ -367,7 +367,7 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
   if (bl === 'full') {
     return (
       <div className="fixed inset-0 z-[2] flex flex-col gap-4 p-4 overflow-hidden hw-desk-text" style={area}>
-        <div className="hw-sign hw-sign-lg shrink-0" style={{ position: 'relative', left: 0, top: 0 }}>
+        <div className={`hw-sign ${bl ? '' : 'hw-sign-lg'} shrink-0`} style={{ position: 'relative', left: 0, top: 0 }}>
           <span style={live ? undefined : { color: '#4a2620', textShadow: 'none' }}>ON AIR</span>
         </div>
         <p className="hw-title text-4xl leading-none tabular-nums">{clock(now)}</p>
@@ -386,28 +386,28 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
   return (
     <div className="fixed inset-0 z-[2] flex flex-col gap-3 px-8 pt-5 pb-6 overflow-hidden" style={area}>
       {/* A slim strip: logo, the on-air light, the show (or what is next), who else is in the studio, the notices, and the time. */}
-      <header className="hw-desk-text flex items-center gap-5 shrink-0 min-h-[5.5rem]">
+      <header className={`hw-desk-text flex items-center shrink-0 ${bl ? 'gap-3 min-h-[4rem]' : 'gap-5 min-h-[5.5rem]'}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/booth/logo.png" alt="Babson Radio" className="h-20 w-20 object-contain shrink-0" />
+        <img src="/booth/logo.png" alt="Babson Radio" className={`${bl ? 'h-12 w-12' : 'h-20 w-20'} object-contain shrink-0`} />
         <div className="hw-sign shrink-0" style={{ position: 'relative', left: 0, top: 0 }}>
           <span style={live ? undefined : { color: '#4a2620', textShadow: 'none' }}>ON AIR</span>
         </div>
-        <p className="hw-title text-4xl leading-none truncate min-w-0 max-w-[34%]">
+        <p className={`hw-title text-4xl leading-none truncate min-w-0 max-w-[34%] ${bl ? 'hidden' : ''}`}>
           {live && showName ? showName : s?.show ? s.show.title : next ? `Next: ${next.title} at ${clock(next.startAt)}` : 'Nothing booked'}
         </p>
-        {!bypass && <CrewPanel crew={s?.crew ?? []} driverName={s?.name ?? ''} onAir={live || connecting || recording} getToken={token} />}
-        <div className="flex items-center justify-center gap-3 min-w-0 flex-wrap flex-1">
+        {!bypass && !bl && <CrewPanel crew={s?.crew ?? []} driverName={s?.name ?? ''} onAir={live || connecting || recording} getToken={token} />}
+        <div className={`flex items-center justify-center gap-3 min-w-0 flex-wrap flex-1 ${bl ? 'hidden' : ''}`}>
           <ClockScreen show={s?.show ?? null} ads={s?.ads ?? null} live={live} lastMusicAt={lastMusicAt} onPlayId={() => setIdCue(n => n + 1)} />
           <StudioNotices status={studio.status} myBookingId={studio.myBookingId} />
         </div>
-        <div className="flex items-baseline gap-4 shrink-0">
-          <p className="hw-title leading-none tabular-nums" style={{ fontSize: 'clamp(4rem, 8.5vh, 6rem)' }}>{clock(now)}</p>
-          <p className="hw-title text-3xl leading-none">{date}</p>
+        <div className={`flex items-baseline gap-4 shrink-0 ${bl ? 'ml-auto' : ''}`}>
+          <p className="hw-title leading-none tabular-nums" style={{ fontSize: bl ? '3.5rem' : 'clamp(4rem, 8.5vh, 6rem)' }}>{clock(now)}</p>
+          <p className={`hw-title leading-none ${bl ? 'text-xl' : 'text-3xl'}`}>{date}</p>
         </div>
       </header>
 
       {/* The welcome stays 15 minutes after sign-in (and while nothing is booked), then it counts down to the next show. On air it gives way to the show's name. */}
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-6 shrink-0 min-h-[6.5rem]">
+      <div className={`grid items-center gap-4 shrink-0 ${bl ? 'grid-cols-[1fr_auto] min-h-[4.5rem]' : 'grid-cols-[1fr_auto_1fr] gap-6 min-h-[6.5rem]'}`}>
         <div className="flex flex-col items-start gap-2 min-w-0">
           <div className="flex items-center gap-2">
             <BrowserButtons state={browserSt} getToken={token} onError={setError} />
@@ -419,7 +419,7 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
           </div>
         </div>
       {(welcomeBig || countdownBig || problem || s?.note || (live && showName)) ? (
-        <div className="hw-desk-text text-center min-w-0 max-w-[60vw]">
+        <div className={`hw-desk-text text-center min-w-0 max-w-[60vw] ${bl ? 'hidden' : ''}`}>
           {welcomeBig ? (
             <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(3rem, 9vh, 6.5rem)' }}>Welcome, {bypass ? 'Babson Sound user' : s?.firstName || '…'}</h1>
           ) : countdownBig && next ? (
@@ -436,11 +436,11 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
         <div className="flex items-center justify-end gap-2">
           {confirmOut ? (
             <>
-              <button type="button" className="gbtn h-20 px-6 text-3xl" onClick={() => setConfirmOut(false)}>Stay</button>
-              <button type="button" className="gbtn gbtn-stop h-20 px-6 text-3xl" onClick={signOutNow} disabled={!!busy}>{live ? 'End show and sign out' : 'Stop recording and sign out'}</button>
+              <button type="button" className={`gbtn px-6 ${bl ? 'h-16 text-2xl' : 'h-20 text-3xl'}`} onClick={() => setConfirmOut(false)}>Stay</button>
+              <button type="button" className={`gbtn gbtn-stop px-6 ${bl ? 'h-16 text-xl' : 'h-20 text-3xl'}`} onClick={signOutNow} disabled={!!busy}>{live ? 'End show and sign out' : 'Stop recording and sign out'}</button>
             </>
           ) : (
-            <button type="button" className="gbtn h-20 px-10 text-3xl" onClick={() => (live || recording ? setConfirmOut(true) : signOutNow())} disabled={!!busy}>{bypass ? 'Back to sign in' : 'Sign out'}</button>
+            <button type="button" className={`gbtn px-10 ${bl ? 'h-16 text-2xl' : 'h-20 text-3xl'}`} onClick={() => (live || recording ? setConfirmOut(true) : signOutNow())} disabled={!!busy}>{bypass ? 'Back to sign in' : 'Sign out'}</button>
           )}
         </div>
       </div>

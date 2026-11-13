@@ -49,7 +49,7 @@ async function start() {
   const p = spawn(process.execPath, [join(here, '..', 'helper.mjs')], {
     env: {
       ...process.env, STUDIO_PC_SECRET: SECRET, HELPER_PORT: String(port), ALLOW_LOCALHOST: '1', BUTT_PATH: join(here, 'fake-butt.mjs'),
-      FAKE_BUTT_STATE: join(dir, 'butt.json'), FAKE_BUTT_DIR: dir, FAKE_BUTT_RATELIMIT: '1', RECORDINGS_DIR: join(dir, 'recordings'),
+      FAKE_BUTT_STATE: join(dir, 'butt.json'), FAKE_BUTT_DIR: dir, FAKE_BUTT_RATELIMIT: '1', RECORDINGS_DIR: join(dir, 'recordings'), BOOTH_BROWSER_FILE: join(dir, 'browser.json'),
       FFMPEG_PATH: join(here, 'fake-ffmpeg.mjs'), FFPROBE_PATH: join(here, 'fake-ffmpeg.mjs'),
       AZURACAST_URL: `http://127.0.0.1:${azSrv.address().port}`, AZURACAST_API_KEY: 'k', AZURACAST_STATION_ID: 'babson_radio',
       SITE_URL: `http://127.0.0.1:${siteSrv.address().port}`, ARCHIVE_MIN_SECONDS: '5',
@@ -127,6 +127,14 @@ test('a track title only reaches BUTT with the website\'s word-filter signature'
   assert.equal((await h.call('/song', { token: host, text: text + ' extra', cleanSig: sig })).status, 400, 'signature for other text')
   const ok = await h.call('/song', { token: host, text, cleanSig: sig })
   assert.equal(ok.status, 200, JSON.stringify(ok.body))
+})
+
+test('studio browser: closing needs no sign-in, opening does, and /ping reports it', { skip }, async () => {
+  const h = await start()
+  assert.deepEqual((await h.call('/ping')).body.browser, { open: false, layout: '', railPx: 260 })
+  assert.equal((await h.call('/browser/close', {})).status, 200)
+  assert.equal((await h.call('/browser/open', { url: 'https://www.youtube.com/' })).status, 401)
+  assert.equal((await h.call('/browser/open', { token: token({ u: 'u1', n: 'Sam' }), url: 'javascript:alert(1)' })).status, 502)
 })
 
 test('refuses other origins and bad tokens', { skip }, async () => {

@@ -16,6 +16,7 @@ import Soundboard from '@/components/booth/Soundboard'
 import ClockScreen from '@/components/booth/ClockScreen'
 import { useAutoGain } from '@/components/booth/useAutoGain'
 import { useShowInfo } from '@/components/booth/useShowInfo'
+import { BROWSER_ACTIVE_MS, BrowserButtons, closeBrowser, setBrowserLayout, type BrowserState } from '@/components/booth/StudioBrowser'
 import NoteBox from '@/components/booth/NoteBox'
 import ShowInfo from '@/components/booth/ShowInfo'
 import RecordShow, { useRecState } from '@/components/booth/RecordShow'
@@ -46,6 +47,7 @@ export default function BoothPage() {
   const [helperUp, setHelperUp] = useState<boolean | null>(null)
   const [butt, setButt] = useState<Butt | null>(null)
   const [buttErr, setButtErr] = useState('')
+  const [browserSt, setBrowserSt] = useState<BrowserState | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const [exited, setExited] = useState(false)
   const [bypass, setBypass] = useState<{ pin: string; session: Session } | null>(null)
@@ -78,7 +80,7 @@ export default function BoothPage() {
   useEffect(() => {
     let stop = false
     const tick = async () => {
-      try { await helper('/ping'); if (!stop) setHelperUp(true) } catch { if (!stop) { setHelperUp(false); setButt(null) } return }
+      try { const p = await helper<{ browser?: BrowserState }>('/ping'); if (!stop) { setHelperUp(true); setBrowserSt(p.browser ?? null) } } catch { if (!stop) { setHelperUp(false); setButt(null) } return }
       try { const b = await helper<Butt>('/status'); if (!stop) { setButt(b); setButtErr(''); errSince.current = 0 } }
       catch (e) {
         if (stop) return
@@ -90,6 +92,10 @@ export default function BoothPage() {
     const t = setInterval(tick, 2_000)
     return () => { stop = true; clearInterval(t) }
   }, [])
+
+  // Back on the idle screen (nobody signed in): a studio browser left open is closed. Its sign-ins stay in its own profile.
+  const signedOut = helperUp === true && !loading && !user && !bypass
+  useEffect(() => { if (signedOut && browserSt?.open) closeBrowser().catch(() => {}) }, [signedOut, browserSt?.open])
 
   const leavePanel = async () => {
     setExited(true)
@@ -108,7 +114,7 @@ export default function BoothPage() {
         ) : loading ? null : !user && !bypass ? (
           <IdleScreen onExitPanel={leavePanel} night={theme.night} onToggleTheme={theme.toggle} onBypass={(pin, session) => setBypass({ pin, session: session as Session })} />
         ) : (
-          <Console butt={butt} buttRef={buttRef} buttErr={buttErr} key={user?.uid ?? 'bypass'} onExitPanel={leavePanel} night={theme.night} onToggleTheme={theme.toggle}
+          <Console butt={butt} buttRef={buttRef} buttErr={buttErr} browserSt={browserSt} key={user?.uid ?? 'bypass'} onExitPanel={leavePanel} night={theme.night} onToggleTheme={theme.toggle}
                    bypass={user ? null : bypass} onBypassEnd={() => { setBypass(null); setWantLive(false); setSnoozeUntil(Date.now() + MIXING_SNOOZE_MS) }}
                    autoLive={wantLive} onWantLive={setWantLive} onUnlock={pin => setBypass(b => (b ? { ...b, pin } : b))} />
         )}
@@ -129,7 +135,7 @@ function Center({ title, text, children }: { title: string; text?: string; child
   )
 }
 
-function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, bypass, onBypassEnd, autoLive, onWantLive, onUnlock }: { butt: Butt | null; buttRef: React.MutableRefObject<Butt | null>; buttErr: string; onExitPanel: () => void; night: boolean; onToggleTheme: () => void; bypass: { pin: string; session: Session } | null; onBypassEnd: () => void; autoLive: boolean; onWantLive: (v: boolean) => void; onUnlock: (pin: string) => void }) {
+function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, night, onToggleTheme, bypass, onBypassEnd, autoLive, onWantLive, onUnlock }: { butt: Butt | null; buttRef: React.MutableRefObject<Butt | null>; buttErr: string; browserSt: BrowserState | null; onExitPanel: () => void; night: boolean; onToggleTheme: () => void; bypass: { pin: string; session: Session } | null; onBypassEnd: () => void; autoLive: boolean; onWantLive: (v: boolean) => void; onUnlock: (pin: string) => void }) {
   const { isGuest, user } = useAuth()
   const [s, setS] = useState<Session | null>(bypass?.session ?? null)
   const [error, setError] = useState('')
@@ -249,6 +255,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
   }, [report])
 
   const leave = useCallback(async (kind: 'sign_out' | 'idle_out') => {
+    await closeBrowser().catch(() => {}) // the window closes; its sign-ins stay in the studio browser's own profile
     await report(kind).catch(() => {})
     sessionRef.current = null
     if (bypass) onBypassEnd(); else await signOut()
@@ -266,6 +273,8 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
   // Sign out by itself after 30 minutes with no touch, no sound on the input and no music (with a 60 second "Are you still using the studio?" first),
   // but never while on air or recording.
   const [stillThere, setStillThere] = useState(0)
+  const browserRef = useRef<BrowserState | null>(null)
+  useEffect(() => { browserRef.current = browserSt }, [browserSt])
   useEffect(() => {
     const touch = () => { lastActive.current = Date.now(); setStillThere(0) }
     if (!lastActive.current) lastActive.current = Date.now()
@@ -275,6 +284,8 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
       const quiet = Date.now() - lastActive.current
       if (live || connecting || recording) { setStillThere(0); return }
       if (nowTrackRef.current) { lastActive.current = Date.now(); setStillThere(0); return } // music is playing: someone is using it
+      const br = browserRef.current
+      if (br?.open && Date.now() - (br.since ?? Date.now()) < BROWSER_ACTIVE_MS) { lastActive.current = Date.now(); setStillThere(0); return } // using the studio browser
       const st = idleStep(quiet)
       if (st.out) leave('idle_out').catch(() => {})
       else setStillThere(st.warn ? st.secondsLeft : 0)
@@ -330,8 +341,30 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
       } catch (e) { setError(errText(e)) }
     })()
   }
+  // Studio browser open: split keeps the left column (the right half is the browser); full leaves a slim rail.
+  const bl = browserSt?.open ? browserSt.layout : ''
+  const area: React.CSSProperties | undefined = bl === 'split' ? { right: '50%' } : bl === 'full' ? { right: `calc(100% - ${browserSt?.railPx ?? 260}px)` } : undefined
+  if (bl === 'full') {
+    return (
+      <div className="fixed inset-0 z-[2] flex flex-col gap-4 p-4 overflow-hidden hw-desk-text" style={area}>
+        <div className="hw-sign shrink-0" style={{ position: 'relative', left: 0, top: 0 }}>
+          <span style={live ? undefined : { color: '#4a2620', textShadow: 'none' }}>ON AIR</span>
+        </div>
+        <p className="hw-title text-4xl leading-none tabular-nums">{clock(now)}</p>
+        {(live || connecting) && <p className="text-xl">{connecting ? 'Connecting…' : `On air ${mmss(butt?.streamSeconds ?? 0)}`}</p>}
+        {deadAir > 0 && <p className="text-xl warn">Dead air {deadAir} s</p>}
+        {problem && <p className="text-base warn">{problem}</p>}
+        <div className="flex-1" />
+        {stillThere > 0 && <button type="button" className="gbtn gbtn-go h-16 text-lg" onClick={() => setStillThere(0)}>Still here? Signing out in {stillThere} s</button>}
+        {quietKey && quietAck !== quietKey && <button type="button" className="gbtn h-16 text-base warn" onClick={ackQuiet}>Quiet hours: keep it low. OK</button>}
+        <button type="button" className="gbtn h-14 text-lg" onClick={() => void token().then(t => setBrowserLayout(t, 'split')).catch(e => setError(errText(e)))}>Split screen</button>
+        <button type="button" className="gbtn h-14 text-lg" onClick={() => void closeBrowser().catch(e => setError(errText(e)))}>Close browser</button>
+        {(live || connecting) && <button type="button" className="gbtn gbtn-stop h-20 text-2xl" onClick={endShow} disabled={!!busy}>{busy === 'stop' ? 'Ending…' : 'End show'}</button>}
+      </div>
+    )
+  }
   return (
-    <div className="fixed inset-0 z-[2] flex flex-col gap-3 px-8 pt-5 pb-6 overflow-hidden">
+    <div className="fixed inset-0 z-[2] flex flex-col gap-3 px-8 pt-5 pb-6 overflow-hidden" style={area}>
       {/* Top: ON AIR at the left, notices in the middle (time left, ad breaks, station ID, quiet hours, bookings), time and date at the right with the small buttons. */}
       <header className="hw-desk-text grid grid-cols-[auto_1fr_auto] items-start gap-6 shrink-0">
         <div className="hw-sign hw-sign-lg shrink-0" style={{ position: 'relative', left: 0, top: 0 }}>
@@ -346,6 +379,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
           <p className="hw-title text-3xl leading-none">{date}</p>
           <div className="flex items-center gap-2 flex-wrap justify-end mt-1">
             {!bypass && <button type="button" className={sb} onClick={() => setModal('note')}>Leave a note</button>}
+            <BrowserButtons state={browserSt} getToken={token} onError={setError} className={sb} />
             <button type="button" className={sb} onClick={() => setModal('sound')}>Audio setup</button>
             <button type="button" className={sb} onClick={onToggleTheme} aria-pressed={night} title="Switch between the day and night look. It goes back to automatic at 7 am or 7 pm.">{night ? '☾ Night' : '☀ Day'}</button>
             {!live && !connecting && !recording && <button type="button" className={sb} onClick={onExitPanel}>Exit panel</button>}
@@ -374,7 +408,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
       )}
 
       {/* Left: up next, the loudness meter, what is on, Go live. Right: tracks (or the sign-in info) with the sound board under them. */}
-      <div className="grid grid-cols-[1fr_1.15fr] grid-rows-[minmax(0,1fr)] items-stretch gap-5 flex-1 min-h-0">
+      <div className={`grid ${bl ? 'grid-cols-1' : 'grid-cols-[1fr_1.15fr]'} grid-rows-[minmax(0,1fr)] items-stretch gap-5 flex-1 min-h-0`}>
         <div className="flex flex-col gap-3 min-h-0 h-full">
           <p className="hw-desk-text text-2xl truncate shrink-0">Up next: <span className="opacity-90">{next ? `${next.title}${next.hosts.length ? ` with ${next.hosts.join(', ')}` : ''} at ${clock(next.startAt)}` : 'nothing booked'}</span></p>
           <div className="flex-1 min-h-0"><LevelMeter frame={meter.frame} stats={meter.stats} error={meter.error} deadAir={deadAir} auto={auto} /></div>
@@ -408,7 +442,8 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
           </div>
         </div>
 
-        <div className="bp p-6 flex flex-col gap-3 min-h-0 h-full overflow-hidden">
+        {/* Hidden (not removed) while the browser is open, so a track that is playing keeps playing. */}
+        <div className={`bp p-6 flex flex-col gap-3 min-h-0 h-full overflow-hidden ${bl ? 'hidden' : ''}`}>
           {bypass ? <SignInInfo onSignIn={() => openSignIn(false)} /> : (
             <>
               <div className="flex-1 min-h-0">
@@ -421,7 +456,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
       </div>
 
       {quietKey && quietAck !== quietKey && s && stillThere === 0 && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/90 px-8" role="alertdialog" aria-label="Quiet hours">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/90 px-8" style={area} role="alertdialog" aria-label="Quiet hours">
           <div className="hw-screen max-w-3xl w-full p-12 text-center space-y-6">
             <p className="hw-title text-6xl warn">It’s quiet hours</p>
             <p className="text-3xl">Please don’t make any loud noise. Keep the volume as low as possible, and no loud DJ sets.</p>
@@ -431,7 +466,7 @@ function Console({ butt, buttRef, buttErr, onExitPanel, night, onToggleTheme, by
         </div>
       )}
       {stillThere > 0 && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/80" role="alertdialog" aria-label="Still there?">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/80" style={area} role="alertdialog" aria-label="Still there?">
           <div className="hw-screen p-12 text-center space-y-5">
             <p className="hw-title text-6xl">Are you still using the studio?</p>
             <p className="text-3xl lbl">Signing out in {stillThere} seconds.</p>

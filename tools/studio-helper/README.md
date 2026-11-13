@@ -57,6 +57,13 @@ For students with the **Studio badge** (E-board and admins always). The stream i
 
 Ad break times are set in **Settings → Studio PC log → Ad breaks** (minutes past each hour and length).
 
+## Studio browser
+The header has quick links (YouTube, Google Docs, Notion) and **Browser**. They open a normal Chrome window beside the booth, split screen: the browser takes the right half and the booth keeps its left column (meter, show info, Go live). The music and sound board are only hidden, so a track that is playing keeps playing. **Full screen** gives the browser everything except a slim booth rail on the left (ON AIR, the time, End show, Split screen, Close browser); **Split screen** goes back.
+- It is its own Chrome profile (`%LOCALAPPDATA%\BabsonRadioBrowser`), never the booth's or anyone's personal one. Sign-ins are kept between visits, so people can stay signed in to Google or Notion. Anyone using the studio after them can see those accounts until they sign out of them in the browser.
+- The window closes when the person signs out, is signed out for being idle, or the booth goes back to the sign-in screen. While it is open the booth counts as in use for up to 3 hours.
+- The helper places the window (`lib/browser-window.ps1`) and writes `C:\BabsonRadio\browser.json`; the watchdog keeps that window on top instead of the booth while it is open. Only http and https addresses open.
+- Settings (optional): `CHROME_PATH`, `BROWSER_PROFILE_DIR`, `BOOTH_BROWSER_FILE`.
+
 ## Word filter on track titles
 A track title typed at the booth goes out on the stream (BUTT's song title) and to the site and app. Before sending, the page reports it to the website (`/api/booth/event`), which checks it with the same filter as everywhere else plus Admin > Blocked words, and signs a title that passes. Show name and hosts are checked the same way before they are saved (`/api/booth/check-text`). The helper only puts signed titles on the stream. A blocked word shows a plain message and nothing is sent. If the website can't be reached, the title isn't sent; the show itself carries on. Show info saved with a live-show recording (title, hosts, description) has blocked words starred out when it reaches the library.
 

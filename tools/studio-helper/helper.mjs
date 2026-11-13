@@ -6,7 +6,7 @@
 
 import { createServer } from 'node:http'
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { copyFileSync, createReadStream, existsSync, mkdirSync, openSync, readFileSync, readSync, closeSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, extname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -14,6 +14,7 @@ import { createRecorder, newId } from './lib/recorder.mjs'
 import { createUploads } from './lib/uploads.mjs'
 import { createLiveArchive } from './lib/livearchive.mjs'
 import { normalizeOne } from './lib/normalize.mjs'
+import { createBrowser } from './lib/browser.mjs'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 
@@ -242,6 +243,25 @@ setInterval(() => uploads.cleanup(), 3_600_000).unref?.()
 
 // Live shows: who is on air + the booth's "Show info", and the automatic archive of BUTT's recording when the show ends.
 const ARCHIVE_LIVE = process.env.ARCHIVE_LIVE_SHOWS !== '0'
+// ── Studio browser (a Chrome window beside the booth: split screen or full) ──
+const browserFile = process.env.BOOTH_BROWSER_FILE || 'C:\\BabsonRadio\\browser.json'
+const browser = createBrowser({
+  chrome: process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  profileDir: process.env.BROWSER_PROFILE_DIR || join(process.env.LOCALAPPDATA || here, 'BabsonRadioBrowser'),
+  spawn: (cmd, args) => { const c = spawn(cmd, args, { detached: true, stdio: 'ignore', windowsHide: false }); c.on('error', e => log('BROWSER ERROR', e.message)); c.unref(); return { pid: c.pid || 0 } },
+  place: (pid, layout) => new Promise(resolve => {
+    execFile('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', join(here, 'lib', 'browser-window.ps1'), '-ProcessId', String(pid || 0), '-Layout', layout],
+      { timeout: 20_000, windowsHide: true }, (err, out) => resolve(err ? 0 : Number(String(out).trim().split(/\s+/).pop()) || 0))
+  }),
+  kill: pid => execFile('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true }, () => {}),
+  alive: pid => { try { process.kill(pid, 0); return true } catch (e) { return e.code === 'EPERM' } },
+  store: {
+    load: () => { try { return JSON.parse(readFileSync(browserFile, 'utf8')) } catch { return null } },
+    save: v => { try { if (v) writeFileSync(browserFile, JSON.stringify(v)); else rmSync(browserFile, { force: true }) } catch (e) { log('BROWSER ERROR', e.message) } },
+  },
+  log,
+})
+
 const liveArchive = createLiveArchive({
   store: jsonStore(join(REC_DIR, 'live.json')), dir: REC_DIR, now: Date.now, newId, sleep: ms => new Promise(r => setTimeout(r, ms)), log,
   minSec: Number(process.env.ARCHIVE_MIN_SECONDS ?? 60),
@@ -357,7 +377,7 @@ const server = createServer(async (req, res) => {
 
   const url = new URL(req.url, 'http://127.0.0.1')
   try {
-    if (req.method === 'GET' && url.pathname === '/ping') return send(res, 200, { ok: true, version: 1 }, origin)
+    if (req.method === 'GET' && url.pathname === '/ping') return send(res, 200, { ok: true, version: 1, browser: browser.state() }, origin)
 
     // Proves to the website that this sign-in is happening on the studio PC.
     if (req.method === 'GET' && url.pathname === '/attest') {
@@ -409,6 +429,8 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method !== 'POST') return send(res, 404, { error: 'Not found.' }, origin)
+    // Closing the studio browser needs no sign-in: the booth closes it when it goes back to the sign-in screen.
+    if (url.pathname === '/browser/close') { await readBody(req); return send(res, 200, browser.close(), origin) }
     const b = await readBody(req)
     const c = verifyToken(b.token)
     if (!c) return send(res, 401, { error: 'Sign in again on the studio PC.', code: 'BR-BTH-002' }, origin)
@@ -501,6 +523,10 @@ const server = createServer(async (req, res) => {
       log(`SHOW INFO   ${c.n}: "${out.title}"`)
       return send(res, 200, out, origin)
     }
+
+    // Studio browser. Any signed-in person (or the no-sign-in booth) can open it; only web addresses.
+    if (url.pathname === '/browser/open') return send(res, 200, await browser.open(b.url, b.layout), origin)
+    if (url.pathname === '/browser/layout') return send(res, 200, await browser.layout(String(b.layout || '')), origin)
 
     if (url.pathname === '/song') {
       if (!c.l) return send(res, 403, { error: "You can't send songs right now." }, origin)

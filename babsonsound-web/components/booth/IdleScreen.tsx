@@ -20,7 +20,7 @@ const dayWord = (ms: number, now: number) => {
 const firstNames = (hosts: string[]) => hosts.map(h => h.split(/\s+/)[0]).filter(Boolean)
 const join = (n: string[]) => (n.length <= 1 ? n.join('') : `${n.slice(0, -1).join(', ')} and ${n[n.length - 1]}`)
 
-export default function IdleScreen({ onExitPanel, night, onToggleTheme, onBypass }: { onExitPanel: () => void; night: boolean; onToggleTheme: () => void; onBypass: (pin: string, session: object) => void }) {
+export default function IdleScreen({ onBypass }: { onBypass: (pin: string, session: object) => void }) {
   const [now, setNow] = useState(() => Date.now())
   const [data, setData] = useState<Idle | null>(null)
   const [view, setView] = useState<'home' | 'signin' | 'guest' | 'video'>('home')
@@ -97,9 +97,7 @@ export default function IdleScreen({ onExitPanel, night, onToggleTheme, onBypass
               <button type="button" className="gbtn h-12 px-5 text-xl" onClick={() => setView('guest')}>New here? Training</button>
             </div>
             <div className="flex flex-wrap items-center gap-2 mt-auto">
-              <button type="button" className="gbtn h-9 px-3 text-sm" onClick={onToggleTheme} aria-pressed={night} title="Switch between the day and night look. It goes back to automatic at 7 am or 7 pm.">{night ? '☾ Night' : '☀ Day'}</button>
               <button type="button" className="gbtn h-9 px-3 text-sm opacity-70" onClick={() => { setBypassErr(''); boothFetch<object>('/api/booth/bypass', { pin: '' }).then(r => onBypass('', r)).catch(e => setBypassErr(errText(e))) }}>Bypass sign in</button>
-              <button type="button" className="gbtn h-9 px-3 text-sm opacity-70" onClick={onExitPanel}>Exit panel</button>
             </div>
           </div>
         </div>

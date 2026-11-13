@@ -37,7 +37,19 @@ interface Session {
   ads: AdPlan; note: { text: string; by: string; at: number } | null
   next: { title: string; hosts: string[]; startAt: number } | null
   signInToLive?: boolean
+  /** The signed-in person's role (member, host, eboard, admin). Only admin and eboard (director) see Exit panel. */
+  role?: string
 }
+
+/** When this person signed in, kept in the tab so the console can remount (helper blip, auth refresh) without restarting the welcome. */
+function signedInAt(key: string): number {
+  try {
+    const k = `booth-since:${key}`, v = Number(sessionStorage.getItem(k))
+    if (v > 0) return v
+    const t = Date.now(); sessionStorage.setItem(k, String(t)); return t
+  } catch { return Date.now() }
+}
+function forgetSignIns() { try { Object.keys(sessionStorage).filter(k => k.startsWith('booth-since:')).forEach(k => sessionStorage.removeItem(k)) } catch { /* ignore */ } }
 
 const REFRESH_MS = 4 * 60_000
 const DEAD_AIR_S = 10
@@ -98,6 +110,7 @@ export default function BoothPage() {
   // Back on the idle screen (nobody signed in): a studio browser left open is closed. Its sign-ins stay in its own profile.
   const signedOut = helperUp === true && !loading && !user && !bypass
   useEffect(() => { if (signedOut && browserSt?.open) closeBrowser().catch(() => {}) }, [signedOut, browserSt?.open])
+  useEffect(() => { if (signedOut) forgetSignIns() }, [signedOut])
 
   const leavePanel = async () => {
     setExited(true)
@@ -114,9 +127,9 @@ export default function BoothPage() {
         ) : helperUp === false ? (
           <Center title="The studio helper isn’t running" text="Open “start-helper” on this computer and wait a few seconds." />
         ) : loading ? null : !user && !bypass ? (
-          <IdleScreen onExitPanel={leavePanel} night={theme.night} onToggleTheme={theme.toggle} onBypass={(pin, session) => setBypass({ pin, session: session as Session })} />
+          <IdleScreen onBypass={(pin, session) => setBypass({ pin, session: session as Session })} />
         ) : (
-          <Console butt={butt} buttRef={buttRef} buttErr={buttErr} browserSt={browserSt} key={user?.uid ?? 'bypass'} onExitPanel={leavePanel} night={theme.night} onToggleTheme={theme.toggle}
+          <Console butt={butt} buttRef={buttRef} buttErr={buttErr} browserSt={browserSt} key={user?.uid ?? 'bypass'} onExitPanel={leavePanel}
                    bypass={user ? null : bypass} onBypassEnd={() => { setBypass(null); setWantLive(false); setSnoozeUntil(Date.now() + MIXING_SNOOZE_MS) }}
                    autoLive={wantLive} onWantLive={setWantLive} onUnlock={pin => setBypass(b => (b ? { ...b, pin } : b))} />
         )}
@@ -137,7 +150,7 @@ function Center({ title, text, children }: { title: string; text?: string; child
   )
 }
 
-function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, night, onToggleTheme, bypass, onBypassEnd, autoLive, onWantLive, onUnlock }: { butt: Butt | null; buttRef: React.MutableRefObject<Butt | null>; buttErr: string; browserSt: BrowserState | null; onExitPanel: () => void; night: boolean; onToggleTheme: () => void; bypass: { pin: string; session: Session } | null; onBypassEnd: () => void; autoLive: boolean; onWantLive: (v: boolean) => void; onUnlock: (pin: string) => void }) {
+function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onBypassEnd, autoLive, onWantLive, onUnlock }: { butt: Butt | null; buttRef: React.MutableRefObject<Butt | null>; buttErr: string; browserSt: BrowserState | null; onExitPanel: () => void; bypass: { pin: string; session: Session } | null; onBypassEnd: () => void; autoLive: boolean; onWantLive: (v: boolean) => void; onUnlock: (pin: string) => void }) {
   const { isGuest, user } = useAuth()
   const [s, setS] = useState<Session | null>(bypass?.session ?? null)
   const [error, setError] = useState('')
@@ -149,7 +162,7 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, night, onTogg
   const [nowTrack, setNowTrack] = useState<Track | null>(null)
   const nowTrackRef = useRef<Track | null>(null)
   useEffect(() => { nowTrackRef.current = nowTrack }, [nowTrack])
-  const [since] = useState(() => Date.now())
+  const [since] = useState(() => signedInAt(user?.uid ?? 'bypass'))
   const [trackText, setTrackText] = useState<string | null>(null) // typed track title; null follows what is playing
   const [hostsText, setHostsText] = useState<string | null>(null)
   const [pin, setPin] = useState('')
@@ -321,6 +334,8 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, night, onTogg
   const ready = !!butt && !buttErr
   const problem = error || (buttErr ? 'BUTT isn’t answering. Open BUTT on this computer.' : '')
   const sb = 'gbtn h-9 px-3 text-sm'
+  const staffRole = s?.role ?? s?.level ?? ''  // the session's role when the server sends one, else the access level (director is the E-board)
+  const canExit = !bypass && ['admin', 'eboard', 'director'].includes(staffRole)
 
   const date = new Date(now).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
 
@@ -383,17 +398,20 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, night, onTogg
           <p className="hw-title text-3xl leading-none">{date}</p>
           <div className="flex items-center gap-2 flex-wrap justify-end mt-1">
             {!bypass && <button type="button" className={sb} onClick={() => setModal('note')}>Leave a note</button>}
-            <BrowserButtons state={browserSt} getToken={token} onError={setError} className={sb} />
             <button type="button" className={sb} onClick={() => setModal('sound')}>Audio setup</button>
-            <button type="button" className={sb} onClick={onToggleTheme} aria-pressed={night} title="Switch between the day and night look. It goes back to automatic at 7 am or 7 pm.">{night ? '☾ Night' : '☀ Day'}</button>
-            {!live && !connecting && !recording && <button type="button" className={sb} onClick={onExitPanel}>Exit panel</button>}
+            {canExit && !live && !connecting && !recording && <button type="button" className={sb} onClick={onExitPanel}>Exit panel</button>}
+          </div>
+          <div className="flex items-center gap-2 justify-end">
+            <BrowserButtons state={browserSt} getToken={token} onError={setError} />
+          </div>
+          <div className="flex items-center gap-2 justify-end mt-1">
             {confirmOut ? (
               <>
-                <button type="button" className={sb} onClick={() => setConfirmOut(false)}>Stay</button>
-                <button type="button" className={`${sb} gbtn-stop`} onClick={signOutNow} disabled={!!busy}>{live ? 'End show and sign out' : 'Stop recording and sign out'}</button>
+                <button type="button" className="gbtn h-20 px-8 text-3xl" onClick={() => setConfirmOut(false)}>Stay</button>
+                <button type="button" className="gbtn gbtn-stop h-20 px-8 text-3xl" onClick={signOutNow} disabled={!!busy}>{live ? 'End show and sign out' : 'Stop recording and sign out'}</button>
               </>
             ) : (
-              <button type="button" className={sb} onClick={() => (live || recording ? setConfirmOut(true) : signOutNow())} disabled={!!busy}>{bypass ? 'Back to sign in' : 'Sign out'}</button>
+              <button type="button" className="gbtn h-20 px-10 text-3xl" onClick={() => (live || recording ? setConfirmOut(true) : signOutNow())} disabled={!!busy}>{bypass ? 'Back to sign in' : 'Sign out'}</button>
             )}
           </div>
         </div>

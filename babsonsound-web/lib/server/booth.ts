@@ -72,7 +72,7 @@ export async function touchSession(db: Firestore, sessionId: string, info: Sessi
   return ref.id
 }
 
-export const EVENT_KINDS = ['live_start', 'live_stop', 'song', 'music', 'sign_out', 'idle_out'] as const
+export const EVENT_KINDS = ['live_start', 'live_stop', 'song', 'music', 'sign_out', 'idle_out', 'quiet_ack'] as const
 /** Logged by other routes, not sent by the page. */
 type OtherKind = 'note'
 export type EventKind = (typeof EVENT_KINDS)[number] | OtherKind | 'sign_in'
@@ -100,7 +100,7 @@ export async function recordEvent(db: Firestore, sessionId: string, uid: string,
       patch.songCount = FieldValue.increment(1)
     } else if (kind === 'music') {
       patch.musicCount = FieldValue.increment(1)
-    } else if (kind === 'note') {
+    } else if (kind === 'note' || kind === 'quiet_ack') {
       // nothing to count
     } else {
       stopClock()

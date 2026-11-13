@@ -17,7 +17,7 @@ export interface StudioRules {
 }
 export const DEFAULT_STUDIO: StudioRules = {
   capacity: 12, openHour: 7, closeHour: 23, minMinutes: 30, maxMinutes: 90, maxHolds: 2, lookAheadDays: 30, cancelHours: 2, graceMinutes: 15,
-  quiet: 'Mon-Fri 9-16; Mon-Fri 22-7', studioNoShow: false, semesterEnd: '2026-12-18', lateCancelHours: 24,
+  quiet: 'Mon-Fri 10-16:30; Mon-Fri 23-7; Sat-Sun 2-8', studioNoShow: false, semesterEnd: '2026-12-18', lateCancelHours: 24,
 }
 export type StudioNumKey = 'capacity' | 'openHour' | 'closeHour' | 'minMinutes' | 'maxMinutes' | 'maxHolds' | 'lookAheadDays' | 'cancelHours' | 'graceMinutes' | 'lateCancelHours'
 export const STUDIO_RANGE: Record<StudioNumKey, [number, number]> = {
@@ -27,7 +27,7 @@ export const STUDIO_RANGE: Record<StudioNumKey, [number, number]> = {
 export const STUDIO_NUM_KEYS = Object.keys(STUDIO_RANGE) as StudioNumKey[]
 
 // ── quiet hours ─────────────────────────────────────────────
-// "Mon-Fri 9-16; Mon-Fri 22-7": day or day range, then an hour range. Each rule applies on the calendar days it lists (hours 0 to 24; a range that ends
+// "Mon-Fri 10-16:30; Mon-Fri 23-7; Sat-Sun 2-8": day or day range, then an hour range (hours can have minutes, like 16:30). Each rule applies on the calendar days it lists (hours 0 to 24; a range that ends
 // before it starts, like 22-7, means from the start hour to midnight and from midnight to the end hour on each listed day).
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 export interface QuietRule { days: number[]; from: number; to: number }
@@ -37,11 +37,12 @@ export function parseQuiet(spec: string): QuietRule[] | null {
   const text = spec.trim()
   if (!text) return out
   for (const part of text.split(';')) {
-    const m = part.trim().match(/^([A-Za-z]{3})(?:-([A-Za-z]{3}))?\s+(\d{1,2})-(\d{1,2})$/)
+    const m = part.trim().match(/^([A-Za-z]{3})(?:-([A-Za-z]{3}))?\s+(\d{1,2}(?::[0-5]\d)?)-(\d{1,2}(?::[0-5]\d)?)$/)
     if (!m) return null
     const a = DAYS.findIndex(d => d.toLowerCase() === m[1].toLowerCase())
     const b = m[2] ? DAYS.findIndex(d => d.toLowerCase() === m[2].toLowerCase()) : a
-    const from = Number(m[3]), to = Number(m[4])
+    const hr = (t: string) => { const [h, mi = '0'] = t.split(':'); return Number(h) + Number(mi) / 60 } // 9, or 16:30 for half past four
+    const from = hr(m[3]), to = hr(m[4])
     if (a < 0 || b < 0 || from > 24 || to > 24 || from === to) return null
     const days: number[] = []
     for (let d = a; ; d = (d + 1) % 7) { days.push(d); if (d === b) break }
@@ -51,7 +52,7 @@ export function parseQuiet(spec: string): QuietRule[] | null {
 }
 
 /** An error sentence for a bad quiet-hours text, or null. */
-export const checkQuietSpec = (spec: string): string | null => (parseQuiet(spec) ? null : 'Use days and hours like "Mon-Fri 9-16; Mon-Fri 22-7" (hours 0 to 24).')
+export const checkQuietSpec = (spec: string): string | null => (parseQuiet(spec) ? null : 'Use days and hours like "Mon-Fri 10-16:30; Mon-Fri 23-7; Sat-Sun 2-8" (hours 0 to 24, minutes optional like 16:30).')
 
 export function quietAt(spec: string, ms: number): boolean {
   const rules = parseQuiet(spec)

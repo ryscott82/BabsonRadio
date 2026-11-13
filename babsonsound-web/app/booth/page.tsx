@@ -162,6 +162,12 @@ function Console({ butt, buttRef, buttErr, onExitPanel }: { butt: Butt | null; b
     return id ? api('/api/booth/event', { sessionId: id, kind, ...extra }) : Promise.resolve()
   }, [])
 
+  // Quiet hours: when someone is signed in during quiet hours they must tap OK, and the tap is logged on their session (once per quiet stretch).
+  const quietNow = quietBanner(studio.status, now)
+  const quietKey = quietNow?.kind === 'on' ? String(quietNow.until ?? 'on') : ''
+  const [quietAck, setQuietAck] = useState('')
+  const ackQuiet = () => { setQuietAck(quietKey); report('quiet_ack').catch(() => {}) }
+
   const act = async (label: string, fn: () => Promise<unknown>) => {
     setBusy(label); setError('')
     try { await fn() } catch (e) { setError(errText(e)) } finally { setBusy('') }
@@ -302,6 +308,16 @@ function Console({ butt, buttRef, buttErr, onExitPanel }: { butt: Butt | null; b
         </div>
       </div>
 
+      {quietKey && quietAck !== quietKey && s && stillThere === 0 && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/90 px-8" role="alertdialog" aria-label="Quiet hours">
+          <div className="hw-screen max-w-3xl w-full p-12 text-center space-y-6">
+            <p className="hw-title text-6xl warn">It’s quiet hours</p>
+            <p className="text-3xl">Please don’t make any loud noise. Keep the volume as low as possible, and no loud DJ sets.</p>
+            {quietNow?.kind === 'on' && quietNow.until && <p className="text-2xl lbl">Quiet hours end at {fmtClock(quietNow.until)}.</p>}
+            <button type="button" className="gbtn gbtn-go h-24 w-full text-4xl" onClick={ackQuiet} autoFocus>OK, I understand</button>
+          </div>
+        </div>
+      )}
       {stillThere > 0 && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/80" role="alertdialog" aria-label="Still there?">
           <div className="hw-screen p-12 text-center space-y-5">

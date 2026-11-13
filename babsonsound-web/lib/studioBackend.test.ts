@@ -82,11 +82,13 @@ test('capacity counts the booker: 12 people means 11 guests', () => {
 })
 
 // ── quiet hours ─────────────────────────────────────────────
-test('quiet hours: Mon-Fri 9-16 and 22-7, none on weekends', () => {
+test('quiet hours: Mon-Fri 10-16:30 and 23-7, Sat-Sun 2-8', () => {
   const q = R.quiet
-  assert.equal(quietAt(q, at(12, 1, 10)), true); assert.equal(quietAt(q, at(12, 1, 9)), true); assert.equal(quietAt(q, at(12, 1, 16)), false); assert.equal(quietAt(q, at(12, 1, 8, 59)), false)
-  assert.equal(quietAt(q, at(12, 1, 22)), true); assert.equal(quietAt(q, at(12, 1, 23, 30)), true); assert.equal(quietAt(q, at(12, 1, 6, 59)), true); assert.equal(quietAt(q, at(12, 1, 7)), false)
-  assert.equal(quietAt(q, at(12, 5, 10)), false); assert.equal(quietAt(q, at(12, 5, 23)), false); assert.equal(quietAt(q, at(12, 6, 3)), false) // Saturday, Sunday
+  assert.equal(quietAt(q, at(12, 1, 10)), true); assert.equal(quietAt(q, at(12, 1, 9, 59)), false); assert.equal(quietAt(q, at(12, 1, 16, 29)), true); assert.equal(quietAt(q, at(12, 1, 16, 30)), false)
+  assert.equal(quietAt(q, at(12, 1, 23)), true); assert.equal(quietAt(q, at(12, 1, 22, 59)), false); assert.equal(quietAt(q, at(12, 1, 6, 59)), true); assert.equal(quietAt(q, at(12, 1, 7)), false)
+  assert.equal(quietAt(q, at(12, 5, 10)), false); assert.equal(quietAt(q, at(12, 5, 23)), false) // Saturday daytime and late evening are open
+  assert.equal(quietAt(q, at(12, 5, 2)), true); assert.equal(quietAt(q, at(12, 5, 7, 59)), true); assert.equal(quietAt(q, at(12, 5, 8)), false) // Saturday 2-8
+  assert.equal(quietAt(q, at(12, 6, 3)), true); assert.equal(quietAt(q, at(12, 6, 1)), false) // Sunday 2-8
   assert.equal(quietAt(q, at(12, 4, 23)), true) // Friday night
 })
 test('quiet hours never block: they only add { quiet, warning }', () => {
@@ -99,8 +101,8 @@ test('quiet hours never block: they only add { quiet, warning }', () => {
   assert.match(src('app/api/booth/studio-status/route.ts'), /boothStudioStatus/); assert.match(s, /quiet: q, quietUntil: quietUntil/)
 })
 test('quiet helpers: spec parsing, quietUntil, ranges', () => {
-  assert.equal(parseQuiet('x'), null); assert.deepEqual(parseQuiet(''), []); assert.equal(parseQuiet('Mon-Fri 9-9'), null); assert.equal(parseQuiet('Mon-Fri 9-25'), null)
-  assert.equal(quietUntil(R.quiet, at(12, 1, 10)), at(12, 1, 16)); assert.equal(quietUntil(R.quiet, at(12, 5, 10)), null)
+  assert.equal(parseQuiet('x'), null); assert.deepEqual(parseQuiet(''), []); assert.equal(parseQuiet('Mon-Fri 9-9'), null); assert.ok(parseQuiet('Mon-Fri 10-16:30')); assert.equal(parseQuiet('Mon-Fri 10-16:75'), null); assert.equal(parseQuiet('Mon-Fri 9-25'), null)
+  assert.equal(quietUntil(R.quiet, at(12, 1, 10)), at(12, 1, 16, 30)); assert.equal(quietUntil(R.quiet, at(12, 5, 10)), null)
   const rs = quietRanges(R.quiet, at(12, 1, 0), at(12, 2, 0)); assert.equal(rs.length >= 2, true)
   assert.equal(rs.every(r => r.endAt > r.startAt), true)
 })
@@ -293,8 +295,8 @@ test('studio PC recordings: the PC may act for the person only with their signed
   const c = src('app/api/booth/recordings/complete/route.ts'); assert.match(c, /r\.forRequestId && r\.clean/); assert.match(c, /attachRecording\(db, who\.uid, id, r\.forRequestId, true\)/)
 })
 test('booth status: next quiet start and bookings with ids; check-in reports a booking that is already checked in', () => {
-  assert.equal(quietNextStart(R.quiet, at(12, 1, 8, 50)), at(12, 1, 9)); assert.equal(quietNextStart(R.quiet, at(12, 1, 10)), null)
-  assert.equal(quietNextStart(R.quiet, at(12, 1, 17)), at(12, 1, 22)); assert.equal(quietNextStart(R.quiet, at(12, 5, 12)), at(12, 7, 0)) // Saturday noon -> Monday 0:00 (Mon 22-7 also covers Monday's early hours)
+  assert.equal(quietNextStart(R.quiet, at(12, 1, 8, 50)), at(12, 1, 10)); assert.equal(quietNextStart(R.quiet, at(12, 1, 10)), null)
+  assert.equal(quietNextStart(R.quiet, at(12, 1, 17)), at(12, 1, 23)); assert.equal(quietNextStart(R.quiet, at(12, 5, 12)), at(12, 6, 2)) // Saturday noon -> Sunday 2 am
   assert.equal(quietNextStart('', at(12, 1, 10)), null)
   const s = src('lib/server/studioBook.ts')
   assert.match(s, /quietStartsAt: quietNextStart\(rules\.quiet, now\)/); assert.match(s, /\{ id: r\.id, startAt: r\.startAt, endAt: r\.endAt, name: r\.name\.split/)

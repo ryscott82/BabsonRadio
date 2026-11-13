@@ -39,7 +39,8 @@ test('a good form gives an entry the server accepts (trimmed note, no routes key
 test('every empty or bad field gets its own plain message, and nothing is saved', () => {
   const r = parseForm({ ...emptyForm('2026-02-30') }, TODAY)
   assert.equal(r.ok, false)
-  assert.deepEqual(Object.keys(r.errors).sort(), ['cpu', 'date', 'edge', 'gb', 'invocations'])
+  assert.deepEqual(Object.keys(r.errors).sort(), ['date']) // blank numbers are allowed; the date is what is wrong here
+  assert.ok(parseForm({ ...emptyForm('2026-11-08') }, TODAY).errors.cpu) // but at least one number is needed
   const bad = parseForm({ ...good, cpu: 'lots', edge: '-3', invocations: '1.2.3', gb: 'big' }, TODAY)
   assert.deepEqual(Object.keys(bad.errors).sort(), ['cpu', 'edge', 'gb', 'invocations'])
   assert.equal(parseForm({ ...good, cpu: '200000' }, TODAY).ok, false)

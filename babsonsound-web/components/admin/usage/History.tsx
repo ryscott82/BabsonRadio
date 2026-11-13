@@ -21,8 +21,8 @@ export default function History({ d, onEdit, onChanged }: { d: Overview; onEdit:
     return { e, meter: m }
   }), [d])
   const rows = all ? withMeter : withMeter.slice(0, 12)
-  const pairs = withMeter.filter(r => r.meter !== null && r.meter > 0 && r.e.activeCpuHours > 0)
-  const ratio = pairs.length >= 2 ? pairs.reduce((a, r) => a + (r.meter as number), 0) / pairs.reduce((a, r) => a + r.e.activeCpuHours, 0) : null
+  const pairs = withMeter.filter(r => r.meter !== null && r.meter > 0 && r.e.activeCpuHours !== null && r.e.activeCpuHours > 0)
+  const ratio = pairs.length >= 2 ? pairs.reduce((a, r) => a + (r.meter as number), 0) / pairs.reduce((a, r) => a + (r.e.activeCpuHours as number), 0) : null
 
   async function del(id: string, date: string) {
     setBusy(id); setFail('')
@@ -44,12 +44,12 @@ export default function History({ d, onEdit, onChanged }: { d: Overview; onEdit:
             {rows.map(({ e, meter }) => (
               <tr key={e.id} className="block lg:table-row border-b border-white/25 last:border-0 py-2 lg:py-0">
                 <td data-label="Date" className={`${TD} text-lg`}>{fmtDay(e.date)} <span className="lg:hidden opacity-80 text-base">{e.date.slice(0, 4)}</span></td>
-                <td data-label="Active CPU (h)" className={`${TD} tabular-nums`}>{fmtH(e.activeCpuHours)}</td>
-                <td data-label="Our meter (h)" className={`${TD} tabular-nums`}>{meter === null ? 'not counted' : fmtH(meter)}</td>
-                <td data-label="Gap (h)" className={`${TD} tabular-nums`}>{meter === null ? '' : `${e.activeCpuHours - meter >= 0 ? '+' : '−'}${fmtH(Math.abs(e.activeCpuHours - meter))}`}</td>
-                <td data-label="Edge requests" className={`${TD} tabular-nums`}>{fmtInt(e.edgeRequests)}</td>
-                <td data-label="Invocations" className={`${TD} tabular-nums`}>{fmtInt(e.functionInvocations)}</td>
-                <td data-label="Data (GB)" className={`${TD} tabular-nums`}>{fmtH(e.fastDataTransferGB)}</td>
+                <td data-label="Active CPU (h)" className={`${TD} tabular-nums`}>{e.activeCpuHours === null ? '' : fmtH(e.activeCpuHours)}</td>
+                <td data-label="Our meter (h)" className={`${TD} tabular-nums`}>{meter === null || e.activeCpuHours === null ? (meter === null ? 'not counted' : '') : fmtH(meter)}</td>
+                <td data-label="Gap (h)" className={`${TD} tabular-nums`}>{meter === null || e.activeCpuHours === null ? '' : `${e.activeCpuHours - meter >= 0 ? '+' : '−'}${fmtH(Math.abs(e.activeCpuHours - meter))}`}</td>
+                <td data-label="Edge requests" className={`${TD} tabular-nums`}>{e.edgeRequests === null ? '' : fmtInt(e.edgeRequests)}</td>
+                <td data-label="Invocations" className={`${TD} tabular-nums`}>{e.functionInvocations === null ? '' : fmtInt(e.functionInvocations)}</td>
+                <td data-label="Data (GB)" className={`${TD} tabular-nums`}>{e.fastDataTransferGB === null ? '' : fmtH(e.fastDataTransferGB)}</td>
                 <td data-label="Entered by" className={TD}><span className="break-all lg:text-base">{e.enteredBy || 'unknown'}<span className="block text-base opacity-80">{fmtWhen(e.enteredAt)}</span></span></td>
                 <td data-label="Notes" className={`${TD} lg:min-w-[160px]`}>
                   <span className="text-right lg:text-left break-words">

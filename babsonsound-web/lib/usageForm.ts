@@ -1,7 +1,7 @@
 // The "enter usage" form: turns what an admin types (text) into an entry the server accepts, with a plain message per field. Pure, so the tests run it.
 // People copy numbers straight off Vercel's Usage page, so this accepts what that page shows: "1,204,330", "1.2M", "2h 15m", "800 MB".
 
-import { cleanEntry, monthOfDate, validDate, type TopRoute, type UsageEntry } from './serverUsage.ts'
+import { cleanEntry, monthOfDate, validDate, withCpu, type TopRoute, type UsageEntry } from './serverUsage.ts'
 
 export interface FormRoute { route: string; hours: string }
 export interface UsageForm { date: string; cpu: string; edge: string; invocations: string; gb: string; routes: FormRoute[]; note: string }
@@ -53,18 +53,17 @@ export function parseForm(f: UsageForm, today: string, others: Pick<UsageEntry, 
   if (!validDate(date)) errors.date = 'Pick a real date, like 2026-11-08.'
   else if (date > nextDay(today)) errors.date = 'That date has not happened yet.'
 
-  const cpu = parseHours(f.cpu)
-  if (!f.cpu.trim()) errors.cpu = 'Enter the Active CPU shown on Vercel, like 1.5 or 1h 30m.'
-  else if (cpu === null) errors.cpu = 'Use hours like 1.5, or a time like 1h 30m.'
-  else if (cpu > 100000) errors.cpu = 'That is more than 100,000 hours. Check the number.'
+  // Every number is optional (any combination), but at least one is needed.
+  const cpu = f.cpu.trim() ? parseHours(f.cpu) : null
+  if (f.cpu.trim() && cpu === null) errors.cpu = 'Use hours like 1.5, or a time like 1h 30m.'
+  else if (cpu !== null && cpu > 100000) errors.cpu = 'That is more than 100,000 hours. Check the number.'
 
   const edge = count(f.edge, 'Edge requests', errors, 'edge')
   const inv = count(f.invocations, 'Function invocations', errors, 'invocations')
 
-  const gb = parseGB(f.gb)
-  if (!f.gb.trim()) errors.gb = 'Enter the data transfer shown on Vercel, like 3.2 or 800 MB.'
-  else if (gb === null) errors.gb = 'Use a size like 3.2, 3.2 GB or 800 MB.'
-  else if (gb > 1e7) errors.gb = 'That is too large. Check the number.'
+  const gb = f.gb.trim() ? parseGB(f.gb) : null
+  if (f.gb.trim() && gb === null) errors.gb = 'Use a size like 3.2, 3.2 GB or 800 MB.'
+  else if (gb !== null && gb > 1e7) errors.gb = 'That is too large. Check the number.'
 
   const topRoutes: TopRoute[] = []
   const seen = new Set<string>()
@@ -82,23 +81,26 @@ export function parseForm(f: UsageForm, today: string, others: Pick<UsageEntry, 
   if (!errors.routes && topRoutes.length > 20) errors.routes = 'List up to 20 routes.'
   if (f.note.trim().length > 500) errors.note = 'The note can be up to 500 characters.'
 
+  if (!Object.keys(errors).length && cpu === null && edge === null && inv === null && gb === null) errors.cpu = 'Enter at least one number from Vercel. Any combination is fine.'
   if (Object.keys(errors).length) return { ok: false, errors, warnings }
 
   // Same checks as the server, so a message here is never different from the one the server would give.
   const c = cleanEntry({ date, activeCpuHours: cpu, edgeRequests: edge, functionInvocations: inv, fastDataTransferGB: gb, note: f.note, ...(topRoutes.length ? { topRoutes } : {}) })
   if (!c.ok) return { ok: false, errors: { date: c.error }, warnings }
 
-  const before = others.filter(o => monthOfDate(o.date) === monthOfDate(date) && o.date < date).sort((a, b) => b.date.localeCompare(a.date))[0]
-  const after = others.filter(o => monthOfDate(o.date) === monthOfDate(date) && o.date > date).sort((a, b) => a.date.localeCompare(b.date))[0]
-  if (before && c.entry.activeCpuHours < before.activeCpuHours) warnings.push(`Lower than the reading on ${before.date} (${round(before.activeCpuHours)} h). Readings add up through the month, so check the number. If Vercel's period started in between, this is fine.`)
-  if (after && c.entry.activeCpuHours > after.activeCpuHours) warnings.push(`Higher than the later reading on ${after.date} (${round(after.activeCpuHours)} h). Check the date and the number.`)
+  const cpuNow = c.entry.activeCpuHours
+  const sameMonth = withCpu(others).filter(o => monthOfDate(o.date) === monthOfDate(date))
+  const before = sameMonth.filter(o => o.date < date).sort((a, b) => b.date.localeCompare(a.date))[0]
+  const after = sameMonth.filter(o => o.date > date).sort((a, b) => a.date.localeCompare(b.date))[0]
+  if (cpuNow !== null && before && cpuNow < before.activeCpuHours) warnings.push(`Lower than the reading on ${before.date} (${round(before.activeCpuHours)} h). Readings add up through the month, so check the number. If Vercel's period started in between, this is fine.`)
+  if (cpuNow !== null && after && cpuNow > after.activeCpuHours) warnings.push(`Higher than the later reading on ${after.date} (${round(after.activeCpuHours)} h). Check the date and the number.`)
   const sum = topRoutes.reduce((a, r) => a + r.cpuHours, 0)
-  if (sum > c.entry.activeCpuHours * 1.05 + 0.01) warnings.push('The routes add up to more than the total Active CPU. Check the route hours.')
+  if (cpuNow !== null && sum > cpuNow * 1.05 + 0.01) warnings.push('The routes add up to more than the total Active CPU. Check the route hours.')
   return { ok: true, errors, warnings, entry: c.entry }
 }
 
 function count(raw: string, label: string, errors: FormErrors, key: 'edge' | 'invocations'): number | null {
-  if (!raw.trim()) { errors[key] = `Enter ${label.toLowerCase()} from Vercel, like 1204330 or 1.2M.`; return null }
+  if (!raw.trim()) return null // left blank is fine
   const v = parseCount(raw)
   if (v === null) { errors[key] = `${label} must be a number like 1204330 or 1.2M.`; return null }
   if (v > 1e12) { errors[key] = `${label} is too large. Check the number.`; return null }
@@ -111,8 +113,9 @@ function nextDay(d: string) { return new Date(Date.parse(`${d}T00:00:00Z`) + 86_
 /** An entry back into form text, for editing. */
 export function formFromEntry(e: Pick<UsageEntry, 'date' | 'activeCpuHours' | 'edgeRequests' | 'functionInvocations' | 'fastDataTransferGB' | 'note' | 'topRoutes'>): UsageForm {
   return {
-    date: e.date, cpu: String(Math.round(e.activeCpuHours * 1000) / 1000),
-    edge: String(e.edgeRequests), invocations: String(e.functionInvocations), gb: String(Math.round(e.fastDataTransferGB * 1000) / 1000),
+    date: e.date, cpu: e.activeCpuHours === null ? '' : String(Math.round(e.activeCpuHours * 1000) / 1000),
+    edge: e.edgeRequests === null ? '' : String(e.edgeRequests), invocations: e.functionInvocations === null ? '' : String(e.functionInvocations),
+    gb: e.fastDataTransferGB === null ? '' : String(Math.round(e.fastDataTransferGB * 1000) / 1000),
     routes: (e.topRoutes ?? []).map(r => ({ route: r.route, hours: String(Math.round(r.cpuHours * 1000) / 1000) })), note: e.note,
   }
 }

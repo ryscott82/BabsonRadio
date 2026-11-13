@@ -76,10 +76,18 @@ test('quick entry builds exactly one add from the same validation as the full fo
   const full = emptyForm('2026-11-09'); assert.equal(Object.keys(full).includes('cpu'), true)
 })
 test('quick entry sends nothing when a box is wrong, and says which', () => {
-  const r = quickSave({ ...good, cpu: 'lots', gb: '' }, '2026-11-09')
+  const r = quickSave({ ...good, cpu: 'lots', gb: 'big' }, '2026-11-09')
   assert.equal(r.ok, false)
   assert.ok(r.errors.cpu); assert.ok(r.errors.gb)
   assert.equal(quickSave({ ...good, date: '2026-11-30' }, '2026-11-09').ok, false)
+})
+test('any combination of the four numbers saves, as long as there is at least one', () => {
+  const only = (k: 'cpu' | 'edge' | 'invocations' | 'gb', v: string) => quickSave({ date: good.date, cpu: '', edge: '', invocations: '', gb: '', [k]: v }, '2026-11-09')
+  for (const [k, v] of [['cpu', '1.5'], ['edge', '1.2M'], ['invocations', '40K'], ['gb', '3.2 GB']] as const) assert.equal(only(k, v).ok, true, k)
+  const two = quickSave({ date: good.date, cpu: '', edge: '1.2M', invocations: '', gb: '800 MB' }, '2026-11-09')
+  assert.ok(two.ok && two.body.activeCpuHours === null && two.body.edgeRequests === 1200000 && two.body.fastDataTransferGB === 0.8)
+  const none = quickSave({ date: good.date, cpu: '', edge: '', invocations: '', gb: '' }, '2026-11-09')
+  assert.equal(none.ok, false)
 })
 test('the quick entry posts once to the existing endpoint, is the first thing on the page, and the long form is collapsed under "Full entry form"', () => {
   const q = src('components/admin/usage/QuickEntry.tsx'), page = src('app/admin/server-load/page.tsx')

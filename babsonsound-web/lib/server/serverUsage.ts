@@ -18,9 +18,10 @@ import { totalsOf, type CpuMinute, type RouteTotal } from '../cpuMeterCore'
 const col = (db: Firestore) => db.collection('serverUsage')
 export interface UsageRow extends UsageEntry { id: string }
 
+const numOrNull = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null) // a field left blank is stored as null
 const rowOf = (d: FirebaseFirestore.DocumentSnapshot): UsageRow => ({
-  id: d.id, date: String(d.get('date') ?? ''), activeCpuHours: Number(d.get('activeCpuHours') ?? 0), edgeRequests: Number(d.get('edgeRequests') ?? 0),
-  functionInvocations: Number(d.get('functionInvocations') ?? 0), fastDataTransferGB: Number(d.get('fastDataTransferGB') ?? 0), note: String(d.get('note') ?? ''),
+  id: d.id, date: String(d.get('date') ?? ''), activeCpuHours: numOrNull(d.get('activeCpuHours')), edgeRequests: numOrNull(d.get('edgeRequests')),
+  functionInvocations: numOrNull(d.get('functionInvocations')), fastDataTransferGB: numOrNull(d.get('fastDataTransferGB')), note: String(d.get('note') ?? ''),
   enteredBy: String(d.get('enteredBy') ?? ''), enteredAt: Number(d.get('enteredAt') ?? 0), ...(Array.isArray(d.get('topRoutes')) ? { topRoutes: d.get('topRoutes') } : {}),
 })
 

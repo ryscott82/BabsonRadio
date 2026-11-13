@@ -4,10 +4,11 @@
 export interface TopRoute { route: string; cpuHours: number }
 export interface UsageEntry {
   date: string // YYYY-MM-DD
-  activeCpuHours: number
-  edgeRequests: number
-  functionInvocations: number
-  fastDataTransferGB: number
+  // Any combination can be entered (at least one); a number that was left blank is null.
+  activeCpuHours: number | null
+  edgeRequests: number | null
+  functionInvocations: number | null
+  fastDataTransferGB: number | null
   note: string
   enteredBy: string
   enteredAt: number
@@ -29,8 +30,9 @@ type Clean = { ok: true; entry: Omit<UsageEntry, 'enteredBy' | 'enteredAt'> } | 
 export function cleanEntry(raw: unknown): Clean {
   const d = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
   if (!validDate(d.date)) return { ok: false, error: 'Date must be a real day like 2026-11-08.' }
-  const num = (k: string, label: string, max: number): number | string => {
+  const num = (k: string, label: string, max: number): number | string | null => {
     const v = d[k]
+    if (v === undefined || v === null) return null
     if (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > max) return `${label} must be a number from 0 to ${max}.`
     return v
   }
@@ -39,6 +41,7 @@ export function cleanEntry(raw: unknown): Clean {
   const inv = num('functionInvocations', 'Function invocations', 1e12)
   const gb = num('fastDataTransferGB', 'Fast data transfer (GB)', 1e7)
   for (const v of [cpu, edge, inv, gb]) if (typeof v === 'string') return { ok: false, error: v }
+  if ([cpu, edge, inv, gb].every(v => v === null)) return { ok: false, error: 'Enter at least one of the four numbers.' }
   const note = typeof d.note === 'string' ? d.note.trim().slice(0, 500) : ''
   let topRoutes: TopRoute[] | undefined
   if (d.topRoutes !== undefined) {
@@ -52,8 +55,12 @@ export function cleanEntry(raw: unknown): Clean {
       topRoutes.push({ route: o.route.trim(), cpuHours: o.cpuHours })
     }
   }
-  return { ok: true, entry: { date: d.date, activeCpuHours: cpu as number, edgeRequests: edge as number, functionInvocations: inv as number, fastDataTransferGB: gb as number, note, ...(topRoutes ? { topRoutes } : {}) } }
+  return { ok: true, entry: { date: d.date, activeCpuHours: cpu as number | null, edgeRequests: edge as number | null, functionInvocations: inv as number | null, fastDataTransferGB: gb as number | null, note, ...(topRoutes ? { topRoutes } : {}) } }
 }
+
+/** Only the readings that have an Active CPU number (the forecast, the alerts and the cost chart all run on it). */
+export const withCpu = <T extends { activeCpuHours: number | null }>(es: T[]): (T & { activeCpuHours: number })[] =>
+  es.filter((e): e is T & { activeCpuHours: number } => e.activeCpuHours !== null)
 
 export const daysInMonth = (month: string) => { const [y, m] = month.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).getUTCDate() }
 
@@ -91,9 +98,10 @@ export function buildForecast(o: {
   month: string; now: number; allowanceHours: number; meterHours: number; entries: Pick<UsageEntry, 'date' | 'activeCpuHours'>[]
   listenerMinutesByDate: Record<string, number>
 }): Forecast {
+  const entries = withCpu(o.entries) // readings with no Active CPU number have nothing to forecast from
   const d = new Date(o.now)
   const today = d.toISOString().slice(0, 10)
-  const inMonth = o.entries.filter(e => monthOfDate(e.date) === o.month).sort((a, b) => a.date.localeCompare(b.date))
+  const inMonth = entries.filter(e => monthOfDate(e.date) === o.month).sort((a, b) => a.date.localeCompare(b.date))
   const latest = inMonth[inMonth.length - 1] ?? null
   const dom = Number(today.slice(8, 10))
   const meterElapsed = monthOfDate(today) === o.month ? dom - 1 + d.getUTCHours() / 24 : daysInMonth(o.month)
@@ -145,9 +153,9 @@ export interface CostPoint { fromDate: string; toDate: string; cpuHours: number;
  * divided by the listener-hours on the days after that reading up to this one. `minutesByDate` is listener-minutes per 'YYYY-MM-DD'.
  * Readings with no listeners, or a number that went down (a new billing period), give no point. Oldest first.
  */
-export function costIntervals(entries: (Pick<UsageEntry, 'date' | 'activeCpuHours'> & { enteredAt?: number })[], minutesByDate: Record<string, number>): CostPoint[] {
-  const byDate = new Map<string, Pick<UsageEntry, 'date' | 'activeCpuHours'> & { enteredAt?: number }>()
-  for (const e of entries) { // one reading a day: the one entered last wins
+export function costIntervals(allEntries: (Pick<UsageEntry, 'date' | 'activeCpuHours'> & { enteredAt?: number })[], minutesByDate: Record<string, number>): CostPoint[] {
+  const byDate = new Map<string, { date: string; activeCpuHours: number; enteredAt?: number }>()
+  for (const e of withCpu(allEntries)) { // one reading a day: the one entered last wins
     const cur = byDate.get(e.date)
     if (!cur || (e.enteredAt ?? 0) >= (cur.enteredAt ?? 0)) byDate.set(e.date, e)
   }

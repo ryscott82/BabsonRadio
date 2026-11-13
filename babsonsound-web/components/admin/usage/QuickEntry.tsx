@@ -61,8 +61,8 @@ export default function QuickEntry({ entries, onDone }: { entries: UsageRow[]; o
         <div className="sm:pt-7"><button type="submit" className="ops-btn px-6 min-h-11 w-full disabled:opacity-60" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button></div>
       </form>
       <p className="text-base opacity-90">
-        {last ? `Last reading: ${fmtH(last.activeCpuHours)} h for ${fmtDay(last.date)}, entered ${fmtWhen(last.enteredAt)}.` : 'No readings yet.'}
-        {' '}Active CPU is Vercel&apos;s &ldquo;Fluid Active CPU&rdquo; for the billing period so far.
+        {last ? `Last reading: ${last.activeCpuHours === null ? 'no Active CPU' : `${fmtH(last.activeCpuHours)} h`} for ${fmtDay(last.date)}, entered ${fmtWhen(last.enteredAt)}.` : 'No readings yet.'}
+        {' '}Fill in any of the four, you don&apos;t need all of them (the forecast uses Active CPU). Active CPU is Vercel&apos;s &ldquo;Fluid Active CPU&rdquo; for the billing period so far.
       </p>
       {fail && <p role="alert" className="bg-black/35 px-2 py-1 text-base">{fail}</p>}
     </section>

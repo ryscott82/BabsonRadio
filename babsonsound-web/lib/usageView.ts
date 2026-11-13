@@ -1,6 +1,6 @@
 // Numbers for the Server load page: chart series, the feature cost table and the "what if" box. Pure, so the tests run it.
 
-import { daysInMonth, monthOfDate, type UsageEntry } from './serverUsage.ts'
+import { daysInMonth, monthOfDate, withCpu, type UsageEntry } from './serverUsage.ts'
 import type { Tier } from './cpuTiers.ts'
 
 // ── chart: Active CPU hours through a month ──
@@ -8,8 +8,8 @@ export interface Pt { day: number; hours: number }
 
 /** Entered readings for one month, one point a day (the last one entered wins), in day order. */
 export function enteredSeries(month: string, entries: Pick<UsageEntry, 'date' | 'activeCpuHours' | 'enteredAt'>[]): Pt[] {
-  const byDay = new Map<number, Pick<UsageEntry, 'activeCpuHours' | 'enteredAt'>>()
-  for (const e of entries) {
+  const byDay = new Map<number, { activeCpuHours: number; enteredAt: number }>()
+  for (const e of withCpu(entries)) {
     if (monthOfDate(e.date) !== month) continue
     const day = Number(e.date.slice(8, 10))
     const cur = byDay.get(day)

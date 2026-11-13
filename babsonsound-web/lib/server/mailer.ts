@@ -67,7 +67,7 @@ export function friendInviteMail(o: { firstName: string; email: string }) {
 /** Day-10 reminder: verify the email or the account is deleted on day 14. */
 export function verifyReminderMail(o: { deleteAt: number }) {
   const when = new Date(o.deleteAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'America/New_York' })
-  const subject = 'Verify your email to keep your Babson Radio account'
+  const subject = 'Verify your email to keep your Babson Sound account'
   const link = 'https://babsonradio.com/auth'
   const lines = [
     'Your Babson Radio email is not verified yet, so your account is locked.',
@@ -96,11 +96,11 @@ export function trainingExpiryMail(o: { badges: string[]; expiresAt: number; kin
   return { subject, text, html }
 }
 
-/** Sent after someone opens the Studio training form: a link to set a password for their Babson Radio account. */
+/** Sent after someone opens the Studio training form: a link to set a password for their Babson Sound account. */
 export function setPasswordMail(o: { link: string }) {
   const subject = 'Set your Babson Radio password'
   const lines = [
-    'You opened the Studio training form at babsonradio.com, so we made you a Babson Radio account.',
+    'You opened the Studio training form at babsonradio.com, so we made you a Babson Sound account.',
     'Set a password to sign in and see your Studio access:',
   ]
   const text = ['Hi,', '', ...lines, '', o.link, '', 'If this was not you, you can ignore this email.', '', 'Babson Radio'].join('\n')
@@ -113,7 +113,7 @@ export function setPasswordMail(o: { link: string }) {
 
 /** Sent by an admin to someone who is Studio trained but has not signed up yet. */
 export function studioInviteMail(o: { link: string }) {
-  const subject = 'Set up your Babson Radio account'
+  const subject = 'Set up your Babson Sound account'
   const lines = [
     'You are on the Babson Radio Studio trained list, but you have not set up your account yet.',
     'Enter your email on this page to open the Studio form and get a link to set a password:',
@@ -150,7 +150,7 @@ export function strikeMail(o: { kind: 'mistake' | 'warning' | 'ban'; reason: str
     ])
   }
   if (o.kind === 'warning') {
-    return plainMail('Warning: second strike on your Babson Radio account', [
+    return plainMail('Warning: second strike on your Babson Sound account', [
       `The E-board confirmed a second strike: ${o.reason}.`,
       'A third strike this semester pauses new show requests and studio bookings until the semester ends. Strikes clear at the end of the semester.',
       'If you think this is a mistake, reply to this email or talk to the E-board.',

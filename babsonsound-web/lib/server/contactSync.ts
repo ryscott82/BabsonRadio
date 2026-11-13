@@ -18,7 +18,7 @@ export async function beginSync(db: Firestore, uid: string, route: SyncRoute, ha
   return db.runTransaction(async tx => {
     const s = await tx.get(ref)
     if (s.get('flagged') === true) {
-      throw new HttpError(403, 'Contacts are paused on your account. Contact Babson Radio if this is a mistake.', 'BR-CON-007')
+      throw new HttpError(403, 'Contacts are paused on your Babson Sound account. Contact Babson Sound if this is a mistake.', 'BR-CON-007')
     }
     const key = route === 'match' ? 'matchAt' : 'popularAt'
     if (!gapOk(Number(s.get(key) ?? 0), now)) {

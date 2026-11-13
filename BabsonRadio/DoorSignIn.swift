@@ -14,7 +14,7 @@ enum DoorSignIn {
             return "Hi \(r.firstName ?? "there")! Look at the studio screen. You'll be signed in in a few seconds."
         } catch {
             if let e = error as? BackendError { return e.message }
-            return "Sign in to Babson Radio first, then scan the code again."
+            return "Sign in to your Babson Sound account first, then scan the code again."
         }
     }
 }

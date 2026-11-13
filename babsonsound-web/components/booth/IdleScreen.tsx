@@ -138,7 +138,7 @@ function SignIn({ onBack }: { onBack: () => void }) {
   }
   const field = 'gfield w-full px-5 h-16 text-2xl'
   return (
-    <Frame title="Welcome to the studio" text="Sign in with your Babson Radio account. Each show is recorded." onBack={onBack}>
+    <Frame title="Welcome to the studio" text="Sign in with your Babson Sound account. Each show is recorded." onBack={onBack}>
       <form onSubmit={submit} className="space-y-5">
         <input aria-label="Email" placeholder="Email" type="email" autoComplete="off" autoCapitalize="none" spellCheck={false} autoFocus value={email} onChange={e => setEmail(e.target.value)} className={field} />
         <input aria-label="Password" placeholder="Password" type="password" autoComplete="off" value={password} onChange={e => setPassword(e.target.value)} className={field} />

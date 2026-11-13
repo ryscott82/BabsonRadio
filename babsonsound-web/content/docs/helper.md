@@ -1,6 +1,6 @@
 # Studio helper (go-live page on the studio PC)
 
-The studio PC runs Chrome in kiosk mode on **babsonradio.com/booth**. People sign in with their own Babson Radio account, press **Go live**, type songs as they play, and **End show**. This small program sits between that page and BUTT. BUTT still does all the audio.
+The studio PC runs Chrome in kiosk mode on **babsonradio.com/booth**. People sign in with their own Babson Sound account, press **Go live**, type songs as they play, and **End show**. This small program sits between that page and BUTT. BUTT still does all the audio.
 
 ## What's on the page
 Glass screens on the oak desk, sized for the studio screen (1920×1080):

@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     // Staff can see who opened the form (admin only; clients cannot read this collection).
     await db.collection('studioAccess').add({ email, allowed: trained, at: Timestamp.fromMillis(now), ...(ipKey ? { ipHash: ipKey } : {}), expireAt: Timestamp.fromMillis(now + 365 * DAY) })
     if (!trained) throw new HttpError(403, 'That email is not on the Studio trained list. Ask a Studio E-board member to add it.', 'BR-STU-105')
-    // The email also becomes a Babson Radio account with no password yet. They get an email with a link to set a password, which also proves the email is theirs. The form is shown either way, and the answer is the same whether or not an account already existed.
+    // The email also becomes a Babson Sound account with no password yet. They get an email with a link to set a password, which also proves the email is theirs. The form is shown either way, and the answer is the same whether or not an account already existed.
     await preRegister(email).catch(e => console.error('[studioaccess account]', e))
     return { url, embed }
   }, { 'Cache-Control': 'private, no-store' })

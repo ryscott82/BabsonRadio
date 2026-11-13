@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     if (why) {
       const me = await db.collection('users').doc(t.uid).get()
       await flagSync(db, t.uid, why, { email: String(t.email ?? ''), name: [me.get('firstName'), me.get('lastName')].filter(Boolean).join(' ') })
-      throw new HttpError(403, 'Contacts are paused on your account. Contact Babson Radio if this is a mistake.', 'BR-CON-007')
+      throw new HttpError(403, 'Contacts are paused on your Babson Sound account. Contact Babson Sound if this is a mistake.', 'BR-CON-007')
     }
 
     const uids = [...hashesOf.keys()]

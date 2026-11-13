@@ -100,17 +100,37 @@ function verifyToken(token) {
 }
 
 // ── BUTT (its own command line talks to the running BUTT on its command port) ──
+let statusShared = { at: 0, p: null }
 function butt(args) {
+  if (args[0] !== '-S') statusShared = { at: 0, p: null } // a command changes BUTT's state: the next status is read fresh
   return new Promise((resolve, reject) => {
     execFile(BUTT, ['-p', BUTT_PORT, ...args], { timeout: 6000, windowsHide: true }, (err, stdout, stderr) => {
-      if (err) reject(new Error(`BUTT did not answer (${(stderr || err.message).toString().trim().slice(0, 160)})`))
+      if (err) reject(new Error(`BUTT did not answer (${(String(stderr || '').trim() || String(stdout || '').trim() || err.message).slice(0, 160)})`))
       else resolve(String(stdout))
     })
   })
 }
 
-async function status() {
-  const out = await butt(['-S'])
+// BUTT 1.47 answers at most one status request per second ("You may only request one status packet per second"). The page asks every
+// 2 seconds and the recorder and upload queue ask too, so: everyone in the same second shares one answer, and a refused request is
+// tried again a second later instead of showing "BUTT isn't answering".
+function status() {
+  const now = Date.now()
+  if (statusShared.p && now - statusShared.at < 1100) return statusShared.p
+  const p = readStatus()
+  statusShared = { at: now, p }
+  p.catch(() => { if (statusShared.p === p) statusShared = { at: 0, p: null } })
+  return p
+}
+async function readStatus() {
+  for (let i = 0; ; i++) {
+    try { return parseStatus(await butt(['-S'])) } catch (e) {
+      if (i >= 2 || !/one status packet/i.test(e.message)) throw e
+      await new Promise(r => setTimeout(r, 1100))
+    }
+  }
+}
+function parseStatus(out) {
   if (!/^connected:/mi.test(out)) throw new Error('BUTT gave no status. Is BUTT open, with its command server on?')
   const num = k => { const m = new RegExp(`^${k}:\\s*(-?[\\d.]+)`, 'mi').exec(out); return m ? Number(m[1]) : 0 }
   const txt = k => { const m = new RegExp(`^${k}:\\s?(.*)$`, 'mi').exec(out); return m ? m[1].trim() : '' }

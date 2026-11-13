@@ -49,7 +49,7 @@ async function start() {
   const p = spawn(process.execPath, [join(here, '..', 'helper.mjs')], {
     env: {
       ...process.env, STUDIO_PC_SECRET: SECRET, HELPER_PORT: String(port), ALLOW_LOCALHOST: '1', BUTT_PATH: join(here, 'fake-butt.mjs'),
-      FAKE_BUTT_STATE: join(dir, 'butt.json'), FAKE_BUTT_DIR: dir, RECORDINGS_DIR: join(dir, 'recordings'),
+      FAKE_BUTT_STATE: join(dir, 'butt.json'), FAKE_BUTT_DIR: dir, FAKE_BUTT_RATELIMIT: '1', RECORDINGS_DIR: join(dir, 'recordings'),
       FFMPEG_PATH: join(here, 'fake-ffmpeg.mjs'), FFPROBE_PATH: join(here, 'fake-ffmpeg.mjs'),
       AZURACAST_URL: `http://127.0.0.1:${azSrv.address().port}`, AZURACAST_API_KEY: 'k', AZURACAST_STATION_ID: 'babson_radio',
       SITE_URL: `http://127.0.0.1:${siteSrv.address().port}`,
@@ -105,6 +105,16 @@ test('record, pause, resume, stop, listen back, save, upload to AzuraCast, tell 
   assert.equal(site.badSig, 0)
   assert.deepEqual({ status: site.recs.get(id).status, path: site.recs.get(id).path, dur: site.recs.get(id).dur, title: site.recs.get(id).title, token: site.recs.get(id).token === me },
     { status: 'uploaded', path, dur: 13, title: 'Late Night Talk', token: true })
+})
+
+test('BUTT answers one status request a second: callers in the same second share it, a refused one is retried', { skip }, async () => {
+  const h = await start()
+  const all = await Promise.all(Array.from({ length: 5 }, () => h.call('/status')))
+  assert.deepEqual(all.map(r => r.status), [200, 200, 200, 200, 200], JSON.stringify(all.map(r => r.body)))
+  await sleep(300)
+  const later = await h.call('/status') // inside BUTT's one second, past the shared answer? still fine
+  assert.equal(later.status, 200, JSON.stringify(later.body))
+  for (let i = 0; i < 4; i++) { assert.equal((await h.call('/status')).status, 200); await sleep(600) }
 })
 
 test('refuses other origins and bad tokens', { skip }, async () => {

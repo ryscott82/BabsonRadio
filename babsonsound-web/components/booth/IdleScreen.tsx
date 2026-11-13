@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { signIn } from '@/lib/auth'
 import DoorClaim from './DoorClaim'
 import { boothFetch, errText, helper } from './helper'
@@ -25,6 +26,7 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
   const [now, setNow] = useState(() => Date.now())
   const [data, setData] = useState<Idle | null>(null)
   const [view, setView] = useState<'home' | 'signin' | 'guest' | 'video'>('home')
+  const router = useRouter()
   const [bypassErr, setBypassErr] = useState('')
   const [videoId, setVideoId] = useState('')
   const [drift, setDrift] = useState({ x: 0, y: 0 })
@@ -63,7 +65,7 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
     <>
     <DoorClaim />
     <div className="fixed inset-0 z-[2] flex flex-col gap-5 px-10 pt-6 pb-6 overflow-hidden" style={{ transform: `translate(${drift.x}px, ${drift.y}px)`, transition: 'transform 2s' }}>
-      <h1 className="hw-desk-text hw-title text-center leading-none shrink-0" style={{ fontSize: 'clamp(3rem, 7vh, 5.5rem)' }}>Welcome to Babson Radio</h1>
+      <h1 className="hw-desk-text hw-title text-center leading-none shrink-0" style={{ fontSize: 'clamp(3rem, 7vh, 5.5rem)' }}>Welcome to the Radio Room</h1>
       <div className="grid grid-cols-[1.05fr_1fr_1fr] gap-6 flex-1 min-h-0">
         {/* The time is the first thing a studio screen should say. */}
         <section className="hw-desk-text flex flex-col min-w-0">
@@ -94,6 +96,7 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
               </>
             ) : <p className="hw-title text-4xl leading-tight">{data ? 'Studio is free' : 'Loading…'}</p>}
           </div>
+          {rest.length > 0 && (
           <div className="bp px-7 py-5 flex-1 min-h-0 overflow-hidden">
             <p className="lbl text-2xl mb-2">Later today</p>
             {rest.length ? (
@@ -105,8 +108,9 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
                   </li>
                 ))}
               </ul>
-            ) : <p className="text-2xl lbl">Nothing else booked.</p>}
+            ) : null}
           </div>
+          )}
         </section>
 
         {/* How to go on air: scan the code (your phone is already signed in, nothing to type) or sign in on this computer. */}
@@ -114,13 +118,9 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
           <p className="hw-title text-5xl leading-tight">Scan to sign in</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/booth/door-qr.svg" alt="QR code to sign in at the studio" className="min-h-0 flex-1 max-h-[42vh] aspect-square rounded-xl bg-white" />
-          <ol className="text-2xl text-left space-y-1 w-full max-w-md list-decimal pl-8">
-            <li>Scan the code with your phone.</li>
-            <li>Sign in on your phone.</li>
-            <li>This screen opens for you.</li>
-          </ol>
           <button type="button" className="gbtn gbtn-go h-20 text-3xl w-full" onClick={() => setView('signin')}>Sign in with Babson Sound account</button>
           <div className="flex items-center gap-2">
+            <button type="button" className="gbtn h-12 px-5 text-xl" onClick={() => router.push('/slots')}>Book a show</button>
             <button type="button" className="gbtn h-12 px-5 text-xl" onClick={() => setView('guest')}>New here? Training</button>
             <button type="button" className="gbtn h-12 px-4 text-base opacity-70" onClick={() => { setBypassErr(''); boothFetch<object>('/api/booth/bypass', { pin: '' }).then(r => onBypass('', r)).catch(e => setBypassErr(errText(e))) }}>Bypass sign in</button>
           </div>
@@ -133,7 +133,7 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
         <p className="text-2xl opacity-85">Keep it clean. Respect quiet hours. Leave the studio as you found it.</p>
         {/* The internet needs a sign-in: a tap on any of these goes to the sign-in page. */}
         <div className="ml-auto flex items-center gap-2" role="group" aria-label="Internet. Sign in to use it.">
-          <span className="text-xl opacity-85 mr-2">Sign in to use the internet</span>
+          <span className="text-xl opacity-85 mr-2">Sign in to browse</span>
           <BrowserButtons state={null} getToken={async () => ''} onError={setBypassErr} onLocked={() => setView('signin')} />
         </div>
       </footer>

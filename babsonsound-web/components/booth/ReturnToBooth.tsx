@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { shouldReturnToBooth } from '@/lib/booth'
@@ -16,6 +16,8 @@ export default function ReturnToBooth() {
   const last = useRef(0)
   const live = useRef({ onAir: false, recording: false, sound: false })
   const signedIn = !!user
+  const [pc, setPc] = useState(false)
+  useEffect(() => { queueMicrotask(() => setPc(loadPref('studioPc', '') === '1')) }, [])
   useEffect(() => {
     if (path === '/booth' || loadPref('studioPc', '') !== '1') return
     last.current = Date.now()
@@ -29,5 +31,7 @@ export default function ReturnToBooth() {
     }, 5000)
     return () => { clearInterval(tick); evs.forEach(e => window.removeEventListener(e, touch)) }
   }, [path, router, signedIn])
-  return null
+  // Away from the booth on the studio PC (booking a show, signing in): a way back that needs no keyboard.
+  if (!pc || path === '/booth') return null
+  return <a href="/booth" className="gbtn fixed bottom-4 right-4 z-[90] h-16 px-8 text-2xl grid place-items-center">Back to the booth</a>
 }

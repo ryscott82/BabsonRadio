@@ -2,6 +2,7 @@ import { adminDb } from '@/lib/server/admin'
 import { handle } from '@/lib/server/http'
 import { requireBoothCaller } from '@/lib/server/booth'
 import { buildScheduleFeed } from '@/lib/server/scheduleFeed'
+import { getNowPlaying } from '@/lib/server/nowplaying'
 
 export const runtime = 'nodejs'
 
@@ -13,7 +14,10 @@ export async function GET(req: Request) {
     await requireBoothCaller(req)
     const items = await buildScheduleFeed(adminDb(), { days: 2, showStudentHosts: true, back: 0 })
     const now = Date.now()
+    // The song on the stream (already cached by the site), so the idle screen can say what is playing while the station is on air.
+    const np = await getNowPlaying().catch(() => null)
     return {
+      nowPlaying: np && np.configured && np.title ? { title: np.title, artist: np.artist, playedAt: np.playedAt, duration: np.duration, live: np.isLive, streamer: np.streamer } : null,
       items: items
         .filter(i => i.endAt > now && i.startAt < now + 36 * 3_600_000)
         .sort((a, b) => a.startAt - b.startAt)

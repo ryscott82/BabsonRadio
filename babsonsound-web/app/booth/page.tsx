@@ -96,7 +96,7 @@ export default function BoothPage() {
     let stop = false
     const tick = async () => {
       try { const p = await helper<{ browser?: BrowserState }>('/ping'); if (!stop) { setHelperUp(true); setBrowserSt(p.browser ?? null) } } catch { if (!stop) { setHelperUp(false); setButt(null) } return }
-      try { const b = await helper<Butt>('/status'); if (!stop) { setButt(b); setButtErr(''); errSince.current = 0 } }
+      try { const b = await helper<Butt>('/status'); if (!stop) { setButt(b); setButtErr(''); errSince.current = 0; savePref('studioPc', '1') } }
       catch (e) {
         if (stop) return
         errSince.current ||= Date.now()

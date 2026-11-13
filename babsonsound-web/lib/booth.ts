@@ -371,3 +371,13 @@ export function claimDoorPing(p: { first: boolean; claimId: string; lastId: stri
 
 /** Sound is reaching the computer from the mic input (the meter is running and not silent): the mic check can tick itself. */
 export const micHeard = (level: LevelState) => level === 'quiet' || level === 'good' || level === 'near' || level === 'loud'
+
+/** Away from /booth on the studio PC (the sign-in page, a link someone followed): back to the booth after this long with no input. */
+export const RETURN_TO_BOOTH_MS = 90_000
+/** Input is a pointer, key or touch, or sound on the mic input. Never while on air or recording, and never while someone is signed in (the booth's own
+ *  idle sign-out looks after them). */
+export function shouldReturnToBooth(p: { pathname: string; idleMs: number; onAir: boolean; recording: boolean; soundOnInput: boolean; signedIn: boolean }): boolean {
+  if (p.pathname === '/booth') return false
+  if (p.onAir || p.recording || p.soundOnInput || p.signedIn) return false
+  return p.idleMs >= RETURN_TO_BOOTH_MS
+}

@@ -9,7 +9,7 @@ import { boothFetch, errText, helper } from './helper'
 // doing radio. Sign in, or (no account needed) type an email and watch the quick equipment training.
 
 interface Item { id: string; title: string; hosts: string[]; startAt: number; endAt: number; category: string; source: string }
-interface Idle { items: Item[]; trainingVideoId: string }
+interface Idle { items: Item[]; trainingVideoId: string; nowPlaying?: { title: string; artist: string; playedAt: number; duration: number; live: boolean; streamer: string } | null }
 
 const time = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 const dayWord = (ms: number, now: number) => {
@@ -48,65 +48,106 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
 
   const upcoming = (data?.items ?? []).filter(i => i.endAt > now)
   const onNow = upcoming.find(i => i.startAt <= now)
-  const next = upcoming.filter(i => i.startAt > now).slice(0, 4)
-  const soon = onNow ?? next.find(i => i.startAt - now <= 30 * 60_000)
-  const names = soon ? firstNames(soon.hosts) : []
-  const hello = names.length ? `Hello, ${join(names)}` : 'Hello, Babson Sound Member'
+  const later = upcoming.filter(i => i.startAt > now)
+  const upNext = later[0]
+  const rest = later.slice(1, 4)
   const d = new Date(now)
   const h = d.getHours() % 12 || 12, m = String(d.getMinutes()).padStart(2, '0'), ap = d.getHours() < 12 ? 'AM' : 'PM'
+  // What is playing: only while that song is still within its length (the page asks every 5 minutes, so an old song is never shown as current).
+  const np = data?.nowPlaying
+  const playing = np && np.playedAt && np.duration && now < (np.playedAt + np.duration) * 1000 + 15_000 && (np.live || onNow) ? np : null
+  const tip = TIPS[Math.floor(now / 20_000) % TIPS.length]
+  const hostLine = (i: Item) => (firstNames(i.hosts).length ? `with ${join(firstNames(i.hosts))}` : '')
 
   return (
     <>
     <DoorClaim />
-    <div className="fixed inset-0 z-[2] flex flex-col gap-4 px-8 pt-5 pb-6 overflow-hidden" style={{ transform: `translate(${drift.x}px, ${drift.y}px)`, transition: 'transform 2s' }}>
-      {/* Top: time left, date right (small). Middle: the greeting. Bottom half: coming up, and the QR code to sign in. */}
-      <header className="hw-desk-text flex items-center justify-between shrink-0">
-        <p className="hw-title text-5xl leading-none tabular-nums">{h}:{m}<span className="text-[0.4em] ml-2 opacity-60">{ap}</span></p>
-        <p className="hw-title text-4xl leading-none">{d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-      </header>
-
-      <section className="hw-desk-text flex-1 min-h-0 flex flex-col items-center justify-center text-center gap-2">
-        <h1 className="hw-title leading-none max-w-full truncate" style={{ fontSize: 'clamp(3.5rem, 14vh, 10rem)' }}>{hello}</h1>
-        <p className="text-3xl opacity-80">{soon ? `${onNow ? 'On air now' : `Starts at ${time(soon.startAt)}`}: ${soon.title}` : '\u00A0'}</p>
-      </section>
-
-      <div className="grid grid-cols-[1fr_1.6fr] gap-5 h-[47%] shrink-0 min-h-0">
-        <div className="bp p-7 min-h-0 overflow-hidden">
-          <p className="lbl text-2xl mb-3">{onNow ? 'On air now, then next' : 'Coming up'}</p>
-          {(onNow ? [onNow, ...next].slice(0, 4) : next).length ? (
-            <ul className="space-y-3">
-              {(onNow ? [onNow, ...next].slice(0, 4) : next).map(i => (
-                <li key={i.id} className="flex items-baseline gap-4 text-2xl">
-                  <span className="num w-40 shrink-0">{i === onNow ? 'Now' : `${dayWord(i.startAt, now)}${time(i.startAt)}`}</span>
-                  <span className="truncate">{i.title}{firstNames(i.hosts).length ? <span className="lbl"> · {join(firstNames(i.hosts))}</span> : null}</span>
-                </li>
-              ))}
-            </ul>
-          ) : <p className="text-2xl lbl">{data ? 'Nothing scheduled right now. Music from Auto DJ.' : 'Loading the schedule…'}</p>}
-        </div>
-
-        {/* How to go on air: scan the code (your phone is already signed in, nothing to type), or sign in with your account, or make one here. */}
-        <div className="bp p-7 min-h-0 flex items-stretch gap-7">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/booth/door-qr.svg" alt="QR code to sign in at the studio" className="h-full max-h-full aspect-square self-center rounded-xl bg-white shrink-0" />
-          <div className="min-w-0 flex-1 flex flex-col gap-3 justify-center">
-            <p className="hw-title text-4xl leading-tight">Scan to sign in and go live</p>
-            <p className="text-xl lbl">Point your phone camera at the code. Or sign in on this computer:</p>
-            <button type="button" className="gbtn gbtn-go h-20 text-3xl w-full" onClick={() => setView('signin')}>Sign in with Babson Sound account</button>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className="gbtn h-12 px-5 text-xl" onClick={() => setView('guest')}>New here? Training</button>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 mt-auto">
-              <button type="button" className="gbtn h-9 px-3 text-sm opacity-70" onClick={() => { setBypassErr(''); boothFetch<object>('/api/booth/bypass', { pin: '' }).then(r => onBypass('', r)).catch(e => setBypassErr(errText(e))) }}>Bypass sign in</button>
-            </div>
+    <div className="fixed inset-0 z-[2] flex flex-col gap-5 px-10 pt-6 pb-6 overflow-hidden" style={{ transform: `translate(${drift.x}px, ${drift.y}px)`, transition: 'transform 2s' }}>
+      <div className="grid grid-cols-[1.05fr_1fr_1fr] gap-6 flex-1 min-h-0">
+        {/* The time is the first thing a studio screen should say. */}
+        <section className="hw-desk-text flex flex-col justify-between min-w-0">
+          <div>
+            <p className="hw-title leading-[0.85] tabular-nums" style={{ fontSize: 'clamp(7rem, 26vh, 17rem)' }}>{h}:{m}<span className="text-[0.22em] ml-3 opacity-60">{ap}</span></p>
+            <p className="hw-title text-5xl leading-tight mt-3">{d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
           </div>
-        </div>
+          <div className="space-y-2">
+            <p className="lbl text-xl">Tip</p>
+            <p className="text-3xl leading-snug min-h-[5.5rem]" aria-live="off">{tip}</p>
+          </div>
+        </section>
+
+        {/* On now, Up next, Later today. */}
+        <section className="flex flex-col gap-4 min-h-0 min-w-0">
+          <div className="bp px-7 py-5 shrink-0">
+            <p className="lbl text-2xl">On now</p>
+            {onNow ? (
+              <>
+                <p className="hw-title text-5xl leading-tight line-clamp-2">{onNow.title}</p>
+                <p className="text-2xl lbl truncate">{hostLine(onNow)}{hostLine(onNow) ? ' · ' : ''}until {time(onNow.endAt)}</p>
+              </>
+            ) : <p className="hw-title text-4xl leading-tight">{data ? 'Music from Babson Sound' : 'Loading…'}</p>}
+            {playing && <p className="text-2xl mt-2 truncate"><span className="lbl">Now playing </span>{playing.title}{playing.artist ? ` · ${playing.artist}` : ''}</p>}
+          </div>
+          <div className="bp px-7 py-5 shrink-0">
+            <p className="lbl text-2xl">Up next</p>
+            {upNext ? (
+              <>
+                <p className="hw-title text-4xl leading-tight line-clamp-2">{upNext.title}</p>
+                <p className="text-2xl lbl truncate">{dayWord(upNext.startAt, now)}{time(upNext.startAt)}{hostLine(upNext) ? ` · ${hostLine(upNext)}` : ''}</p>
+              </>
+            ) : <p className="hw-title text-4xl leading-tight">{data ? 'Studio is free' : 'Loading…'}</p>}
+          </div>
+          <div className="bp px-7 py-5 flex-1 min-h-0 overflow-hidden">
+            <p className="lbl text-2xl mb-2">Later today</p>
+            {rest.length ? (
+              <ul className="space-y-2">
+                {rest.map(i => (
+                  <li key={i.id} className="flex items-baseline gap-4 text-2xl">
+                    <span className="num w-36 shrink-0">{dayWord(i.startAt, now)}{time(i.startAt)}</span>
+                    <span className="truncate">{i.title}{firstNames(i.hosts).length ? <span className="lbl"> · {join(firstNames(i.hosts))}</span> : null}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="text-2xl lbl">Nothing else booked.</p>}
+          </div>
+        </section>
+
+        {/* How to go on air: scan the code (your phone is already signed in, nothing to type) or sign in on this computer. */}
+        <section className="bp px-7 py-6 min-h-0 min-w-0 flex flex-col items-center gap-4 text-center">
+          <p className="hw-title text-5xl leading-tight">Scan to sign in</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/booth/door-qr.svg" alt="QR code to sign in at the studio" className="min-h-0 flex-1 max-h-[42vh] aspect-square rounded-xl bg-white" />
+          <ol className="text-2xl text-left space-y-1 w-full max-w-md list-decimal pl-8">
+            <li>Scan the code with your phone.</li>
+            <li>Sign in on your phone.</li>
+            <li>This screen opens for you.</li>
+          </ol>
+          <button type="button" className="gbtn gbtn-go h-20 text-3xl w-full" onClick={() => setView('signin')}>Sign in with Babson Sound account</button>
+          <div className="flex items-center gap-2">
+            <button type="button" className="gbtn h-12 px-5 text-xl" onClick={() => setView('guest')}>New here? Training</button>
+            <button type="button" className="gbtn h-12 px-4 text-base opacity-70" onClick={() => { setBypassErr(''); boothFetch<object>('/api/booth/bypass', { pin: '' }).then(r => onBypass('', r)).catch(e => setBypassErr(errText(e))) }}>Bypass sign in</button>
+          </div>
+        </section>
       </div>
+
+      <footer className="hw-desk-text flex items-center gap-5 shrink-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/booth/logo.png" alt="Babson Sound" className="h-14 w-14 rounded-xl" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/booth/beaver.png" alt="Babson" className="h-14 w-14 object-contain" />
+        <p className="text-2xl opacity-85">Keep it clean. Respect quiet hours. Leave the studio as you found it.</p>
+      </footer>
       {bypassErr && <p className="fixed bottom-2 left-1/2 -translate-x-1/2 text-lg warn">{bypassErr}</p>}
     </div>
     </>
   )
 }
+
+const TIPS = [
+  'Mic check: speak into the mic. The box ticks itself when we hear you.',
+  'Clean music only: no explicit lyrics on air.',
+  'Leave a note in the booth for whoever comes next.',
+]
 
 function Frame({ title, text, children, onBack }: { title: string; text?: string; children: React.ReactNode; onBack: () => void }) {
   return (

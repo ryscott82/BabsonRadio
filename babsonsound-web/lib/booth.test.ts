@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { micHeard, claimDoorPing, METER_CELLS, cellZone, cellsLit, WELCOME_MS, countdownText, heroMode, BYPASS_UID, IDLE_OUT_MS, IDLE_WARN_MS, QUIET_REMIND_MS, idleStep, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, LONG_WINDOW_MS, levelWord, levelAdvice, newLoudTracker, stepLoud, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
+import { RETURN_TO_BOOTH_MS, shouldReturnToBooth, micHeard, claimDoorPing, METER_CELLS, cellZone, cellsLit, WELCOME_MS, countdownText, heroMode, BYPASS_UID, IDLE_OUT_MS, IDLE_WARN_MS, QUIET_REMIND_MS, idleStep, canGoLiveOpenFloor, quietReminderDue, nextThemeSwitch, pinMatches, themeNow, type QuietTracker, QUIET_BANNER, QUIET_CLEAR_LUFS, QUIET_HOLD_MS, QUIET_LUFS, QUIET_WARMUP_MS, LONG_WINDOW_MS, levelWord, levelAdvice, newLoudTracker, stepLoud, TARGET_LUFS, gatedLufs, newQuietTracker, stepQuiet, adBreak, attestSig, bookingLines, quietBanner, readToken, nextGain, cleanAdPlan, dbOf, levelState, liveWindowOpen, lufsOf, signToken, verifyAttest, verifyToken } from './booth.ts'
 
 const S = 'test-secret-123'
 
@@ -313,4 +313,15 @@ test('door scan while the panel was closed: claimed on the first snapshot only w
 test('mic check ticks itself once sound reaches the input', () => {
   for (const l of ['quiet', 'good', 'near', 'loud'] as const) assert.equal(micHeard(l), true)
   for (const l of ['off', 'silent'] as const) assert.equal(micHeard(l), false)
+})
+
+test('return to the booth after 90 seconds without input, but never on air, recording, with sound, or signed in', () => {
+  const base = { pathname: '/signin', idleMs: RETURN_TO_BOOTH_MS, onAir: false, recording: false, soundOnInput: false, signedIn: false }
+  assert.equal(shouldReturnToBooth(base), true)
+  assert.equal(shouldReturnToBooth({ ...base, idleMs: RETURN_TO_BOOTH_MS - 1 }), false)
+  assert.equal(shouldReturnToBooth({ ...base, pathname: '/booth' }), false)
+  assert.equal(shouldReturnToBooth({ ...base, onAir: true }), false)
+  assert.equal(shouldReturnToBooth({ ...base, recording: true }), false)
+  assert.equal(shouldReturnToBooth({ ...base, soundOnInput: true }), false)
+  assert.equal(shouldReturnToBooth({ ...base, signedIn: true }), false)
 })

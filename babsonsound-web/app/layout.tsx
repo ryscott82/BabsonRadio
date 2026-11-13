@@ -7,6 +7,7 @@ import Footer from '@/components/Footer'
 import AnnouncementBanner from '@/components/AnnouncementBanner'
 import SetupBanner from '@/components/setup/SetupBanner'
 import SetupPrompt from '@/components/setup/SetupPrompt'
+import ReturnToBooth from '@/components/booth/ReturnToBooth'
 import GuestFence from '@/components/GuestFence'
 import SignInModal from '@/components/SignInModal'
 import { THEME_SCRIPT } from '@/lib/themeScript'
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-dvh flex flex-col bg-br-dk-bg text-br-dk-text">
         <AuthProvider>
           <GuestFence />
+          <ReturnToBooth />
           <Splash />
           <SignInModal />
           <Nav />

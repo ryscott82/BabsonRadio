@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { signIn } from '@/lib/auth'
 import DoorClaim from './DoorClaim'
 import { boothFetch, errText, helper } from './helper'
+import { BrowserButtons } from './StudioBrowser'
 
 // What the studio PC shows when nobody is signed in: a big clock, a greeting, what is on now and next. Useful even when nobody is
 // doing radio. Sign in, or (no account needed) type an email and watch the quick equipment training.
@@ -130,6 +131,11 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/booth/logo.png" alt="Babson Radio" className="h-16 w-16 object-contain" />
         <p className="text-2xl opacity-85">Keep it clean. Respect quiet hours. Leave the studio as you found it.</p>
+        {/* The internet needs a sign-in: a tap on any of these goes to the sign-in page. */}
+        <div className="ml-auto flex items-center gap-2" role="group" aria-label="Internet. Sign in to use it.">
+          <span className="text-xl opacity-85 mr-2">Sign in to use the internet</span>
+          <BrowserButtons state={null} getToken={async () => ''} onError={setBypassErr} onLocked={() => setView('signin')} />
+        </div>
       </footer>
       {bypassErr && <p className="fixed bottom-2 left-1/2 -translate-x-1/2 text-lg warn">{bypassErr}</p>}
     </div>

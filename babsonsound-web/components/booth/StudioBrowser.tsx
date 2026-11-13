@@ -40,10 +40,10 @@ export function IconButton({ label, onClick, icon, danger }: { label: string; on
   )
 }
 
-/** The studio browser's icon row (header on the console, and anywhere else the same links are wanted): YouTube, Google Docs, Notion and a plain
+/** The studio browser's icon row (header on the console, and the home page, where `onLocked` is given: a tap there goes to sign-in instead of opening anything): YouTube, Google Docs, Notion and a plain
  *  browser when closed; Full screen / Split screen and Close when open. */
-export function BrowserButtons({ state, getToken, onError }: { state: BrowserState | null; getToken: () => Promise<string>; onError: (m: string) => void }) {
-  const run = (fn: () => Promise<unknown>) => { void fn().catch(e => onError(errText(e))) }
+export function BrowserButtons({ state, getToken, onError, onLocked }: { state: BrowserState | null; getToken: () => Promise<string>; onError: (m: string) => void; onLocked?: () => void }) {
+  const run = (fn: () => Promise<unknown>) => { if (onLocked) { onLocked(); return } void fn().catch(e => onError(errText(e))) }
   if (state?.open) {
     const full = state.layout === 'full'
     return (

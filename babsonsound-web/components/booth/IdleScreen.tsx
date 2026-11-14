@@ -7,7 +7,6 @@ import DoorClaim from './DoorClaim'
 import { boothFetch, errText, helper } from './helper'
 import FitTitle from '@/components/FitTitle'
 import { BrowserButtons } from './StudioBrowser'
-import PhraseModal from './PhraseModal'
 
 // What the studio PC shows when nobody is signed in: a big clock, a greeting, what is on now and next. Useful even when nobody is
 // doing radio. Sign in, or (no account needed) type an email and watch the quick equipment training.
@@ -28,7 +27,6 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
   const [now, setNow] = useState(() => Date.now())
   const [data, setData] = useState<Idle | null>(null)
   const [view, setView] = useState<'home' | 'signin' | 'guest' | 'video'>('home')
-  const [phrases, setPhrases] = useState(false)
   const router = useRouter()
   const [bypassErr, setBypassErr] = useState('')
   const [videoId, setVideoId] = useState('')
@@ -133,7 +131,6 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
           <div className="flex items-center gap-2">
             <button type="button" className="gbtn h-[clamp(2.5rem,4.8vh,3rem)] px-5 text-[clamp(1rem,2vh,1.25rem)]" onClick={() => router.push('/slots')}>Book a show</button>
             <button type="button" className="gbtn h-[clamp(2.5rem,4.8vh,3rem)] px-5 text-[clamp(1rem,2vh,1.25rem)]" onClick={() => setView('guest')}>New here? Training</button>
-            <button type="button" className="gbtn h-[clamp(2.5rem,4.8vh,3rem)] px-5 text-[clamp(1rem,2vh,1.25rem)]" onClick={() => setPhrases(true)}>Phrase reference</button>
             <button type="button" className="gbtn h-[clamp(2.5rem,4.8vh,3rem)] px-4 text-base opacity-70" onClick={() => { setBypassErr(''); boothFetch<object>('/api/booth/bypass', { pin: '' }).then(r => onBypass('', r)).catch(e => setBypassErr(errText(e))) }}>Bypass sign in</button>
           </div>
         </section>
@@ -150,7 +147,6 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
         </div>
       </footer>
       {bypassErr && <p className="fixed bottom-2 left-1/2 -translate-x-1/2 text-lg warn">{bypassErr}</p>}
-      {phrases && <PhraseModal onClose={() => setPhrases(false)} />}
     </div>
     </>
   )

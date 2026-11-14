@@ -135,7 +135,6 @@ export default function StudioTrainingPage() {
       {step === 'sign' && (
         <div className="space-y-4">
           <p className="text-center opacity-80">Read it carefully: the quiz is on what it says. Then tick each line and sign.</p>
-          <p className="text-center opacity-80">Not sure about a word or a lyric? Check it in the <a href="/words" target="_blank" rel="noopener" className="text-br-gold underline">Explicit phrase reference</a>.</p>
           {info.signed
             ? <><HostAgreements busy={busy} error={error} onSign={sign} /><p className="text-center"><button type="button" className="text-br-gold underline" onClick={() => setStep('quiz')}>Back to the quiz</button></p></>
             : <HostAgreements busy={busy} error={error} onSign={sign} />}

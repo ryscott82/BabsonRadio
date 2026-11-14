@@ -12,17 +12,19 @@ test('each result says what it means for going on air', () => {
   assert.match(phraseVerdict('clean').text, /does not make it fine/)
 })
 
-test('anyone can check (no sign-in, rate limited per IP), and only the worst kind comes back, never the word or the list', () => {
+test('signed-in trained members only, limited per person, and only the worst kind comes back, never the word or the list', () => {
   const route = src('app/api/words/check/route.ts')
-  assert.doesNotMatch(route, /require(User|Student|Member|Director|Admin)/)
-  assert.match(route, /clientIp\(req\.headers\)/)
+  assert.match(route, /const t = await requireStudent\(req\)/)
+  assert.match(route, /if \(!a\.studio && !a\.radio\) throw new HttpError\(403/)
+  assert.match(route, /allow\(t\.uid/)
   assert.match(route, /return \{ tier \}/)
-  assert.match(src('components/GuestFence.tsx'), /'\/words'\]/)
+  assert.doesNotMatch(src('components/GuestFence.tsx'), /'\/words'/)
+  const page = src('app/words/page.tsx')
+  assert.match(page, /if \(!user\) return/)
+  assert.match(page, /if \(!studioTrained && !radioTrained\) return/)
 })
 
-test('the booth has the button signed out and signed in, and the training links to the page', () => {
-  assert.match(src('components/booth/IdleScreen.tsx'), /onClick=\{\(\) => setPhrases\(true\)\}>Phrase reference</)
-  assert.match(src('app/booth/page.tsx'), /onClick=\{\(\) => setPhrases\(true\)\}>Phrase reference</)
-  assert.match(src('app/training/page.tsx'), /href="\/words"/)
-  assert.match(src('app/words/page.tsx'), /Explicit phrase reference/)
+test('the booth button is only for someone signed in (not the idle screen or the no-sign-in bypass)', () => {
+  assert.doesNotMatch(src('components/booth/IdleScreen.tsx'), /Phrase reference/)
+  assert.match(src('app/booth/page.tsx'), /\{!bypass && <button type="button" className=\{sb\} onClick=\{\(\) => setPhrases\(true\)\}>Phrase reference<\/button>\}/)
 })

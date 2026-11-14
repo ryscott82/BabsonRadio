@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import PhraseReference from '@/components/PhraseReference'
 
-// The Explicit phrase reference over the booth screen, so it can be checked mid-show without leaving the booth.
+// The Explicit phrase reference over the signed-in booth screen, so a word can be checked mid-show without leaving the booth.
 export default function PhraseModal({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }

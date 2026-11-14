@@ -428,8 +428,8 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
           <div className="flex items-center gap-2 flex-wrap">
             {!bypass && <button type="button" className={sb} onClick={() => setModal('note')}>Leave a note</button>}
             <button type="button" className={sb} onClick={() => setModal('sound')}>Audio setup</button>
-            {/* Works on air too: check a word or a lyric without leaving the booth. */}
-            <button type="button" className={sb} onClick={() => setPhrases(true)}>Phrase reference</button>
+            {/* Works on air too: check a word or a lyric without leaving the booth. Trained members only (not the no-sign-in bypass). */}
+            {!bypass && <button type="button" className={sb} onClick={() => setPhrases(true)}>Phrase reference</button>}
             {canExit && !live && !connecting && !recording && <button type="button" className={sb} onClick={async () => { let tk = ''; try { tk = await token() } catch { /* the helper decides */ } void onExitPanel(tk) }}>Exit panel</button>}
             {/* Admins: the babsonradio.com Settings panel in this window (already signed in). "Back to the booth" brings them back. */}
             {isAdmin && !live && !connecting && !recording && <a href="/admin" className={`${sb} grid place-items-center`}>Admin settings</a>}

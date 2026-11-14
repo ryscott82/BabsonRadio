@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { apiGet } from '@/lib/auth'
 import { PHRASE_MAX, phraseVerdict, type PhraseTier } from '@/lib/phraseReference'
 
-// The Explicit phrase reference checker. Used on /words and in the studio booth's pop-up. `variant` only changes the look.
+// The Explicit phrase reference checker (signed-in, trained members). Used on /words and in the signed-in studio booth's pop-up. `variant` only changes the look.
 export default function PhraseReference({ variant = 'site', autoFocus = false }: { variant?: 'site' | 'booth'; autoFocus?: boolean }) {
   const [text, setText] = useState('')
   const [result, setResult] = useState<{ q: string; tier: PhraseTier } | null>(null)
@@ -15,9 +16,7 @@ export default function PhraseReference({ variant = 'site', autoFocus = false }:
     if (!q) return
     setBusy(true); setError('')
     try {
-      const r = await fetch(`/api/words/check?q=${encodeURIComponent(q)}`, { cache: 'no-store' })
-      const b = await r.json().catch(() => ({}))
-      if (!r.ok) throw new Error(b.error || 'Could not check right now.')
+      const b = await apiGet<{ tier: PhraseTier }>(`/api/words/check?q=${encodeURIComponent(q)}`)
       setResult({ q, tier: b.tier })
     } catch (e) { setResult(null); setError(e instanceof Error ? e.message : 'Could not check right now.') }
     setBusy(false)

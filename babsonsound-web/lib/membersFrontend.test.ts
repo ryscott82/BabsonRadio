@@ -38,7 +38,7 @@ test('Library is lit on show pages; Members on its sub pages; guests may open Me
   assert.equal(activeHref('/shows/jazz-hour', '/library'), true)
   assert.equal(activeHref('/slots', '/members'), true)
   assert.equal(activeHref('/schedule', '/library'), false)
-  assert.match(src('components/GuestFence.tsx'), /'\/members',/)
+  assert.match(src('components/GuestFence.tsx'), /'\/members'\]/)
 })
 test('the Library page has a Shows and an Episodes section and a Host a show card at the bottom', () => {
   const p = src('app/library/page.tsx')

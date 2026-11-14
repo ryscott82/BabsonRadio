@@ -111,7 +111,7 @@ export default function BlockedWordsPage() {
 
       <div className="space-y-2 pt-4 border-t border-white/15">
         <label htmlFor="try" className="text-br-dk-text text-lg block">Try a phrase</label>
-        <p className="text-base text-br-dk-sub">Checks it with the strictness picked above, even before you save. Nothing is sent anywhere. Everyone else can check words with the <a href="/words" className="text-br-gold underline">Explicit phrase reference</a> (babsonradio.com/words, and a button on the studio booth).</p>
+        <p className="text-base text-br-dk-sub">Checks it with the strictness picked above, even before you save. Nothing is sent anywhere. Trained members can check words with the <a href="/words" className="text-br-gold underline">Explicit phrase reference</a> (babsonradio.com/words, and a button on the studio booth).</p>
         <input id="try" value={phrase} onChange={e => { setPhrase(e.target.value); setResult('') }} onKeyDown={e => { if (e.key === 'Enter') check() }}
           className="sk-field w-full rounded-xl px-4 py-3 text-base text-br-dk-text focus:outline-none" />
         <button type="button" onClick={check} className="text-base text-br-gold underline">Check</button>

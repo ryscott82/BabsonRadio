@@ -55,7 +55,7 @@ test('Host a show appears on Schedule, Library, Members, after training, My show
   assert.match(src('app/schedule/page.tsx'), /<HostShowCard compact/)
   assert.match(src('app/schedule/ScheduleList.tsx'), /Host here/)
   assert.match(src('app/members/page.tsx'), /<HostShowCard/)
-  assert.match(src('app/training/page.tsx'), /You can now host/)
+  assert.match(src('app/training/host/page.tsx'), /You can now host/)
   assert.match(src('components/HostMyShows.tsx'), /Same time next week/)
   assert.match(src('components/HostMyShows.tsx'), /Pick another time/)
   assert.match(src('components/StudioBooking.tsx'), /Schedule this to air/)

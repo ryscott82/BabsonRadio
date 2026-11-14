@@ -8,7 +8,7 @@ import { openSignIn } from '@/lib/signInPrompt'
 import { GhostButton, PrimaryButton } from '@/components/AuthUI'
 
 // The page the QR code on the studio door opens (babsonradio.com/booth/door). Signed in already (website, or the app opens this link itself):
-// it asks the studio PC to sign you in. Not trained for the radio room yet: straight to the training (/training/studio).
+// it asks the studio PC to sign you in. Not trained for the radio room yet: straight to the training (/training).
 // Signed out: sign in, or create an account (which leads to the training).
 
 type State = 'wait' | 'sending' | 'done' | 'error'
@@ -39,7 +39,7 @@ export default function DoorPage() {
     started.current = true
     // Training comes first: someone without the radio room badges goes to the training instead of the PC sign-in.
     apiGet<{ trained: boolean }>('/api/studio/self-training')
-      .then(r => { if (r.trained) void send(); else router.replace('/training/studio') })
+      .then(r => { if (r.trained) void send(); else router.replace('/training') })
       .catch(() => void send())
   }, [loading, user, isGuest, send, router])
 

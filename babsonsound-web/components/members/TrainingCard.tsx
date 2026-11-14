@@ -36,7 +36,7 @@ export default function TrainingCard({ badges, staff }: { badges: BadgeRow[]; st
     <div className="space-y-4">
       <ul className="space-y-1">{badges.map(b => <li key={b.name} className={`text-base ${b.expired || !b.has ? 'text-br-dk-sub' : 'text-br-dk-text'}`}>{badgeLine(b)}</li>)}</ul>
       <ErrorText>{err}</ErrorText>
-      {untrained && <p className="text-base text-br-dk-text">Get trained: RSVP to a session below. Radio training for live shows is on the <Link href="/training" className="text-br-gold underline underline-offset-4">host training page</Link>.</p>}
+      {untrained && <p className="text-base text-br-dk-text">Get trained: RSVP to a session below. Radio training for live shows is on the <Link href="/training/host" className="text-br-gold underline underline-offset-4">host training page</Link>.</p>}
       {sessions && sessions.length === 0 && <p className="text-base text-br-dk-sub">No sessions are scheduled right now. <Link href="/studioaccess" className="text-br-gold underline underline-offset-4">Ask for training</Link>.</p>}
       {sessions && sessions.length > 0 && (
         <ul className="space-y-3" aria-label="Training sessions">

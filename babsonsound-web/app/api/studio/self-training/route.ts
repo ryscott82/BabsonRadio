@@ -4,9 +4,9 @@ import { HttpError, handle, readJson } from '@/lib/server/http'
 import { checkSignature } from '@/lib/server/conduct'
 import { studioActor, writeGrants } from '@/lib/server/studio'
 import { loadStudioForm } from '@/lib/server/studioForm'
-import { STUDIO_CONFIG, publicStudioQuiz } from '@/lib/studioConfig'
+import { STUDIO_CONFIG } from '@/lib/studioConfig'
 import { badgeExpiry, gradeQuiz } from '@/lib/studioRules'
-import { QUIZ_VALID_MS, SELF_MIN_WATCH_MS, SELF_PASS_PERCENT, SELF_QUESTIONS, drawQuestions, selfQuizGate, watchLeftSec } from '@/lib/selfTraining'
+import { QUIZ_VALID_MS, SELF_MIN_WATCH_MS, SELF_PASS_PERCENT, SELF_QUESTIONS, drawQuiz, selfQuizGate, watchLeftSec } from '@/lib/selfTraining'
 
 export const runtime = 'nodejs'
 
@@ -33,7 +33,7 @@ export async function GET(req: Request) {
     let startedAt = num(snap.get('startedAt'))
     if (!startedAt) { startedAt = now; await ref.set({ startedAt: Timestamp.fromMillis(now), attempts: 0 }, { merge: true }) }
     const attempts = Number(snap.get('attempts') ?? 0)
-    const drawn = drawQuestions(publicStudioQuiz(), SELF_QUESTIONS, `${actor.t.uid}:${attempts}`)
+    const drawn = drawQuiz(STUDIO_CONFIG.questions, SELF_QUESTIONS, `${actor.t.uid}:${attempts}`).map(({ id, q, options }) => ({ id, q, options }))
     const pub = drawn
     return {
       trained: false, videoId: process.env.STUDIO_TRAINING_VIDEO_ID || process.env.BOOTH_TRAINING_VIDEO_ID || '',
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     const gate = selfQuizGate({ startedAt: num(snap.get('startedAt')), lastAttemptAt: num(snap.get('lastAttemptAt')), now })
     if (!gate.ok) throw new HttpError(gate.status, gate.message, gate.code)
     const attempts = Number(snap.get('attempts') ?? 0)
-    const drawn = drawQuestions(STUDIO_CONFIG.questions, SELF_QUESTIONS, `${uid}:${attempts}`)
+    const drawn = drawQuiz(STUDIO_CONFIG.questions, SELF_QUESTIONS, `${uid}:${attempts}`)
     const answers = (b.answers && typeof b.answers === 'object' ? b.answers : {}) as Record<string, unknown>
     const graded = gradeQuiz(drawn, answers, SELF_PASS_PERCENT)
     if (!graded) throw new HttpError(400, 'Answer every question first.', 'BR-STU-015')

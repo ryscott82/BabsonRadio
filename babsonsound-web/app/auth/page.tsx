@@ -6,13 +6,19 @@ import { useAuth } from '@/contexts/AuthContext'
 import { signOut, resendVerification } from '@/lib/auth'
 import SignInForm from '@/components/SignInForm'
 import { Card, GhostButton, PrimaryButton } from '@/components/AuthUI'
+import { safeNext } from '@/lib/signInPrompt'
 
 export default function AuthPage() {
   const { user, loading, needsVerification, reload } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && user && !needsVerification) router.replace('/')
+    // Back to the page that sent them here (?next=, same site only), otherwise home.
+    if (!loading && user && !needsVerification) {
+      let next: string | null = null
+      try { next = new URLSearchParams(window.location.search).get('next') } catch { /* no address */ }
+      router.replace(safeNext(next))
+    }
   }, [loading, user, needsVerification, router])
 
   if (loading) return <Spinner />

@@ -30,9 +30,9 @@ test('the booth button is only for someone signed in (not the idle screen or the
 })
 
 test('wherever the agreement and the explicit quiz questions talk about explicit words, they point to the reference', async () => {
-  const { CLEAN_CLAUSES, CONDUCT_CLAUSES } = await import('./conduct.ts')
-  assert.match(CLEAN_CLAUSES[0], /Explicit phrase reference/)
-  assert.ok(CONDUCT_CLAUSES.some(c => /Explicit phrase reference/.test(c)))
+  const { ON_AIR_CLAUSES } = await import('./conduct.ts')
+  assert.match(ON_AIR_CLAUSES[0], /slur[\s\S]*Explicit phrase reference/)
+  assert.match(ON_AIR_CLAUSES[1], /explicit[\s\S]*Explicit phrase reference/)
   const { QUIZ } = await import('./training.ts')
   for (const id of ['clean-hours', 'explicit-def', 'slur-song', 'unsure']) assert.match(QUIZ.find(q => q.id === id)!.why, /Explicit phrase reference/, id)
 })

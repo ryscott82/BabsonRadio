@@ -1,6 +1,6 @@
 import type { Firestore } from 'firebase-admin/firestore'
 import { QUIZ, type QuizQuestion } from '../training'
-import { checkQuestion, mixProblem, planImport } from '../quizBank'
+import { checkQuestion, currentTopic, mixProblem, planImport } from '../quizBank'
 import { HttpError } from './http'
 
 // The training quiz question bank: one document, config/quizBank { questions, updatedAt, updatedBy, lastAction, previous }.
@@ -14,7 +14,10 @@ let cache: { at: number; bank: Bank } | null = null
 export interface Bank { questions: QuizQuestion[]; builtIn: boolean; updatedAt: number | null; updatedBy: string; lastAction: string; canUndo: boolean }
 
 function fromDoc(d: FirebaseFirestore.DocumentSnapshot): Bank {
-  const list = d.exists && Array.isArray(d.get('questions')) ? (d.get('questions') as QuizQuestion[]) : null
+  // A bank saved before the radio/studio split (Nov 14) has 'technical' questions: they read as radio or studio.
+  const list = d.exists && Array.isArray(d.get('questions'))
+    ? (d.get('questions') as QuizQuestion[]).map(q => ({ ...q, topic: currentTopic(q.topic, q.id) as QuizQuestion['topic'] }))
+    : null
   return {
     questions: list ?? QUIZ,
     builtIn: !list,

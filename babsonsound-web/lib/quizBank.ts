@@ -3,15 +3,23 @@
 import type { QuizQuestion, QuizTopic } from './training.ts'
 import { QUIZ_MIX, SELF_QUESTIONS } from './selfTraining.ts'
 
-export const TOPICS: QuizTopic[] = ['slurs', 'privacy', 'technical', 'rules']
+export const TOPICS: QuizTopic[] = ['studio', 'radio', 'slurs', 'privacy', 'rules']
 export const TOPIC_LABEL: Record<QuizTopic, string> = {
-  slurs: 'Slurs',
-  privacy: 'Private information',
-  technical: 'Equipment and troubleshooting',
+  studio: 'Studio and equipment',
+  radio: 'Radio: going on air',
+  slurs: 'Radio: slurs',
+  privacy: 'Radio: private information',
   rules: 'Station rules (not in the quiz now)',
 }
-/** How many of each topic one quiz takes (the rest of SELF_QUESTIONS are technical). */
-export const QUIZ_NEEDS: Record<'slurs' | 'privacy' | 'technical', number> = { ...QUIZ_MIX, technical: SELF_QUESTIONS - QUIZ_MIX.slurs - QUIZ_MIX.privacy }
+/** How many of each topic one quiz takes: 3 radio (slurs, privacy, on air) and the rest of SELF_QUESTIONS studio. */
+export const QUIZ_NEEDS: Record<'slurs' | 'privacy' | 'radio' | 'studio', number> = { ...QUIZ_MIX, studio: SELF_QUESTIONS - QUIZ_MIX.slurs - QUIZ_MIX.privacy - QUIZ_MIX.radio }
+
+/** The ids of the questions that were 'technical' before the split (Nov 14) and are about going on air; every other 'technical' one is studio. */
+const RADIO_IDS = new Set(['dead-air', 'tech-echo', 'tech-go-live', 'tech-end-show', 'tech-station-id'])
+/** A topic from before the split ('technical') becomes radio or studio, so a bank saved earlier keeps working. */
+export function currentTopic(topic: string, id: string): string {
+  return topic === 'technical' ? (RADIO_IDS.has(id) ? 'radio' : 'studio') : topic
+}
 export const MAX_QUESTIONS = 500
 export const LIMITS = { q: 300, option: 200, why: 500, minOptions: 2, maxOptions: 6 }
 const LETTERS = 'ABCDEF'
@@ -40,7 +48,7 @@ export type Checked = { ok: true; question: QuizQuestion } | { ok: false; error:
 /** Checks one question. A missing id gets one from the text; `taken` is the ids already in use (not counting this question's own). */
 export function checkQuestion(input: unknown, taken: Set<string>): Checked {
   const r = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>
-  const topic = clean(r.topic).toLowerCase() as QuizTopic
+  const topic = currentTopic(clean(r.topic).toLowerCase(), clean(r.id).toLowerCase()) as QuizTopic
   if (!TOPICS.includes(topic)) return { ok: false, error: `Pick a topic: ${TOPICS.join(', ')}.` }
   const q = clean(r.q ?? r.question)
   if (q.length < 5) return { ok: false, error: 'Write the question.' }
@@ -67,7 +75,7 @@ export function mixProblem(pool: { topic: string }[]): string {
     .map(([t, n]) => ({ t, n, have: pool.filter(q => q.topic === t).length }))
     .filter(x => x.have < x.n)
   if (!short.length) return ''
-  return `Each quiz needs ${QUIZ_NEEDS.slurs} slurs, ${QUIZ_NEEDS.privacy} private information and ${QUIZ_NEEDS.technical} equipment questions. ` +
+  return `Each quiz needs ${QUIZ_NEEDS.studio} studio, ${QUIZ_NEEDS.radio} going on air, ${QUIZ_NEEDS.slurs} slurs and ${QUIZ_NEEDS.privacy} private information questions. ` +
     `This would leave ${short.map(x => `${x.have} ${TOPIC_LABEL[x.t].toLowerCase()}`).join(' and ')}.`
 }
 

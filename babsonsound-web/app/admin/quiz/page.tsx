@@ -13,7 +13,7 @@ import { CSV_HEADER, LIMITS, QUIZ_NEEDS, TOPICS, TOPIC_LABEL, answerLetter, chec
 
 interface Bank { questions: QuizQuestion[]; builtIn: boolean; updatedAt: number | null; updatedBy: string; lastAction: string; canUndo: boolean; problem: string; note?: string }
 type Draft = { id?: string; topic: QuizTopic; q: string; options: string[]; answer: number; why: string }
-const empty = (topic: QuizTopic = 'technical'): Draft => ({ topic, q: '', options: ['', '', '', ''], answer: 0, why: '' })
+const empty = (topic: QuizTopic = 'studio'): Draft => ({ topic, q: '', options: ['', '', '', ''], answer: 0, why: '' })
 const field = 'sk-field w-full rounded-xl px-4 py-3 text-base text-br-dk-text focus:outline-none'
 const small = 'sk-key rounded-lg px-4 min-h-11 text-base font-semibold text-br-dk-text disabled:opacity-50'
 
@@ -83,8 +83,8 @@ export default function QuizBankPage() {
     <div className="px-5 lg:px-8 py-8 space-y-6 max-w-4xl">
       <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Training quiz</h1>
       <p className="text-base text-br-dk-sub">
-        The questions for the training at babsonradio.com/training. Each quiz picks {QUIZ_NEEDS.slurs} slurs question, {QUIZ_NEEDS.privacy} private
-        information question and {QUIZ_NEEDS.technical} equipment questions at random, and every answer has to be right. People who get one wrong
+        The questions for the training at babsonradio.com/training. Each quiz is mostly the studio: {QUIZ_NEEDS.studio} studio and equipment
+        questions, plus 3 radio ones ({QUIZ_NEEDS.radio} on going on air, {QUIZ_NEEDS.slurs} on slurs, {QUIZ_NEEDS.privacy} on private information), picked at random. Every answer has to be right. People who get one wrong
         see the explanation, never the right answer. Changes reach the quiz within a minute.
       </p>
 
@@ -143,7 +143,7 @@ export default function QuizBankPage() {
           </div>
         </section>
       ) : (
-        <button type="button" className={small} onClick={() => { setNotice(''); setEditing(empty(topic === 'all' ? 'technical' : topic)) }}>Add a question</button>
+        <button type="button" className={small} onClick={() => { setNotice(''); setEditing(empty(topic === 'all' ? 'studio' : topic)) }}>Add a question</button>
       )}
 
       {/* The list */}
@@ -152,7 +152,7 @@ export default function QuizBankPage() {
           {(['all', ...TOPICS] as const).map(t => (
             <button key={t} type="button" aria-pressed={topic === t} onClick={() => setTopic(t)}
               className={`rounded-full px-4 min-h-11 text-base ${topic === t ? 'sk-key text-br-gold ring-1 ring-br-gold' : 'sk-key text-br-dk-text'}`}>
-              {t === 'all' ? `All (${bank?.questions.length ?? 0})` : `${TOPIC_LABEL[t].replace(' (not in the quiz now)', '')} (${count(t)})`}
+              {t === 'all' ? `All (${bank?.questions.length ?? 0})` : `${TOPIC_LABEL[t].replace(' (not in the quiz now)', '').replace('Radio: ', '')} (${count(t)})`}
             </button>
           ))}
         </div>
@@ -211,7 +211,7 @@ export default function QuizBankPage() {
           e and f can be left out), or a JSON list. Questions already in the bank are skipped. If any question has a problem, nothing is imported.
         </p>
         <div className="flex flex-wrap gap-3">
-          <button type="button" className={small} onClick={() => download('quiz-template.csv', `${CSV_HEADER.join(',')}\ntechnical,"The meter says ""Too loud"". What do you do?",Nothing,Turn the mixer down,Move the mic closer,Turn the speakers down,,,B,"Too loud means clipping, which distorts for every listener."\n`)}>Download a template</button>
+          <button type="button" className={small} onClick={() => download('quiz-template.csv', `${CSV_HEADER.join(',')}\nstudio,"The meter says ""Too loud"". What do you do?",Nothing,Turn the mixer down,Move the mic closer,Turn the speakers down,,,B,"Too loud means clipping, which distorts for every listener."\n`)}>Download a template</button>
           {bank && <button type="button" className={small} onClick={() => download('quiz-questions.csv', toCsv(bank.questions))}>Export all as CSV</button>}
           <label className={`${small} inline-flex items-center cursor-pointer`}>
             Pick a file

@@ -27,14 +27,14 @@ describe('selfQuizGate', () => {
   it('counts down', () => { assert.equal(watchLeftSec(1, 1), SELF_MIN_WATCH_MS / 1000); assert.equal(watchLeftSec(1, 1 + SELF_MIN_WATCH_MS), 0) })
 })
 
-describe('drawQuiz (one slurs, one privacy, the rest technical)', () => {
+describe('drawQuiz (3 radio: one slurs, one privacy, one on air; 7 studio)', () => {
   const count = (qs: { topic: string }[], t: string) => qs.filter(q => q.topic === t).length
   it('every draw has exactly that mix, 10 different questions, and no rules questions', () => {
     for (let i = 0; i < 200; i++) {
       const d = drawQuiz(QUIZ, SELF_QUESTIONS, `u${i}:${i % 7}`)
       assert.equal(d.length, SELF_QUESTIONS)
       assert.equal(new Set(d.map(q => q.id)).size, SELF_QUESTIONS)
-      assert.equal(count(d, 'slurs'), 1); assert.equal(count(d, 'privacy'), 1); assert.equal(count(d, 'technical'), SELF_QUESTIONS - 2)
+      assert.equal(count(d, 'slurs'), 1); assert.equal(count(d, 'privacy'), 1); assert.equal(count(d, 'radio'), 1); assert.equal(count(d, 'studio'), 7)
       assert.equal(count(d, 'rules'), 0)
     }
   })
@@ -44,12 +44,14 @@ describe('drawQuiz (one slurs, one privacy, the rest technical)', () => {
   })
   it('the slur and privacy questions are not always first or the same one', () => {
     const firstTopics = new Set(Array.from({ length: 50 }, (_, i) => drawQuiz(QUIZ, 10, `s${i}`)[0].topic))
-    assert.ok(firstTopics.has('technical'))
+    assert.ok(firstTopics.has('studio'))
     const slurIds = new Set(Array.from({ length: 50 }, (_, i) => drawQuiz(QUIZ, 10, `s${i}`).find(q => q.topic === 'slurs')!.id))
     assert.ok(slurIds.size > 1)
   })
   it('the pool has enough of each topic, unique ids, and every answer is one of the options', () => {
-    assert.ok(count(QUIZ, 'technical') >= SELF_QUESTIONS - 2)
+    assert.ok(count(QUIZ, 'studio') >= 10, 'enough studio questions that the 7 vary')
+    assert.ok(count(QUIZ, 'radio') >= 3)
+    assert.equal(count(QUIZ, 'technical'), 0)
     assert.ok(count(QUIZ, 'slurs') >= 1 && count(QUIZ, 'privacy') >= 1)
     assert.equal(new Set(QUIZ.map(q => q.id)).size, QUIZ.length)
     for (const q of QUIZ) assert.ok(q.answer >= 0 && q.answer < q.options.length, q.id)

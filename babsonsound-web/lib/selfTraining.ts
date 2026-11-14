@@ -6,8 +6,8 @@
 export const SELF_PASS_PERCENT = 100
 /** Questions per attempt, drawn from the pool in lib/training.ts (a new draw for every attempt): see QUIZ_MIX. */
 export const SELF_QUESTIONS = 10
-/** Each quiz: exactly this many of these topics, and the rest technical (equipment and troubleshooting). */
-export const QUIZ_MIX = { slurs: 1, privacy: 1 } as const
+/** Each quiz: exactly this many of these radio topics (3 in all), and the rest studio (the equipment and the booth). */
+export const QUIZ_MIX = { slurs: 1, privacy: 1, radio: 1 } as const
 /** The quiz opens this long after the video was first opened (the video is about 6 minutes), so the video can't be skipped. */
 export const SELF_MIN_WATCH_MS = 5 * 60_000
 /** A perfect quiz lets you sign the agreement for this long. */
@@ -37,14 +37,14 @@ export function drawQuestions<T>(pool: T[], count: number, seed: string): T[] {
 }
 
 /**
- * One quiz: QUIZ_MIX's slurs and privacy questions, then technical ones up to `count`, in a shuffled order, the same for the same seed.
- * Questions of any other topic (rules) are not drawn. A short technical pool just means a shorter quiz.
+ * One quiz: QUIZ_MIX's radio questions (slurs, privacy, on air), then studio ones up to `count`, in a shuffled order, the same for the same seed.
+ * Questions of any other topic (rules) are not drawn. A short studio pool just means a shorter quiz.
  */
 export function drawQuiz<T extends { topic: string }>(pool: T[], count: number, seed: string): T[] {
   const of = (topic: string) => pool.filter(q => q.topic === topic)
   const fixed = Object.entries(QUIZ_MIX).flatMap(([topic, n]) => drawQuestions(of(topic), n, `${seed}:${topic}`))
-  const technical = drawQuestions(of('technical'), Math.max(0, count - fixed.length), `${seed}:technical`)
-  return drawQuestions([...fixed, ...technical], count, `${seed}:order`)
+  const studio = drawQuestions(of('studio'), Math.max(0, count - fixed.length), `${seed}:studio`)
+  return drawQuestions([...fixed, ...studio], count, `${seed}:order`)
 }
 
 export type SelfGate = { ok: true } | { ok: false; status: number; code: string; message: string }

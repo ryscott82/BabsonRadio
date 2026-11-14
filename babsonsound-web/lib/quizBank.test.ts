@@ -5,7 +5,7 @@ import { QUIZ } from './training.ts'
 import { checkQuestion, makeId, mixProblem, parseCsv, planImport, readImport, toCsv } from './quizBank.ts'
 
 const src = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')
-const good = { topic: 'technical', q: 'What do you do when the meter is red?', options: ['Nothing', 'Turn the mixer down'], answer: 'B', why: 'Red means clipping.' }
+const good = { topic: 'studio', q: 'What do you do when the meter is red?', options: ['Nothing', 'Turn the mixer down'], answer: 'B', why: 'Red means clipping.' }
 
 test('a question needs a topic, text, 2 to 6 different answers, the right one and a why', () => {
   const c = checkQuestion(good, new Set())
@@ -19,6 +19,17 @@ test('a question needs a topic, text, 2 to 6 different answers, the right one an
   assert.equal((checkQuestion({ ...good, answer: 0 }, new Set()) as { question: { answer: number } }).question.answer, 0)
 })
 
+test('a bank saved before the radio/studio split still works: technical becomes radio or studio', async () => {
+  const { currentTopic } = await import('./quizBank.ts')
+  assert.equal(currentTopic('technical', 'tech-go-live'), 'radio')
+  assert.equal(currentTopic('technical', 'tech-no-sound'), 'studio')
+  assert.equal(currentTopic('technical', 'my-own-question'), 'studio')
+  assert.equal(currentTopic('slurs', 'x'), 'slurs')
+  const c = checkQuestion({ ...good, topic: 'technical' }, new Set())
+  assert.ok(c.ok && c.question.topic === 'studio')
+  assert.match(src('lib/server/quizBank.ts'), /topic: currentTopic\(q\.topic, q\.id\)/)
+})
+
 test('ids are made from the text and never clash', () => {
   assert.equal(makeId('Hello there, world!', new Set()), 'hello-there-world')
   assert.equal(makeId('Hello there, world!', new Set(['hello-there-world'])), 'hello-there-world-2')
@@ -26,8 +37,9 @@ test('ids are made from the text and never clash', () => {
 
 test('the bank must still fill a quiz: 1 slurs, 1 private information, 8 equipment', () => {
   assert.equal(mixProblem(QUIZ), '')
-  assert.match(mixProblem(QUIZ.filter(q => q.topic !== 'privacy')), /0 private information/)
-  assert.match(mixProblem(QUIZ.filter(q => q.topic !== 'technical').concat(QUIZ.filter(q => q.topic === 'technical').slice(0, 7))), /7 equipment/)
+  assert.match(mixProblem(QUIZ.filter(q => q.topic !== 'privacy')), /0 radio: private information/)
+  assert.match(mixProblem(QUIZ.filter(q => q.topic !== 'studio').concat(QUIZ.filter(q => q.topic === 'studio').slice(0, 6))), /6 studio and equipment/)
+  assert.match(mixProblem(QUIZ.filter(q => q.topic !== 'radio')), /0 radio: going on air/)
 })
 
 test('CSV import: quotes, commas and line breaks inside cells, answer letters, optional e and f', () => {
@@ -88,11 +100,12 @@ test('training order: video, then the agreement, then the quiz; passing grants t
   assert.match(page, /type Step = 'video' \| 'sign' \| 'quiz' \| 'form'/)
 })
 
-test('the agreement is short: ten lines to tick, every topic still covered', async () => {
-  const { HOST_AGREEMENTS } = await import('./conduct.ts')
+test('the agreement is short: ten lines to tick, 7 studio and 3 radio, every topic still covered', async () => {
+  const { HOST_AGREEMENTS, STUDIO_CLAUSES, ON_AIR_CLAUSES } = await import('./conduct.ts')
   const lines = HOST_AGREEMENTS.flatMap(a => a.clauses)
   assert.equal(lines.length, 10)
+  assert.equal(STUDIO_CLAUSES.length, 7); assert.equal(ON_AIR_CLAUSES.length, 3)
   const all = HOST_AGREEMENTS.map(a => [a.intro ?? '', ...a.clauses].join(' ')).join(' ')
   for (const must of [/own account/, /Terms of Use/, /Privacy Policy/, /responsible for everything on air/, /recorded/, /18 or older/, /slur/, /harass/, /private information/,
-    /guests/, /Explicit phrase reference or ask the E-board/, /nondiscrimination/, /reported to Babson/, /6 AM to 10 PM Eastern/, /Explicit/, /clean edit/, /pre-recorded/, /set list/, /rights holders/]) assert.match(all, must)
+    /guests/, /OneCard/, /Babson Sound account/, /WhatsApp/, /quiet hours/, /sign out of the booth/, /check the Explicit phrase reference or ask the E-board/, /nondiscrimination/, /report to Babson/, /6 AM to 10 PM Eastern/, /Explicit/, /clean edit/, /pre-recorded/, /set list/, /rights holders/]) assert.match(all, must)
 })

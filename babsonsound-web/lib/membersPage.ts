@@ -1,12 +1,12 @@
 // The Members page, with no React: who sees which section, the "Next up for me" lines, standing wording and the training rows.
 
-export type SectionId = 'next' | 'host' | 'studio' | 'standing' | 'training' | 'events' | 'info'
+export type SectionId = 'next' | 'host' | 'studio' | 'standing' | 'training' | 'resources' | 'events' | 'info'
 export type Viewer = 'signed-out' | 'guest' | 'student'
 
 export const viewerOf = (o: { signedIn: boolean; isGuest: boolean; isBabson: boolean }): Viewer => (!o.signedIn ? 'signed-out' : o.isBabson ? 'student' : 'guest')
 
 /** Top to bottom. Everyone can read events and info; the rest are for signed-in students (hidden, not greyed, for everyone else). */
-const ALL: SectionId[] = ['next', 'host', 'studio', 'standing', 'training', 'events', 'info']
+const ALL: SectionId[] = ['next', 'host', 'studio', 'standing', 'training', 'resources', 'events', 'info']
 export function sectionsFor(v: Viewer): SectionId[] {
   return v === 'student' ? ALL : ['events', 'info']
 }
@@ -22,7 +22,7 @@ export const fmtDate = (ms: number, tz = 'America/New_York') => new Date(ms).toL
 // ── Next up for me ──
 export interface NextBooking { startAt: number; endAt: number; status?: string }
 export interface NextShow { title: string; startAt: number; status: string }
-export interface BadgeRow { name: 'Studio' | 'Radio'; has: boolean; expiresAt: number | null; expired: boolean }
+export interface BadgeRow { name: 'Training'; has: boolean; expiresAt: number | null; expired: boolean }
 
 export interface NextItem { kind: 'booking' | 'show' | 'training'; text: string; href: string; when: number }
 
@@ -44,8 +44,8 @@ export function nextUp(o: { now: number; bookings: NextBooking[]; shows: NextSho
 /** A training that has run out or runs out within 30 days, or '' (a person who was never trained gets the Get trained button instead). */
 export function trainingDue(badges: BadgeRow[], now: number): string {
   for (const b of badges) {
-    if (b.expired) return `${b.name} training has ended. Renew it.`
-    if (b.has && b.expiresAt && b.expiresAt - now <= EXPIRY_WARN_DAYS * DAY) return `${b.name} training ends ${fmtDate(b.expiresAt)}.`
+    if (b.expired) return 'Your training has ended. Retake it to renew.'
+    if (b.has && b.expiresAt && b.expiresAt - now <= EXPIRY_WARN_DAYS * DAY) return `Your training ends ${fmtDate(b.expiresAt)}.`
   }
   return ''
 }
@@ -71,19 +71,18 @@ export function bannedNotice(s: Standing | null | undefined): string {
 
 // ── Training ──
 export function badgeRows(t: { studioExpiresAt?: number | null; radioExpiresAt?: number | null; studioExpired?: boolean; radioExpired?: boolean } | null | undefined, o: { studio: boolean; radio: boolean }): BadgeRow[] {
-  return [
-    { name: 'Studio', has: o.studio, expiresAt: t?.studioExpiresAt ?? null, expired: t?.studioExpired === true },
-    { name: 'Radio', has: o.radio, expiresAt: t?.radioExpiresAt ?? null, expired: t?.radioExpired === true },
-  ]
+  // One training gives both badges (studio and radio) on the same day, so they show as one row: done only when both are, ended when either is.
+  const ends = [t?.studioExpiresAt, t?.radioExpiresAt].filter((x): x is number => typeof x === 'number')
+  return [{ name: 'Training', has: o.studio && o.radio, expiresAt: ends.length ? Math.min(...ends) : null, expired: t?.studioExpired === true || t?.radioExpired === true }]
 }
 
 export function badgeLine(b: BadgeRow): string {
-  if (b.expired) return `${b.name} badge: ended${b.expiresAt ? ` ${fmtDate(b.expiresAt)}` : ''}`
-  if (!b.has) return `${b.name} badge: not yet`
-  return `${b.name} badge: ${b.expiresAt ? `until ${fmtDate(b.expiresAt)}` : 'active'}`
+  if (b.expired) return `Training: ended${b.expiresAt ? ` ${fmtDate(b.expiresAt)}` : ''}`
+  if (!b.has) return 'Training: not yet'
+  return `Training: ${b.expiresAt ? `done, good until ${fmtDate(b.expiresAt)}` : 'done'}`
 }
 
-/** Studio booking needs the Studio badge. Without it the page shows "Get trained" instead of an error. */
+/** Studio booking needs the training (the Studio badge it grants). Without it the page shows "Get trained" instead of an error. */
 export const canBook = (studioTrained: boolean) => studioTrained
 export const needsTraining = (badges: BadgeRow[]) => badges.some(b => !b.has || b.expired)
 
@@ -95,7 +94,7 @@ export const INFO = {
     'Walk-ins are welcome whenever the studio is free. A booking just reserves it.',
     'Missed shows and bookings count: a mistake, then a warning, then a ban for the semester. The E-board can excuse a mistake.',
   ],
-  cleanHours: 'Clean hours are 6 AM to 10 PM Eastern: no explicit music or language on air.',
+  cleanHours: 'Clean hours are 6 AM to 10 PM Eastern: no explicit music or language on air. Not sure about a word? Check the Explicit phrase reference under Resources.',
   quietHours: 'Quiet hours: Monday to Friday 9 AM to 4 PM and 10 PM to 7 AM. No loud DJ sets, keep the volume as low as possible. Nothing is blocked.',
   contactNote: 'Questions? Write to the E-board. Anyone can reach us from the Support page.',
 }

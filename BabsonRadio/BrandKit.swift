@@ -244,6 +244,8 @@ enum BabsonLinks {
     /// Same page the "Join Now" button on our Belong page opens.
     static let join   = URL(string: "https://belong.babson.edu/bcr/club_signup")!
     static let privacy = URL(string: "https://babsonradio.com/privacy")!
+    /// The one training (studio, radio and going live): video, quiz, agreement. Taken on the website.
+    static let training = URL(string: "https://babsonradio.com/training")!
 
     /// Instagram handle without the @ (e.g. "babsonsound"). Leave "" to hide the Instagram links.
     static let instagramHandle = "babson.sound"

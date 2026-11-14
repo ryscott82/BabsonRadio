@@ -21,13 +21,16 @@ export function linksFor(o: { isGuest: boolean; hosting: boolean }): NavLink[] {
 export const LEGACY_REDIRECTS: { source: string; destination: string }[] = [
   { source: '/shows', destination: '/library#shows' },
   { source: '/browse', destination: '/library' },
+  // The radio room training moved from /training/studio to /training (the link people are given).
+  { source: '/training/studio', destination: '/training' },
+  { source: '/training/host', destination: '/training' },
 ]
 
 /** Which bar link is lit for a path. Show pages belong to Library. */
 export function activeHref(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/'
   if (href === '/library') return pathname === '/library' || pathname.startsWith('/library/') || pathname === '/shows' || pathname.startsWith('/shows/')
-  if (href === '/members') return pathname === '/members' || pathname.startsWith('/members/') || pathname === '/slots' || pathname === '/training'
+  if (href === '/members') return pathname === '/members' || pathname.startsWith('/members/') || pathname === '/slots' || pathname === '/training' || pathname.startsWith('/training/')
   return pathname.startsWith(href)
 }
 

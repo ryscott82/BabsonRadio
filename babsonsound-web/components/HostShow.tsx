@@ -278,8 +278,8 @@ export default function HostShow() {
               </div>
               {!opts.canLive && (
                 <p className="text-base text-br-dk-sub">
-                  {opts.trainedReason === 'expired' ? 'Your radio training has ended, so live is paused. ' : 'Live shows need radio training first. '}
-                  <Link href="/members#training" className="text-br-gold underline underline-offset-4">{opts.trainedReason === 'expired' ? 'Renew your training' : 'Finish radio training'}</Link>. Pre-recorded is open now.
+                  {opts.trainedReason === 'expired' ? 'Your training has ended, so live is paused. ' : 'Live shows need the training first. '}
+                  <Link href="/training" className="text-br-gold underline underline-offset-4">{opts.trainedReason === 'expired' ? 'Retake the training' : 'Take the training'}</Link>. Pre-recorded is open now.
                 </p>
               )}
               <div className="space-y-2">

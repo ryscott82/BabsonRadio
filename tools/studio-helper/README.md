@@ -18,7 +18,7 @@ Glass screens on the oak desk, sized for the studio screen (1920×1080):
 ## Auto level (optional)
 BUTT has no command for gain, but its **Master Gain** can follow a MIDI control. The helper sends one through a virtual MIDI cable:
 1. Install **loopMIDI** (Tobias Erichsen) and add a port. Keep the default name ("loopMIDI Port") or set `MIDI_PORT` in `.env`.
-2. In the helper folder run `npm install` (adds the small MIDI add-on).
+2. In the helper folder run `npm install` (adds the small MIDI add-on and the Firebase SDK for the door scan notice).
 3. In BUTT: Settings → MIDI. Pick the loopMIDI port, map CC `MIDI_GAIN_CC` (default 7) on channel `MIDI_CHANNEL` (default 1) to **Master Gain**, absolute mode, soft takeover off.
 4. Restart the helper. The page's **Auto level** button turns on; it moves BUTT's gain by at most half a dB a second toward the target, holds still in pauses, drops 3 dB if it would clip, and stays within ±12 dB. Turning it off puts BUTT back at 0 dB.
 It can't fix a mixer that is already clipping before BUTT; the level screen says so.
@@ -66,6 +66,30 @@ The header has quick links (YouTube, Google Docs, Notion) and **Browser**. They 
 
 ## Word filter on track titles
 A track title typed at the booth goes out on the stream (BUTT's song title) and to the site and app. Before sending, the page reports it to the website (`/api/booth/event`), which checks it with the same filter as everywhere else plus Admin > Blocked words, and signs a title that passes. Show name and hosts are checked the same way before they are saved (`/api/booth/check-text`). The helper only puts signed titles on the stream. A blocked word shows a plain message and nothing is sent. If the website can't be reached, the title isn't sent; the show itself carries on. Show info saved with a live-show recording (title, hosts, description) has blocked words starred out when it reaches the library.
+
+## Door scan notice
+If someone scans the door QR code while the booth panel isn't up (closed, Exit panel, or crashed), the PC shows a Windows notification: "Someone scanned the door code. Open the booth to sign them in." Its **Open the booth** button runs the same launcher as the **Babson Radio Booth** Desktop shortcut. It never opens the booth by itself, because someone may be using the computer.
+- The helper listens to the Firestore document `boothDoorPing/latest` with the Firebase client SDK (no website calls, no polling). It needs `FIREBASE_API_KEY` in `.env` (the website's public Firebase web key, the same as Vercel's `NEXT_PUBLIC_FIREBASE_API_KEY`). `FIREBASE_PROJECT_ID` defaults to `babson-radio`. `DOOR_NOTICE=0` turns it off.
+- One notice per scan, only for scans under 60 seconds old, not for the scan already there when the helper starts, never in maintenance mode, and never while a booth window is open.
+- The booth itself claims a scan up to 60 seconds old when it opens, so the person is signed in once someone presses the button.
+
+## Update available
+
+Every 10 minutes the helper runs `git fetch` with the PC's read-only deploy key (GitHub only, nothing on Vercel) and counts the new
+commits on main under `tools/studio-helper`. `/ping` reports `update: { behind, checkedAt, error, updating }`. The booth's idle screen
+shows an **Update available** button when that count is above 0, or when babsonradio.com has deployed a newer version than the page
+that is open. Pressing it:
+
+- reloads the page if only the website changed;
+- otherwise calls `POST /update`. The helper refuses while a show is live or being recorded, and does nothing when GitHub has nothing
+  new. Otherwise it starts `C:\BabsonRadio\scripts\update-helper.cmd` (git pull, packages installed in `C:\BabsonRadio\npm-stage` and
+  swapped in if the lock file changed, node restarted). The page waits for the helper to come back, then reloads.
+
+`.env`: `UPDATE_CHECK=0` turns the check off, `UPDATE_CHECK_MS` changes how often, `UPDATE_SCRIPT`, `REPO_DIR`, `GIT_SSH_COMMAND` and
+`GIT_PATH` override the defaults. Log lines start with `UPDATE`; the script writes `C:\BabsonRadio\update.log`.
+
+## Exit panel and maintenance
+**Exit panel** on the booth is for admins and E-board only. The website puts `x: true` in their control token, and the helper's `/exit-booth` refuses anyone else. The booth comes back by itself after 30 minutes, or straight away with the **Babson Radio Booth** shortcut. For maintenance, use `BR-stop-kiosk.cmd` on the Desktop (stops the booth, helper and watchdog) and `BR-resume-kiosk.cmd` afterwards.
 
 ## Who can go live
 - Directors and admins: any time.

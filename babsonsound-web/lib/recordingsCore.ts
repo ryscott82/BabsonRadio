@@ -21,7 +21,7 @@ export function attachProblem(i: { cleanConfirmed: unknown; recOwner: string; re
  *  allow recording (r: the Studio badge at that time) and may be up to maxAgeMs past its end. Returns the uid, or a problem. */
 export function pcRecorderProblem(c: { u: string; r?: boolean; l?: boolean; exp: number } | null, now: number, maxAgeMs: number, live = false): { message: string; code: string; status: number } | null {
   if (!c || !c.u) return { message: 'Sign in again on the studio PC.', code: 'BR-BTH-002', status: 401 }
-  if (c.r !== true && !(live && c.l === true)) return { message: 'Finish studio training to record in the studio.', code: 'BR-BKG-007', status: 403 }
+  if (c.r !== true && !(live && c.l === true)) return { message: 'Take the training at babsonradio.com/training to record in the studio.', code: 'BR-BKG-007', status: 403 }
   if (c.exp < now - maxAgeMs) return { message: 'This recording is too old to add. Ask an admin to add it from AzuraCast.', code: 'BR-BTH-002', status: 401 }
   return null
 }

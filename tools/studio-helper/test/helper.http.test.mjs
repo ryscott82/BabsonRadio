@@ -49,10 +49,11 @@ async function start() {
   const p = spawn(process.execPath, [join(here, '..', 'helper.mjs')], {
     env: {
       ...process.env, STUDIO_PC_SECRET: SECRET, HELPER_PORT: String(port), ALLOW_LOCALHOST: '1', BUTT_PATH: join(here, 'fake-butt.mjs'),
-      FAKE_BUTT_STATE: join(dir, 'butt.json'), FAKE_BUTT_DIR: dir, FAKE_BUTT_RATELIMIT: '1', RECORDINGS_DIR: join(dir, 'recordings'), BOOTH_BROWSER_FILE: join(dir, 'browser.json'),
+      FAKE_BUTT_STATE: join(dir, 'butt.json'), FAKE_BUTT_DIR: dir, FAKE_BUTT_RATELIMIT: '1', RECORDINGS_DIR: join(dir, 'recordings'), BOOTH_BROWSER_FILE: join(dir, 'browser.json'), BOOTH_EXIT_FLAG: join(dir, 'booth-exit.flag'), MAINTENANCE_FLAG: join(dir, 'maintenance.flag'),
       FFMPEG_PATH: join(here, 'fake-ffmpeg.mjs'), FFPROBE_PATH: join(here, 'fake-ffmpeg.mjs'),
       AZURACAST_URL: `http://127.0.0.1:${azSrv.address().port}`, AZURACAST_API_KEY: 'k', AZURACAST_STATION_ID: 'babson_radio',
       SITE_URL: `http://127.0.0.1:${siteSrv.address().port}`, ARCHIVE_MIN_SECONDS: '5',
+      UPDATE_CHECK: '0', REPO_DIR: dir, UPDATE_SCRIPT: join(dir, 'no-update.cmd'),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
@@ -135,6 +136,23 @@ test('studio browser: closing needs no sign-in, opening does, and /ping reports 
   assert.equal((await h.call('/browser/close', {})).status, 200)
   assert.equal((await h.call('/browser/open', { url: 'https://www.youtube.com/' })).status, 401)
   assert.equal((await h.call('/browser/open', { token: token({ u: 'u1', n: 'Sam' }), url: 'javascript:alert(1)' })).status, 502)
+})
+
+test('exit panel needs an admin or E-board token (x: true); cancel works for anyone', { skip }, async () => {
+  const h = await start()
+  assert.equal((await h.call('/exit-booth', {})).status, 403, 'no token')
+  assert.equal((await h.call('/exit-booth', { token: token({ u: 'stu', n: 'Student' }) })).status, 403, 'student')
+  assert.equal((await h.call('/exit-booth', { token: token({ u: 'eb', n: 'E-board', x: true }) })).status, 200)
+  assert.equal((await h.call('/exit-booth/cancel', {})).status, 200)
+})
+
+test('update: /ping reports it, /update does nothing when GitHub has nothing new (or cannot be reached)', { skip }, async () => {
+  const h = await start()
+  assert.equal((await h.call('/ping')).body.update.behind, 0)
+  const r = await h.call('/update', {})
+  assert.equal(r.status, 200)
+  assert.equal(r.body.nothing, true)
+  assert.notEqual((await h.call('/ping')).body.update.error, '', 'not a git repo here, so the check says why')
 })
 
 test('refuses other origins and bad tokens', { skip }, async () => {

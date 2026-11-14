@@ -24,7 +24,8 @@ export default function GuestFence() {
   useEffect(() => {
     if (loading) return
     if (needsVerification) {
-      if (!LOCKED_OK.some(p => under(pathname, p))) router.replace('/auth')
+      // Come back to this page once the email is verified (the sign-in page reads ?next=).
+      if (!LOCKED_OK.some(p => under(pathname, p))) router.replace(`/auth?next=${encodeURIComponent(pathname)}`)
       return
     }
     if (!isGuest) return

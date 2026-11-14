@@ -76,6 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsub = onAuthChange(async (firebaseUser) => {
+      // Signing in (or creating an account) counts as loading until the profile is in. Otherwise there is a moment with a user but no
+      // profile, which reads as a guest, and GuestFence sends them off the page they were on (for example the training).
+      if (firebaseUser) setLoading(true)
       setUser(firebaseUser)
       if (firebaseUser) {
         const tokenResult = await firebaseUser.getIdTokenResult().catch(() => null)

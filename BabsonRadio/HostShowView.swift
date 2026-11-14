@@ -291,7 +291,7 @@ struct HostShowView: View {
                 chip("Pre-recorded", on: !live) { chooseType("prerecorded") }
             }
             if !o.canLive {
-                Text(o.trainedReason == "expired" ? "Your radio training has ended. Renew it to host live." : "Live shows need radio training.")
+                Text(o.trainedReason == "expired" ? "Your training has ended. Retake it to host live." : "Live shows need the training first.")
                     .font(BRFont.body(16, .regular)).foregroundColor(sub)
                 Button { showTraining = true } label: { Text("Get trained").font(BRFont.body(16, .semibold)).frame(minHeight: 44) }
             }
@@ -701,7 +701,7 @@ struct HostShowView: View {
 
 // MARK: - Get trained (opens from "Get trained" buttons)
 
-/// The in-person training steps, then "You can now host". The steps themselves live in HostGateView.
+/// Points to the training on babsonradio.com, then "You can now host". The steps themselves live in HostGateView.
 struct HostTrainingSheet: View {
     let onDone: () -> Void
     @Environment(\.colorScheme) private var scheme

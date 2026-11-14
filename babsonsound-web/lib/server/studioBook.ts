@@ -34,7 +34,7 @@ export const rowOf = (d: FirebaseFirestore.DocumentSnapshot): BookingRow => ({
 export async function requireStudioBadge(t: DecodedIdToken) {
   const a = await accessOf(t)
   if (a.level === 'guest') throw new HttpError(403, 'Studio booking is for Babson, Olin and Wellesley members.', 'BR-PERM-001')
-  if (!a.studio) throw new HttpError(403, a.studioExpired ? 'Your studio training has ended. Renew it to book the studio.' : 'Finish studio training to book the studio.', 'BR-BKG-007')
+  if (!a.studio) throw new HttpError(403, a.studioExpired ? 'Your training has ended. Retake it at babsonradio.com/training to book the studio.' : 'Take the training at babsonradio.com/training to book the studio.', 'BR-BKG-007')
   return a
 }
 

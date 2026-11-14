@@ -15,6 +15,8 @@ import { createUploads } from './lib/uploads.mjs'
 import { createLiveArchive } from './lib/livearchive.mjs'
 import { normalizeOne } from './lib/normalize.mjs'
 import { createBrowser } from './lib/browser.mjs'
+import { createDoorWatch } from './lib/doorwatch.mjs'
+import { createUpdates, CHECK_MS } from './lib/updates.mjs'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 
@@ -262,6 +264,55 @@ const browser = createBrowser({
   log,
 })
 
+// ── Door scan notice (a Firestore listen on boothDoorPing/latest; see lib/doorwatch.mjs) ──
+const BOOTH_WINDOW_PS = "if (Get-Process chrome -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -and $_.MainWindowTitle -notlike '*- Google Chrome' }) { 'yes' } else { 'no' }"
+const doorWatch = createDoorWatch({
+  now: Date.now, log,
+  maintenance: () => existsSync(process.env.MAINTENANCE_FLAG || 'C:\\BabsonRadio\\maintenance.flag'),
+  boothRunning: () => new Promise(resolve => execFile('powershell', ['-NoProfile', '-Command', BOOTH_WINDOW_PS], { timeout: 15_000, windowsHide: true },
+    (err, out) => resolve(err ? true : String(out).trim() !== 'no'))),
+  toast: () => new Promise(resolve => execFile('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', join(here, 'lib', 'door-toast.ps1')], { timeout: 20_000, windowsHide: true },
+    err => { if (err) log('DOOR SCAN   notification failed:', err.message); resolve() })),
+})
+// Update available: GitHub is checked every 10 minutes with the read-only deploy key (git fetch, nothing on Vercel). The update itself is
+// scripts/update-helper.cmd, started detached because it stops node (helper-loop.cmd starts the new version 5 seconds later).
+const REPO_DIR = process.env.REPO_DIR || join(here, '..', '..')
+const UPDATE_SCRIPT = process.env.UPDATE_SCRIPT || 'C:\\BabsonRadio\\scripts\\update-helper.cmd'
+const GIT_SSH = process.env.GIT_SSH_COMMAND || 'ssh -i C:/BabsonRadio/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=C:/BabsonRadio/known_hosts'
+const updates = createUpdates({
+  now: Date.now, log,
+  git: args => new Promise((resolve, reject) => execFile(process.env.GIT_PATH || 'git', ['-C', REPO_DIR, ...args], { timeout: 60_000, windowsHide: true, env: { ...process.env, GIT_SSH_COMMAND: GIT_SSH } },
+    (err, out, errOut) => (err ? reject(new Error(String(errOut || err.message).trim().slice(-200))) : resolve(String(out))))),
+  busy: async () => {
+    if (await isLive()) return 'A show is live. Update after it ends.'
+    if (recorder.state().state !== 'idle') return 'A show is being recorded. Update after it is saved.'
+    return ''
+  },
+  runUpdate: () => {
+    const c = spawn('cmd.exe', ['/c', UPDATE_SCRIPT], { detached: true, stdio: 'ignore', windowsHide: true })
+    c.on('error', e => log('UPDATE ERROR', e.message)); c.unref()
+  },
+})
+if (process.env.UPDATE_CHECK !== '0') {
+  setTimeout(() => updates.check().catch(() => {}), 20_000).unref()
+  setInterval(() => updates.check().catch(() => {}), Number(process.env.UPDATE_CHECK_MS) || CHECK_MS).unref()
+}
+
+async function startDoorWatch() {
+  const apiKey = process.env.FIREBASE_API_KEY || '', projectId = process.env.FIREBASE_PROJECT_ID || 'babson-radio'
+  if (!apiKey || process.env.DOOR_NOTICE === '0') { log('Door scan notice off (set FIREBASE_API_KEY in .env to turn it on).'); return }
+  try {
+    const { initializeApp } = await import('firebase/app')
+    const { getFirestore, doc, onSnapshot } = await import('firebase/firestore')
+    const db = getFirestore(initializeApp({ apiKey, projectId }, 'doorwatch'))
+    onSnapshot(doc(db, 'boothDoorPing', 'latest'),
+      snap => { doorWatch.onPing(snap.exists() ? snap.data() : undefined).catch(e => log('DOOR SCAN ERROR', e.message)) },
+      e => log('DOOR SCAN   listen error (Firestore retries by itself):', e.message))
+    log('Door scan notice: listening to boothDoorPing/latest.')
+  } catch (e) { log('Door scan notice could not start (run npm install in the helper folder):', e.message) }
+}
+startDoorWatch()
+
 const liveArchive = createLiveArchive({
   store: jsonStore(join(REC_DIR, 'live.json')), dir: REC_DIR, now: Date.now, newId, sleep: ms => new Promise(r => setTimeout(r, ms)), log,
   minSec: Number(process.env.ARCHIVE_MIN_SECONDS ?? 60),
@@ -377,7 +428,7 @@ const server = createServer(async (req, res) => {
 
   const url = new URL(req.url, 'http://127.0.0.1')
   try {
-    if (req.method === 'GET' && url.pathname === '/ping') return send(res, 200, { ok: true, version: 1, browser: browser.state() }, origin)
+    if (req.method === 'GET' && url.pathname === '/ping') return send(res, 200, { ok: true, version: 1, browser: browser.state(), update: updates.state() }, origin)
 
     // Proves to the website that this sign-in is happening on the studio PC.
     if (req.method === 'GET' && url.pathname === '/attest') {
@@ -389,16 +440,28 @@ const server = createServer(async (req, res) => {
     // "Exit booth panel": the studio PC watchdog (scripts/booth-watchdog.ps1) keeps the booth in front and reopens it. This file tells it to
     // stand down for 30 minutes, then the helper closes the booth window so the computer can be used normally. /exit-booth/cancel brings it back.
     if (req.method === 'POST' && url.pathname === '/exit-booth') {
+      // Admins and E-board only: the website puts x: true in their control token (lib/booth.ts). Students can't stand the booth down;
+      // for maintenance there is BR-stop-kiosk.cmd on the Desktop.
+      const ex = verifyToken((await readBody(req)).token)
+      if (!ex || ex.x !== true) return send(res, 403, { error: 'Only admins and E-board can close the booth panel.', code: 'BR-BTH-002' }, origin)
       const flag = process.env.BOOTH_EXIT_FLAG || 'C:\\BabsonRadio\\booth-exit.flag'
       try { writeFileSync(flag, new Date().toISOString()) } catch (e) { return send(res, 500, { error: `Could not write ${flag}: ${e.message}` }, origin) }
       execFile('powershell', ['-NoProfile', '-Command',
         "Get-CimInstance Win32_Process -Filter \"name='chrome.exe'\" | Where-Object { $_.CommandLine -like '*BabsonRadioKiosk*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"], { windowsHide: true }, () => {})
-      log('EXIT BOOTH PANEL')
+      log(`EXIT BOOTH PANEL  ${ex.n} (${ex.u})`)
       return send(res, 200, { ok: true, minutes: 30 }, origin)
     }
     if (req.method === 'POST' && url.pathname === '/exit-booth/cancel') {
       try { unlinkSync(process.env.BOOTH_EXIT_FLAG || 'C:\\BabsonRadio\\booth-exit.flag') } catch { /* none */ }
       return send(res, 200, { ok: true }, origin)
+    }
+
+    // Update button on the booth. No sign-in needed (the idle screen has nobody signed in): it only does anything when GitHub has a newer
+    // helper, and never during a live show or a recording.
+    if (req.method === 'POST' && url.pathname === '/update') {
+      await readBody(req)
+      const r = await updates.update()
+      return send(res, r.error ? 409 : 200, r, origin)
     }
 
     if (req.method === 'GET' && url.pathname === '/status') return send(res, 200, await status(), origin)

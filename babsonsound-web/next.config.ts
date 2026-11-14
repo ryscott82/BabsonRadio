@@ -4,6 +4,8 @@ import { LEGACY_REDIRECTS } from "./lib/siteNav";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // The commit this build came from, baked into the page, so the booth can tell when a newer version is deployed (/version.json).
+  env: { NEXT_PUBLIC_BUILD_SHA: process.env.VERCEL_GIT_COMMIT_SHA ?? '' },
   // The admin guides page reads these files at run time, so they must ship with the server function.
   outputFileTracingIncludes: { '/api/admin/docs': ['./content/docs/**/*'] },
   // Old addresses keep working (the Shows list moved onto the Library page).

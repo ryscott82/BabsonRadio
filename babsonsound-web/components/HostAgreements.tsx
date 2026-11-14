@@ -6,6 +6,13 @@ import { looksLikeFullName } from '@/lib/publicContent'
 import { ErrorText, PrimaryButton } from '@/components/AuthUI'
 
 /** The four host agreements on one screen, signed once with a typed full name. */
+/** babsonradio.com/words in a line becomes a link (opens in a new tab). */
+function linkify(text: string) {
+  return text.split(/(babsonradio\.com\/words)/).map((part, i) => part === 'babsonradio.com/words'
+    ? <a key={i} href="https://babsonradio.com/words" target="_blank" rel="noopener noreferrer" className="text-br-gold underline underline-offset-4">{part}</a>
+    : part)
+}
+
 export default function HostAgreements({ onSign, busy, error }: {
   onSign: (sig: { typedName: string; accepted: true; version: string }) => void; busy?: boolean; error?: string
 }) {
@@ -26,7 +33,7 @@ export default function HostAgreements({ onSign, busy, error }: {
               <li key={i}>
                 <label className="flex items-start gap-2 text-sm text-br-dk-text">
                   <input type="checkbox" className="mt-0.5" checked={ticks[a.id][i]} onChange={e => toggle(a.id, i, e.target.checked)} />
-                  <span>{c}</span>
+                  <span>{linkify(c)}</span>
                 </label>
               </li>
             ))}

@@ -100,12 +100,13 @@ test('training order: video, then the agreement, then the quiz; passing grants t
   assert.match(page, /type Step = 'video' \| 'sign' \| 'quiz' \| 'form'/)
 })
 
-test('the agreement is short: ten lines to tick, 7 studio and 3 radio, every topic still covered', async () => {
+test('the agreement is two parts: eleven lines to tick, 8 for the Radio Room and 3 for the Radio Agreement, every topic still covered', async () => {
   const { HOST_AGREEMENTS, STUDIO_CLAUSES, ON_AIR_CLAUSES } = await import('./conduct.ts')
   const lines = HOST_AGREEMENTS.flatMap(a => a.clauses)
-  assert.equal(lines.length, 10)
-  assert.equal(STUDIO_CLAUSES.length, 7); assert.equal(ON_AIR_CLAUSES.length, 3)
+  assert.equal(lines.length, 11)
+  assert.deepEqual(HOST_AGREEMENTS.map(a => a.title), ['Radio Room', 'Radio Agreement'])
+  assert.equal(STUDIO_CLAUSES.length, 8); assert.equal(ON_AIR_CLAUSES.length, 3)
   const all = HOST_AGREEMENTS.map(a => [a.intro ?? '', ...a.clauses].join(' ')).join(' ')
-  for (const must of [/own account/, /Terms of Use/, /Privacy Policy/, /responsible for everything on air/, /recorded/, /18 or older/, /slur/, /harass/, /private information/,
-    /guests/, /OneCard/, /Babson Sound account/, /WhatsApp/, /quiet hours/, /sign out of the booth/, /check the Explicit phrase reference or ask the E-board/, /nondiscrimination/, /report to Babson/, /6 AM to 10 PM Eastern/, /Explicit/, /clean edit/, /pre-recorded/, /set list/, /rights holders/]) assert.match(all, must)
+  for (const must of [/untrained member/, /QR code or my Babson Sound Account/, /WhatsApp/, /quiet hours/, /sign out of the booth/, /recorded/, /18 or older/, /Terms of Use/, /Privacy Policy/,
+    /nondiscrimination/, /report to Babson/, /explicit songs from 6AM to 10PM/, /slurs/, /babsonradio\.com\/words/, /private information/, /responsible for everything on air/, /set list/, /rights holders/]) assert.match(all, must)
 })

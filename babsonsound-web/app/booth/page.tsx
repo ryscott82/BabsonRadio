@@ -23,6 +23,7 @@ import FitTitle from '@/components/FitTitle'
 import { useShowInfo } from '@/components/booth/useShowInfo'
 import { BROWSER_ACTIVE_MS, BrowserButtons, closeBrowser, setBrowserLayout, type BrowserState } from '@/components/booth/StudioBrowser'
 import NoteBox from '@/components/booth/NoteBox'
+import PhraseModal from '@/components/booth/PhraseModal'
 import ShowInfo from '@/components/booth/ShowInfo'
 import RecordShow, { useRecState } from '@/components/booth/RecordShow'
 import { useBoothTheme } from '@/components/booth/useBoothTheme'
@@ -167,6 +168,7 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
   const [devices, setDevices] = useState<Devices>(() => ({ input: loadPref('input'), music: loadPref('music') }))
   const [modal, setModal] = useState<'' | 'sound' | 'note' | 'show'>('')
   const [signInOpen, setSignInOpen] = useState(false)
+  const [phrases, setPhrases] = useState(false) // the Explicit phrase reference pop-up
   const [nowTrack, setNowTrack] = useState<Track | null>(null)
   const nowTrackRef = useRef<Track | null>(null)
   useEffect(() => { nowTrackRef.current = nowTrack }, [nowTrack])
@@ -426,9 +428,12 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
           <div className="flex items-center gap-2 flex-wrap">
             {!bypass && <button type="button" className={sb} onClick={() => setModal('note')}>Leave a note</button>}
             <button type="button" className={sb} onClick={() => setModal('sound')}>Audio setup</button>
+            {/* Works on air too: check a word or a lyric without leaving the booth. */}
+            <button type="button" className={sb} onClick={() => setPhrases(true)}>Phrase reference</button>
             {canExit && !live && !connecting && !recording && <button type="button" className={sb} onClick={async () => { let tk = ''; try { tk = await token() } catch { /* the helper decides */ } void onExitPanel(tk) }}>Exit panel</button>}
             {/* Admins: the babsonradio.com Settings panel in this window (already signed in). "Back to the booth" brings them back. */}
             {isAdmin && !live && !connecting && !recording && <a href="/admin" className={`${sb} grid place-items-center`}>Admin settings</a>}
+            {phrases && <PhraseModal onClose={() => setPhrases(false)} />}
           </div>
         </div>
       {(welcomeBig || countdownBig || showBig || problem || s?.note || (live && showName)) ? (

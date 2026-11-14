@@ -42,7 +42,7 @@ export const TERMS_CLAUSES: string[] = [
 export const CONDUCT_CLAUSES: string[] = [
   'I will never air a slur, at any hour, live or pre-recorded: not in my words, my music or anything a guest says.',
   'I will not use the station to harass, threaten or demean anyone, and I will not share private information on air (phone numbers, addresses, where someone lives).',
-  'I tell my guests these rules before they speak and cut them off if they break them. If I am not sure about a word, I leave it out and look it up or ask the E-board.',
+  'I tell my guests these rules before they speak and cut them off if they break them. If I am not sure about a word, I leave it out and check the Explicit phrase reference or ask the E-board.',
   'I follow Babson’s student conduct and nondiscrimination policies. Breaking these rules can mean my show is cut, I lose my slot, my recordings are removed and it is reported to Babson.',
 ]
 

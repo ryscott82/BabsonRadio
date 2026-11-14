@@ -94,5 +94,5 @@ test('the agreement is short: ten lines to tick, every topic still covered', asy
   assert.equal(lines.length, 10)
   const all = HOST_AGREEMENTS.map(a => [a.intro ?? '', ...a.clauses].join(' ')).join(' ')
   for (const must of [/own account/, /Terms of Use/, /Privacy Policy/, /responsible for everything on air/, /recorded/, /18 or older/, /slur/, /harass/, /private information/,
-    /guests/, /look it up or ask the E-board/, /nondiscrimination/, /reported to Babson/, /6 AM to 10 PM Eastern/, /Explicit/, /clean edit/, /pre-recorded/, /set list/, /rights holders/]) assert.match(all, must)
+    /guests/, /Explicit phrase reference or ask the E-board/, /nondiscrimination/, /reported to Babson/, /6 AM to 10 PM Eastern/, /Explicit/, /clean edit/, /pre-recorded/, /set list/, /rights holders/]) assert.match(all, must)
 })

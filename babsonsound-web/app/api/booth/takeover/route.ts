@@ -1,3 +1,4 @@
+import { censor } from '@/lib/server/wordFilter'
 import { adminAuth, adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, str } from '@/lib/server/http'
 import { boothSecret, crewRef, loadCrew, recordEvent } from '@/lib/server/booth'
@@ -21,6 +22,6 @@ export async function POST(req: Request) {
     if (!h) throw new HttpError(404, 'That person is not in the studio crew.', 'BR-BTH-012')
     await recordEvent(db, crew.sessionId, crew.driverUid, 'sign_out', 'handed over to ' + h.newDriver.name, now).catch(() => {})
     await crewRef(db).set(h.doc)
-    return { customToken: await adminAuth().createCustomToken(h.newDriver.uid), firstName: h.newDriver.firstName }
+    return { customToken: await adminAuth().createCustomToken(h.newDriver.uid), firstName: censor(h.newDriver.firstName) }
   }, { 'Cache-Control': 'private, no-store' })
 }

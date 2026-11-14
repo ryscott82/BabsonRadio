@@ -11,7 +11,7 @@ export const mailConfigured = () => !!process.env.RESEND_API_KEY
 export const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 /** `bulk: true` is for mail sent to a list of people who did not just ask for it: adds List-Unsubscribe (a mailto to the station address). */
-export async function sendMail(to: string, subject: string, text: string, html: string, opts: { bulk?: boolean } = {}): Promise<boolean> {
+export async function sendMail(to: string, subject: string, text: string, html: string, opts: { bulk?: boolean; unsubscribeUrl?: string } = {}): Promise<boolean> {
   if (!mailConfigured()) return false
   try {
     const res = await fetch('https://api.resend.com/emails', {
@@ -21,7 +21,7 @@ export async function sendMail(to: string, subject: string, text: string, html: 
         from: process.env.MAIL_FROM || 'Babson Radio <hello@babsonradio.com>',
         to: [to], subject, text, html,
         ...(process.env.MAIL_REPLY_TO ? { reply_to: process.env.MAIL_REPLY_TO } : {}),
-        ...(opts.bulk ? { headers: listUnsubscribeHeaders({ mailto: supportEmail() }) } : {}),
+        ...(opts.bulk || opts.unsubscribeUrl ? { headers: listUnsubscribeHeaders({ mailto: supportEmail(), url: opts.unsubscribeUrl }) } : {}),
       }),
       signal: AbortSignal.timeout(15_000),
     })
@@ -169,4 +169,15 @@ export function recordingReadyMail(o: { title: string }) {
     `Your recording “${o.title}” is safely uploaded to Babson Radio.`,
     'To air it, attach it to your pre-recorded show at https://babsonradio.com/members. Listen to the whole recording first.',
   ])
+}
+
+/** A short reminder for a host: the show or booking, when, where, the schedule, the support line and a one-tap link that turns reminders off. */
+export function showReminderMail(o: { lead: string; place: string; offUrl: string; whatsapp?: string }) {
+  const sched = 'https://babsonradio.com/schedule'
+  const lines = [o.lead, ...(o.place ? [o.place] : []), `Schedule: ${sched}`, ...(o.whatsapp ? [`Questions? WhatsApp support: ${o.whatsapp}`] : [])]
+  const foot = `Turn these reminders off: ${o.offUrl}`
+  const text = [...lines, '', foot, '', 'Babson Radio'].join('\n')
+  const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1710;line-height:1.5">${
+    lines.map(l => `<p>${escapeHtml(l)}</p>`).join('')}<p style="font-size:13px;color:#6b6558"><a href="${escapeHtml(o.offUrl)}" style="color:#6b6558">Turn these reminders off</a></p></div>`
+  return { text, html }
 }

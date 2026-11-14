@@ -5,6 +5,7 @@ import { HttpError, handle, requireUser } from '@/lib/server/http'
 import { accessOf } from '@/lib/server/access'
 import { addCrew, crewFresh } from '@/lib/crew'
 import { crewRef, loadCrew, logEvent } from '@/lib/server/booth'
+import { censor } from '@/lib/server/wordFilter'
 
 export const runtime = 'nodejs'
 
@@ -44,13 +45,13 @@ export async function POST(req: Request) {
       b2.set(db.collection('boothDoorClaims').doc(id), { uid: t.uid, name, firstName, at: now, exp: now + 60_000, used: false, crew: true, expiresAt: Timestamp.fromMillis(now + 24 * 3_600_000) })
       b2.set(db.collection('boothDoorPing').doc('latest'), { claimId: id, at: now })
       await b2.commit()
-      return { ok: true, firstName, crew: true, driverName: crew.driverName }
+      return { ok: true, firstName: censor(firstName), crew: true, driverName: censor(crew.driverName) }
     }
     const claimId = randomBytes(16).toString('hex')
     const batch = db.batch()
     batch.set(db.collection('boothDoorClaims').doc(claimId), { uid: t.uid, name, firstName, at: now, exp: now + 60_000, used: false, expiresAt: Timestamp.fromMillis(now + 24 * 3_600_000) })
     batch.set(db.collection('boothDoorPing').doc('latest'), { claimId, at: now })
     await batch.commit()
-    return { ok: true, firstName }
+    return { ok: true, firstName: censor(firstName) }
   }, { 'Cache-Control': 'private, no-store' })
 }

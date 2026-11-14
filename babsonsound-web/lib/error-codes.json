@@ -1111,5 +1111,19 @@
     "meaning": "A live show request is longer than 90 minutes. Pre-recorded shows keep the longer limit.",
     "userFix": "Pick 90 minutes or less, or make it a pre-recorded show.",
     "staffCheck": "Existing longer live shows are left alone."
+  },
+  {
+    "code": "BR-REM-001",
+    "title": "Reminder setting not accepted",
+    "meaning": "A reminder setting was not one of email, push, dayBefore, hourBefore or bookingQuarter, or was not on/off.",
+    "userFix": "Turn the reminder on or off again.",
+    "staffCheck": ""
+  },
+  {
+    "code": "BR-REM-002",
+    "title": "Reminder link did not work",
+    "meaning": "The turn-off link in a reminder email is incomplete or was changed.",
+    "userFix": "Open your settings and turn the reminders off there.",
+    "staffCheck": "If every link fails, check that LAUNCH_SECRET or CRON_SECRET did not change."
   }
 ]

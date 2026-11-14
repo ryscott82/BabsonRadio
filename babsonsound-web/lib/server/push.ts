@@ -105,3 +105,25 @@ export async function saveDevice(uid: string, token: string, kinds: PushKind[], 
   if (!kinds.length) { await ref.delete(); return }
   await ref.set({ uid, kinds, dev, platform: 'ios', updatedAt: Timestamp.now() })
 }
+
+/** One message to every phone a person has registered (their own reminder choice decides whether this is called). Never throws; returns how many were delivered. */
+export async function notifyUserDevices(uid: string, msg: { title: string; body: string }, kind = 'reminder'): Promise<number> {
+  try {
+    if (!uid || !getApps().length) return 0
+    const docs = (await adminDb().collection('deviceTokens').where('uid', '==', uid).get()).docs
+    if (!docs.length) return 0
+    const res = await getMessaging(getApps()[0]).sendEachForMulticast({
+      tokens: docs.map(d => d.id),
+      notification: { title: clip(msg.title, 60), body: clip(msg.body, 160) },
+      data: { kind },
+      apns: { payload: { aps: { sound: 'default' } } },
+    })
+    const dead = res.responses.flatMap((r, i) =>
+      !r.success && /registration-token-not-registered|invalid-registration-token|invalid-argument/.test(r.error?.code ?? '') ? [docs[i]] : [])
+    await Promise.all(dead.map(d => d.ref.delete()))
+    return res.successCount
+  } catch (e) {
+    console.error('[push]', e)
+    return 0
+  }
+}

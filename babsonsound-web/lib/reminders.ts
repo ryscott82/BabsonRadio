@@ -107,7 +107,7 @@ export function dueReminders(occ: Occurrence[], logs: LogMap, prefs: Record<stri
       const passed = kinds.filter(k => now >= triggerAt(o.startAt, k))
       const k = passed[passed.length - 1]
       if (!k || !wants(p, k)) continue
-      if (k === 'hourBefore' && now >= o.startAt - 5 * 60_000) continue // too close to be useful (a booking has its own 15-minute one)
+      if (k === 'hourBefore' && now > o.startAt - 30 * 60_000) continue // "in about an hour" is only true for the first half hour after the trigger (a booking has its own 15-minute one)
       if (k === 'dayBefore' && now > triggerAt(o.startAt, 'dayBefore') + DAY_GRACE_MS) continue
       const id = reminderId(o.key, k, uid)
       if (!sentFor(id)) out.push({ ...base, id, kind: k })
@@ -119,7 +119,7 @@ export function dueReminders(occ: Occurrence[], logs: LogMap, prefs: Record<stri
 // ── wording ──────────────────────────────────────────────────
 /** "Tue, Nov 17 at 8:00 PM ET" */
 export const whenShort = (ms: number) =>
-  new Date(ms).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }).replace(',', ',').replace(/, (\d+:\d+ [AP]M)$/, ' at $1') + ' ET'
+  new Date(ms).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }).replace(/, (\d+:\d+ [AP]M)$/, ' at $1') + ' ET'
 
 export function reminderText(d: Pick<Due, 'kind' | 'title' | 'startAt' | 'studio' | 'booking' | 'prevStartAt'>) {
   const what = d.booking ? 'studio booking' : 'show'

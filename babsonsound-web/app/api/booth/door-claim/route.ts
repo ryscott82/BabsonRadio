@@ -3,7 +3,8 @@ import { HttpError, handle, readJson, str } from '@/lib/server/http'
 import { boothSecret } from '@/lib/server/booth'
 import { verifyAttest } from '@/lib/booth'
 import { crewList } from '@/lib/crew'
-import { loadCrew } from '@/lib/server/booth'
+import { loadCrew, shownCrew } from '@/lib/server/booth'
+import { censor } from '@/lib/server/wordFilter'
 
 export const runtime = 'nodejs'
 
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
     })
     if (!got) throw new HttpError(410, 'That scan has expired. Scan the code again.')
     // Someone joined the crew: no sign-in, the PC just says who joined and adds them to the show's hosts.
-    if (got.crew) return { crew: true, firstName: got.firstName, name: got.name, uid: got.uid, members: crewList(await loadCrew(adminDb())) }
-    return { customToken: await adminAuth().createCustomToken(got.uid), firstName: got.firstName }
+    if (got.crew) return { crew: true, firstName: censor(got.firstName), name: censor(got.name), uid: got.uid, members: shownCrew(crewList(await loadCrew(adminDb()))) }
+    return { customToken: await adminAuth().createCustomToken(got.uid), firstName: censor(got.firstName) }
   }, { 'Cache-Control': 'private, no-store' })
 }

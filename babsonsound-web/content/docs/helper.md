@@ -57,6 +57,16 @@ For students with the **Studio badge** (E-board and admins always). The stream i
 
 Ad break times are set in **Settings → Studio PC log → Ad breaks** (minutes past each hour and length).
 
+## Studio browser
+The header has quick links (YouTube, Google Docs, Notion) and **Browser**. They open a normal Chrome window beside the booth, split screen: the browser takes the right half and the booth keeps its left column (meter, show info, Go live). The music and sound board are only hidden, so a track that is playing keeps playing. **Full screen** gives the browser everything except a slim booth rail on the left (ON AIR, the time, End show, Split screen, Close browser); **Split screen** goes back.
+- It is its own Chrome profile (`%LOCALAPPDATA%\BabsonRadioBrowser`), never the booth's or anyone's personal one. Sign-ins are kept between visits, so people can stay signed in to Google or Notion. Anyone using the studio after them can see those accounts until they sign out of them in the browser.
+- The window closes when the person signs out, is signed out for being idle, or the booth goes back to the sign-in screen. While it is open the booth counts as in use for up to 3 hours.
+- The helper places the window (`lib/browser-window.ps1`) and writes `C:\BabsonRadio\browser.json`; the watchdog keeps that window on top instead of the booth while it is open. Only http and https addresses open.
+- Settings (optional): `CHROME_PATH`, `BROWSER_PROFILE_DIR`, `BOOTH_BROWSER_FILE`.
+
+## Word filter on track titles
+A track title typed at the booth goes out on the stream (BUTT's song title) and to the site and app. Before sending, the page reports it to the website (`/api/booth/event`), which checks it with the same filter as everywhere else plus Admin > Blocked words, and signs a title that passes. Show name and hosts are checked the same way before they are saved (`/api/booth/check-text`). The helper only puts signed titles on the stream. A blocked word shows a plain message and nothing is sent. If the website can't be reached, the title isn't sent; the show itself carries on. Show info saved with a live-show recording (title, hosts, description) has blocked words starred out when it reaches the library.
+
 ## Who can go live
 - Directors and admins: any time.
 - Students: an active Radio badge and one of their own shows starting within 30 minutes (or still running, up to 30 minutes after it ends).
@@ -110,3 +120,16 @@ Exit kiosk Chrome with Alt+F4.
 
 ## Testing on a laptop
 Set `ALLOW_LOCALHOST=1` in `.env`, run `npm run dev` in `babsonsound-web`, and open `http://localhost:3000/booth`. Use the same `STUDIO_PC_SECRET` in `.env.local`.
+
+## Live shows are archived automatically
+
+BUTT already records every show (`RECORD_SHOWS`, on by default). When a host goes live the helper notes who is on air and where BUTT is writing;
+when the show ends (`/live/stop`, or the helper restarting after a crash) BUTT's file goes into the same upload queue as "Record a show": AzuraCast
+folder `UPLOAD_FOLDER`, then the website, which makes a **private** (Babson students only) audio episode in the library.
+
+- The booth's **Show info** button (it opens by itself after Go live if the show has no name) sets the show name, who is on it, the type and a
+  description. It is saved on this PC as you type and can be changed during the show; the archive gets whatever it says when the show ends.
+  Blank name = "Live show <date>"; blank contributors = the host who went live.
+- `ARCHIVE_LIVE_SHOWS=0` turns it off. `ARCHIVE_MIN_SECONDS` (default 60): shorter shows are not kept.
+- State is in `recordings/live.json`. Site side needs "Enable on-demand streaming" on the station in AzuraCast; the site creates a switched-off
+  playlist called "Show archive" (`ARCHIVE_PLAYLIST_NAME`) with on-demand on, and the library plays files from AzuraCast directly.

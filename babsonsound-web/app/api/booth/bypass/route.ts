@@ -1,6 +1,6 @@
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson, str } from '@/lib/server/http'
-import { adPlan, boothSecret, latestNote, nextOnAir, showOnAirNow, touchSession } from '@/lib/server/booth'
+import { adPlan, boothSecret, latestNote, nextOnAir, shownNote, showOnAirNow, touchSession } from '@/lib/server/booth'
 import { BYPASS_UID, TOKEN_TTL_MS, pinMatches, signToken, verifyAttest } from '@/lib/booth'
 
 export const runtime = 'nodejs'
@@ -40,12 +40,12 @@ export async function POST(req: Request) {
     const tokenExp = now + TOKEN_TTL_MS
     const [ads, note, next, showRunning] = await Promise.all([adPlan(db), latestNote(db, now).catch(() => null), nextOnAir(db, now, now).catch(() => null), showOnAirNow(db, now)])
     return {
-      sessionId, name, firstName: 'Studio', level: 'bypass', canGoLive: emergency, canRecord: false,
+      sessionId, name, firstName: 'Studio', level: 'bypass', role: 'student', canGoLive: emergency, canRecord: false,
       // Nobody signed in: Go live is offered when no scheduled show is on air, and pressing it asks for a sign in (the page does that).
       signInToLive: !emergency && !showRunning,
       reason: emergency ? '' : showRunning ? 'A scheduled show is on air right now.' : 'Press Go live and sign in.',
-      show: null, nextShow: null, ads, note, next,
-      token: signToken(secret, { u: BYPASS_UID, n: name, s: sessionId, l: emergency, r: false, exp: tokenExp }),
+      show: null, nextShow: null, ads, note: shownNote(note), next,
+      token: signToken(secret, { u: BYPASS_UID, n: name, s: sessionId, l: emergency, r: false, x: false, exp: tokenExp }),
       tokenExp,
     }
   })

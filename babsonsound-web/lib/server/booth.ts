@@ -6,6 +6,7 @@ import { currentOnAir } from './live'
 import { HttpError } from './http'
 import { BYPASS_UID, canGoLiveOpenFloor, cleanAdPlan, liveWindowOpen, verifyAttest, type AdPlan } from '../booth'
 import { accessOf as accessOfUser } from './access'
+import { censor } from './wordFilter'
 import { requireUser } from './http'
 import { buildScheduleFeed } from './scheduleFeed'
 
@@ -205,3 +206,8 @@ export async function loadCrew(db: Firestore): Promise<import('@/lib/crew').Crew
     updatedAt: Number(s.get('updatedAt') ?? 0), members: (s.get('members') ?? {}) as Record<string, import('@/lib/crew').CrewPerson>,
   }
 }
+
+// What the booth screen shows that a person typed or that carries a person's name goes through censor(): explicit words are starred out, never refused
+// (writes are still refused by assertClean). Used by the session, bypass and door routes.
+export const shownNote = (n: BoothNote | null): BoothNote | null => (n ? { ...n, text: censor(n.text), by: censor(n.by) } : n)
+export const shownCrew = <T extends { name: string; firstName: string }>(list: T[]): T[] => list.map(p => ({ ...p, name: censor(p.name), firstName: censor(p.firstName) }))

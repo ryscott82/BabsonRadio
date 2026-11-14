@@ -255,3 +255,9 @@ Server side is done; the website and app screens are the Frontend's job. Full no
 - [x] E-board screens (`StaffViews.swift`): Strikes (confirm, excuse with a note, take back, manual add) and the Studio and guest list (copy, CSV through the share sheet). The role is called E-board in the app
 - [x] Removed timers: the Host tab check (every minute) and the training "waiting" check (every 5 seconds) now load on open; "Check again" button. The Host panel's own live refresh while a show is on air is unchanged
 - [ ] Not compiled or run on a device (written without Xcode); see claude/members_studio_ios_report.md
+
+## Show reminders and booth role (Nov 2026, backend)
+- Hosts (anyone with an approved show, a weekly show they host, or a studio booking) get an email and an iPhone push the day before at 9 am New York and 1 hour before. Studio bookings also get one 15 minutes before (check-in opens). A show that moves gets one short "moved to ..." message instead of a stale reminder. Pre-recorded shows do not mention the studio.
+- Settings: `GET/PATCH /api/me/reminders` ({email, push, dayBefore, hourBefore, bookingQuarter}, all on by default; stored as `showReminders` because `reminders` is the older list of schedule bells). Every email has a one-tap turn-off link (`/api/reminders/off`) and the standard one-click unsubscribe header; people who unsubscribed from email still get pushes if push is on.
+- Sent by `/api/cron/reminders` (outside pinger every 10 minutes, `CRON_SECRET`, `?dry=1` to preview). Each reminder is logged in `reminderLog` before sending so retries never double-send.
+- Booth: the session and bypass replies carry `role` (student, eboard, admin). The helper's Exit panel needs the control token flag `x`, issued only to E-board and Admin. Names and notes shown on the booth are starred out (never refused).

@@ -2,8 +2,8 @@ import SwiftUI
 import Combine
 
 // MARK: - Host gate
-// Everything a new host does before booking a show: in-person training, check-in, a 10-question quiz,
-// (the agreements are signed after the first show request). Shows `content` (the booking screen) once they are certified.
+// Shows `content` (the booking screen) once the person has done the one training (babsonradio.com/training: video, quiz, agreement,
+// which gives the studio and radio badges). Until then it points to that page and checks again when they come back.
 // The questions and the agreement text come from the server, so the website and the app always match.
 
 nonisolated struct TrainingQuestion: Decodable, Identifiable {
@@ -83,8 +83,6 @@ struct HostGateView<Content: View>: View {
                 if info.trained {
                     // The on-air agreements come after the show request is sent (see HostShowView), not before.
                     content()
-                } else if info.checkIn == "approved" && !info.questions.isEmpty {
-                    quiz(info)
                 } else {
                     training(info)
                 }
@@ -97,38 +95,24 @@ struct HostGateView<Content: View>: View {
         .task { await model.load() }
     }
 
-    // MARK: Training (in person)
+    // MARK: Training (on the website)
 
     private func training(_ info: TrainingInfo) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Host training")
+            Text("Training")
                 .font(BRFont.display(28)).kerning(2).foregroundColor(text)
-            if info.checkIn == "pending" {
-                Text("Waiting for the E-board to confirm you are at training.")
-                    .font(BRFont.body(14, .regular)).foregroundColor(text)
-                Button { Task { await model.load() } } label: { Text("Check again").font(BRFont.body(16, .semibold)).frame(minHeight: 44) }
-            } else {
-                Text("Training happens in person. Then you take a short quiz and sign the host agreements.")
-                    .font(BRFont.body(14, .regular)).foregroundColor(text)
-                if info.requested {
-                    Text("Requested. The E-board will reach out.").font(BRFont.body(13, .regular)).foregroundColor(sub)
-                } else {
-                    Button { Task { await model.requestTraining() } } label: {
-                        Text("Schedule a training")
-                            .font(BRFont.body(15, .semibold))
-                            .frame(maxWidth: .infinity).padding(.vertical, 13)
-                            .foregroundColor(text)
-                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(scheme == .dark ? Color.brDkBorder : Color.brLtBorder, lineWidth: 1))
-                    }
-                    .buttonStyle(.plain).disabled(model.busy)
-                }
-                Button { Task { await model.checkIn() } } label: {
-                    Text("I'm at my training")
-                        .font(BRFont.body(15, .semibold))
-                        .frame(maxWidth: .infinity).padding(.vertical, 13)
-                }
-                .buttonStyle(HWKeyStyle(corner: 12, lit: false, height: nil)).disabled(model.busy)
+            Text("One training covers the studio, the radio and going live: a 6-minute video, a short quiz and the agreement. It takes about 15 minutes on babsonradio.com.")
+                .font(BRFont.body(16, .regular)).foregroundColor(text)
+            Link(destination: BabsonLinks.training) {
+                Text("Take the training")
+                    .font(BRFont.body(16, .semibold))
+                    .frame(maxWidth: .infinity).padding(.vertical, 13)
             }
+            .buttonStyle(HWKeyStyle(corner: 12, lit: false, height: nil))
+            Button { Task { await model.load() } } label: {
+                Text("I finished it, check again").font(BRFont.body(16, .semibold)).foregroundColor(accent).frame(minHeight: 44)
+            }
+            .disabled(model.busy)
             if let e = model.error { Text(e).font(BRFont.body(13, .regular)).foregroundColor(.brRed) }
         }
         .padding(20)

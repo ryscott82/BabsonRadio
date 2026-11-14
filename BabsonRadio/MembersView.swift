@@ -98,10 +98,9 @@ struct MembersView: View {
         if let s = store.sessions.first(where: { $0.me.rsvp }) { out.append("Training: \(s.title), \(StationTime.when(s.startsAt))") }
         if let t = store.access?.training {
             let soon = Date().addingTimeInterval(30 * 86_400)
-            if t.studioExpired { out.append("Your studio training has ended. Renew it to book the studio.") }
-            else if let d = t.studioExpiresAt, d < soon { out.append("Studio training ends \(StationTime.day(d)). Renew it before then.") }
-            if t.radioExpired { out.append("Your radio training has ended. Renew it to host live.") }
-            else if let d = t.radioExpiresAt, d < soon { out.append("Radio training ends \(StationTime.day(d)). Renew it before then.") }
+            // One training gives both badges, so they show as one line.
+            if t.studioExpired || t.radioExpired { out.append("Your training has ended. Retake it on babsonradio.com/training.") }
+            else if let d = [t.studioExpiresAt, t.radioExpiresAt].compactMap({ $0 }).min(), d < soon { out.append("Your training ends \(StationTime.day(d)). Retake it before then.") }
         }
         return out
     }
@@ -130,7 +129,7 @@ struct MembersView: View {
                     ForEach(store.recordings) { r in recordingRow(r) }
                 }
             } else {
-                Text("Booking the studio needs the Studio badge.").font(BRFont.body(16, .regular)).foregroundColor(sub)
+                Text("Booking the studio needs the training.").font(BRFont.body(16, .regular)).foregroundColor(sub)
                 Button { withAnimation { proxy.scrollTo("training", anchor: .top) } } label: {
                     Text("Get trained").font(BRFont.display(16)).kerning(1.5).frame(maxWidth: .infinity).padding(.vertical, 14)
                 }
@@ -212,36 +211,26 @@ struct MembersView: View {
     @ViewBuilder private var training: some View {
         VStack(alignment: .leading, spacing: 10) {
             BRSectionHeader(title: "Training")
-            badgeLine("Studio", has: store.access?.studioTrained == true || store.access?.isEBoard == true, ends: store.access?.training?.studioExpiresAt, expired: store.access?.training?.studioExpired == true)
-            badgeLine("Radio", has: store.access?.radioTrained == true || store.access?.isEBoard == true, ends: store.access?.training?.radioExpiresAt, expired: store.access?.training?.radioExpired == true)
+            let staff = store.access?.isEBoard == true
+            let has = staff || (store.access?.studioTrained == true && store.access?.radioTrained == true)
+            let expired = !staff && (store.access?.training?.studioExpired == true || store.access?.training?.radioExpired == true)
+            let ends = staff ? nil : [store.access?.training?.studioExpiresAt, store.access?.training?.radioExpiresAt].compactMap { $0 }.min()
+            badgeLine("Training", has: has, ends: ends, expired: expired)
 
-            if store.access?.isEBoard != true && (store.access?.studioTrained != true || store.access?.radioTrained != true) {
-                Text("Get trained to book the studio and host live.").font(BRFont.body(16, .regular)).foregroundColor(sub)
-            }
-            if store.sessions.isEmpty {
-                Text(store.loaded ? "No training sessions are scheduled right now." : "Loading…").font(BRFont.body(16, .regular)).foregroundColor(sub)
-            }
-            ForEach(store.sessions) { s in
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(s.title).font(BRFont.body(16, .semibold)).foregroundColor(text)
-                    Text("\(StationTime.range(s.startsAt, s.endsAt)) · \(s.location)").font(BRFont.body(14, .regular)).foregroundColor(sub)
-                    Text("\(s.rsvpCount) of \(s.capacity) spots taken").font(BRFont.body(14, .regular)).foregroundColor(sub)
-                    Button { Task { await store.rsvp(s, want: !s.me.rsvp) } } label: {
-                        Text(s.me.rsvp ? "Give back my spot" : "Save my spot").font(BRFont.body(16, .semibold)).foregroundColor(s.me.rsvp ? sub : accent).frame(minHeight: 44)
-                    }
+            if !has || expired {
+                Text("One training covers the studio, the radio and going live: a 6-minute video, a short quiz and the agreement.").font(BRFont.body(16, .regular)).foregroundColor(sub)
+                Link(destination: BabsonLinks.training) {
+                    Text(expired ? "Retake the training" : "Take the training").font(BRFont.display(16)).kerning(1.5).frame(maxWidth: .infinity).padding(.vertical, 14)
                 }
-                .padding(14).frame(maxWidth: .infinity, alignment: .leading).brCard()
+                .buttonStyle(HWKeyStyle(corner: 12, lit: false, height: nil))
+                Button { Task { await reload() } } label: { Text("I finished it, check again").font(BRFont.body(16, .semibold)).foregroundColor(accent).frame(minHeight: 44) }
             }
-            Button { showTraining = true } label: { Text("Do the radio host training").font(BRFont.body(16, .semibold)).frame(minHeight: 44) }
         }
-        .sheet(isPresented: $showTraining) { HostTrainingSheet { showTraining = false; Task { await reload() } } }
     }
 
-    @State private var showTraining = false
-
     private func badgeLine(_ name: String, has: Bool, ends: Date?, expired: Bool) -> some View {
-        let state = expired ? "ended, renew it" : (has ? (ends.map { "active until \(StationTime.day($0))" } ?? "active") : "not yet")
-        return Text("\(name) badge: \(state)").font(BRFont.body(16, .regular)).foregroundColor(has && !expired ? text : sub)
+        let state = expired ? "ended, retake it" : (has ? (ends.map { "done, good until \(StationTime.day($0))" } ?? "done") : "not yet")
+        return Text("\(name): \(state)").font(BRFont.body(16, .regular)).foregroundColor(has && !expired ? text : sub)
     }
 
     // MARK: Club events

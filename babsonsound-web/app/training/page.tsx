@@ -7,14 +7,14 @@ import { openSignIn } from '@/lib/signInPrompt'
 import HostAgreements from '@/components/HostAgreements'
 import { ErrorText, PrimaryButton } from '@/components/AuthUI'
 
-// The one training (studio, radio and going live) at babsonradio.com/training (/training/studio and /training/host redirect here), taken here (the door QR leads to it after sign-up): video, quiz (every answer right), agreements, then the access form.
+// The one training (studio, radio and going live) at babsonradio.com/training (/training/studio and /training/host redirect here), taken here (the door QR leads to it after sign-up): video, the agreement (read and sign), the quiz on it (every answer right), then the access form.
 
 type Q = { id: string; q: string; options: string[] }
 type Info =
   | { trained: true; formUrl: string; embed: boolean }
-  | { trained: false; videoId: string; watchLeftSec: number; minWatchSec: number; passPercent: number; questions: Q[] }
+  | { trained: false; signed: boolean; videoId: string; watchLeftSec: number; minWatchSec: number; passPercent: number; questions: Q[] }
 type Wrong = { id: string; q: string; why: string }
-type Step = 'video' | 'quiz' | 'sign' | 'form'
+type Step = 'video' | 'sign' | 'quiz' | 'form'
 
 const title = 'font-display text-3xl tracking-[0.15em]'
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
@@ -63,15 +63,15 @@ export default function StudioTrainingPage() {
   const submitQuiz = async () => {
     setBusy(true); setError('')
     try {
-      const r = await api<{ quizOk: boolean; wrong?: Wrong[] }>('/api/studio/self-training', { answers })
-      if (r.quizOk) { setStep('sign'); setWrong([]) } else { setWrong(r.wrong ?? []); setAnswers({}); setNow(Date.now()); setRetryAt(Date.now() + 20_000); load() }
+      const r = await api<{ quizOk: boolean; wrong?: Wrong[]; formUrl?: string; embed?: boolean }>('/api/studio/self-training', { answers })
+      if (r.quizOk) { setWrong([]); setForm({ url: r.formUrl ?? '', embed: r.embed === true }); setStep('form') } else { setWrong(r.wrong ?? []); setAnswers({}); setNow(Date.now()); setRetryAt(Date.now() + 20_000); load() }
     } catch (e) { setError(e instanceof Error ? e.message : 'Something went wrong.') } finally { setBusy(false) }
   }
   const sign = async (agreement: { typedName: string; accepted: true; version: string }) => {
     setBusy(true); setError('')
     try {
-      const r = await api<{ formUrl: string; embed: boolean }>('/api/studio/self-training', { agreement })
-      setForm({ url: r.formUrl, embed: r.embed }); setStep('form')
+      await api<{ signed: true }>('/api/studio/self-training', { agreement })
+      load(); setStep('quiz'); window.scrollTo({ top: 0 })
     } catch (e) { setError(e instanceof Error ? e.message : 'Something went wrong.') } finally { setBusy(false) }
   }
 
@@ -100,13 +100,16 @@ export default function StudioTrainingPage() {
           {info.videoId
             ? <div className="aspect-video"><iframe className="w-full h-full rounded-xl" src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(info.videoId)}`} title="Radio room training video" allow="encrypted-media; picture-in-picture" allowFullScreen /></div>
             : <p className="opacity-80">The training video isn’t set up yet.</p>}
-          <p className="opacity-80">Watch the video, then take the quiz.</p>
-          <PrimaryButton type="button" disabled={left > 0} onClick={() => setStep('quiz')}>{left > 0 ? `Quiz opens in ${mmss(left)}` : 'Take the quiz'}</PrimaryButton>
+          <p className="opacity-80">Watch the video, then read and sign the agreement. The quiz after it asks about both.</p>
+          <PrimaryButton type="button" disabled={left > 0} onClick={() => { setStep(info.signed ? 'quiz' : 'sign'); window.scrollTo({ top: 0 }) }}>
+            {left > 0 ? `Next step opens in ${mmss(left)}` : info.signed ? 'Take the quiz' : 'Read the agreement'}
+          </PrimaryButton>
         </div>
       )}
       {step === 'quiz' && (
         <div className="space-y-5">
-          <p className="text-center opacity-80">Every answer must be right.</p>
+          <p className="text-center opacity-80">Questions on the video and the agreement you just signed. Every answer must be right.</p>
+          {info.signed && <p className="text-center"><button type="button" className="text-br-gold underline" onClick={() => setStep('sign')}>Read the agreement again</button></p>}
           {wrong.length > 0 && (
             <div className="sk-field rounded-xl p-4 space-y-2">
               <p className="font-display tracking-widest text-br-gold text-sm">Not quite. Check these:</p>
@@ -131,8 +134,10 @@ export default function StudioTrainingPage() {
       )}
       {step === 'sign' && (
         <div className="space-y-4">
-          <p className="text-center opacity-80">Perfect score. Read and sign to finish.</p>
-          <HostAgreements busy={busy} error={error} onSign={sign} />
+          <p className="text-center opacity-80">Read it carefully: the quiz is on what it says. Then tick each line and sign.</p>
+          {info.signed
+            ? <><HostAgreements busy={busy} error={error} onSign={sign} /><p className="text-center"><button type="button" className="text-br-gold underline" onClick={() => setStep('quiz')}>Back to the quiz</button></p></>
+            : <HostAgreements busy={busy} error={error} onSign={sign} />}
         </div>
       )}
     </div>

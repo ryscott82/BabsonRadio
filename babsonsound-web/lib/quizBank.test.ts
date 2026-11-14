@@ -77,3 +77,22 @@ test('the quiz uses the stored bank and grades the questions that were shown', (
   assert.match(route, /The quiz questions were just changed/)
   assert.match(src('lib/server/quizBank.ts'), /const problem = mixProblem\(next\)\n\s+if \(problem\) throw/)
 })
+
+test('training order: video, then the agreement, then the quiz; passing grants the badges and the agreement counts as the on-air one', () => {
+  const route = src('app/api/studio/self-training/route.ts')
+  assert.ok(route.indexOf('if (b.agreement)') < route.indexOf('Step 2: the quiz'))
+  assert.match(route, /if \(!signedNow\(snap\)\) throw new HttpError\(403, 'Read and sign the agreement first/)
+  assert.match(route, /conductVersion: sig\.version/)
+  assert.match(route, /if \(graded\.passed\) \{\n\s+const granted = await writeGrants/)
+  const page = src('app/training/page.tsx')
+  assert.match(page, /type Step = 'video' \| 'sign' \| 'quiz' \| 'form'/)
+})
+
+test('the agreement is short: ten lines to tick, every topic still covered', async () => {
+  const { HOST_AGREEMENTS } = await import('./conduct.ts')
+  const lines = HOST_AGREEMENTS.flatMap(a => a.clauses)
+  assert.equal(lines.length, 10)
+  const all = HOST_AGREEMENTS.map(a => [a.intro ?? '', ...a.clauses].join(' ')).join(' ')
+  for (const must of [/own account/, /Terms of Use/, /Privacy Policy/, /responsible for everything on air/, /recorded/, /18 or older/, /slur/, /harass/, /private information/,
+    /guests/, /look it up or ask the E-board/, /nondiscrimination/, /reported to Babson/, /6 AM to 10 PM Eastern/, /Explicit/, /clean edit/, /pre-recorded/, /set list/, /rights holders/]) assert.match(all, must)
+})

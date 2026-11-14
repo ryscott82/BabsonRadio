@@ -4,7 +4,7 @@
 // The questions go to the browser WITHOUT answers; the server grades. The technical and new privacy questions (Nov 14) are drafts:
 // review the wording and the gear details before launch. Change TRAINING_VERSION when the pool changes (grants record it).
 
-export const TRAINING_VERSION = '2026-11-14'
+export const TRAINING_VERSION = '2026-11-14b'
 export const PASS_PERCENT = 80
 
 export type QuizTopic = 'slurs' | 'privacy' | 'technical' | 'rules'
@@ -17,13 +17,13 @@ export const QUIZ: QuizQuestion[] = [
     why: 'The label is a minimum. Profanity or graphic content makes it explicit even without a sticker.' },
   { id: 'slur-song', topic: 'slurs', q: 'A clean radio edit bleeps most swearing but still contains a slur. Can you play it?', options: ['Yes, it is the clean edit', 'Yes, if the artist is a member of that group', 'Only after 10 PM', 'No. Slurs are never allowed at any hour, in any version'], answer: 3,
     why: 'The conduct agreement bans slurs at all hours, including in songs, edits, and quotes.' },
-  { id: 'bleep', topic: 'slurs', q: 'A guest says a slur, then says "sorry, bleep that." What do you do?', options: ['Nothing, they apologized', 'Cut them off or go to a song, apologize on air, and tell a director after the show', 'Say it again to explain what they meant', 'Delete the recording and tell nobody'], answer: 1,
+  { id: 'bleep', topic: 'slurs', q: 'A guest says a slur, then says "sorry, bleep that." What do you do?', options: ['Nothing, they apologized', 'Cut them off or go to a song, apologize on air, and tell the E-board after the show', 'Say it again to explain what they meant', 'Delete the recording and tell nobody'], answer: 1,
     why: 'You are responsible for guests. Stop it, move on, and report it so staff can follow up.' },
-  { id: 'unsure', topic: 'slurs', q: 'You are not sure a word is a slur. What do you do?', options: ['Air it, because it is probably fine', 'Leave it out and ask a director', 'Look it up while live on air', 'Ask listeners to vote'], answer: 1,
-    why: 'When unsure, leave it out. A director can answer later without risk.' },
+  { id: 'unsure', topic: 'slurs', q: 'You are not sure a word is a slur. What do you do?', options: ['Air it, because it is probably fine', 'Leave it out, then look it up in the word lookup or ask the E-board', 'Say it once and see if anyone complains', 'Ask listeners to vote'], answer: 1,
+    why: 'When unsure, leave it out. The word lookup or the E-board can answer later without risk.' },
   { id: 'requests', topic: 'rules', q: 'A friend texts and asks you to play one specific song right now. What is the rule?', options: ['Play it, it is only one song', 'Play it only if it is by an artist already in the rotation', 'Follow the show rules the station gave you. Station rules on requests and song order exist because of music-licensing law', 'Ask the whole group chat first'], answer: 2,
-    why: 'Licensing rules limit how much listeners can choose what airs. Follow the station’s request rules and ask a director if unsure.' },
-  { id: 'dead-air', topic: 'technical', q: 'The stream goes silent in the middle of your show. What do you do first?', options: ['Wait a minute to see if it fixes itself', 'Start talking louder', 'Check your mic and mixer, then tell a director right away if the stream is still silent', 'Leave and report it tomorrow'], answer: 2,
+    why: 'Licensing rules limit how much listeners can choose what airs. Follow the station’s request rules and ask the E-board if unsure.' },
+  { id: 'dead-air', topic: 'technical', q: 'The stream goes silent in the middle of your show. What do you do first?', options: ['Wait a minute to see if it fixes itself', 'Start talking louder', 'Check your mic and mixer, then tell the E-board right away if the stream is still silent', 'Leave and report it tomorrow'], answer: 2,
     why: 'Silence loses listeners fast. Check your own gear, then escalate immediately.' },
   { id: 'private', topic: 'privacy', q: 'A guest wants to read a classmate’s phone number and address on air for a joke. You should:', options: ['Allow it if the classmate is a friend', 'Stop it. Do not share private information on air', 'Allow it if it is after 10 PM', 'Allow it if they only read half'], answer: 1,
     why: 'Private information stays off the air at all hours.' },

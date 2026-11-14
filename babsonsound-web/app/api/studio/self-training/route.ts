@@ -7,19 +7,22 @@ import { loadStudioForm } from '@/lib/server/studioForm'
 import { loadQuizBank } from '@/lib/server/quizBank'
 import { STUDIO_CONFIG } from '@/lib/studioConfig'
 import { badgeExpiry, gradeQuiz } from '@/lib/studioRules'
-import { QUIZ_VALID_MS, SELF_MIN_WATCH_MS, SELF_PASS_PERCENT, SELF_QUESTIONS, drawQuiz, selfQuizGate, watchLeftSec } from '@/lib/selfTraining'
+import { SELF_MIN_WATCH_MS, SELF_PASS_PERCENT, SELF_QUESTIONS, drawQuiz, selfQuizGate, watchLeftSec } from '@/lib/selfTraining'
 
 export const runtime = 'nodejs'
 
 // Radio room training you take yourself (the QR code on the studio door leads here after sign-up). Students only (guests get 403 BR-PERM-001).
+// The order is: watch the video, read and sign the agreement, then the quiz (which asks about what the agreement says).
 //   GET  -> { trained: true, formUrl, embed }  when they already are (or are a director or admin), so the last step can be shown again;
-//           otherwise { trained: false, videoId, watchLeftSec, passPercent, questions (no answers), agreements, agreementVersion }.
-//           The first GET starts the clock: the quiz opens SELF_MIN_WATCH_MS later.
-//   POST { answers } -> every answer must be right. Fail: { quizOk: false, wrong: [{ id, q, why }] } (a new draw next time). Pass: { quizOk: true }.
-//   POST { agreement } -> within an hour of a perfect quiz: the agreement is checked and signed, both badges are granted,
-//           and { passed: true, formUrl, embed } is returned.
+//           otherwise { trained: false, signed, videoId, watchLeftSec, passPercent, questions (no answers), agreements, agreementVersion }.
+//           The first GET starts the clock: the agreement opens SELF_MIN_WATCH_MS later.
+//   POST { agreement } -> after the video: the agreement is checked and signed (it also counts as the on-air agreement). { signed: true }
+//   POST { answers } -> after signing. Every answer must be right. Fail: { quizOk: false, wrong: [{ id, q, why }] } (a new draw next time).
+//           Pass: both badges are granted and { quizOk: true, passed: true, formUrl, embed } is returned.
 // The access form's address is handed out only here, to someone who passed, so it is not something to forward.
 const doc = (uid: string) => adminDb().collection('trainingSelf').doc(uid)
+/** Signed the current version of the agreement (a new version means reading and signing again). */
+const signedNow = (snap: FirebaseFirestore.DocumentSnapshot) => !!snap.get('signedAt') && snap.get('signedVersion') === STUDIO_CONFIG.agreementVersion
 const num = (v: unknown) => (v as { toMillis?: () => number } | null | undefined)?.toMillis?.() ?? 0
 
 export async function GET(req: Request) {
@@ -43,7 +46,7 @@ export async function GET(req: Request) {
     if (!keptQs || keptQs.length !== kept!.length) await ref.set({ drawnIds: drawn.map(q => q.id), drawnAttempt: attempts }, { merge: true })
     const pub = drawn.map(({ id, q, options }) => ({ id, q, options }))
     return {
-      trained: false, videoId: process.env.STUDIO_TRAINING_VIDEO_ID || process.env.BOOTH_TRAINING_VIDEO_ID || '',
+      trained: false, signed: signedNow(snap), videoId: process.env.STUDIO_TRAINING_VIDEO_ID || process.env.BOOTH_TRAINING_VIDEO_ID || '',
       watchLeftSec: watchLeftSec(startedAt, now), minWatchSec: Math.round(SELF_MIN_WATCH_MS / 1000), passPercent: SELF_PASS_PERCENT,
       questions: pub, agreements: STUDIO_CONFIG.agreements, agreementVersion: STUDIO_CONFIG.agreementVersion,
     }
@@ -61,25 +64,24 @@ export async function POST(req: Request) {
     const uid = actor.t.uid, now = Date.now()
     const ref = doc(uid), snap = await ref.get()
 
-    // Step 2: the agreement. Only right after a perfect quiz (within an hour). Signing grants both badges.
+    // Step 1: the agreement, once the video has been watched. It is the same text as the on-air agreement, so it counts for that too.
     if (b.agreement) {
-      const passedAt = num(snap.get('quizPassedAt'))
-      if (!passedAt || now - passedAt > QUIZ_VALID_MS) throw new HttpError(403, 'Take the quiz first.', 'BR-STU-013')
+      const watched = selfQuizGate({ startedAt: num(snap.get('startedAt')), lastAttemptAt: 0, now })
+      if (!watched.ok) throw new HttpError(watched.status, 'Watch the whole video first, then read the agreement.', watched.code)
       const sig = checkSignature(b.agreement, STUDIO_CONFIG.agreementVersion, 'BR-STU-017')
-      await adminDb().collection('conductConsents').add({
+      const consent = await adminDb().collection('conductConsents').add({
         uid, email: actor.t.email ?? '', typedName: sig.typedName, kind: 'studio-training', version: sig.version,
         scopeKind: 'selfServe', scopeId: 'door', signedAt: Timestamp.fromMillis(now),
       })
-      const granted = await writeGrants(adminDb(), (['studio', 'radio'] as const).map(badge => ({
-        uid, badge, sessionId: 'self', trainerUid: '', quizId: STUDIO_CONFIG.quizId, quizScore: SELF_PASS_PERCENT,
-        agreementVersion: STUDIO_CONFIG.agreementVersion, grantedBy: 'system' as const,
-      })), now, false)
-      await ref.set({ signedAt: Timestamp.fromMillis(now) }, { merge: true })
-      const f = await loadStudioForm()
-      return { passed: true, granted, expiresAt: badgeExpiry(now), formUrl: f.url, embed: f.embed }
+      await Promise.all([
+        ref.set({ signedAt: Timestamp.fromMillis(now), signedVersion: sig.version }, { merge: true }),
+        adminDb().collection('users').doc(uid).set({ conductVersion: sig.version, conductSignedAt: Timestamp.fromMillis(now), conductConsentId: consent.id }, { merge: true }),
+      ])
+      return { signed: true }
     }
 
-    // Step 1: the quiz.
+    // Step 2: the quiz, after signing. A perfect score grants both badges.
+    if (!signedNow(snap)) throw new HttpError(403, 'Read and sign the agreement first, then take the quiz.', 'BR-STU-013')
     const gate = selfQuizGate({ startedAt: num(snap.get('startedAt')), lastAttemptAt: num(snap.get('lastAttemptAt')), now })
     if (!gate.ok) throw new HttpError(gate.status, gate.message, gate.code)
     const attempts = Number(snap.get('attempts') ?? 0)
@@ -91,7 +93,14 @@ export async function POST(req: Request) {
     const graded = gradeQuiz(drawn, answers, SELF_PASS_PERCENT)
     if (!graded) throw new HttpError(400, 'Answer every question first.', 'BR-STU-015')
     await ref.set({ lastAttemptAt: Timestamp.fromMillis(now), lastScore: graded.percent, attempts: attempts + 1, ...(graded.passed ? { quizPassedAt: Timestamp.fromMillis(now) } : {}) }, { merge: true })
-    if (graded.passed) return { quizOk: true }
+    if (graded.passed) {
+      const granted = await writeGrants(adminDb(), (['studio', 'radio'] as const).map(badge => ({
+        uid, badge, sessionId: 'self', trainerUid: '', quizId: STUDIO_CONFIG.quizId, quizScore: SELF_PASS_PERCENT,
+        agreementVersion: STUDIO_CONFIG.agreementVersion, grantedBy: 'system' as const,
+      })), now, false)
+      const f = await loadStudioForm()
+      return { quizOk: true, passed: true, granted, expiresAt: badgeExpiry(now), formUrl: f.url, embed: f.embed }
+    }
     return {
       quizOk: false, percent: graded.percent, passPercent: SELF_PASS_PERCENT,
       wrong: drawn.filter(q => graded.wrong.includes(q.id)).map(q => ({ id: q.id, q: q.q, why: q.why })),

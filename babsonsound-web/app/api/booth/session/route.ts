@@ -46,19 +46,11 @@ export async function POST(req: Request) {
     ])
     // r: Record a show (the Studio badge; E-board and admins always have it). The studio PC sends this token back with the recording.
     const canRecord = a.studio === true
-<<<<<<< Updated upstream
-    // x: may use Exit panel on the studio PC (admins and E-board only); the helper refuses Exit panel without it.
-    const canExit = a.level === 'admin' || a.level === 'director'
-    return {
-      crew: keep ? crewList(prev) : [], sessionId, name, firstName: String(u.get('firstName') ?? '') || name.split(' ')[0], level: a.level, ...p, ads, note, next, canRecord,
-      token: signToken(secret, { u: t.uid, n: name, s: sessionId, l: p.canGoLive, r: canRecord, x: canExit, exp: tokenExp }),
-=======
     const role = boothRole(a.level)
     return {
       crew: keep ? shownCrew(crewList(prev)) : [], sessionId, name: censor(name), firstName: censor(String(u.get('firstName') ?? '') || name.split(' ')[0]), level: a.level, role, ...p, ads, note: shownNote(note), next, canRecord,
       // x: only E-board and Admin may use the helper's Exit panel (the helper refuses /exit-booth without it).
       token: signToken(secret, { u: t.uid, n: name, s: sessionId, l: p.canGoLive, r: canRecord, x: mayExitPanel(role), exp: tokenExp }),
->>>>>>> Stashed changes
       tokenExp,
     }
   })

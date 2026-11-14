@@ -76,7 +76,7 @@ export default function RecordShow(p: {
     )
   } else {
     const ok = soundOk
-    const why = !p.st ? 'Waiting for the studio helper' : !p.st.canRecord ? 'Finish studio training to record' : p.live ? 'End the live show first' : !p.ready ? 'BUTT isn’t answering' : ok ? 'Records in BUTT only, nothing goes on air' : 'Say something into the mic'
+    const why = !p.st ? 'Waiting for the studio helper' : !p.st.canRecord ? 'Take the training to record' : p.live ? 'End the live show first' : !p.ready ? 'BUTT isn’t answering' : ok ? 'Records in BUTT only, nothing goes on air' : 'Say something into the mic'
     main = (
       <>
         <CheckButton label="Mic check" checked={soundOk} onToggle={toggleMic} />

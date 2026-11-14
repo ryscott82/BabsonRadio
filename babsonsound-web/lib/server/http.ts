@@ -90,7 +90,7 @@ export async function requireVerifiedMember(req: Request): Promise<DecodedIdToke
 }
 /** Student or above who is radio trained (directors and admins always are). Needed for live shows. */
 export const requireRadioTrained = (req: Request) =>
-  need(req, a => a.level !== 'guest' && a.radio, 'Finish radio training to go live.')
+  need(req, a => a.level !== 'guest' && a.radio, 'Take the training at babsonradio.com/training to go live.')
 /** Director or admin. */
 export const requireDirector = (req: Request) =>
   need(req, a => a.level === 'director' || a.level === 'admin', STAFF_ONLY)

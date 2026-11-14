@@ -42,7 +42,7 @@ export async function boothPermit(db: Firestore, uid: string, a: Access, now = D
     return { canGoLive: true, reason: '', show, nextShow }
   }
   if (!a.radio) {
-    return { canGoLive: false, reason: a.radioExpired ? 'Your radio training ran out. Renew it to go live.' : 'Finish radio training to go live.', show: null, nextShow }
+    return { canGoLive: false, reason: a.radioExpired ? 'Your training has ended. Retake it at babsonradio.com/training to go live.' : 'Take the training at babsonradio.com/training to go live.', show: null, nextShow }
   }
   if (!mine && canGoLiveOpenFloor({ radio: a.radio, hostedBefore: open.hostedBefore, showRunning: open.showRunning })) {
     return { canGoLive: true, reason: '', show: null, nextShow }

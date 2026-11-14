@@ -23,6 +23,7 @@ export const LEGACY_REDIRECTS: { source: string; destination: string }[] = [
   { source: '/browse', destination: '/library' },
   // The radio room training moved from /training/studio to /training (the link people are given).
   { source: '/training/studio', destination: '/training' },
+  { source: '/training/host', destination: '/training' },
 ]
 
 /** Which bar link is lit for a path. Show pages belong to Library. */

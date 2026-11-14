@@ -88,7 +88,7 @@ export function trainingExpiryMail(o: { badges: string[]; expiresAt: number; kin
   const lines = [
     `Your ${what} training runs out on ${when}.`,
     'After that you cannot request new live shows until you renew. Shows already approved stay on the schedule.',
-    'To renew, come to a training session. Check babsonradio.com for the next one.',
+    'To renew, retake the training at babsonradio.com/training (a short video, the quiz and the agreement).',
   ]
   const text = ['Hi,', '', ...lines, '', 'Babson Radio'].join('\n')
   const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1710;line-height:1.5">${

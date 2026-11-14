@@ -23,7 +23,7 @@ test('a hold wins over everything and reads Held', () => {
 })
 
 test('other blocks and ineligible people wait for staff, with the reason when there is one', () => {
-  assert.equal(autoLine({ autoBlockedReason: 'training' }, NOW, fmt), 'Waiting for staff (radio training needed)')
+  assert.equal(autoLine({ autoBlockedReason: 'training' }, NOW, fmt), 'Waiting for staff (training needed)')
   assert.equal(autoLine({ autoEligible: false }, NOW, fmt), 'Waiting for staff')
   assert.equal(autoLine({}, NOW, fmt), 'Waiting for staff')
 })

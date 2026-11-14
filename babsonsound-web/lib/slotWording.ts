@@ -13,7 +13,7 @@ export type AutoState = 'held' | 'scheduled' | 'due' | 'week-limit' | 'waiting'
 const REASON: Record<string, string> = {
   'week-limit': 'week limit',
   agreement: 'agreement not signed',
-  training: 'radio training needed',
+  training: 'training needed',
   conflict: 'time conflict',
   past: 'start time passed',
   ineligible: 'not eligible',

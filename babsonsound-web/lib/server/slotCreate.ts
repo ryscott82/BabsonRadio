@@ -65,8 +65,8 @@ export async function createSlotRequests(db: Firestore, t: DecodedIdToken, b: Ne
   const ready = await readiness(db, t)
   // A radio badge that ran out blocks NEW live requests until renewed. Shows already approved stay on the schedule.
   if (b.type === 'live' && !ready.trained) {
-    if ((await accessOf(t)).radioExpired) throw new HttpError(403, 'Your radio training has ended. Renew it to request a live show.', 'BR-TRN-010')
-    throw new HttpError(403, 'Finish radio training to request a live show.', 'BR-TRN-001')
+    if ((await accessOf(t)).radioExpired) throw new HttpError(403, 'Your training has ended. Retake it at babsonradio.com/training to request a live show.', 'BR-TRN-010')
+    throw new HttpError(403, 'Take the training at babsonradio.com/training to request a live show.', 'BR-TRN-001')
   }
 
   const groupId = o.groupId || (starts.length > 1 ? db.collection('slotRequests').doc().id : null)

@@ -47,7 +47,7 @@ export async function runStudioExpiryNotices(now = Date.now()): Promise<{ checke
     const mail = trainingExpiryMail({ badges: mine.map(i => i.badge), expiresAt: first.expiresAt, kind: first.kind })
     const emailed = mailConfigured() ? await sendMail(e.email, mail.subject, mail.text, mail.html) : true
     if (!emailed) { await Promise.all(claimed.map(c => db.collection('trainingNotices').doc(c.id).delete())); continue } // try again tomorrow
-    await notifyUsers('announcements', [uid], { title: mail.subject, body: 'Come to a training session to renew. Approved shows stay on the schedule.' })
+    await notifyUsers('announcements', [uid], { title: mail.subject, body: 'Retake the training at babsonradio.com/training to renew. Approved shows stay on the schedule.' })
     notified++
   }
   return { checked, notified }

@@ -7,7 +7,7 @@ import { openSignIn } from '@/lib/signInPrompt'
 import HostAgreements from '@/components/HostAgreements'
 import { ErrorText, PrimaryButton } from '@/components/AuthUI'
 
-// Radio room training at babsonradio.com/training (was /training/studio, which redirects here), taken here (the door QR leads to it after sign-up): video, quiz (every answer right), agreements, then the access form.
+// The one training (studio, radio and going live) at babsonradio.com/training (/training/studio and /training/host redirect here), taken here (the door QR leads to it after sign-up): video, quiz (every answer right), agreements, then the access form.
 
 type Q = { id: string; q: string; options: string[] }
 type Info =
@@ -25,7 +25,7 @@ function Form({ url, embed }: { url: string; embed: boolean }) {
       <h1 className={title}>Last step</h1>
       <p>Fill in the form to get access to the radio room.</p>
       {url ? (embed
-        ? <iframe src={url} title="Radio room access form" className="w-full h-[70vh] rounded-xl bg-white" />
+        ? <iframe src={url} title="Babson Radio access form" className="w-full h-[70vh] rounded-xl bg-white" />
         : <a href={url} target="_blank" rel="noopener noreferrer" className="inline-block"><PrimaryButton type="button">Open the form</PrimaryButton></a>
       ) : <p className="opacity-80">The form isn’t set up yet. Ask a station director.</p>}
     </div>
@@ -79,7 +79,7 @@ export default function StudioTrainingPage() {
   if (!user) {
     return (
       <div className="max-w-md mx-auto my-8 text-center space-y-4">
-        <h1 className={title}>Radio room training</h1>
+        <h1 className={title}>Training</h1>
         <p className="opacity-80">Create your account first, then the training starts.</p>
         <PrimaryButton type="button" onClick={() => openSignIn(true)}>Create account</PrimaryButton>
       </div>
@@ -94,7 +94,7 @@ export default function StudioTrainingPage() {
   const all = info.questions.every(q => answers[q.id] !== undefined)
   return (
     <div className="max-w-xl mx-auto my-8 space-y-5">
-      <h1 className={`${title} text-center`}>Radio room training</h1>
+      <h1 className={`${title} text-center`}>Training</h1>
       {step === 'video' && (
         <div className="space-y-4 text-center">
           {info.videoId

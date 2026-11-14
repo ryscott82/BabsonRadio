@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signIn } from '@/lib/auth'
 import DoorClaim from './DoorClaim'
@@ -14,6 +14,7 @@ import { BrowserButtons } from './StudioBrowser'
 interface Item { id: string; title: string; hosts: string[]; startAt: number; endAt: number; category: string; source: string }
 interface Idle { items: Item[]; trainingVideoId: string; nowPlaying?: { title: string; artist: string; playedAt: number; duration: number; live: boolean; streamer: string; art?: string; listeners?: number } | null }
 
+const STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL ?? ''
 const time = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 const dayWord = (ms: number, now: number) => {
   const a = new Date(ms), b = new Date(now)
@@ -31,6 +32,17 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
   const [bypassErr, setBypassErr] = useState('')
   const [videoId, setVideoId] = useState('')
   const [drift, setDrift] = useState({ x: 0, y: 0 })
+  // Listen to the station from this screen. Starts only on a tap (browsers require it), and stops when someone signs in.
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [listening, setListening] = useState(false)
+  const toggleRadio = () => {
+    if (listening) { const a = audioRef.current; if (a) { a.pause(); a.removeAttribute('src'); a.load() } setListening(false); return }
+    if (!STREAM_URL) { setBypassErr('The radio stream is not set up on this computer.'); return }
+    const a = audioRef.current ?? (audioRef.current = new Audio())
+    a.src = STREAM_URL
+    a.play().then(() => setListening(true)).catch(() => setBypassErr('Could not start the radio. Try again.'))
+  }
+  useEffect(() => () => { const a = audioRef.current; if (a) { a.pause(); a.removeAttribute('src') } }, [])
 
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [])
   useEffect(() => {
@@ -70,31 +82,42 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
       <div className="grid grid-cols-[1.05fr_1fr_1fr] gap-6 flex-1 min-h-0">
         {/* The time is the first thing a studio screen should say. */}
         <section className="hw-desk-text flex flex-col min-w-0 min-h-0 overflow-hidden">
-          <div>
+          <div className="text-center -mt-[1.5vh]">
             <p className="hw-title leading-[0.85] tabular-nums" style={{ fontSize: 'clamp(5rem, 21vh, 17rem)' }}>{h}:{m}<span className="text-[0.22em] ml-3 opacity-60">{ap}</span></p>
             <p className="hw-title text-[clamp(1.5rem,4vh,3rem)] leading-tight mt-[1vh]">{d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
             {/* Only when more than two people are tuned in. */}
             {playing && (playing.listeners ?? 0) > 2 && <p className="hw-title text-[clamp(1.25rem,3.2vh,2.25rem)] leading-tight mt-1 opacity-90">{playing.listeners} listening</p>}
           </div>
           {playing?.art && (
-            <div className="flex-1 min-h-0 mt-[2vh] flex items-start">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={playing.art} alt={`Cover for ${playing.title}`} className="h-full max-h-full aspect-square object-cover rounded-2xl" style={{ boxShadow: '0 14px 28px rgba(0,0,0,.5)' }} />
+            <div className="flex-1 min-h-0 mt-[2vh] flex items-start justify-center">
+              {/* The record peeks out from behind the cover. */}
+              <div className="relative h-full max-h-full" style={{ aspectRatio: '1.22 / 1' }}>
+                <div aria-hidden className="absolute right-0 top-[6%] h-[88%] aspect-square rounded-full motion-reduce:animate-none animate-[spin_9s_linear_infinite]"
+                  style={{ background: 'radial-gradient(circle, #d8d2c4 0 11%, #111 11.5% 16%, transparent 16.5%), repeating-radial-gradient(circle, #111 0 2px, #1e1e1e 3px 4px), conic-gradient(from 20deg, rgba(255,255,255,.14), transparent 25%, rgba(255,255,255,.1) 50%, transparent 75%, rgba(255,255,255,.14))', boxShadow: '0 10px 24px rgba(0,0,0,.5)' }} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={playing.art} alt={`Cover for ${playing.title}`} className="absolute left-0 top-0 h-full aspect-square object-cover rounded-2xl" style={{ boxShadow: '0 14px 28px rgba(0,0,0,.5)' }} />
+              </div>
             </div>
           )}
+          <button type="button" className="gbtn h-[clamp(2.5rem,5.5vh,3.5rem)] mt-[1.6vh] shrink-0 text-[clamp(1rem,2.2vh,1.5rem)] self-center px-8" onClick={toggleRadio} aria-pressed={listening}>{listening ? 'Stop the radio' : 'Play the radio'}</button>
         </section>
 
         {/* On now, Up next, Later today. */}
         <section className="flex flex-col gap-[1.6vh] min-h-0 min-w-0">
           <div className="bp px-6 py-[1.6vh] shrink-0">
             <p className="lbl text-[clamp(1rem,2.2vh,1.5rem)]">On now</p>
-            {onNow ? (
+            {playing ? (
+              <>
+                <p className="hw-title text-[clamp(1.5rem,4.2vh,3rem)] leading-tight line-clamp-2">{playing.title}</p>
+                {playing.artist && <p className="text-[clamp(1rem,2.2vh,1.5rem)] truncate">{playing.artist}</p>}
+                <p className="text-[clamp(1rem,2.2vh,1.5rem)] lbl truncate">{onNow ? `${onNow.title} until ${time(onNow.endAt)}` : 'Music from Babson Sound'}</p>
+              </>
+            ) : onNow ? (
               <>
                 <p className="hw-title text-[clamp(1.5rem,4.2vh,3rem)] leading-tight line-clamp-2">{onNow.title}</p>
                 <p className="text-[clamp(1rem,2.2vh,1.5rem)] lbl truncate">{hostLine(onNow)}{hostLine(onNow) ? ' · ' : ''}until {time(onNow.endAt)}</p>
               </>
             ) : <p className="hw-title text-[clamp(1.4rem,3.6vh,2.25rem)] leading-tight">{data ? 'Music from Babson Sound' : 'Loading…'}</p>}
-            {playing && <p className="text-[clamp(1rem,2.2vh,1.5rem)] mt-2 truncate"><span className="lbl">Now playing </span>{playing.title}{playing.artist ? ` · ${playing.artist}` : ''}</p>}
           </div>
           <div className="bp px-6 py-[1.6vh] shrink-0">
             <p className="lbl text-[clamp(1rem,2.2vh,1.5rem)]">Up next</p>
@@ -128,11 +151,11 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/booth/door-qr.svg" alt="QR code to sign in at the studio" className="min-h-0 flex-1 max-h-[40vh] aspect-square rounded-xl bg-white" />
           <button type="button" className="gbtn gbtn-go h-[clamp(3.25rem,7vh,5rem)] text-[clamp(1.25rem,2.8vh,1.875rem)] w-full" onClick={() => setView('signin')}>Sign in with Babson Sound account</button>
-          <div className="flex items-center gap-2">
-            <button type="button" className="gbtn h-[clamp(2.5rem,4.8vh,3rem)] px-5 text-[clamp(1rem,2vh,1.25rem)]" onClick={() => router.push('/slots')}>Book a show</button>
-            <button type="button" className="gbtn h-[clamp(2.5rem,4.8vh,3rem)] px-5 text-[clamp(1rem,2vh,1.25rem)]" onClick={() => setView('guest')}>New here? Training</button>
-            <button type="button" className="gbtn h-[clamp(2.5rem,4.8vh,3rem)] px-4 text-base opacity-70" onClick={() => { setBypassErr(''); boothFetch<object>('/api/booth/bypass', { pin: '' }).then(r => onBypass('', r)).catch(e => setBypassErr(errText(e))) }}>Bypass sign in</button>
+          <div className="grid grid-cols-2 gap-3 w-full">
+            <button type="button" className="gbtn h-[clamp(3.25rem,8vh,5.5rem)] px-3 text-[clamp(1.1rem,2.6vh,1.75rem)]" onClick={() => router.push('/slots')}>Book a show</button>
+            <button type="button" className="gbtn h-[clamp(3.25rem,8vh,5.5rem)] px-3 text-[clamp(1.1rem,2.6vh,1.75rem)]" onClick={() => setView('guest')}>New here? Training</button>
           </div>
+          <button type="button" className="gbtn h-[clamp(2.25rem,4vh,2.75rem)] px-4 text-base opacity-70" onClick={() => { setBypassErr(''); boothFetch<object>('/api/booth/bypass', { pin: '' }).then(r => onBypass('', r)).catch(e => setBypassErr(errText(e))) }}>Bypass sign in</button>
         </section>
       </div>
 
@@ -142,7 +165,7 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
         <p className="text-[clamp(1rem,2.2vh,1.5rem)] opacity-85">Keep it clean. Respect quiet hours. Leave the studio as you found it.</p>
         {/* The internet needs a sign-in: a tap on any of these goes to the sign-in page. */}
         <div className="ml-auto flex items-center gap-2" role="group" aria-label="Internet. Sign in to use it.">
-          <span className="text-xl opacity-85 mr-2">Sign in to browse</span>
+          <span className="text-xl opacity-85 mr-2">Internet quick links:</span>
           <BrowserButtons state={null} getToken={async () => ''} onError={setBypassErr} onLocked={() => setView('signin')} />
         </div>
       </footer>

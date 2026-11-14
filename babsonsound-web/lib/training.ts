@@ -6,7 +6,7 @@
 // review the wording and the gear details before launch. Change TRAINING_VERSION when the pool changes (grants record it).
 
 export const TRAINING_VERSION = '2026-11-14d'
-export const PASS_PERCENT = 80
+export const PASS_PERCENT = 100
 
 export type QuizTopic = 'slurs' | 'privacy' | 'radio' | 'studio' | 'rules'
 export interface QuizQuestion { id: string; topic: QuizTopic; q: string; options: string[]; answer: number; why: string }

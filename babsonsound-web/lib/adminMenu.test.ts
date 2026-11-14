@@ -26,7 +26,7 @@ test('nothing Admin-only is in the E-board menu, not even a heading, and no tab 
 })
 test('tab membership matches the design', () => {
   const admin = (id: string) => menuFor('admin').find(s => s.id === id)!
-  assert.deepEqual(admin('users').tiles.map(t => t.title), ['Users and roles', 'Training', 'Phone changes', 'Phone lookup', 'Birthdays', 'Studio PC log'])
+  assert.deepEqual(admin('users').tiles.map(t => t.title), ['Users and roles', 'Training', 'Training quiz', 'Phone changes', 'Phone lookup', 'Birthdays', 'Studio PC log'])
   assert.deepEqual(admin('shows').tiles.map(t => t.title), ['Schedule', 'Show requests', 'Show changes', 'Auto DJ', 'Set lists', 'Strikes', 'Studio list', 'Club events'])
   assert.deepEqual(admin('content').groups[0].tiles.map(t => t.title), ['Episodes', 'Music library', 'Uploads', 'Song requests', 'Blocked words'])
   assert.equal(admin('content').groups[1].title, 'Content library')
@@ -36,7 +36,7 @@ test('tab membership matches the design', () => {
 })
 test('E-board Users tab has Training and the Studio PC log; Shows has Auto DJ; Content has Blocked words and no library settings', () => {
   const t = (id: string) => menuFor('director').find(s => s.id === id)!.tiles.map(x => x.href)
-  assert.deepEqual(t('users'), ['/admin/training', '/admin/booth'])
+  assert.deepEqual(t('users'), ['/admin/training', '/admin/quiz', '/admin/booth'])
   assert.ok(t('shows').includes('/admin/autoschedule'))
   assert.ok(t('content').includes('/admin/blocked-words'))
   assert.equal(menuFor('director').find(s => s.id === 'content')!.groups.length, 1)

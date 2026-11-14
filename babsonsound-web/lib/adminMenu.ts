@@ -36,6 +36,7 @@ export const SECTIONS: MenuTab[] = [
   tab({ id: 'users', title: 'Users', icon: 'users', groups: [{ tiles: [
     { href: '/admin/users', icon: 'users', title: 'Users and roles', text: 'Find people and give access', admin: true },
     { href: '/admin/training', icon: 'training', title: 'Training', text: 'Who is trained, check in and certify hosts' },
+    { href: '/admin/quiz', icon: 'training', title: 'Training quiz', text: 'The question bank: add, edit and import questions (Admins can delete in bulk)' },
     { href: '/admin/phone-changes', icon: 'phone', title: 'Phone changes', text: 'Approve new numbers', admin: true },
     { href: '/admin/phone-lookup', icon: 'phone', title: 'Phone lookup', text: 'Find the account for a number', admin: true },
     { href: '/admin/birthdays', icon: 'birthdays', title: 'Birthdays', text: 'Who is celebrating soon', admin: true },

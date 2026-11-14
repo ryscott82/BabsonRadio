@@ -4,6 +4,7 @@ import { HttpError, handle, readJson } from '@/lib/server/http'
 import { checkSignature } from '@/lib/server/conduct'
 import { studioActor, writeGrants } from '@/lib/server/studio'
 import { loadStudioForm } from '@/lib/server/studioForm'
+import { loadQuizBank } from '@/lib/server/quizBank'
 import { STUDIO_CONFIG } from '@/lib/studioConfig'
 import { badgeExpiry, gradeQuiz } from '@/lib/studioRules'
 import { QUIZ_VALID_MS, SELF_MIN_WATCH_MS, SELF_PASS_PERCENT, SELF_QUESTIONS, drawQuiz, selfQuizGate, watchLeftSec } from '@/lib/selfTraining'
@@ -33,8 +34,14 @@ export async function GET(req: Request) {
     let startedAt = num(snap.get('startedAt'))
     if (!startedAt) { startedAt = now; await ref.set({ startedAt: Timestamp.fromMillis(now), attempts: 0 }, { merge: true }) }
     const attempts = Number(snap.get('attempts') ?? 0)
-    const drawn = drawQuiz(STUDIO_CONFIG.questions, SELF_QUESTIONS, `${actor.t.uid}:${attempts}`).map(({ id, q, options }) => ({ id, q, options }))
-    const pub = drawn
+    // The questions come from the bank edited on Settings > Training quiz. The ids shown are saved, so grading uses the same
+    // questions even if the bank changes in between (or another server still has the old bank cached).
+    const bank = (await loadQuizBank(adminDb())).questions
+    const kept = snap.get('drawnAttempt') === attempts && Array.isArray(snap.get('drawnIds')) ? (snap.get('drawnIds') as string[]) : null
+    const keptQs = kept?.map(id => bank.find(q => q.id === id)).filter(q => q != null)
+    const drawn = keptQs && keptQs.length === kept!.length ? keptQs : drawQuiz(bank, SELF_QUESTIONS, `${actor.t.uid}:${attempts}`)
+    if (!keptQs || keptQs.length !== kept!.length) await ref.set({ drawnIds: drawn.map(q => q.id), drawnAttempt: attempts }, { merge: true })
+    const pub = drawn.map(({ id, q, options }) => ({ id, q, options }))
     return {
       trained: false, videoId: process.env.STUDIO_TRAINING_VIDEO_ID || process.env.BOOTH_TRAINING_VIDEO_ID || '',
       watchLeftSec: watchLeftSec(startedAt, now), minWatchSec: Math.round(SELF_MIN_WATCH_MS / 1000), passPercent: SELF_PASS_PERCENT,
@@ -76,7 +83,10 @@ export async function POST(req: Request) {
     const gate = selfQuizGate({ startedAt: num(snap.get('startedAt')), lastAttemptAt: num(snap.get('lastAttemptAt')), now })
     if (!gate.ok) throw new HttpError(gate.status, gate.message, gate.code)
     const attempts = Number(snap.get('attempts') ?? 0)
-    const drawn = drawQuiz(STUDIO_CONFIG.questions, SELF_QUESTIONS, `${uid}:${attempts}`)
+    const bank = (await loadQuizBank(adminDb())).questions
+    const shownIds = snap.get('drawnAttempt') === attempts && Array.isArray(snap.get('drawnIds')) ? (snap.get('drawnIds') as string[]) : null
+    const drawn = shownIds ? shownIds.map(id => bank.find(q => q.id === id)).filter(q => q != null) : drawQuiz(bank, SELF_QUESTIONS, `${uid}:${attempts}`)
+    if (shownIds && drawn.length !== shownIds.length) throw new HttpError(409, 'The quiz questions were just changed. Reload the page for a new set.')
     const answers = (b.answers && typeof b.answers === 'object' ? b.answers : {}) as Record<string, unknown>
     const graded = gradeQuiz(drawn, answers, SELF_PASS_PERCENT)
     if (!graded) throw new HttpError(400, 'Answer every question first.', 'BR-STU-015')

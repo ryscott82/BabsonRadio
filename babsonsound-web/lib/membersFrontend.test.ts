@@ -68,10 +68,10 @@ test('signed-out people and guests see only events and info, with a sign-in prom
   assert.match(signInPrompt('guest'), /Babson, Olin and Wellesley/)
   assert.equal(signInPrompt('student'), '')
 })
-test('students see the seven sections top to bottom', () => {
-  assert.deepEqual(sectionsFor('student'), ['next', 'host', 'studio', 'standing', 'training', 'events', 'info'])
+test('students see the eight sections top to bottom', () => {
+  assert.deepEqual(sectionsFor('student'), ['next', 'host', 'studio', 'standing', 'training', 'resources', 'events', 'info'])
   const p = src('app/members/page.tsx')
-  const order = ['id="next"', 'id="host"', 'id="studio"', 'id="standing"', 'id="training"', 'id="events"', 'id="info"'].map(k => p.indexOf(k))
+  const order = ['id="next"', 'id="host"', 'id="studio"', 'id="standing"', 'id="training"', 'id="resources"', 'id="events"', 'id="info"'].map(k => p.indexOf(k))
   assert.deepEqual([...order].sort((a, b) => a - b), order)
   assert.match(p, /show\.has\('studio'\)/)
   assert.doesNotMatch(p, /disabled/)

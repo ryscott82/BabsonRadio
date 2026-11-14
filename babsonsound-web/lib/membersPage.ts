@@ -1,12 +1,12 @@
 // The Members page, with no React: who sees which section, the "Next up for me" lines, standing wording and the training rows.
 
-export type SectionId = 'next' | 'host' | 'studio' | 'standing' | 'training' | 'events' | 'info'
+export type SectionId = 'next' | 'host' | 'studio' | 'standing' | 'training' | 'resources' | 'events' | 'info'
 export type Viewer = 'signed-out' | 'guest' | 'student'
 
 export const viewerOf = (o: { signedIn: boolean; isGuest: boolean; isBabson: boolean }): Viewer => (!o.signedIn ? 'signed-out' : o.isBabson ? 'student' : 'guest')
 
 /** Top to bottom. Everyone can read events and info; the rest are for signed-in students (hidden, not greyed, for everyone else). */
-const ALL: SectionId[] = ['next', 'host', 'studio', 'standing', 'training', 'events', 'info']
+const ALL: SectionId[] = ['next', 'host', 'studio', 'standing', 'training', 'resources', 'events', 'info']
 export function sectionsFor(v: Viewer): SectionId[] {
   return v === 'student' ? ALL : ['events', 'info']
 }
@@ -94,7 +94,7 @@ export const INFO = {
     'Walk-ins are welcome whenever the studio is free. A booking just reserves it.',
     'Missed shows and bookings count: a mistake, then a warning, then a ban for the semester. The E-board can excuse a mistake.',
   ],
-  cleanHours: 'Clean hours are 6 AM to 10 PM Eastern: no explicit music or language on air.',
+  cleanHours: 'Clean hours are 6 AM to 10 PM Eastern: no explicit music or language on air. Not sure about a word? Check the Explicit phrase reference under Resources.',
   quietHours: 'Quiet hours: Monday to Friday 9 AM to 4 PM and 10 PM to 7 AM. No loud DJ sets, keep the volume as low as possible. Nothing is blocked.',
   contactNote: 'Questions? Write to the E-board. Anyone can reach us from the Support page.',
 }

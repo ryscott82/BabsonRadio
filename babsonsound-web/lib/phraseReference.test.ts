@@ -28,3 +28,22 @@ test('the booth button is only for someone signed in (not the idle screen or the
   assert.doesNotMatch(src('components/booth/IdleScreen.tsx'), /Phrase reference/)
   assert.match(src('app/booth/page.tsx'), /\{!bypass && <button type="button" className=\{sb\} onClick=\{\(\) => setPhrases\(true\)\}>Phrase reference<\/button>\}/)
 })
+
+test('wherever the agreement and the explicit quiz questions talk about explicit words, they point to the reference', async () => {
+  const { CLEAN_CLAUSES, CONDUCT_CLAUSES } = await import('./conduct.ts')
+  assert.match(CLEAN_CLAUSES[0], /Explicit phrase reference/)
+  assert.ok(CONDUCT_CLAUSES.some(c => /Explicit phrase reference/.test(c)))
+  const { QUIZ } = await import('./training.ts')
+  for (const id of ['clean-hours', 'explicit-def', 'slur-song', 'unsure']) assert.match(QUIZ.find(q => q.id === id)!.why, /Explicit phrase reference/, id)
+})
+
+test('Resources on the Members page: the reference first, then every guide, and every guide has its file', async () => {
+  const { GUIDES, TOOLS } = await import('./memberResources.ts')
+  assert.equal(TOOLS[0].href, '/words'); assert.equal(TOOLS[0].trained, true)
+  for (const g of GUIDES) {
+    const md = readFileSync(new URL(`../content/guides/${g.slug}.md`, import.meta.url), 'utf8')
+    assert.match(md, /^# /, g.slug)
+    assert.match(g.slug, /^[a-z0-9-]+$/)
+  }
+  assert.match(src('app/members/page.tsx'), /<Section id="resources" title="Resources"><ResourcesCard/)
+})

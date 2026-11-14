@@ -4,7 +4,7 @@
 // The questions go to the browser WITHOUT answers; the server grades. The technical and new privacy questions (Nov 14) are drafts:
 // review the wording and the gear details before launch. Change TRAINING_VERSION when the pool changes (grants record it).
 
-export const TRAINING_VERSION = '2026-11-14b'
+export const TRAINING_VERSION = '2026-11-14c'
 export const PASS_PERCENT = 80
 
 export type QuizTopic = 'slurs' | 'privacy' | 'technical' | 'rules'
@@ -12,11 +12,11 @@ export interface QuizQuestion { id: string; topic: QuizTopic; q: string; options
 
 export const QUIZ: QuizQuestion[] = [
   { id: 'clean-hours', topic: 'rules', q: 'Your show starts at 4 PM. Which song can you play?', options: ['A song marked Explicit, because it is only a little rude', 'A song you have not checked, because most radio edits are fine', 'A song you have checked and know is clean', 'Any song, if you say "listener discretion" first'], answer: 2,
-    why: 'During the clean hours (6 AM to 10 PM Eastern) only songs you have confirmed are clean may air. Warnings do not change that.' },
+    why: 'During the clean hours (6 AM to 10 PM Eastern) only songs you have confirmed are clean may air. Warnings do not change that. Not sure about a lyric? Check it in the Explicit phrase reference (babsonradio.com/words).' },
   { id: 'explicit-def', topic: 'rules', q: 'What counts as explicit?', options: ['Only songs with a Parental Advisory sticker', 'Any song marked Explicit, plus any song or clip with profanity or graphic sexual or violent content', 'Only songs with swearing in the chorus', 'Anything a listener complains about'], answer: 1,
-    why: 'The label is a minimum. Profanity or graphic content makes it explicit even without a sticker.' },
+    why: 'The label is a minimum. Profanity or graphic content makes it explicit even without a sticker. The Explicit phrase reference (babsonradio.com/words) checks words for you.' },
   { id: 'slur-song', topic: 'slurs', q: 'A clean radio edit bleeps most swearing but still contains a slur. Can you play it?', options: ['Yes, it is the clean edit', 'Yes, if the artist is a member of that group', 'Only after 10 PM', 'No. Slurs are never allowed at any hour, in any version'], answer: 3,
-    why: 'The conduct agreement bans slurs at all hours, including in songs, edits, and quotes.' },
+    why: 'The agreement bans slurs at all hours, including in songs, edits, and quotes. Check lyrics in the Explicit phrase reference (babsonradio.com/words) before you play them.' },
   { id: 'bleep', topic: 'slurs', q: 'A guest says a slur, then says "sorry, bleep that." What do you do?', options: ['Nothing, they apologized', 'Cut them off or go to a song, apologize on air, and tell the E-board after the show', 'Say it again to explain what they meant', 'Delete the recording and tell nobody'], answer: 1,
     why: 'You are responsible for guests. Stop it, move on, and report it so staff can follow up.' },
   { id: 'unsure', topic: 'slurs', q: 'You are not sure a word is a slur. What do you do?', options: ['Air it, because it is probably fine', 'Leave it out, then check the Explicit phrase reference or ask the E-board', 'Say it once and see if anyone complains', 'Ask listeners to vote'], answer: 1,

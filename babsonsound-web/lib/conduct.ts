@@ -3,7 +3,7 @@
 //  3. Clean music hours (no explicit music or language 6 AM to 10 PM)  4. Song lists for the rights holders
 // NOT LEGAL ADVICE. Have Babson Legal read both before launch (see "Questions to ask" in the beta guide).
 
-export const AGREEMENTS_VERSION = '2026-11-14'
+export const AGREEMENTS_VERSION = '2026-11-14b'
 export const CONDUCT_VERSION = AGREEMENTS_VERSION
 
 /** The clean hours, in station time. Anything on air between these hours must be clean. CONFIRM with the exec board. */
@@ -47,7 +47,7 @@ export const CONDUCT_CLAUSES: string[] = [
 ]
 
 export const CLEAN_CLAUSES: string[] = [
-  `From ${CLEAN_HOURS.startHour} AM to ${CLEAN_HOURS.endHour - 12} PM Eastern nothing explicit airs: no song marked Explicit, no profanity, no graphic sexual or violent content, even if it is mild or bleeped by ear.`,
+  `From ${CLEAN_HOURS.startHour} AM to ${CLEAN_HOURS.endHour - 12} PM Eastern nothing explicit airs: no song marked Explicit, no profanity, no graphic sexual or violent content, even if it is mild or bleeped by ear. If I am not sure, I check the Explicit phrase reference (babsonradio.com/words).`,
   'I only play a clean edit I have checked myself. A clean edit that still has a slur is not allowed. For a pre-recorded show, I have listened to all of it.',
 ]
 

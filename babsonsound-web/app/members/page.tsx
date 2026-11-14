@@ -7,6 +7,7 @@ import { apiGet } from '@/lib/auth'
 import HostShowCard from '@/components/HostShowCard'
 import StudioBooking, { type Mine as StudioMine } from '@/components/StudioBooking'
 import TrainingCard from '@/components/members/TrainingCard'
+import ResourcesCard from '@/components/members/ResourcesCard'
 import ClubEvents from '@/components/members/ClubEvents'
 import InfoCard from '@/components/members/InfoCard'
 import StandingCard from '@/components/members/StandingCard'
@@ -84,6 +85,7 @@ export default function MembersPage() {
       {show.has('studio') && <Section id="studio" title="Studio"><StudioBooking standing={standing} onMine={onMine} /></Section>}
       {show.has('standing') && <Section id="standing" title="Standing"><StandingCard standing={standing} /></Section>}
       {show.has('training') && <Section id="training" title="Training"><TrainingCard badges={badges} staff={isDirector} /></Section>}
+      {show.has('resources') && <Section id="resources" title="Resources"><ResourcesCard trained={studioTrained || radioTrained} /></Section>}
       {show.has('events') && <Section id="events" title="Club events"><ClubEvents /></Section>}
       {show.has('info') && <Section id="info" title="Info"><InfoCard /></Section>}
     </div>

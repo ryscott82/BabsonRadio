@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { errText, library, trackUrl, type Track } from './helper'
+import { errText, library, loadPref, savePref, trackUrl, type Track } from './helper'
+import { Knob } from './es2/Stage'
 
-// A row of 8 sound pads: station IDs, jingles and sound effects ("Soundboard", "Jingles", "Station IDs" playlists).
-// Tap a pad (or press 1–8) to fire it over everything on the music output; tap again to stop it.
+// 8 sound pads (two rows of four): station IDs, jingles and sound effects ("Soundboard", "Jingles", "Station IDs" playlists).
+// Tap a pad (or press 1–8) to fire it over everything on the music output; tap again to stop it. The Effects dial sets how loud the pads are.
 
 type SinkAudio = HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }
 const PADS = 8
@@ -15,6 +16,8 @@ export default function Soundboard({ getToken, output }: { getToken: () => Promi
   const [on, setOn] = useState('')
   const [left, setLeft] = useState(1)
   const [error, setError] = useState('')
+  const [volume, setVolume] = useState(() => { const v = Number(loadPref('padVolume', '1')); return v >= 0 && v <= 1 ? v : 1 })
+  useEffect(() => { if (audio.current) audio.current.volume = volume; savePref('padVolume', String(volume)) }, [volume])
 
   useEffect(() => {
     const a = new Audio() as SinkAudio
@@ -56,18 +59,21 @@ export default function Soundboard({ getToken, output }: { getToken: () => Promi
   }, [pads])
 
   const slots = Array.from({ length: PADS }, (_, i) => pads?.[i] ?? null)
+  const note = error || (pads && !pads.length ? 'Add jingles to a “Soundboard” playlist' : '')
   return (
-    <div className="h-full flex flex-col gap-3 min-h-0">
-      <div className="grid grid-cols-8 gap-3 flex-1 min-h-0">
+    <div className="g hf">
+      <div className="eng h" style={{ left: 640, top: 312 }}>Sound board</div>
+      <div className={`eng s ${error ? 'warn' : ''}`} style={{ right: -936, top: 314 }}>{note || 'Tap a pad, or press 1 to 8'}</div>
+      <Knob id="sfx" label="Effects" value={volume} min={0} max={1} text={`${Math.round(volume * 100)}%`} onChange={setVolume} />
+      <div id="pads" className="lw">
         {slots.map((t, i) => (
-          <button key={t?.id ?? `empty-${i}`} type="button" className="gpad" disabled={!t} aria-pressed={!!t && on === t.id} onClick={() => t && hit(t)}>
-            <span className="n">{i + 1}</span>
-            <span className="t">{t?.title ?? ''}</span>
-            {t && on === t.id && <span className="run" style={{ width: `${left * 100}%` }} />}
+          <button key={t?.id ?? `empty-${i}`} type="button" className={`pd px ${t && on === t.id ? 'on' : ''}`} disabled={!t} aria-pressed={!!t && on === t.id} onClick={() => t && hit(t)}>
+            <i>0{i + 1}</i>
+            <b>{t?.title ?? ''}</b>
+            {t && on === t.id && <u style={{ width: `${left * 100}%` }} />}
           </button>
         ))}
       </div>
-      {(error || (pads && !pads.length)) && <p className="lbl text-lg">{error || 'Add jingles and IDs to a “Soundboard” playlist to fill the pads.'}</p>}
     </div>
   )
 }

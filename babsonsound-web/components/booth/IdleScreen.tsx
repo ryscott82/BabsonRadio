@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation'
 import { signIn } from '@/lib/auth'
 import DoorClaim from './DoorClaim'
 import { boothFetch, errText, helper } from './helper'
-import FitTitle from '@/components/FitTitle'
-import { BrowserButtons } from './StudioBrowser'
+import { themeNow } from '@/lib/booth'
+import { Btn, Header, HelpPop, Ic, Led, LowImg, Stage } from './es2/Stage'
 
-// What the studio PC shows when nobody is signed in: a big clock, a greeting, what is on now and next. Useful even when nobody is
+// What the studio PC shows when nobody is signed in (the Welcome face of the panel): a big clock, a greeting, what is on now and next. Useful even when nobody is
 // doing radio. Sign in, or (no account needed) type an email and watch the quick equipment training.
 
 interface Item { id: string; title: string; hosts: string[]; startAt: number; endAt: number; category: string; source: string }
@@ -19,7 +19,7 @@ const time = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeri
 const dayWord = (ms: number, now: number) => {
   const a = new Date(ms), b = new Date(now)
   if (a.toDateString() === b.toDateString()) return ''
-  return new Date(now + 86_400_000).toDateString() === a.toDateString() ? 'Tomorrow ' : a.toLocaleDateString([], { weekday: 'short' }) + ' '
+  return a.toLocaleDateString([], { weekday: 'short' }) + ' '
 }
 const firstNames = (hosts: string[]) => hosts.map(h => h.split(/\s+/)[0]).filter(Boolean)
 const join = (n: string[]) => (n.length <= 1 ? n.join('') : `${n.slice(0, -1).join(', ')} and ${n[n.length - 1]}`)
@@ -30,6 +30,7 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
   const [view, setView] = useState<'home' | 'signin' | 'guest' | 'video'>('home')
   const router = useRouter()
   const [bypassErr, setBypassErr] = useState('')
+  const [help, setHelp] = useState(false)
   const [videoId, setVideoId] = useState('')
   const [drift, setDrift] = useState({ x: 0, y: 0 })
   // Listen to the station from this screen. Starts only on a tap (browsers require it), and stops when someone signs in.
@@ -58,122 +59,101 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
     return () => clearInterval(t)
   }, [])
 
+  const night = themeNow(now, null)
   if (view === 'signin') return <SignIn onBack={() => setView('home')} />
   if (view === 'guest') return <Guest onBack={() => setView('home')} onDone={id => { if (id) setVideoId(id); setView('video') }} />
   if (view === 'video') return <Video id={videoId} onDone={() => setView('home')} />
 
   const upcoming = (data?.items ?? []).filter(i => i.endAt > now)
   const onNow = upcoming.find(i => i.startAt <= now)
-  const later = upcoming.filter(i => i.startAt > now)
-  const upNext = later[0]
-  const rest = later.slice(1, 4)
+  const later = upcoming.filter(i => i.startAt > now).slice(0, onNow ? 8 : 9)
   const d = new Date(now)
   const h = d.getHours() % 12 || 12, m = String(d.getMinutes()).padStart(2, '0'), ap = d.getHours() < 12 ? 'AM' : 'PM'
   // What is playing: only while that song is still within its length (the page asks every 5 minutes, so an old song is never shown as current).
   const np = data?.nowPlaying
   const playing = np && np.playedAt && np.duration && now < (np.playedAt + np.duration) * 1000 + 15_000 && (np.live || onNow) ? np : null
   const hostLine = (i: Item) => (firstNames(i.hosts).length ? `with ${join(firstNames(i.hosts))}` : '')
+  const toSignIn = () => setView('signin')
+  // Only when more than two people are tuned in.
+  const listeners = playing && (playing.listeners ?? 0) > 2 ? `${playing.listeners} listening. ` : ''
 
   return (
     <>
-    <DoorClaim />
-    <div className="fixed inset-0 z-[2] flex flex-col gap-[2vh] px-10 pt-[2vh] pb-[2vh] overflow-hidden" style={{ transform: `translate(${drift.x}px, ${drift.y}px)`, transition: 'transform 2s' }}>
-      <FitTitle as="h1" lines={1} min={0.3} text="Welcome to the Radio Room" className="hw-desk-text hw-title text-center leading-none text-[clamp(3rem,7vh,5.5rem)]" />
-      <div className="grid grid-cols-[1.05fr_1fr_1fr] gap-6 flex-1 min-h-0">
+      <DoorClaim />
+      <Stage view="welcome" night={night} drift={drift}>
+        {/* The internet needs a sign-in: a tap on any of the links goes to the sign-in page. */}
+        <Header now={now} onLink={toSignIn} onHelp={() => setHelp(true)} />
+
         {/* The time is the first thing a studio screen should say. */}
-        <section className="hw-desk-text flex flex-col min-w-0 min-h-0 overflow-hidden">
-          <div className="text-center -mt-[1.5vh]">
-            <p className="hw-title leading-[0.85] tabular-nums" style={{ fontSize: 'clamp(5rem, 21vh, 17rem)' }}>{h}:{m}<span className="text-[0.22em] ml-3 opacity-60">{ap}</span></p>
-            <p className="hw-title text-[clamp(1.5rem,4vh,3rem)] leading-tight mt-[1vh]">{d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-            {/* Only when more than two people are tuned in. */}
-            {playing && (playing.listeners ?? 0) > 2 && <p className="hw-title text-[clamp(1.25rem,3.2vh,2.25rem)] leading-tight mt-1 opacity-90">{playing.listeners} listening</p>}
+        <div id="hero" className="lw">
+          <div id="greet" className="px x2">Welcome to the Radio Room</div>
+          <div id="bigtime" className="big"><span>{h}:{m}</span><span id="bigampm" className="px x2">{ap}</span></div>
+          <div id="bigdate">
+            <div className="px x2">{d.toLocaleDateString([], { weekday: 'long' })}</div>
+            <div className="px x2 dim">{d.toLocaleDateString([], { month: 'long', day: 'numeric' })}</div>
           </div>
-          {playing?.art && (
-            <div className="flex-1 min-h-0 mt-[2vh] flex items-start justify-center">
-              {/* The record peeks out from behind the cover. */}
-              <div className="relative h-full max-h-full" style={{ aspectRatio: '1.22 / 1' }}>
-                <div aria-hidden className="absolute right-0 top-[6%] h-[88%] aspect-square rounded-full motion-reduce:animate-none animate-[spin_9s_linear_infinite]"
-                  style={{ background: 'radial-gradient(circle, #d8d2c4 0 11%, #111 11.5% 16%, transparent 16.5%), repeating-radial-gradient(circle, #111 0 2px, #1e1e1e 3px 4px), conic-gradient(from 20deg, rgba(255,255,255,.14), transparent 25%, rgba(255,255,255,.1) 50%, transparent 75%, rgba(255,255,255,.14))', boxShadow: '0 10px 24px rgba(0,0,0,.5)' }} />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={playing.art} alt={`Cover for ${playing.title}`} className="absolute left-0 top-0 h-full aspect-square object-cover rounded-2xl" style={{ boxShadow: '0 14px 28px rgba(0,0,0,.5)' }} />
-              </div>
-            </div>
-          )}
-          <button type="button" className="gbtn h-[clamp(2.5rem,5.5vh,3.5rem)] mt-[1.6vh] shrink-0 text-[clamp(1rem,2.2vh,1.5rem)] self-center px-8" onClick={toggleRadio} aria-pressed={listening}>{listening ? 'Stop the radio' : 'Play the radio'}</button>
-        </section>
-
-        {/* On now, Up next, Later today. */}
-        <section className="flex flex-col gap-[1.6vh] min-h-0 min-w-0">
-          <div className="bp px-6 py-[1.6vh] shrink-0">
-            <p className="lbl text-[clamp(1rem,2.2vh,1.5rem)]">On now</p>
-            {playing ? (
-              <>
-                <p className="hw-title text-[clamp(1.5rem,4.2vh,3rem)] leading-tight line-clamp-2">{playing.title}</p>
-                {playing.artist && <p className="text-[clamp(1rem,2.2vh,1.5rem)] truncate">{playing.artist}</p>}
-                <p className="text-[clamp(1rem,2.2vh,1.5rem)] lbl truncate">{onNow ? `${onNow.title} until ${time(onNow.endAt)}` : 'Music from Babson Sound'}</p>
-              </>
-            ) : onNow ? (
-              <>
-                <p className="hw-title text-[clamp(1.5rem,4.2vh,3rem)] leading-tight line-clamp-2">{onNow.title}</p>
-                <p className="text-[clamp(1rem,2.2vh,1.5rem)] lbl truncate">{hostLine(onNow)}{hostLine(onNow) ? ' · ' : ''}until {time(onNow.endAt)}</p>
-              </>
-            ) : <p className="hw-title text-[clamp(1.4rem,3.6vh,2.25rem)] leading-tight">{data ? 'Music from Babson Sound' : 'Loading…'}</p>}
+          <div id="status" className="row">
+            <span className="px dim">Status</span>
+            <span className={`px n ${bypassErr ? 'org' : ''}`} role={bypassErr ? 'alert' : undefined}>{bypassErr || `${listeners}Keep it clean. Respect quiet hours.${listeners ? '' : ' Leave the studio as you found it.'}`}</span>
           </div>
-          <div className="bp px-6 py-[1.6vh] shrink-0">
-            <p className="lbl text-[clamp(1rem,2.2vh,1.5rem)]">Up next</p>
-            {upNext ? (
-              <>
-                <p className="hw-title text-[clamp(1.4rem,3.6vh,2.25rem)] leading-tight line-clamp-2">{upNext.title}</p>
-                <p className="text-[clamp(1rem,2.2vh,1.5rem)] lbl truncate">{dayWord(upNext.startAt, now)}{time(upNext.startAt)}{hostLine(upNext) ? ` · ${hostLine(upNext)}` : ''}</p>
-              </>
-            ) : <p className="hw-title text-[clamp(1.4rem,3.6vh,2.25rem)] leading-tight">{data ? 'Studio is free' : 'Loading…'}</p>}
-          </div>
-          {rest.length > 0 && (
-          <div className="bp px-6 py-[1.6vh] flex-1 min-h-0 overflow-hidden">
-            <p className="lbl text-[clamp(1rem,2.2vh,1.5rem)] mb-2">Later today</p>
-            {rest.length ? (
-              <ul className="space-y-[0.8vh]">
-                {rest.map(i => (
-                  <li key={i.id} className="flex items-baseline gap-4 text-[clamp(1rem,2.2vh,1.5rem)]">
-                    <span className="num w-36 shrink-0">{dayWord(i.startAt, now)}{time(i.startAt)}</span>
-                    <span className="truncate">{i.title}{firstNames(i.hosts).length ? <span className="lbl"> · {join(firstNames(i.hosts))}</span> : null}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-          )}
-        </section>
-
-        {/* How to go on air: scan the code (your phone is already signed in, nothing to type) or sign in on this computer. */}
-        <section className="bp px-6 py-[1.6vh] min-h-0 min-w-0 overflow-hidden flex flex-col items-center gap-[1.4vh] text-center">
-          <p className="hw-title text-[clamp(1.5rem,4.2vh,3rem)] leading-tight">Scan to use equipment</p>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/booth/door-qr.svg" alt="QR code to sign in at the studio" className="min-h-0 flex-1 max-h-[40vh] aspect-square rounded-xl bg-white" />
-          <button type="button" className="gbtn gbtn-go h-[clamp(3.25rem,7vh,5rem)] text-[clamp(1.25rem,2.8vh,1.875rem)] w-full" onClick={() => setView('signin')}>Sign in with Babson Sound account</button>
-          <div className="grid grid-cols-2 gap-3 w-full">
-            <button type="button" className="gbtn h-[clamp(3.25rem,8vh,5.5rem)] px-3 text-[clamp(1.1rem,2.6vh,1.75rem)]" onClick={() => router.push('/slots')}>Book a show</button>
-            <button type="button" className="gbtn h-[clamp(3.25rem,8vh,5.5rem)] px-3 text-[clamp(1.1rem,2.6vh,1.75rem)]" onClick={() => setView('guest')}>New here? Training</button>
-          </div>
-          <button type="button" className="gbtn h-[clamp(2.25rem,4vh,2.75rem)] px-4 text-base opacity-70" onClick={() => { setBypassErr(''); boothFetch<object>('/api/booth/bypass', { pin: '' }).then(r => onBypass('', r)).catch(e => setBypassErr(errText(e))) }}>Bypass sign in</button>
-        </section>
-      </div>
-
-      <footer className="hw-desk-text flex items-center gap-5 shrink-0">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/booth/logo.png" alt="Babson Radio" className="h-[clamp(2.5rem,6vh,4rem)] w-[clamp(2.5rem,6vh,4rem)] object-contain" />
-        <p className="text-[clamp(1rem,2.2vh,1.5rem)] opacity-85">Keep it clean. Respect quiet hours. Leave the studio as you found it.</p>
-        {/* The internet needs a sign-in: a tap on any of these goes to the sign-in page. */}
-        <div className="ml-auto flex items-center gap-2" role="group" aria-label="Internet. Sign in to use it.">
-          <span className="text-xl opacity-85 mr-2">Internet quick links:</span>
-          <BrowserButtons state={null} getToken={async () => ''} onError={setBypassErr} onLocked={() => setView('signin')} />
         </div>
-      </footer>
-      {bypassErr && <p className="fixed bottom-2 left-1/2 -translate-x-1/2 text-lg warn">{bypassErr}</p>}
-    </div>
+
+        <div className="g">
+          {/* Now playing: the cover in its case, the disc sliding out while a song is on. */}
+          <div className="eng h" style={{ left: 26, top: 268 }}>Now playing</div>
+          <Led id="radioled" c={listening ? 'green' : ''} />
+          <Btn id="radio" on={listening} aria-pressed={listening} onClick={toggleRadio}>{listening ? 'Stop radio' : 'Play radio'}</Btn>
+          <div id="case" className={playing ? 'out' : undefined}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img id="cd" src="/booth-es2/common/cd.png" width={165} height={165} alt="" />
+            <LowImg id="art" src={playing?.art || '/booth/logo.png'} w={142} h={142} alt={playing?.art ? `Cover for ${playing.title}` : 'Babson Radio'} contain={!playing?.art} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/booth-es2/common/jewelcase.png" width={186} height={167} alt="" style={{ left: 0, top: 0 }} />
+          </div>
+          <div id="nowlcd" className="lw">
+            <span className="px blk clip">{playing ? playing.title : onNow ? onNow.title : data ? 'Music from Babson Sound' : 'Loading…'}</span>
+            <span className="px dim blk clip">{playing ? playing.artist || (onNow ? `${onNow.title} until ${time(onNow.endAt)}` : 'Music from Babson Sound') : onNow ? `${hostLine(onNow)}${hostLine(onNow) ? ', ' : ''}until ${time(onNow.endAt)}` : ''}</span>
+          </div>
+
+          {/* On now, then what is coming up. */}
+          <div className="eng h" style={{ left: 318, top: 267 }}>Up next</div>
+          <div id="nextlcd" className="lw">
+            {onNow && (
+              <div className="nrow row now"><i className="k" /><span className="px org" style={{ width: 74 }}>On now</span><span className="px n">{onNow.title}</span><span className="px dim r">to {time(onNow.endAt)}</span></div>
+            )}
+            {later.map(i => (
+              <div key={i.id} className="nrow row"><i className="k" /><span className="px" style={{ width: 74 }}>{dayWord(i.startAt, now)}{time(i.startAt)}</span><span className="px n">{i.title}</span><span className="px dim r">{firstNames(i.hosts)[0] ?? ''}{i.hosts.length > 1 ? ` +${i.hosts.length - 1}` : ''}</span></div>
+            ))}
+            {!onNow && !later.length && <div className="nrow row"><i className="k" /><span className="px n">{data ? 'Studio is free' : 'Loading…'}</span></div>}
+          </div>
+
+          {/* How to go on air: scan the code (your phone is already signed in, nothing to type) or sign in on this computer. */}
+          <div className="eng h" style={{ left: 614, top: 64 }}>Sign in</div>
+          <div className="eng s" style={{ right: -936, top: 66 }}>Scan to use equipment</div>
+          <div id="qr" className="lw" data-mx="soft"><LowImg src="/booth/door-qr.svg" w={196} h={196} alt="QR code to sign in at the studio" contain /></div>
+          <div id="steps" className="lw">
+            <span className="px dim blk">01</span><span className="px blk">Scan the code</span>
+            <span className="px dim blk" style={{ marginTop: 8 }}>02</span><span className="px blk">Booth unlocks</span>
+            <span className="px dim blk" style={{ marginTop: 8 }}>No phone?</span><span className="px blk">Use a button</span><span className="px blk">below</span>
+          </div>
+          <Btn id="signhere" kind="gr" onClick={toSignIn}>Sign in with Babson Sound account</Btn>
+          <Btn id="wb0" onClick={() => router.push('/slots')}>Book a show</Btn>
+          <Btn id="wb1" onClick={() => setView('guest')}>Training video</Btn>
+          <Btn id="wb2" onClick={() => { setBypassErr(''); boothFetch<object>('/api/booth/bypass', { pin: '' }).then(r => onBypass('', r)).catch(e => setBypassErr(errText(e))) }}>Bypass sign in</Btn>
+
+          <div className="eng h" style={{ left: 614, top: 407 }}>Internet</div>
+          <div className="eng s" style={{ right: -936, top: 409 }}>Sign in to use it</div>
+          <Btn id="netbig" onClick={toSignIn}><Ic n="globe" /><span>Web browser</span></Btn>
+          {NET.map(([ic, label], i) => <Btn key={label} id={`nl${i}`} onClick={toSignIn}><Ic n={ic} /><span>{label}</span></Btn>)}
+        </div>
+
+        {help && <HelpPop onClose={() => setHelp(false)} />}
+      </Stage>
     </>
   )
 }
+
+const NET: readonly [string, string][] = [['video', 'YouTube'], ['doc', 'Docs'], ['note', 'Notion'], ['wave', 'BandLab']]
 
 function Frame({ title, text, children, onBack }: { title: string; text?: string; children: React.ReactNode; onBack: () => void }) {
   return (

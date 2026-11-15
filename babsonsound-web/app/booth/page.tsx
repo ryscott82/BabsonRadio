@@ -1,9 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, signOut } from '@/lib/auth'
-import { countdownText, heroMode, idleStep, quietReminderDue, MIXING_HOLD_MS, MIXING_PEAK_DBFS, MIXING_SNOOZE_MS, adBreak, bookingLines, quietBanner, type AdPlan, type HelperUpdate, type LevelState, type StudioStatus } from '@/lib/booth'
+import { countdownText, heroMode, idleStep, MIXING_HOLD_MS, MIXING_PEAK_DBFS, MIXING_SNOOZE_MS, adBreak, bookingLines, quietBanner, type AdPlan, type HelperUpdate, type LevelState, type StudioStatus } from '@/lib/booth'
 import { boothFetch, errText, helper, loadPref, mmss, savePref, type Butt, type Track } from '@/components/booth/helper'
 import DoorClaim from '@/components/booth/DoorClaim'
 import CrewPanel from '@/components/booth/CrewPanel'
@@ -16,22 +17,23 @@ import LevelMeter from '@/components/booth/LevelMeter'
 import DeviceSettings, { type Devices } from '@/components/booth/DeviceSettings'
 import MusicPlayer from '@/components/booth/MusicPlayer'
 import Soundboard from '@/components/booth/Soundboard'
-import ClockScreen from '@/components/booth/ClockScreen'
+import { useClockNotices, useStationId } from '@/components/booth/ClockScreen'
 import { useAutoGain } from '@/components/booth/useAutoGain'
-import CheckButton, { useMicCheck } from '@/components/booth/CheckButton'
-import FitTitle from '@/components/FitTitle'
+import { useMicCheck } from '@/components/booth/CheckButton'
 import { useShowInfo } from '@/components/booth/useShowInfo'
-import { BROWSER_ACTIVE_MS, BrowserButtons, closeBrowser, setBrowserLayout, type BrowserState } from '@/components/booth/StudioBrowser'
+import { BROWSER_ACTIVE_MS, QUICK_LINKS, closeBrowser, openBrowser, setBrowserLayout, type BrowserState } from '@/components/booth/StudioBrowser'
 import NoteBox from '@/components/booth/NoteBox'
 import PhraseModal from '@/components/booth/PhraseModal'
 import ShowInfo from '@/components/booth/ShowInfo'
 import RecordShow, { useRecState } from '@/components/booth/RecordShow'
 import { useBoothTheme } from '@/components/booth/useBoothTheme'
 import { useStudioStatus } from '@/components/booth/useStudioStatus'
+import { Btn, Header, HelpPop, Ic, Led, Note, Pop, Stage, Sw } from '@/components/booth/es2/Stage'
 
-// Studio PC kiosk (Chrome --kiosk on babsonradio.com/booth): glass screens on the oak desk. Top: the show and its time left,
-// and the level (with auto level). Bottom: the big Go live / End show button (or Record a show), tracks, and the sound board.
-// Above it all: the quiet-hours banner and who has the studio booked (information only: walk-ins always work, nothing is ever blocked).
+// Studio PC kiosk (Chrome --kiosk on babsonradio.com/booth): one hardware panel, 960 x 540 and doubled on the studio screen
+// (components/booth/es2). Left: the loudness meter (with auto level). Centre: the time, the show, who is here and the big
+// Go live / End show key (or Record a show). Right: tracks and the sound board. Quiet hours and who has the studio booked are
+// information only: walk-ins always work, nothing is ever blocked.
 // Talks to the studio helper on 127.0.0.1 (tools/studio-helper), which drives BUTT. Only works on the studio PC.
 
 interface Show { title: string; occId: string; startAt: number; endAt: number }
@@ -138,7 +140,7 @@ export default function BoothPage() {
         ) : loading ? null : !user && !bypass ? (
           <IdleScreen onBypass={(pin, session) => setBypass({ pin, session: session as Session })} />
         ) : (
-          <Console butt={butt} buttRef={buttRef} buttErr={buttErr} browserSt={browserSt} key={user?.uid ?? 'bypass'} onExitPanel={leavePanel}
+          <Console butt={butt} buttRef={buttRef} buttErr={buttErr} browserSt={browserSt} key={user?.uid ?? 'bypass'} onExitPanel={leavePanel} night={theme.night}
                    bypass={user ? null : bypass} onBypassEnd={() => { setBypass(null); setWantLive(false); setSnoozeUntil(Date.now() + MIXING_SNOOZE_MS) }}
                    autoLive={wantLive} onWantLive={setWantLive} onUnlock={pin => setBypass(b => (b ? { ...b, pin } : b))} />
         )}
@@ -159,8 +161,9 @@ function Center({ title, text, children }: { title: string; text?: string; child
   )
 }
 
-function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onBypassEnd, autoLive, onWantLive, onUnlock }: { butt: Butt | null; buttRef: React.MutableRefObject<Butt | null>; buttErr: string; browserSt: BrowserState | null; onExitPanel: (token?: string) => void | Promise<void>; bypass: { pin: string; session: Session } | null; onBypassEnd: () => void; autoLive: boolean; onWantLive: (v: boolean) => void; onUnlock: (pin: string) => void }) {
+function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, night, bypass, onBypassEnd, autoLive, onWantLive, onUnlock }: { butt: Butt | null; buttRef: React.MutableRefObject<Butt | null>; buttErr: string; browserSt: BrowserState | null; onExitPanel: (token?: string) => void | Promise<void>; night: boolean; bypass: { pin: string; session: Session } | null; onBypassEnd: () => void; autoLive: boolean; onWantLive: (v: boolean) => void; onUnlock: (pin: string) => void }) {
   const { isGuest, user } = useAuth()
+  const router = useRouter()
   const [s, setS] = useState<Session | null>(bypass?.session ?? null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState('')
@@ -169,6 +172,10 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
   const [modal, setModal] = useState<'' | 'sound' | 'note' | 'show'>('')
   const [signInOpen, setSignInOpen] = useState(false)
   const [phrases, setPhrases] = useState(false) // the Explicit phrase reference pop-up
+  const [pop, setPop] = useState<'' | 'help' | 'set'>('') // the panel's own pop-ups
+  const [toast, setToast] = useState('')                  // someone joined the studio (from the crew)
+  const [recNote, setRecNote] = useState('')              // what the recorder has to say (an upload, an error)
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 5000); return () => clearTimeout(t) }, [toast])
   const [nowTrack, setNowTrack] = useState<Track | null>(null)
   const nowTrackRef = useRef<Track | null>(null)
   useEffect(() => { nowTrackRef.current = nowTrack }, [nowTrack])
@@ -343,23 +350,19 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
   const deadAir = live && silentFor >= DEAD_AIR_S ? Math.floor(silentFor) : 0
   const ready = !!butt && !buttErr
   const problem = error || (buttErr ? 'BUTT isn’t answering. Open BUTT on this computer.' : '')
-  const sb = 'gbtn h-9 px-3 text-sm'
+  const sb = 'fillb'
   const staffRole = s?.role ?? s?.level ?? ''  // the session's role when the server sends one, else the access level (director is the E-board)
   const canExit = !bypass && ['admin', 'eboard', 'director'].includes(staffRole)
   const isAdmin = !bypass && staffRole === 'admin'
 
-  const date = new Date(now).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
-
   const next = s?.next
   const hero = heroMode({ live, connecting, sinceMs: now - since, nextStartAt: next?.startAt ?? null, now, show: s?.show ?? null })
   const leftS = s?.show ? Math.round((s.show.endAt - now) / 1000) : 0 // seconds left in the booked show (negative: over time)
-  const welcomeBig = hero === 'welcome'
   const countdownBig = hero === 'countdown' && !!next
   const showBig = hero === 'show' || hero === 'ending' || hero === 'over'
   const showName = info.show ? info.show.title : s?.show?.title || ''
   const hostsValue = hostsText ?? ((info.show?.hosts.length ? info.show.hosts.join(', ') : '') || (bypass ? '' : s?.name ?? ''))
   const canEditShow = !!s?.canGoLive || !!s?.canRecord || live
-  const fieldCls = 'gfield h-10 px-3 text-2xl w-full min-w-0'
   /** A typed track title goes to the site and app while live ("Artist - Title" or just a title). */
   const sendTrack = () => {
     const text = (trackText ?? '').trim()
@@ -373,186 +376,167 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
       } catch (e) { setError(errText(e)) }
     })()
   }
-  // Studio browser open: split keeps the left column (the right half is the browser); full leaves a slim rail.
+  // Studio browser open: split keeps the centre of the panel (the right half is the browser); full leaves a slim rail.
   const bl = browserSt?.open ? browserSt.layout : ''
   const area: React.CSSProperties | undefined = bl === 'split' ? { right: '50%' } : bl === 'full' ? { right: `calc(100% - ${browserSt?.railPx ?? 260}px)` } : undefined
-  if (bl === 'full') {
-    return (
-      <div className="fixed inset-0 z-[2] flex flex-col gap-4 p-4 overflow-hidden hw-desk-text" style={area}>
-        <div className={`hw-sign ${bl ? '' : 'hw-sign-lg'} shrink-0`} style={{ position: 'relative', left: 0, top: 0 }}>
-          <span style={live ? undefined : { color: '#4a2620', textShadow: 'none' }}>ON AIR</span>
-        </div>
-        <p className="hw-title text-4xl leading-none tabular-nums">{clock(now)}</p>
-        {(live || connecting) && <p className="text-xl">{connecting ? 'Connecting…' : `On air ${mmss(butt?.streamSeconds ?? 0)}`}</p>}
-        {deadAir > 0 && <p className="text-xl warn">Dead air {deadAir} s</p>}
-        {problem && <p className="text-base warn">{problem}</p>}
-        <div className="flex-1" />
-        {stillThere > 0 && <button type="button" className="gbtn gbtn-go h-16 text-lg" onClick={() => setStillThere(0)}>Still here? Signing out in {stillThere} s</button>}
-        {quietKey && quietAck !== quietKey && <button type="button" className="gbtn h-16 text-base warn" onClick={ackQuiet}>Quiet hours: keep it low. OK</button>}
-        <button type="button" className="gbtn h-14 text-lg" onClick={() => void token().then(t => setBrowserLayout(t, 'split')).catch(e => setError(errText(e)))}>Split screen</button>
-        <button type="button" className="gbtn h-14 text-lg" onClick={() => void closeBrowser().catch(e => setError(errText(e)))}>Close browser</button>
-        {(live || connecting) && <button type="button" className="gbtn gbtn-stop h-20 text-2xl" onClick={endShow} disabled={!!busy}>{busy === 'stop' ? 'Ending…' : 'End show'}</button>}
-      </div>
-    )
+  const idle = !live && !connecting && !recording
+  const openLink = (i: number) => {
+    const l = i ? QUICK_LINKS[i - 1] : { url: 'https://www.google.com/', layout: undefined }
+    void token().then(t => openBrowser(t, l.url, l.layout)).catch(e => setError(errText(e)))
   }
-  return (
-    <div className="fixed inset-0 z-[2] flex flex-col gap-3 px-8 pt-5 pb-6 overflow-hidden" style={area}>
-      {/* A slim strip: logo, the on-air light, the show (or what is next), who else is in the studio, the notices, and the time. */}
-      <header className={`hw-desk-text flex items-center shrink-0 ${bl ? 'gap-3 min-h-[4rem]' : 'gap-5 min-h-[5.5rem]'}`}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/booth/logo.png" alt="Babson Radio" className={`${bl ? 'h-12 w-12' : 'h-20 w-20'} object-contain shrink-0`} />
-        <div className="hw-sign shrink-0" style={{ position: 'relative', left: 0, top: 0 }}>
-          <span style={live ? undefined : { color: '#4a2620', textShadow: 'none' }}>ON AIR</span>
-        </div>
-        <div className={`min-w-0 max-w-[34%] ${bl ? 'hidden' : ''}`}>
-          <FitTitle as="p" lines={1} min={0.45} className="hw-title text-4xl leading-none"
-                    text={live && showName ? showName : s?.show ? s.show.title : next ? `Next: ${next.title} at ${clock(next.startAt)}` : 'Nothing booked'} />
-        </div>
-        {!bypass && !bl && <CrewPanel crew={s?.crew ?? []} driverName={s?.name ?? ''} onAir={live || connecting || recording} getToken={token} />}
-        <div className="flex items-center justify-center gap-3 min-w-0 flex-wrap flex-1" style={bl ? { display: 'none' } : undefined}>
-          <ClockScreen ads={s?.ads ?? null} live={live} lastMusicAt={lastMusicAt} onPlayId={() => setIdCue(n => n + 1)} />
-          <StudioNotices status={studio.status} myBookingId={studio.myBookingId} />
-        </div>
-        <div className={`flex items-baseline gap-4 shrink-0 ${bl ? 'ml-auto' : ''}`}>
-          <p className="hw-title leading-none tabular-nums" style={{ fontSize: bl ? '3.5rem' : 'clamp(4rem, 8.5vh, 6rem)' }}>{clock(now)}</p>
-          <p className={`hw-title leading-none ${bl ? 'text-xl' : 'text-3xl'}`}>{date}</p>
-        </div>
-      </header>
+  const toSplit = () => void token().then(t => setBrowserLayout(t, 'split')).catch(e => setError(errText(e)))
+  const shutBrowser = () => void closeBrowser().catch(e => setError(errText(e)))
 
-      {/* The welcome stays 15 minutes after sign-in (and while nothing is booked), then it counts down to the next show. On air it gives way to the show's name. */}
-      <div className={`grid items-center gap-4 shrink-0 ${bl ? 'grid-cols-[auto_1fr_auto] min-h-[4.5rem]' : 'grid-cols-[1fr_auto_1fr] gap-6 min-h-[6.5rem]'}`}>
-        <div className="flex flex-col items-start gap-2 min-w-0">
-          <div className="flex items-center gap-2">
-            <BrowserButtons state={browserSt} getToken={token} onError={setError} />
+  // The big read-out in the centre: the welcome, the countdown to the next show, or the time left in this one.
+  const firstName = bypass ? '' : s?.firstName || ''
+  const big = hero === 'over' ? { lbl: 'Over time, wrap up', main: `+${mmss(-leftS)}`, warn: true }
+    : showBig && s?.show ? { lbl: leftS <= 300 ? 'Time left, wrap up' : 'Time left', main: mmss(leftS), warn: leftS <= 300 }
+    : countdownBig && next ? { lbl: 'Next show in', main: countdownText(next.startAt - now), warn: false }
+    : live || connecting ? { lbl: 'On air for', main: mmss(butt?.streamSeconds ?? 0), warn: false }
+    : { lbl: firstName ? 'Welcome' : 'Welcome to the studio', main: firstName || clock(now), warn: false }
+  const bigSmall = !!firstName && big.lbl === 'Welcome' ? true : big.main.length > 5
+  const airWord = live ? 'On air' : connecting ? 'Connecting' : recording ? 'Recording' : 'Off air'
+  const slotLine = showBig && s?.show ? `${clock(s.show.startAt)} to ${clock(s.show.endAt)}` : next ? `Next: ${next.title}` : 'Nothing booked'
+  const stateLine = deadAir > 0 ? `Dead air ${deadAir} s`
+    : live ? (butt?.recording ? 'Recording the show' : 'On air, not recording')
+    : connecting ? 'Connecting…' : recording ? 'Recording, not on air'
+    : next ? `${clock(next.startAt)}${next.hosts.length ? ` with ${next.hosts.join(', ')}` : ''}` : ready ? 'Ready' : 'Waiting for BUTT'
+  const lastNote = s?.note ? `Note from ${s.note.by || 'the last host'}: ${s.note.text}` : ''
+  const quietDue = !!quietKey && quietAck !== quietKey && !!s
+
+  return (
+    <>
+      <Stage view="booth" night={night} split={bl} live={live}>
+        <Header now={now} onLink={openLink} onHelp={() => setPop('help')} onSettings={() => setPop('set')}
+                browser={bl === 'split' ? { full: false, onLayout: () => void token().then(t => setBrowserLayout(t, 'full')).catch(e => setError(errText(e))), onClose: shutBrowser } : undefined} />
+
+        <LevelMeter frame={meter.frame} stats={meter.stats} error={meter.error} deadAir={deadAir} auto={auto} staff={['admin', 'eboard', 'director'].includes(staffRole)} night={night} />
+
+        {/* The raised centre: the time, the show, who is here, the checks and the big key. It is all that stays in split view. */}
+        <div id="mid" className="nofull">
+          <div id="timebox" className="lw">
+            <span className="px dim lbl0">{big.lbl}</span>
+            <div id="remain" className={`big ${bigSmall ? 'sm' : ''} ${big.warn ? 'org' : ''}`}>{big.main}</div>
+            <div id="airstate" className={`px x2 ${live ? 'org' : 'dim'}`} role="status">{airWord}</div>
+            <div id="slot" className="px">{slotLine}</div>
+            <div id="elapsed" className={`px ${deadAir > 0 ? 'org' : 'dim'}`}>{stateLine}</div>
+            <div id="tbrow" className="row">
+              <span id="showname" className="px">{showName || 'No show name yet'}</span>
+              <Ticker problem={problem || info.error} ads={s?.ads ?? null} live={live} lastMusicAt={lastMusicAt} status={studio.status} myBookingId={studio.myBookingId}
+                      rest={recNote || lastNote || (nowTrack ? `Playing: ${nowTrack.title}` : '')} />
+            </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {!bypass && <button type="button" className={sb} onClick={() => setModal('note')}>Leave a note</button>}
-            <button type="button" className={sb} onClick={() => setModal('sound')}>Audio setup</button>
-            {/* Works on air too: check a word or a lyric without leaving the booth. Trained members only (not the no-sign-in bypass). */}
-            {!bypass && <button type="button" className={sb} onClick={() => setPhrases(true)}>Phrase reference</button>}
-            {canExit && !live && !connecting && !recording && <button type="button" className={sb} onClick={async () => { let tk = ''; try { tk = await token() } catch { /* the helper decides */ } void onExitPanel(tk) }}>Exit panel</button>}
-            {/* Admins: the babsonradio.com Settings panel in this window (already signed in). "Back to the booth" brings them back. */}
-            {isAdmin && !live && !connecting && !recording && <a href="/admin" className={`${sb} grid place-items-center`}>Admin settings</a>}
-            {phrases && <PhraseModal onClose={() => setPhrases(false)} />}
+          <div className="eng h" style={{ left: 12, top: 158 }}>Show info</div>
+          <div className="eng s" style={{ right: 12, top: 160 }}>{live ? 'Shown on the site and app' : 'Change it any time'}</div>
+          <label className="eng s" htmlFor="f-show" style={{ left: 12, top: 178 }}>Show name</label>
+          <div id="f_show" className="fld lw">
+            <input id="f-show" value={showName} onChange={e => info.change({ title: e.target.value })} readOnly={!canEditShow} maxLength={80} placeholder="Name your show"
+                   title={canEditShow ? '' : 'Sign in to name the show.'} autoComplete="off" spellCheck={false} />
           </div>
-        </div>
-      {(welcomeBig || countdownBig || showBig || problem || s?.note || (live && showName)) ? (
-        <div className="hw-desk-text text-center min-w-0 max-w-[60vw]">
-          {welcomeBig ? (
-            <FitTitle as="h1" lines={1} min={0.3} className="hw-title leading-none text-[clamp(3rem,9vh,6.5rem)]" text={`Welcome, ${bypass ? 'Babson Sound user' : s?.firstName || '…'}`} />
-          ) : countdownBig && next ? (
-            <>
-              <h1 className="hw-title leading-none truncate" style={{ fontSize: 'clamp(3rem, 9vh, 6.5rem)' }}>{countdownText(next.startAt - now)}</h1>
-              <FitTitle as="p" lines={1} min={0.5} className="text-2xl mt-1" text={`until ${next.title}${next.hosts.length ? ` with ${next.hosts.join(', ')}` : ''} at ${clock(next.startAt)}`} />
-            </>
-          ) : showBig && s?.show ? (
-            hero === 'show' ? (
-              <>
-                <FitTitle as="h1" lines={1} min={0.25} className={`hw-title leading-none ${bl ? 'text-4xl' : 'text-[clamp(3rem,8vh,5.5rem)]'}`} text={showName || s.show.title} />
-                <p className="num leading-none mt-1" style={{ fontSize: bl ? '2rem' : 'clamp(2.5rem, 7vh, 4.5rem)' }}>{mmss(leftS)} <span className="lbl" style={{ fontSize: '0.5em' }}>left</span></p>
-              </>
-            ) : (
-              <>
-                <p className={`num leading-none ${hero === 'over' || leftS <= 300 ? 'warn' : ''}`} style={{ fontSize: bl ? '3.5rem' : 'clamp(5rem, 15vh, 9.5rem)' }}>{hero === 'over' ? `+${mmss(-leftS)}` : mmss(leftS)}</p>
-                <FitTitle as="p" lines={1} min={0.5} className="text-2xl mt-1" text={`${hero === 'over' ? 'over time, wrap up' : leftS <= 300 ? 'left, wrap up' : 'left'} · ${showName || s.show.title}`} />
-              </>
-            )
-          ) : live && showName ? (
-            <FitTitle as="h1" lines={1} min={0.25} className="hw-title leading-none text-[clamp(2.5rem,6vh,4.5rem)]" text={showName} />
-          ) : null}
-          {(problem || s?.note) && <p className={`text-xl mt-1 line-clamp-1 ${problem ? 'text-[#FFB3A6]' : ''}`}>{problem || `Note from ${s?.note?.by || 'the last host'}: ${s?.note?.text}`}</p>}
-        </div>
-      ) : <div />}
-        <div className="flex items-center justify-end gap-2">
+          <label className="eng s" htmlFor="f-track" style={{ left: 12, top: 204 }}>Track title</label>
+          <div id="f_track" className="fld lw">
+            <input id="f-track" value={trackText ?? (nowTrack ? `${nowTrack.title}${nowTrack.artist ? ` · ${nowTrack.artist}` : ''}` : '')} placeholder="Nothing playing. Type a track."
+                   onChange={e => setTrackText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} onBlur={sendTrack}
+                   title={live ? 'Press Enter to show this on the site and app.' : ''} autoComplete="off" spellCheck={false} />
+          </div>
+          <label className="eng s" htmlFor="f-host" style={{ left: 12, top: 230 }}>Host name</label>
+          <div id="f_host" className="fld lw">
+            <input id="f-host" value={hostsValue} onChange={e => { setHostsText(e.target.value); info.change({ hosts: e.target.value.split(/[,;\n]+/).map(x => x.trim()).filter(Boolean) }) }}
+                   readOnly={!canEditShow} placeholder={bypass ? 'Not signed in' : 'Who is on the show'} title={canEditShow ? 'Separate names with commas.' : 'Sign in to edit.'} autoComplete="off" spellCheck={false} />
+          </div>
+
+          <div className="eng s" style={{ left: 12, top: 269 }}>In the studio</div>
+          {bypass ? <div id="hostlist" className="lw row px"><span className="dim">Nobody signed in</span></div>
+            : <CrewPanel crew={s?.crew ?? []} driverName={s?.firstName || s?.name || ''} onAir={!idle} getToken={token} onToast={setToast} />}
           {confirmOut ? (
             <>
-              <button type="button" className={`gbtn px-6 ${bl ? 'h-16 text-2xl' : 'h-20 text-3xl'}`} onClick={() => setConfirmOut(false)}>Stay</button>
-              <button type="button" className={`gbtn gbtn-stop px-6 ${bl ? 'h-16 text-xl' : 'h-20 text-3xl'}`} onClick={signOutNow} disabled={!!busy}>{live ? 'End show and sign out' : 'Stop recording and sign out'}</button>
+              <Btn id="signout" onClick={signOutNow} disabled={!!busy}>{live ? 'End and sign out' : 'Stop and sign out'}</Btn>
+              <Btn id="stay" onClick={() => setConfirmOut(false)}>Stay</Btn>
             </>
           ) : (
-            <button type="button" className={`gbtn px-10 ${bl ? 'h-16 text-2xl' : 'h-20 text-3xl'}`} onClick={() => (live || recording ? setConfirmOut(true) : signOutNow())} disabled={!!busy}>{bypass ? 'Back to sign in' : 'Sign out'}</button>
+            <Btn id="signout" onClick={() => (live || recording ? setConfirmOut(true) : signOutNow())} disabled={!!busy}>{bypass ? 'Back to sign in' : 'Sign out'}</Btn>
           )}
-        </div>
-      </div>
 
-      {/* Left: up next, the loudness meter, what is on, Go live. Right: tracks (or the sign-in info) with the sound board under them. */}
-      <div className={`grid ${bl ? 'grid-cols-1' : 'grid-cols-[1fr_1.15fr]'} grid-rows-[minmax(0,1fr)] items-stretch gap-5 flex-1 min-h-0`}>
-        <div className="flex flex-col gap-3 min-h-0 h-full">
-          <div className="bp px-6 py-3 flex-1 min-h-[5.5rem] overflow-hidden flex flex-col justify-center">
-            <span className="lbl text-xl">Up next</span>
-            {next ? (
-              <>
-                <p className="hw-title leading-tight line-clamp-2" style={{ fontSize: 'clamp(1.75rem, 4.2vh, 3rem)' }}>{next.title}</p>
-                <p className="text-2xl lbl truncate">{next.hosts.length ? `with ${next.hosts.join(', ')} · ` : ''}{clock(next.startAt)}</p>
-              </>
-            ) : <p className="hw-title text-4xl leading-tight">Nothing booked</p>}
-          </div>
-          <div className="h-[10.5rem] shrink-0"><LevelMeter frame={meter.frame} stats={meter.stats} error={meter.error} deadAir={deadAir} auto={auto} staff={['admin', 'eboard', 'director'].includes(staffRole)} /></div>
-          <div className="bp px-6 py-3 grid grid-cols-[8.5rem_1fr] items-center gap-x-4 gap-y-2 shrink-0">
-            <span className="lbl text-lg">Show name</span>
-            <input value={showName} onChange={e => info.change({ title: e.target.value })} readOnly={!canEditShow} maxLength={80} placeholder="Name your show"
-                   title={canEditShow ? '' : 'Sign in to name the show.'} className={fieldCls} />
-            <span className="lbl text-lg">Track title</span>
-            <input value={trackText ?? (nowTrack ? `${nowTrack.title}${nowTrack.artist ? ` · ${nowTrack.artist}` : ''}` : '')} placeholder="Nothing playing. Type a track."
-                   onChange={e => setTrackText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} onBlur={sendTrack}
-                   title={live ? 'Press Enter to show this on the site and app.' : ''} className={fieldCls} />
-            <span className="lbl text-lg">Host name</span>
-            <input value={hostsValue} onChange={e => { setHostsText(e.target.value); info.change({ hosts: e.target.value.split(/[,;\n]+/).map(x => x.trim()).filter(Boolean) }) }}
-                   readOnly={!canEditShow} placeholder={bypass ? 'Not signed in' : 'Who is on the show'} title={canEditShow ? 'Separate names with commas.' : 'Sign in to edit.'} className={fieldCls} />
-            {info.error && <p className="warn text-lg col-span-2">{info.error}</p>}
-          </div>
-          <div className="bp px-6 py-4 flex flex-col gap-3 shrink-0">
-            {!bypass && !live && !connecting && !recording && (
-              <div className="flex gap-2" role="group" aria-label="Mode">
-                <button type="button" className="gbtn h-10 flex-1 text-base" aria-pressed={shownMode === 'live'} onClick={() => setMode('live')}>Go live</button>
-                <button type="button" className="gbtn h-10 flex-1 text-base" aria-pressed={shownMode === 'record'} onClick={() => setMode('record')}>Record a show</button>
-              </div>
-            )}
-            {shownMode === 'live' ? (
-              <GoLive live={live} connecting={connecting} recording={!!butt?.recording} onAirSeconds={butt?.streamSeconds ?? 0}
-                      canGoLive={!!s?.canGoLive} signInToLive={!!bypass && !!s?.signInToLive} onSignIn={() => { onWantLive(true); setSignInOpen(true) }} reason={s?.reason ?? ''} ready={ready} busy={busy}
-                      level={meter.stats.state} ads={s?.ads ?? null} onGoLive={goLive} onEnd={endShow} onPlayAds={() => setAdCue(n => n + 1)} />
-            ) : (
-              <RecordShow st={rec.st} reload={rec.reload} getToken={token} live={live || connecting} ready={ready} level={meter.stats.state} myUid={user?.uid ?? ''} />
-            )}
-          </div>
-        </div>
-
-        {/* Hidden (not removed) while the browser is open, so a track that is playing keeps playing. */}
-        <div className="bp p-6 flex flex-col gap-3 min-h-0 h-full overflow-hidden" style={bl ? { display: 'none' } : undefined}>
-          {bypass ? <SignInInfo onSignIn={() => openSignIn(false)} /> : (
+          {!bypass && idle && (
             <>
-              <div className="flex-1 min-h-0">
-                <MusicPlayer getToken={token} live={live} output={devices.music} idCue={idCue} adCue={adCue} onAired={onAired} onTrack={setNowTrack} />
-              </div>
-              <div className="h-32 shrink-0"><Soundboard getToken={token} output={devices.music} /></div>
+              <Btn id="modelive" on={shownMode === 'live'} aria-pressed={shownMode === 'live'} onClick={() => setMode('live')}>Go live</Btn>
+              <Btn id="moderec" on={shownMode === 'record'} aria-pressed={shownMode === 'record'} onClick={() => setMode('record')}>Record a show</Btn>
             </>
           )}
+          {shownMode === 'live' ? (
+            <GoLive live={live} connecting={connecting} recording={!!butt?.recording} onAirSeconds={butt?.streamSeconds ?? 0}
+                    canGoLive={!!s?.canGoLive} signInToLive={!!bypass && !!s?.signInToLive} onSignIn={() => { onWantLive(true); setSignInOpen(true) }} reason={s?.reason ?? ''} ready={ready} busy={busy}
+                    level={meter.stats.state} ads={s?.ads ?? null} onGoLive={goLive} onEnd={endShow} onPlayAds={() => setAdCue(n => n + 1)} extra={!confirmOut} />
+          ) : (
+            <RecordShow st={rec.st} reload={rec.reload} getToken={token} live={live || connecting} ready={ready} level={meter.stats.state} myUid={user?.uid ?? ''} extra={!confirmOut} onStatus={setRecNote} />
+          )}
         </div>
-      </div>
 
-      {quietKey && quietAck !== quietKey && s && stillThere === 0 && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/90 px-8" style={area} role="alertdialog" aria-label="Quiet hours">
-          <div className="hw-screen max-w-3xl w-full p-12 text-center space-y-6">
-            <p className="hw-title text-6xl warn">It’s quiet hours</p>
-            <p className="text-3xl">Please don’t make any loud noise. Keep the volume as low as possible, and no loud DJ sets.</p>
-            {quietNow?.kind === 'on' && quietNow.until && <p className="text-2xl lbl">Quiet hours end at {fmtClock(quietNow.until)}.</p>}
-            <button type="button" className="gbtn gbtn-go h-24 w-full text-4xl" onClick={ackQuiet} autoFocus>OK, I understand</button>
+        {/* Right: tracks and the sound board (or the sign-in card). Hidden, not removed, while the browser is open, so a track that is playing keeps playing. */}
+        {bypass ? (
+          <div className="g hf">
+            <div className="eng h" style={{ left: 640, top: 64 }}>Sign in for more</div>
+            <div id="tracks" className="lw"><span className="px msg">Thanks for using the studio. Sign in for the tracks and the sound board. Scan the code by the door, or sign in here.</span></div>
+            <Btn id="bysign" kind="gr" onClick={() => openSignIn(false)}>Sign in</Btn>
+            <div className="eng h" style={{ left: 640, top: 312 }}>Sound board</div>
+            <div id="pads" className="lw" />
           </div>
-        </div>
-      )}
-      {stillThere > 0 && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/80" style={area} role="alertdialog" aria-label="Still there?">
-          <div className="hw-screen p-12 text-center space-y-5">
-            <p className="hw-title text-6xl">Are you still using the studio?</p>
-            <p className="text-3xl lbl">Signing out in {stillThere} seconds.</p>
-            <button type="button" className="gbtn gbtn-go h-20 px-10 text-3xl" onClick={() => setStillThere(0)} autoFocus>Yes, I’m still here</button>
+        ) : (
+          <>
+            <MusicPlayer getToken={token} live={live} output={devices.music} idCue={idCue} adCue={adCue} onAired={onAired} onTrack={setNowTrack} />
+            <Soundboard getToken={token} output={devices.music} />
+          </>
+        )}
+
+        {/* Browser on the whole screen: only this slim rail of the panel shows. */}
+        {bl === 'full' && (
+          <div id="rail" data-layer="">
+            <div id="rail-onair" className="lw row px" role="status">On air</div>
+            <div id="rail-clock" className="lw row px">{clock(now)}</div>
+            <div id="rail-status" className="lw">
+              <span className={`px blk ${deadAir > 0 ? 'org' : ''}`}>{stateLine}</span>
+              {problem && <span className="px org blk">{problem}</span>}
+            </div>
+            {stillThere > 0 && <Btn id="rail-b0" onClick={() => setStillThere(0)}>Still here? {stillThere} s</Btn>}
+            {quietDue && <Btn id="rail-b1" onClick={ackQuiet}>Quiet hours: OK</Btn>}
+            <Btn id="rail-b2" onClick={toSplit}><Ic n="split" /><span>Split screen</span></Btn>
+            <Btn id="rail-b3" onClick={shutBrowser}><Ic n="x" /><span>Close browser</span></Btn>
+            {(live || connecting) && <Btn id="rail-b4" onClick={endShow} disabled={!!busy}>{busy === 'stop' ? 'Ending…' : 'End show'}</Btn>}
+            <canvas className="txl" width={130} height={540} />
           </div>
-        </div>
-      )}
+        )}
+
+        <Notices stillThere={stillThere} onStill={() => setStillThere(0)} quiet={quietDue} quietUntil={quietNow?.kind === 'on' ? quietNow.until ?? 0 : 0} onQuietOk={ackQuiet}
+                 live={live} toast={toast} onPlayId={() => setIdCue(n => n + 1)} />
+
+        {pop === 'help' && <HelpPop onClose={() => setPop('')} />}
+        {pop === 'set' && (
+          <Pop id="pop-set" title="Settings" onClose={() => setPop('')}>
+            <div id="setinfo" className="lw">
+              <span className="px blk">{bypass ? 'Nobody signed in' : `Signed in: ${s?.name ?? '…'}${staffRole ? ` (${staffRole})` : ''}`}</span>
+              <span className={`px blk ${ready ? 'dim' : 'org'}`}>{ready ? 'The studio computer is ready.' : 'BUTT isn’t answering. Open BUTT on this computer.'}</span>
+            </div>
+            <Btn id="sb0" onClick={() => { setPop(''); setModal('sound') }}>Audio setup</Btn>
+            <Btn id="sb1" disabled={!!bypass || !s} onClick={() => { setPop(''); setModal('note') }}>Leave a note</Btn>
+            {/* Works on air too: check a word or a lyric without leaving the booth. Trained members only (not the no-sign-in bypass).
+                The slot (its position and its key bitmap) is the wrapper; the button inside fills it. */}
+            <div id="sb2" className="btn m" onClick={() => setPop('')}>
+              {!bypass && <button type="button" className={sb} onClick={() => setPhrases(true)}>Phrase reference</button>}
+              {bypass && <span style={{ opacity: 0.4 }}>Phrase reference</span>}
+            </div>
+            <Btn id="sb3" disabled={!canEditShow} onClick={() => { setPop(''); setModal('show') }}>Show details</Btn>
+            {/* Admins: the babsonradio.com Settings panel in this window (already signed in). "Back to the booth" brings them back. */}
+            <Btn id="sb4" disabled={!isAdmin || !idle} onClick={() => router.push('/admin')}>Admin settings</Btn>
+            <Btn id="sb5" disabled={!canExit || !idle} onClick={async () => { setPop(''); let tk = ''; try { tk = await token() } catch { /* the helper decides */ } void onExitPanel(tk) }}>Exit panel</Btn>
+          </Pop>
+        )}
+      </Stage>
+
+      {/* Dialogs that still use the old look, above the panel. */}
+      {phrases && <PhraseModal onClose={() => setPhrases(false)} />}
       {bypass && <DoorClaim />}
       {signInOpen && bypass && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/85 px-8" role="dialog" aria-label="Sign in to go live">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/85 px-8" style={area} role="dialog" aria-label="Sign in to go live">
           <div className="hw-screen max-w-4xl w-full p-10 space-y-6">
             <h2 className="hw-title text-5xl leading-none">Sign in to go live</h2>
             <div className="flex items-center gap-8">
@@ -578,44 +562,45 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, bypass, onByp
       {modal === 'sound' && <DeviceSettings value={devices} onChange={changeDevices} refresh={meter.devicesChanged} onClose={() => setModal('')} />}
       {modal === 'show' && <ShowInfo getToken={token} live={live || connecting} onClose={() => setModal('')} />}
       {modal === 'note' && s && <NoteBox sessionId={s.sessionId} onClose={() => setModal('')} />}
-    </div>
+    </>
   )
 }
 
 const fmtClock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
-/** Quiet hours: a small reminder at the top while they are on (dismiss it and it comes back every 30 minutes), and a countdown from 15 minutes
- *  before they start. Also who has the studio booked. Warnings only. */
-function StudioNotices({ status, myBookingId }: { status: StudioStatus | null; myBookingId: string }) {
-  const [now, setNow] = useState(() => Date.now())
-  const [dismissedAt, setDismissedAt] = useState(0)
-  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [])
-  const q = quietBanner(status, now)
-  const lines = bookingLines(status, myBookingId, now, fmtClock)
-  const showQuiet = q && (q.kind === 'soon' || quietReminderDue(dismissedAt, now))
-  if (!showQuiet && !lines.length) return null
-  return (
-    <div className="flex items-center gap-6 flex-wrap shrink-0">
-      {showQuiet && q && (
-        <div className="bp px-5 py-2 flex items-center gap-4 flex-1 min-w-[40%]" role="status">
-          <p className="hw-title text-2xl warn">
-            {q.kind === 'soon' ? `Quiet hours start in ${mmss(q.inMs / 1000)}. Keep the volume as low as possible. No loud DJ sets.` : 'Reminder: Quiet Hours are in Effect'}
-          </p>
-          {q.kind === 'on' && q.until && <p className="lbl text-lg">Until {fmtClock(q.until)}</p>}
-          {q.kind === 'on' && <button type="button" className="ml-auto text-3xl lbl px-2" aria-label="Dismiss" onClick={() => setDismissedAt(Date.now())}>×</button>}
-        </div>
-      )}
-      {lines.length > 0 && <p className="hw-desk-text text-xl">{lines.join(' · ')}</p>}
-    </div>
-  )
+/** The plate that drops from the top, for the few things that need an answer: still there, quiet hours, someone joined, the station ID. */
+function Notices(p: { stillThere: number; onStill: () => void; quiet: boolean; quietUntil: number; onQuietOk: () => void; live: boolean; toast: string; onPlayId: () => void }) {
+  const id = useStationId(p.live)
+  if (p.stillThere > 0) return <Note show block head="Are you still using the studio?" body={`Signing out in ${p.stillThere} seconds.`} buttons={[{ label: 'Yes', onClick: p.onStill }]} />
+  if (p.quiet) return <Note show block head="It’s quiet hours" body={`Keep the volume low. No loud DJ sets.${p.quietUntil ? ` Ends at ${fmtClock(p.quietUntil)}.` : ''}`} buttons={[{ label: 'OK', onClick: p.onQuietOk }]} />
+  if (p.toast) return <Note show led="green" head={p.toast} body="They are added to the show’s hosts." />
+  if (id.due) return <Note show led="green" head="Play the station ID" body="It is the top of the hour." buttons={[{ label: 'Play', onClick: () => { p.onPlayId(); id.done() } }, { label: 'Done', onClick: id.done }]} />
+  return <Note show={false} head="" body="" />
 }
 
-/** The big button. Off air: three quick ticks (the mic check ticks itself after 3 seconds of Good), then Go live.
+/** The right end of the read-out's bottom line: what needs saying now, most pressing first. Warnings only: nothing here blocks anything. */
+function Ticker(p: { problem: string; ads: AdPlan | null; live: boolean; lastMusicAt: number; status: StudioStatus | null; myBookingId: string; rest: string }) {
+  const c = useClockNotices(p.ads, p.live, p.lastMusicAt)
+  const q = quietBanner(p.status, c.now)
+  const lines = bookingLines(p.status, p.myBookingId, c.now, fmtClock)
+  const [text, warn] = p.problem ? [p.problem, true]
+    : c.ad ? [`${c.ad.now ? 'Ad break, back in' : 'Ad break in'} ${mmss(((c.ad.now ? c.ad.end : c.ad.start) - c.now) / 1000)}`, true]
+    : c.talking ? [`Talking ${mmss(c.talking)}`, true]
+    : q?.kind === 'soon' ? [`Quiet hours start in ${mmss(q.inMs / 1000)}`, true]
+    : q?.kind === 'on' ? [`Quiet hours${q.until ? ` until ${fmtClock(q.until)}` : ''}`, true]
+    : lines.length ? [lines.join(' · '), false]
+    : [p.rest, false]
+  return <span id="trackline" className={`px ${warn ? 'org' : 'dim'}`} role={warn ? 'status' : undefined}>{text}</span>
+}
+
+/** The big key. Off air: two quick checks (the mic check ticks itself when it hears the mic), then Go live.
  *  On air: End show, with the time on air and whether BUTT is recording. */
 function GoLive(p: {
   live: boolean; connecting: boolean; recording: boolean; onAirSeconds: number
   canGoLive: boolean; signInToLive: boolean; onSignIn: () => void; reason: string; ready: boolean; busy: string; level: LevelState
   ads: AdPlan | null; onGoLive: () => void; onEnd: () => void; onPlayAds: () => void
+  /** The small key above the big one is free (Stay is not showing there). */
+  extra: boolean
 }) {
   const [clean, setClean] = useState(false)
   const [soundOk, toggleMic] = useMicCheck(p.level)
@@ -625,55 +610,41 @@ function GoLive(p: {
 
   if (p.live || p.connecting) {
     return (
-      <div className="h-full flex flex-col justify-center gap-3">
-        {ad?.now && <button type="button" className="gbtn h-16 text-2xl" onClick={p.onPlayAds}>Play the ads</button>}
-        <button type="button" onClick={p.onEnd} disabled={!!p.busy} className="gbtn gbtn-stop h-20 flex flex-col items-center justify-center">
-          <span className="hw-title text-3xl">{p.busy === 'stop' ? 'Ending…' : 'End show'}</span>
-          <span className="text-base opacity-90">{p.connecting ? 'Connecting…' : `On air ${mmss(p.onAirSeconds)}${p.recording ? ' · recording' : ''}`}</span>
-        </button>
-      </div>
+      <>
+        {ad?.now && p.extra && <Btn id="adsbtn" onClick={p.onPlayAds}>Play the ads</Btn>}
+        <Btn id="golive" kind="lv" on onClick={p.onEnd} disabled={!!p.busy}>
+          <b>{p.busy === 'stop' ? 'Ending…' : 'End show'}</b>
+          <span>{p.connecting ? 'Connecting…' : `On air ${mmss(p.onAirSeconds)}${p.recording ? ' · recording' : ''}`}</span>
+        </Btn>
+      </>
     )
   }
   if (p.signInToLive) {
     return (
-      <div className="h-full flex flex-col justify-center gap-3">
-        <p className="hw-title text-2xl leading-tight">Mixing? Press Go live, then sign in.</p>
-        <button type="button" onClick={p.onSignIn} disabled={!p.ready} className="gbtn gbtn-go h-20 flex flex-col items-center justify-center">
-          <span className="hw-title text-3xl">Go live</span>
-          <span className="text-base opacity-90">{p.ready ? 'You sign in next' : 'Waiting for BUTT…'}</span>
-        </button>
-      </div>
+      <>
+        <div className="eng s" style={{ left: 12, top: 329 }}>Mixing? Press Go live, then sign in.</div>
+        <Btn id="golive" kind="lv" onClick={p.onSignIn} disabled={!p.ready}>
+          <b>Go live</b>
+          <span>{p.ready ? 'You sign in next' : 'Waiting for BUTT…'}</span>
+        </Btn>
+      </>
     )
   }
   const ok = soundOk && clean
   return (
-    <div className="h-full flex flex-col justify-center gap-3">
+    <>
       {p.canGoLive ? (
-        <div className="flex flex-col gap-2">
-          <div className="flex gap-2">
-            <CheckButton label="Mic check" checked={soundOk} onToggle={toggleMic} />
-            <CheckButton label="Clean music only" checked={clean} onToggle={() => setClean(x => !x)} />
-          </div>
-        </div>
-      ) : <p className="lbl text-lg min-h-11 flex items-center">{p.reason}</p>}
-      <button type="button" onClick={p.onGoLive} disabled={!!p.busy || !p.canGoLive || !p.ready || !ok}
-              className="gbtn gbtn-go h-20 flex flex-col items-center justify-center">
-        <span className="hw-title text-3xl">{p.busy === 'live' ? 'Going live…' : 'Go live'}</span>
-        <span className="text-base opacity-90">{!p.canGoLive ? 'Not available yet' : ok ? 'Starts the stream and the recording' : soundOk ? 'Tick the clean music box first' : 'Say something into the mic'}</span>
-      </button>
-    </div>
-  )
-}
-
-/** Fills the right side while nobody is signed in: no controls until then. */
-function SignInInfo({ onSignIn }: { onSignIn: () => void }) {
-  return (
-    <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-5 text-center">
-      <p className="hw-title text-4xl leading-tight">Thanks for using the studio! Get more features by signing in!</p>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/booth/door-qr.svg" alt="QR code to sign in at the studio" className="min-h-0 flex-1 max-h-[380px] aspect-square rounded-xl bg-white" />
-      <p className="text-xl lbl">Scan the code with your phone, or sign in here.</p>
-      <button type="button" className="gbtn gbtn-go h-20 text-3xl w-full max-w-xl" onClick={onSignIn}>Sign in with Babson Sound account</button>
-    </div>
+        <>
+          <Sw id="micsw" on={soundOk} onChange={toggleMic} label="Mic check" /><Led id="micled" c={soundOk ? 'green' : ''} />
+          <div className="eng s" style={{ left: 74, top: 329 }}>Mic check</div>
+          <Sw id="cleansw" on={clean} onChange={setClean} label="Clean music only" /><Led id="cleanled" c={clean ? 'green' : ''} />
+          <div className="eng s" style={{ left: 222, top: 329 }}>Clean music only</div>
+        </>
+      ) : <div className="eng s" style={{ left: 12, top: 329 }}>{p.reason}</div>}
+      <Btn id="golive" kind="lv" onClick={p.onGoLive} disabled={!!p.busy || !p.canGoLive || !p.ready || !ok}>
+        <b>{p.busy === 'live' ? 'Going live…' : 'Go live'}</b>
+        <span>{!p.canGoLive ? 'Not available yet' : ok ? 'Starts the stream and the recording' : soundOk ? 'Flip Clean music only first' : 'Say something into the mic'}</span>
+      </Btn>
+    </>
   )
 }

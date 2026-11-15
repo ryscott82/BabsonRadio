@@ -2,16 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { errText, library, loadPref, mmss, savePref, trackUrl, type Track } from './helper'
+import { Btn, Ic, Knob, Led } from './es2/Stage'
 
 // Tracks from the station's library (through the studio helper): beds for talk shows, or search the whole library.
-// Tap a track to play it (it fades in). The fader sets the music's volume only.
+// Tap a track to play it (it fades in). The Music dial sets the music's volume only.
 // Also plays a station ID (from the clock) and the ad break (the Ads playlist, one after another).
 
 const FADE_IN_MS = 1500, FADE_OUT_MS = 3000, GLIDE_MS = 400
 
 type SinkAudio = HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }
 
-export default function MusicPlayer({ getToken, live, output, idCue, adCue, onAired, onTrack, listSlot }: {
+export default function MusicPlayer({ getToken, live, output, idCue, adCue, onAired, onTrack }: {
   getToken: () => Promise<string>
   live: boolean
   output: string
@@ -21,8 +22,6 @@ export default function MusicPlayer({ getToken, live, output, idCue, adCue, onAi
   onAired: (t: Track) => void
   /** The track that is playing now (null when nothing plays). */
   onTrack?: (t: Track | null) => void
-  /** Shown instead of the search box and track list (the sign-in info while nobody is signed in). */
-  listSlot?: React.ReactNode
 }) {
   const main = useRef<SinkAudio | null>(null)
   const [all, setAll] = useState(false)
@@ -166,50 +165,37 @@ export default function MusicPlayer({ getToken, live, output, idCue, adCue, onAi
   useEffect(() => { onTrack?.(playing ? cur : null) }, [cur, playing, onTrack])
   const pct = Math.round(volume * 100)
   return (
-    <div className="h-full flex flex-col gap-3 min-h-0">
-      {listSlot ?? (
-        <>
-      <div className="flex items-center gap-3">
-        <p className="hw-title text-3xl leading-tight mr-1">Tracks</p>
-        <button type="button" className="gbtn h-11 px-4 text-lg" aria-pressed={!all && !searching} onClick={() => { setAll(false); setQ('') }}>Beds</button>
-        <button type="button" className="gbtn h-11 px-4 text-lg" aria-pressed={all && !searching} onClick={() => { setAll(true); setQ('') }}>All</button>
-        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search songs or artists" autoComplete="off" aria-label="Search the library"
-               className="gfield h-11 px-4 text-lg flex-1 min-w-0" />
+    <div className="g hf">
+      <div className="eng h" style={{ left: 640, top: 64 }}>Background music</div>
+      <Btn id="bedsbtn" on={!all && !searching} aria-pressed={!all && !searching} onClick={() => { setAll(false); setQ('') }}>Beds</Btn>
+      <Btn id="allbtn" on={all && !searching} aria-pressed={all && !searching} onClick={() => { setAll(true); setQ('') }}>All</Btn>
+      <div className="eng s" style={{ left: 886, top: 66 }}>Playing</div>
+      <Led id="playled" c={playing ? 'green' : ''} />
+      <div id="search" className="lw">
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search songs or artists" autoComplete="off" spellCheck={false} aria-label="Search the library" />
       </div>
 
-      <ul className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-[rgba(244,239,226,.1)] divide-y divide-[rgba(244,239,226,.08)]">
-        {loading && !tracks?.length && <li className="lbl text-lg px-4 py-3">Loading…</li>}
+      <div id="tracks" className="lw">
+        {error && <span className="px org msg" role="alert">{error}</span>}
+        {loading && !tracks?.length && <span className="px dim msg">Loading…</span>}
         {tracks?.length === 0 && !loading && !error && (
-          <li className="lbl text-lg px-4 py-3">{searching ? 'Nothing found.' : all ? 'The library is empty.' : 'No beds yet. Add tracks to a “Beds” playlist.'}</li>
+          <span className="px dim msg">{searching ? 'Nothing found.' : all ? 'The library is empty.' : 'No beds yet. Add tracks to a “Beds” playlist.'}</span>
         )}
         {tracks?.map(t => {
           const on = cur?.id === t.id
           return (
-            <li key={t.id}>
-              <button type="button" onClick={() => start(t)} className={`w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-white/5 ${on ? 'bg-[rgba(31,191,127,.14)]' : ''}`}>
-                <span className={`w-5 shrink-0 text-lg ${on ? 'ok' : 'lbl'}`}>{on && playing ? '▶' : ''}</span>
-                <span className="min-w-0 flex-1 truncate text-lg">{t.title}{t.artist && <span className="lbl"> · {t.artist}</span>}</span>
-                <span className="lbl text-lg tabular-nums shrink-0">{on && playing ? `-${mmss(Math.max(0, dur - pos))}` : mmss(t.length)}</span>
-              </button>
-            </li>
+            <button key={t.id} type="button" onClick={() => start(t)} className={`trow row ${on ? 'sel' : ''}`}>
+              <span className="px n">{on && playing ? '> ' : ''}{t.title}{t.artist ? ` · ${t.artist}` : ''}</span>
+              <span className="px dim">{on && playing ? `-${mmss(Math.max(0, dur - pos))}` : mmss(t.length)}</span>
+            </button>
           )
         })}
-      </ul>
-        </>
-      )}
-      {error && <p className="warn text-lg">{error}</p>}
-
-      <div className="flex items-center gap-3">
-        <button type="button" className="gbtn h-12 w-28 text-xl" onClick={playPause} disabled={!cur}>{playing ? 'Pause' : 'Play'}</button>
-        <button type="button" className="gbtn h-12 px-5 text-xl" onClick={fadeOut} disabled={!playing}>Fade out</button>
-        <span className="lbl text-lg truncate min-w-0">{cur ? cur.title : 'Tap a track to play it'}</span>
       </div>
-      <label className="flex items-center gap-4">
-        <span className="text-xl shrink-0">Music volume</span>
-        <input type="range" min={0} max={1} step={0.01} value={volume} onChange={e => setVolume(Number(e.target.value))}
-               className="gfader flex-1" style={{ ['--v' as string]: `${pct}%` }} aria-label="Music volume (tracks only, not the mics)" />
-        <span className="num text-3xl w-16 text-right">{pct}%</span>
-      </label>
+
+      {/* The dial sets the music's volume only (tracks, not the mics). */}
+      <Knob id="music" label="Music" value={volume} min={0} max={1} text={`${pct}%`} onChange={setVolume} />
+      <Btn id="tplay" onClick={playPause} disabled={!cur} title={playing ? 'Pause' : 'Play'} aria-label={playing ? 'Pause' : 'Play'}><Ic n={playing ? 'pause' : 'play'} /></Btn>
+      <Btn id="tfade" onClick={fadeOut} disabled={!playing}>Fade out</Btn>
     </div>
   )
 }

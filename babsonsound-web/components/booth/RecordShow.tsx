@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '@/lib/auth'
 import { BOOTH_HELPER_ORIGIN, type LevelState } from '@/lib/booth'
-import CheckButton, { useMicCheck } from './CheckButton'
+import { useMicCheck } from './CheckButton'
+import { Btn, Led, Sw } from './es2/Stage'
 import { errText, helper, mmss } from './helper'
 import Modal from './Modal'
 
-// "Record a show": BUTT's recorder only, no stream. Same checks as Go live, then Record / Pause / Resume / Stop. After Stop: listen back,
+// "Record a show": BUTT's recorder only, no stream. A mic check, then Record / Pause / Resume / Stop on the panel's big key. After Stop: listen back,
 // give it a title, pick the booking or pre-recorded show it is for, and Save. The studio helper keeps the file on this PC and uploads it
 // straight to AzuraCast (folder "Student recordings"), then tells the website. Nothing here waits on the website.
 
@@ -39,6 +40,10 @@ const clockTime = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'n
 
 export default function RecordShow(p: {
   st: RecState | null; reload: () => void; getToken: () => Promise<string>; live: boolean; ready: boolean; level: LevelState; myUid: string
+  /** The small key above the big one is free (Stay is not showing there). */
+  extra: boolean
+  /** One line about uploads and unsaved takes, for the panel's read-out ('' when there is nothing to say). */
+  onStatus: (text: string) => void
 }) {
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
@@ -55,86 +60,59 @@ export default function RecordShow(p: {
   const mine = !!rec && rec.uid === p.myUid
   const going = rec && rec.state !== 'idle'
 
-  let main: React.ReactNode
-  if (going) {
-    main = (
-      <div className="flex-1 flex flex-col gap-3">
-        <div className="text-center">
-          <p className="hw-title text-5xl tabular-nums">{mmss(rec.elapsedSec)}</p>
-          <p className="text-xl lbl">{rec.state === 'paused' ? 'Paused' : 'Recording'}{mine ? '' : ` · started by ${rec.name}`} · not on air</p>
-        </div>
-        <div className="flex gap-3 flex-1">
-          {rec.state === 'recording'
-            ? <button type="button" className="gbtn flex-1 text-3xl" disabled={!!busy} onClick={() => act('pause', '/record/pause')}>{busy === 'pause' ? 'Pausing…' : 'Pause'}</button>
-            : <button type="button" className="gbtn flex-1 text-3xl" disabled={!!busy || !mine} onClick={() => act('resume', '/record/resume')}>{busy === 'resume' ? 'Resuming…' : 'Resume'}</button>}
-          <button type="button" className="gbtn gbtn-stop flex-1 text-3xl" disabled={!!busy}
-                  onClick={() => act('stop', '/record/stop', r => { if (r.id && r.mine) setSaving({ id: r.id, durationSec: r.durationSec ?? 0, createdAt: Date.now() }) })}>
-            {busy === 'stop' ? 'Stopping…' : 'Stop'}
-          </button>
-        </div>
-      </div>
-    )
-  } else {
-    const ok = soundOk
-    const why = !p.st ? 'Waiting for the studio helper' : !p.st.canRecord ? 'Take the training to record' : p.live ? 'End the live show first' : !p.ready ? 'BUTT isn’t answering' : ok ? 'Records in BUTT only, nothing goes on air' : 'Say something into the mic'
-    main = (
-      <>
-        <CheckButton label="Mic check" checked={soundOk} onToggle={toggleMic} />
-        <p className="lbl text-sm">Ticks itself when we hear you.</p>
-        <button type="button" onClick={() => act('start', '/record/start')} disabled={!!busy || !ok || !p.st?.canRecord || p.live || !p.ready}
-                className="gbtn gbtn-go flex-1 min-h-24 flex flex-col items-center justify-center gap-2">
-          <span className="hw-title text-5xl">{busy === 'start' ? 'Starting…' : 'Record'}</span>
-          <span className="text-2xl opacity-90">{why}</span>
-        </button>
-      </>
-    )
-  }
-
-  const unsaved = (p.st?.takes ?? []).filter(t => t.id !== saving?.id)
-  return (
-    <div className="h-full flex flex-col gap-3 min-h-0">
-      {main}
-      {error && <p className="text-xl warn">{error}</p>}
-      {unsaved.map(t => (
-        <button key={t.id} type="button" className="gbtn h-12 text-lg" onClick={() => setSaving(t)}>
-          Not saved yet: {mmss(t.durationSec)} recorded at {clockTime(t.createdAt)}. Open
-        </button>
-      ))}
-      <Uploads list={p.st?.uploads ?? []} getToken={p.getToken} reload={p.reload} />
-      {saving && <SaveTake take={saving} getToken={p.getToken} onDone={() => { setSaving(null); p.reload() }} />}
-    </div>
-  )
-}
-
-function Uploads({ list, getToken, reload }: { list: Upload[]; getToken: () => Promise<string>; reload: () => void }) {
-  const [err, setErr] = useState('')
-  if (!list.length) return null
   const retry = async (id: string) => {
-    setErr('')
-    try { await helper('/uploads/retry', { token: await getToken(), id }); reload() } catch (e) { setErr(errText(e)) }
+    setError('')
+    try { await helper('/uploads/retry', { token: await p.getToken(), id }); p.reload() } catch (e) { setError(errText(e)) }
   }
-  const word = (u: Upload) =>
-    u.phase === 'uploaded' ? (u.attached ? 'Uploaded, attached to your show' : 'Uploaded')
-      : u.phase === 'failed' ? 'Failed'
-        : u.phase === 'saving' ? 'Uploaded. Telling the website…'
-          : u.waitingForLive ? 'Waiting until the live show ends' : `Uploading ${u.percent}%`
+  const unsaved = (p.st?.takes ?? []).filter(t => t.id !== saving?.id)
+  const uploads = p.st?.uploads ?? []
+  const failed = uploads.find(u => u.phase === 'failed')
+  const busyUp = failed ?? uploads.find(u => u.phase !== 'uploaded')
+  // One line for the panel's read-out: an error, an upload that is not done yet, or a take that is not saved.
+  const status = error || (busyUp ? `${busyUp.title}: ${uploadWord(busyUp)}${busyUp.retryInSec ? `, again in ${mmss(busyUp.retryInSec)}` : ''}${busyUp.error ? `. ${busyUp.error}` : ''}`
+    : uploads.find(u => u.warning)?.warning || (unsaved.length ? `Not saved yet: ${mmss(unsaved[0].durationSec)} recorded at ${clockTime(unsaved[0].createdAt)}` : ''))
+  const { onStatus } = p
+  useEffect(() => { onStatus(status) }, [status, onStatus])
+  useEffect(() => () => onStatus(''), [onStatus])
+
+  const why = !p.st ? 'Waiting for the studio helper' : !p.st.canRecord ? 'Take the training to record' : p.live ? 'End the live show first' : !p.ready ? 'BUTT isn’t answering' : soundOk ? 'Records in BUTT only, nothing goes on air' : 'Say something into the mic'
   return (
-    <ul className="space-y-1.5 text-lg overflow-auto min-h-0 max-h-40">
-      {list.slice(0, 4).map(u => (
-        <li key={u.id} className="flex items-center gap-3">
-          <span className="truncate flex-1">{u.title}</span>
-          <span className={u.phase === 'failed' ? 'warn' : 'lbl'}>{word(u)}{u.phase !== 'uploaded' && u.retryInSec ? ` · again in ${mmss(u.retryInSec)}` : ''}</span>
-          {u.phase === 'failed' && <button type="button" className="gbtn h-10 px-4 text-lg" onClick={() => retry(u.id)}>Retry</button>}
-        </li>
-      ))}
-      {list.some(u => u.phase === 'failed' || u.phase === 'saving') && (
-        <li className="lbl text-base">{list.find(u => u.error)?.error || ''} The recording stays on this computer until it is safely saved.</li>
+    <>
+      {going ? (
+        <>
+          {rec.state === 'recording'
+            ? <Btn id="modelive" disabled={!!busy} onClick={() => act('pause', '/record/pause')}>{busy === 'pause' ? 'Pausing…' : 'Pause'}</Btn>
+            : <Btn id="modelive" disabled={!!busy || !mine} onClick={() => act('resume', '/record/resume')}>{busy === 'resume' ? 'Resuming…' : 'Resume'}</Btn>}
+          <div className="eng s" style={{ left: 12, top: 329 }}>{rec.state === 'paused' ? 'Paused' : 'Recording'}{mine ? '' : `, started by ${rec.name}`}. Not on air.</div>
+          <Btn id="golive" kind="lv" on disabled={!!busy}
+               onClick={() => act('stop', '/record/stop', r => { if (r.id && r.mine) setSaving({ id: r.id, durationSec: r.durationSec ?? 0, createdAt: Date.now() }) })}>
+            <b>{busy === 'stop' ? 'Stopping…' : 'Stop recording'}</b>
+            <span>{mmss(rec.elapsedSec)} recorded</span>
+          </Btn>
+        </>
+      ) : (
+        <>
+          <Sw id="micsw" on={soundOk} onChange={toggleMic} label="Mic check" /><Led id="micled" c={soundOk ? 'green' : ''} />
+          <div className="eng s" style={{ left: 74, top: 329 }}>Mic check (ticks itself when we hear you)</div>
+          <Btn id="golive" kind="lv" onClick={() => act('start', '/record/start')} disabled={!!busy || !soundOk || !p.st?.canRecord || p.live || !p.ready}>
+            <b>{busy === 'start' ? 'Starting…' : 'Record'}</b>
+            <span>{why}</span>
+          </Btn>
+        </>
       )}
-      {list.find(u => u.warning)?.warning && <li className="lbl text-base">{list.find(u => u.warning)!.warning}</li>}
-      {err && <li className="warn">{err}</li>}
-    </ul>
+      {/* The small key above the big one: try a failed upload again, or open a take that is not saved yet. */}
+      {p.extra && failed ? <Btn id="adsbtn" onClick={() => retry(failed.id)}>Retry upload</Btn>
+        : p.extra && unsaved.length ? <Btn id="adsbtn" onClick={() => setSaving(unsaved[0])}>Open unsaved take</Btn> : null}
+      {saving && <SaveTake take={saving} getToken={p.getToken} onDone={() => { setSaving(null); p.reload() }} />}
+    </>
   )
 }
+
+const uploadWord = (u: Upload) =>
+  u.phase === 'uploaded' ? (u.attached ? 'Uploaded, attached to your show' : 'Uploaded')
+    : u.phase === 'failed' ? 'Failed. The recording stays on this computer'
+      : u.phase === 'saving' ? 'Uploaded. Telling the website…'
+        : u.waitingForLive ? 'Waiting until the live show ends' : `Uploading ${u.percent}%`
 
 interface Option { id: string; label: string }
 

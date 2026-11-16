@@ -6,7 +6,7 @@ import { signIn } from '@/lib/auth'
 import DoorClaim from './DoorClaim'
 import { boothFetch, errText, helper } from './helper'
 import { themeNow } from '@/lib/booth'
-import { Btn, Header, HelpPop, Ic, Led, LowImg, Stage } from './es2/Stage'
+import { Btn, Header, HelpPop, Ic, Led, LowImg, LowQr, Stage } from './es2/Stage'
 
 // What the studio PC shows when nobody is signed in (the Welcome face of the panel): a big clock, a greeting, what is on now and next. Useful even when nobody is
 // doing radio. Sign in, or (no account needed) type an email and watch the quick equipment training.
@@ -130,7 +130,7 @@ export default function IdleScreen({ onBypass }: { onBypass: (pin: string, sessi
           {/* How to go on air: scan the code (your phone is already signed in, nothing to type) or sign in on this computer. */}
           <div className="eng h" style={{ left: 614, top: 64 }}>Sign in</div>
           <div className="eng s" style={{ right: -936, top: 66 }}>Scan to use equipment</div>
-          <div id="qr" className="lw" data-mx="soft"><LowImg src="/booth/door-qr.svg" w={196} h={196} alt="QR code to sign in at the studio" contain /></div>
+          <div id="qr" className="lw" data-mx="soft"><LowQr src="/booth/door-qr.svg" size={196} alt="QR code to sign in at the studio" /></div>
           <div id="steps" className="lw">
             <span className="px dim blk">01</span><span className="px blk">Scan the code</span>
             <span className="px dim blk" style={{ marginTop: 8 }}>02</span><span className="px blk">Booth unlocks</span>

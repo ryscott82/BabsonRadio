@@ -134,6 +134,29 @@ export function LowImg({ src, w, h, alt, id, contain }: { src: string; w: number
   return <canvas ref={ref} id={id} className="low" width={w} height={h} role="img" aria-label={alt} />
 }
 
+/** A QR code (an SVG of 1 x 1 squares) drawn module by module at a whole number of panel pixels each, with no smoothing, so it is as low-res as the rest. */
+export function LowQr({ src, size, alt }: { src: string; size: number; alt: string }) {
+  const ref = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const c = ref.current, ctx = c?.getContext('2d')
+    if (!c || !ctx) return
+    let dead = false
+    fetch(src).then(r => r.text()).then(svg => {
+      if (dead) return
+      const vb = /viewBox="(-?\d+) (-?\d+) (\d+) (\d+)"/.exec(svg)
+      if (!vb) return
+      const [x0, y0, n] = [Number(vb[1]), Number(vb[2]), Number(vb[3])]
+      const path = /<path[^>]* d="([^"]+)"/.exec(svg)?.[1] ?? ''
+      const mod = Math.max(1, Math.floor(size / n)), off = Math.floor((size - n * mod) / 2)
+      ctx.clearRect(0, 0, size, size)
+      ctx.fillStyle = '#0a1a10'
+      for (const m of path.matchAll(/M(-?\d+) (-?\d+)h1v1h-1z/g)) ctx.fillRect(off + (Number(m[1]) - x0) * mod, off + (Number(m[2]) - y0) * mod, mod, mod)
+    }).catch(() => {})
+    return () => { dead = true }
+  }, [src, size])
+  return <canvas ref={ref} className="low" width={size} height={size} role="img" aria-label={alt} />
+}
+
 // ---------- the stage ----------
 export function Stage({ view, night, split = '', live = false, drift, children }: {
   view: 'welcome' | 'booth'; night: boolean; split?: '' | 'split' | 'full'; live?: boolean; drift?: { x: number; y: number }; children: ReactNode

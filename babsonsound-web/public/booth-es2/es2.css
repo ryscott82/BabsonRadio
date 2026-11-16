@@ -87,7 +87,7 @@
 #status{left:0;right:0;bottom:0;height:28px;padding:0 14px;gap:8px;border-top:1px solid var(--dim);overflow:hidden}
 #qr{display:flex;align-items:center;justify-content:center;background:#cfeedd}
 #qr img{width:196px;height:196px;mix-blend-mode:multiply}
-#stage[data-theme=night] #qr,#stage[data-theme=night] #case{filter:brightness(.7)}
+#stage[data-theme=night] #qr,#stage[data-theme=night] #case,#stage[data-theme=night] #icon{filter:brightness(.7)}
 #steps{padding:8px 4px 0 8px}
 #case{width:186px;height:167px}
 #case img{position:absolute}
@@ -170,7 +170,6 @@
 .pop{z-index:55}
 #rail>.txl{z-index:9}
 canvas.low{display:block}
-#icon canvas{width:28px;height:28px}
 #qr canvas{mix-blend-mode:multiply}
 #case canvas{position:absolute}
 .fillb{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}

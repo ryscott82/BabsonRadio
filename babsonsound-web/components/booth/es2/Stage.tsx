@@ -204,7 +204,9 @@ export function Header({ now, onLink, onHelp, onSettings, browser }: {
   const d = new Date(now)
   return (
     <div id="hdr" className="g nofull">
-      <div id="icon" className="hf"><LowImg src="/booth/logo.png" w={28} h={28} alt="" contain /></div>
+      {/* The beaver, already reduced to panel size (design/booth-es2/make_assets.py writes it from design/logo-source.png). */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <div id="icon" className="hf"><img src="/booth-es2/common/beaver.png" width={28} height={28} alt="" /></div>
       <div id="brand" className="eng hf">Babson Radio</div>
       <div id="brandsub" className="eng s hf">Studio booth</div>
       <div id="onair" className="lw row px" role="status">On air</div>

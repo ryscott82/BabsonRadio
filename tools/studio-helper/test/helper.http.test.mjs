@@ -19,6 +19,7 @@ const listen = h => new Promise(r => { const s = createServer(h).listen(0, '127.
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 const az = fakeAzura()
+const azPaths = [] // every path the helper asked AzuraCast for
 const site = { recs: new Map(), badSig: 0, down: false }
 const procs = [], servers = []
 after(() => { procs.forEach(p => p.kill()); servers.forEach(s => s.close()) })
@@ -29,6 +30,7 @@ async function start() {
     const url = `http://x${req.url}`
     const init = { method: req.method }
     if (req.method === 'POST') init.body = req.headers['content-type']?.startsWith('multipart') ? await new Request(url, { method: 'POST', headers: req.headers, body: Buffer.concat(chunks) }).formData() : Buffer.concat(chunks).toString()
+    azPaths.push(req.url)
     const r = await az.fetch(url, init)
     res.writeHead(r.status, { 'content-type': 'application/json' }); res.end(r.status === 204 ? undefined : await r.text())
   })
@@ -51,7 +53,7 @@ async function start() {
       ...process.env, STUDIO_PC_SECRET: SECRET, HELPER_PORT: String(port), ALLOW_LOCALHOST: '1', BUTT_PATH: join(here, 'fake-butt.mjs'),
       FAKE_BUTT_STATE: join(dir, 'butt.json'), FAKE_BUTT_DIR: dir, FAKE_BUTT_RATELIMIT: '1', RECORDINGS_DIR: join(dir, 'recordings'), BOOTH_BROWSER_FILE: join(dir, 'browser.json'), BOOTH_EXIT_FLAG: join(dir, 'booth-exit.flag'), MAINTENANCE_FLAG: join(dir, 'maintenance.flag'),
       FFMPEG_PATH: join(here, 'fake-ffmpeg.mjs'), FFPROBE_PATH: join(here, 'fake-ffmpeg.mjs'),
-      AZURACAST_URL: `http://127.0.0.1:${azSrv.address().port}`, AZURACAST_API_KEY: 'k', AZURACAST_STATION_ID: 'babson_radio',
+      AZURACAST_URL: `http://127.0.0.1:${azSrv.address().port}`, AZURACAST_API_KEY: 'k', AZURACAST_STATION_ID: '1', AZURACAST_STATION: 'babson_radio', // the short name must win over the number
       SITE_URL: `http://127.0.0.1:${siteSrv.address().port}`, ARCHIVE_MIN_SECONDS: '5',
       UPDATE_CHECK: '0', REPO_DIR: dir, UPDATE_SCRIPT: join(dir, 'no-update.cmd'),
     },
@@ -70,6 +72,14 @@ async function start() {
 }
 
 const skip = process.platform === 'win32' ? 'the pretend BUTT is a script, which Windows cannot run directly' : false
+test('AzuraCast is asked for the station by its short name (AZURACAST_STATION), not the number', { skip }, async () => {
+  const h = await start()
+  await h.call('/library', { token: token({ u: 'u1', n: 'Sam', l: true, r: true }), kind: 'all' })
+  const station = azPaths.filter(p => p.startsWith('/api/station/'))
+  assert.ok(station.length > 0, 'the library was asked for')
+  assert.ok(station.every(p => p.startsWith('/api/station/babson_radio/')), station.join(' '))
+})
+
 test('record, pause, resume, stop, listen back, save, upload to AzuraCast, tell the website', { skip }, async () => {
   const h = await start()
   const me = token({ u: 'u1', n: 'Sam Lee', r: true }), noBadge = token({ u: 'u2', n: 'Al', r: false })

@@ -40,7 +40,9 @@ const RECORD = process.env.RECORD_SHOWS !== '0'
 // Station music library (background music for talk shows). A limited AzuraCast API key: a user with only "Manage station media".
 const AZ_URL = (process.env.AZURACAST_URL || '').replace(/\/+$/, '')
 const AZ_KEY = process.env.AZURACAST_API_KEY || ''
-const AZ_STATION = encodeURIComponent(process.env.AZURACAST_STATION_ID || '1')
+// The station's short name (AZURACAST_STATION, e.g. babson_radio) wins over the number: on a shared AzuraCast server station 1 can be someone
+// else's, and a key scoped to our station gets 403 there (Nov 19).
+const AZ_STATION = encodeURIComponent(process.env.AZURACAST_STATION || process.env.AZURACAST_STATION_ID || '1')
 const list = v => v.split(',').map(x => x.trim().toLowerCase()).filter(Boolean)
 const BED_LISTS = list(process.env.BED_PLAYLISTS || 'Beds,Podcast beds,Background')
 const ID_LISTS = list(process.env.ID_PLAYLISTS || 'Station IDs,Sweepers')

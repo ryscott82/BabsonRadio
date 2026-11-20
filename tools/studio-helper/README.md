@@ -106,7 +106,7 @@ that is open. Pressing it:
    - `BUTT_PATH` if BUTT is not in `C:\Program Files\butt\`.
    - `BUTT_SERVER_NAME`: the server name from step 2.
 5. Double-click `chrome-local-access.reg` (needs admin). This lets the page reach the helper and read the mixer input without Chrome asking.
-6. **Background music (optional)**: in AzuraCast, make a user whose role has only "Manage station media" for this station, create an API key for it, and put `AZURACAST_URL`, `AZURACAST_API_KEY` and `AZURACAST_STATION_ID` in `.env`. Make these playlists: **Beds** (background music), **Station IDs**, **Soundboard** (jingles and sound effects) and **Ads**. Names can be changed in `.env`. Turn these playlists off in AzuraCast (untick "Enable") so the auto-play never plays them by itself; the page still finds their tracks.
+6. **Background music (optional)**: in AzuraCast, make a user whose role has only "Manage station media" for this station, create an API key for it, and put `AZURACAST_URL`, `AZURACAST_API_KEY` and `AZURACAST_STATION` (the station's short name, e.g. `babson_radio`; it wins over the number `AZURACAST_STATION_ID`, which on a shared server can be someone else's station) in `.env`. Make these playlists: **Beds** (background music), **Station IDs**, **Soundboard** (jingles and sound effects) and **Ads**. Names can be changed in `.env`. Turn these playlists off in AzuraCast (untick "Enable") so the auto-play never plays them by itself; the page still finds their tracks.
 7. **Route the music into the mixer**: the page plays background music out of the PC's sound output. Either plug that output into a mixer channel, or use a virtual cable (VB-Audio Cable) and add it as BUTT's second input. Choose it under **Sound → Music output** on the page. Pick your headphones as **Preview output**.
 8. Press Win+R, type `shell:startup`, and put shortcuts there to: BUTT, `start-helper.cmd`, `start-kiosk.cmd`.
 9. Set Windows to sign in automatically to a local studio account that has no other access.
@@ -144,6 +144,21 @@ Exit kiosk Chrome with Alt+F4.
 
 ## Testing on a laptop
 Set `ALLOW_LOCALHOST=1` in `.env`, run `npm run dev` in `babsonsound-web`, and open `http://localhost:3000/booth`. Use the same `STUDIO_PC_SECRET` in `.env.local`.
+
+## BUTT restarts after a show or recording is saved
+
+On Nov 19 BUTT had to be restarted before it would stream again. So about 3 seconds after **End show** (`/live/stop`) and **Stop recording**
+(`/record/stop`), once the recording has been moved out of BUTT's folder, the helper restarts BUTT in the background (`lib/buttrestart.mjs`):
+
+- Skipped if BUTT is streaming, connecting or recording, if a recording is running in the helper, or if BUTT was restarted less than 20 s ago.
+  Several stops close together are one restart.
+- It asks BUTT to quit (`butt -q`), waits until BUTT stops answering and `butt.exe` is gone, and force-closes it (`taskkill /im butt.exe /f`)
+  if it hasn't quit within 15 s. Then it starts `BUTT_PATH` again (no arguments, so BUTT opens with its saved settings) and waits up to 30 s for
+  it to answer on its command port. If BUTT can't be closed, a second BUTT is never started.
+- **Go live** or **Record** pressed during the 3 s wait cancels the restart. Pressed while BUTT is closed, it waits until BUTT is back, so a
+  stream or a recording never starts with BUTT down.
+- It never holds up the page: errors are only logged (lines start with `BUTT RESTART`).
+- `RESTART_BUTT=0` in `.env` turns it off.
 
 ## Live shows are archived automatically
 

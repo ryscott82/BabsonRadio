@@ -27,6 +27,7 @@ Access levels: guest, student, director, admin. Badges: radioTrained (live shows
 - [x] Library tab (website and app): save episodes with a star, and see "Based on your interests" (from what you saved and liked; shows "New episodes" until there is something to go on)
 - [x] Search (website and app): real episodes, search by title, show or category, play and save
 - [x] Episodes are YouTube videos that play inside the site and app (the live stream pauses when a video starts in the app)
+- [x] Recorded shows have their own page and link, `babsonradio.com/episode/<id>` (`?t=83` starts at 1:23). Public episodes open for anyone with a link preview (title, description, picture); private ones ask for a Babson sign-in and show the plain site card. The page and the Library pop-up use a custom audio player: show picture with the Babson Radio logo, play and pause, back 15 s, forward 30 s, seek bar, speed (0.75x to 2x), remembers where you stopped on that device, Share button (copy link, optionally starting at the current time). Under it: hosts, description and the host's set list for live shows (`components/EpisodePlayer.tsx`, `app/episode/[id]`, `lib/episodePlayer.ts`).
 - [x] Contact William (signed in only)
 - [x] Station-wide message banner (website and app), closable on the site
 - [x] Password reset limited to one email every 3 minutes (website and app)

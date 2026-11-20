@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { apiGet } from '@/lib/auth'
+import { useEffect, useRef } from 'react'
+import Link from 'next/link'
+import EpisodePlayer from '@/components/EpisodePlayer'
 
 export interface Ep {
   id: string; title: string; showName: string; showSlug: string; category: string; description: string
@@ -53,7 +54,7 @@ export function PlayerDialog({ ep, onClose }: { ep: Ep | null; onClose: () => vo
     <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
       <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={ep.title} onClick={e => e.stopPropagation()}
            className="sk-raised rounded-2xl w-full max-w-3xl overflow-hidden outline-none">
-        {ep.audio ? <AudioPane ep={ep} /> : (
+        {ep.audio ? <EpisodePlayer ep={ep} autoPlay /> : (
           <div className="aspect-video bg-black">
             <iframe className="w-full h-full" title={ep.title} allowFullScreen
                     src={`https://www.youtube-nocookie.com/embed/${ep.youtubeID}?autoplay=1&rel=0`}
@@ -67,25 +68,13 @@ export function PlayerDialog({ ep, onClose }: { ep: Ep | null; onClose: () => vo
             {!!ep.contributors?.length && <p className="text-sm text-br-dk-sub mt-1">With {ep.contributors.join(', ')}</p>}
             {ep.description && <p className="text-sm text-br-dk-sub mt-2">{ep.description}</p>}
           </div>
-          <button onClick={onClose} className="sk-key rounded-lg px-3 h-9 text-sm font-display tracking-widest text-br-dk-text shrink-0">Close</button>
+          <div className="flex flex-col gap-2 shrink-0">
+            <button onClick={onClose} className="sk-key rounded-lg px-3 h-9 text-sm font-display tracking-widest text-br-dk-text">Close</button>
+            <Link href={`/episode/${encodeURIComponent(ep.id)}`} className="sk-key rounded-lg px-3 h-9 inline-flex items-center justify-center text-sm font-display tracking-widest text-br-gold">Open page</Link>
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-/** An audio episode (a live show from the archive): the site hands over a link to the file in AzuraCast and the browser plays it from there. */
-function AudioPane({ ep }: { ep: Ep }) {
-  const [url, setUrl] = useState('')
-  const [err, setErr] = useState('')
-  useEffect(() => {
-    let off = false
-    apiGet<{ url: string }>(`/api/episodes/${encodeURIComponent(ep.id)}/audio`).then(r => { if (!off) setUrl(r.url) }).catch(e => { if (!off) setErr((e as Error).message) })
-    return () => { off = true }
-  }, [ep.id])
-  return (
-    <div className="bg-black/60 p-6">
-      {err ? <p className="text-sm text-red-400">{err}</p> : url ? <audio controls autoPlay preload="auto" src={url} className="w-full" /> : <p className="text-sm text-br-dk-sub">Loading…</p>}
-    </div>
-  )
-}

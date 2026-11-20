@@ -29,7 +29,7 @@ export default function WordsPage() {
       {title}
       <p className="text-base text-br-dk-sub">
         Not sure if a word, a lyric or a phrase can go on air? Check it against the station’s word list. Slurs are never allowed.
-        Explicit words and profanity are not allowed from 6 AM to 10 PM Eastern. Spellings with symbols, stars and stretched letters are caught too.
+        Explicit words and profanity are not allowed from 6 AM to 8 PM Eastern. Spellings with symbols, stars and stretched letters are caught too.
       </p>
       <PhraseReference />
       <p className="text-base text-br-dk-sub">The list can miss things. When in doubt, leave it out and ask the E-board. Nothing you type is saved.</p>

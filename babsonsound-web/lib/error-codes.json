@@ -450,9 +450,9 @@
   {
     "code": "BR-ACC-021",
     "title": "Verify your email to keep using Babson Radio",
-    "meaning": "The account is more than 7 days old and its email is still not verified, so the server only allows sign-in and verification calls. After 14 days an unverified account is deleted.",
+    "meaning": "The account is more than 7 days old and its email is still not verified, so the server only allows sign-in and verification calls. Nothing is deleted; member features unlock as soon as the email is verified.",
     "userFix": "Open the verification email and click the link (check spam), or use Resend email on the verify screen. If the address is wrong, sign out and sign up again with the right one.",
-    "staffCheck": "Firebase Console → Authentication → check the Email verified column. The demo reviewer account is never locked. The nightly cleanup deletes unverified accounts after day 14 and logs them in accountDeletions."
+    "staffCheck": "Firebase Console → Authentication → check the Email verified column. The demo reviewer account is never locked. The nightly job only sends one day-10 reminder; unverified accounts are never deleted automatically."
   },
   {
     "code": "BR-ACC-022",
@@ -646,7 +646,7 @@
   {
     "code": "BR-CON-002",
     "title": "Clean-hours pledge not signed",
-    "meaning": "A slot that overlaps 6 AM to 10 PM Eastern needs the signed clean-hours pledge.",
+    "meaning": "A slot that overlaps 6 AM to 8 PM Eastern needs the signed clean-hours pledge.",
     "userFix": "Sign the pledge, or pick a time outside the clean hours.",
     "staffCheck": "Signed records are in conductConsents (kind=clean); the request stores cleanPledgeId."
   },
@@ -1045,9 +1045,9 @@
   {
     "code": "BR-BKG-005",
     "title": "Policy box not ticked",
-    "meaning": "The request or booking was sent without agreeing to the studio and show policy.",
-    "userFix": "Tick the policy box and send again.",
-    "staffCheck": "The accepted policy version is saved on the request or booking."
+    "meaning": "The request or booking was sent without agreeing to the studio and show policy, or a show request was sent without both the gear policy and content requirements boxes ticked.",
+    "userFix": "Tick every box and send again.",
+    "staffCheck": "The accepted policy version is saved on the request or booking. A show request also saves gearAck and contentAck (false means it came from an older app build that only has the policy box)."
   },
   {
     "code": "BR-BKG-006",
@@ -1066,9 +1066,9 @@
   {
     "code": "BR-STR-001",
     "title": "Booking and requests paused",
-    "meaning": "Three confirmed strikes this semester pause new show requests and studio bookings until the semester ends.",
+    "meaning": "A second strike pauses studio bookings and door sign-in for one week. A third strike (or a semester ban) pauses new show requests and studio bookings until the semester ends.",
     "userFix": "Contact the E-board. Existing approved shows are not affected.",
-    "staffCheck": "Strikes page. The E-board can lift the pause by excusing a strike."
+    "staffCheck": "Strikes page. Only an admin can lift a pause by excusing a strike."
   },
   {
     "code": "BR-STR-002",

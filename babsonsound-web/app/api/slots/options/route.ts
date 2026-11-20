@@ -40,7 +40,7 @@ export async function GET(req: Request) {
     return {
       canLive: ready.trained,
       trainedReason: ready.trained ? null : a.radioExpired ? 'expired' : 'training',
-      agreementSigned: ready.conductSigned,
+      agreementSigned: true, // the full agreement is part of the training now; kept so older app builds do not show it again
       lastShow: last ? {
         title: String(last.get('title') ?? ''), description: String(last.get('description') ?? ''), location: String(last.get('location') ?? ''),
         type: String(last.get('type') ?? ''), category: String(last.get('category') ?? ''), durationMin: Number(last.get('durationMin') ?? 0),

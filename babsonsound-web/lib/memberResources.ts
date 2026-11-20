@@ -5,6 +5,8 @@
 export interface Guide { slug: string; title: string; summary: string }
 
 export const GUIDES: Guide[] = [
+  { slug: 'gear-policy', title: 'Gear policy', summary: 'How to use the studio gear, what counts as misuse, and what to do when something breaks.' },
+  { slug: 'content-requirements', title: 'Content requirements', summary: 'Clean hours, slurs, private information, set lists and what you are responsible for on air.' },
   { slug: 'booth-troubleshooting', title: 'Booth troubleshooting', summary: 'No sound, too loud, echo in your headphones, the booth not answering, and what to do.' },
 ]
 

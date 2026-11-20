@@ -10,6 +10,7 @@ import { actionLabel, copyText, eventProblem, manualAddProblem, standingFlag, st
 import { KINDS, filterKinds, groupByDay, mergeOnAir } from './everythingOnAir.ts'
 import { menuFor } from './adminMenu.ts'
 import { guestCsv } from './studioList.ts'
+import { GUIDES } from './memberResources.ts'
 import { nyToMs, nyWeekKey } from './slotAuto.ts'
 
 const src = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')
@@ -54,7 +55,7 @@ test('Host a show is first in the profile menu for students, and absent for gues
 test('Host a show appears on Schedule, Library, Members, after training, My shows and the booking screen', () => {
   assert.match(src('app/schedule/page.tsx'), /<HostShowCard compact/)
   assert.match(src('app/schedule/ScheduleList.tsx'), /Host here/)
-  assert.match(src('app/members/page.tsx'), /<HostShowCard/)
+  assert.match(src('app/members/page.tsx'), /href="\/slots"/)
   assert.match(src('components/HostMyShows.tsx'), /Same time next week/)
   assert.match(src('components/HostMyShows.tsx'), /Pick another time/)
   assert.match(src('components/StudioBooking.tsx'), /Schedule this to air/)
@@ -68,18 +69,19 @@ test('signed-out people and guests see only events and info, with a sign-in prom
   assert.match(signInPrompt('guest'), /Babson, Olin and Wellesley/)
   assert.equal(signInPrompt('student'), '')
 })
-test('students see the eight sections top to bottom', () => {
-  assert.deepEqual(sectionsFor('student'), ['next', 'host', 'studio', 'standing', 'training', 'resources', 'events', 'info'])
+test('students see four quadrants: Studio access, Host a show, Resources, Info (events are inside Studio access)', () => {
+  assert.deepEqual(sectionsFor('student'), ['access', 'host', 'resources', 'info'])
   const p = src('app/members/page.tsx')
-  const order = ['id="next"', 'id="host"', 'id="studio"', 'id="standing"', 'id="training"', 'id="resources"', 'id="events"', 'id="info"'].map(k => p.indexOf(k))
+  const order = ['id="access"', 'show.has(\'host\')', 'show.has(\'resources\')', 'show.has(\'info\')'].map(k => p.indexOf(k.replace('id="access"', "show.has('access')")))
   assert.deepEqual([...order].sort((a, b) => a - b), order)
-  assert.match(p, /show\.has\('studio'\)/)
+  assert.match(p, /lg:grid-cols-2/) // two by two on a wide screen, one scrolling column on a phone
+  assert.match(p, /<ClubEvents/)
   assert.doesNotMatch(p, /disabled/)
 })
 test('booking needs the Studio badge: without it there is a Get trained button, not an error', () => {
   assert.equal(canBook(false), false)
   assert.match(src('components/StudioBooking.tsx'), /Get trained/)
-  assert.match(src('components/StudioBooking.tsx'), /href="#training"/)
+  assert.match(src('components/StudioBooking.tsx'), /href="\/training"/)
 })
 test('Next up for me: my next booking, my next show, a training that is due', () => {
   const now = nyToMs(2026, 11, 12, 12, 0)
@@ -250,8 +252,10 @@ test('the Host a show page has three steps, the policy box and guests, and does 
 test('standing reads in plain words', () => {
   assert.equal(standingView({ level: 0, label: 'Good standing', bannedUntil: null, strikes: [] }).headline, 'Good standing')
   const one = standingView({ level: 1, label: '1 mistake', bannedUntil: null, strikes: [{ date: 'Nov 3, 2026', reason: 'Missed a live show' }] })
-  assert.equal(one.headline, '1 mistake'); assert.deepEqual(one.lines, ['Nov 3, 2026: Missed a live show'])
-  assert.equal(standingView({ level: 2, label: 'Warning', bannedUntil: null, strikes: [] }).headline, 'Warning')
+  assert.equal(one.headline, 'First strike'); assert.deepEqual(one.lines, ['Nov 3, 2026: Missed a live show'])
+  assert.equal(standingView({ level: 2, label: 'Second strike', bannedUntil: null, strikes: [] }).headline, 'Second strike')
+  const wk = nyToMs(2026, 11, 21, 12, 0)
+  assert.match(standingView({ level: 2, label: 'x', bannedUntil: null, studioBannedUntil: wk, strikes: [] }).headline, /^Studio ban until Nov 21, 2026$/)
 })
 test('a banned person sees why and until when instead of the forms', () => {
   const until = nyToMs(2026, 12, 18, 12, 0)
@@ -265,27 +269,48 @@ test('a banned person sees why and until when instead of the forms', () => {
 })
 test('the policy box has the agreed wording', () => {
   const p = src('lib/hostFlow.ts')
-  assert.match(p, /missed show or booking gets a mistake, then a warning, then a ban from hosting and booking for the rest of the semester/)
-  assert.match(p, /E-board can excuse a mistake/)
+  assert.match(p, /first sends a warning email, the second pauses my studio bookings for a week, and the third bans me from hosting and booking for the rest of the semester/)
+  assert.match(p, /An Admin can excuse a strike/)
+})
+
+test('a show request asks for two ticks (gear, content) with links, not the long agreement; older apps still work', () => {
+  const host = src('components/HostShow.tsx'), acks = src('components/HostAcks.tsx'), flow = src('lib/hostFlow.ts'), route = src('app/api/slots/request/route.ts')
+  assert.doesNotMatch(host, /HostAgreements/)
+  assert.match(host, /<HostAcks gear=\{gearAck\} content=\{contentAck\}/); assert.match(host, /gearAck: true, contentAck: true/)
+  assert.match(flow, /\/members\/guides\/gear-policy/); assert.match(flow, /\/members\/guides\/content-requirements/)
+  assert.match(acks, /target="_blank"/)
+  assert.match(route, /const legacyApp = b\.gearAck === undefined && b\.contentAck === undefined/)
+  assert.match(route, /!legacyApp && \(b\.gearAck !== true \|\| b\.contentAck !== true\)/) // a client that sends the boxes must send both true
+  assert.match(src('app/api/slots/options/route.ts'), /agreementSigned: true/) // an older app build never shows the agreement screen again
+  for (const slug of ['gear-policy', 'content-requirements']) {
+    assert.ok(GUIDES.some(g => g.slug === slug), slug)
+    assert.ok(src(`content/guides/${slug}.md`).startsWith('# '), slug)
+  }
+})
+
+test('episodes with no picture show the Babson Radio logo', () => {
+  assert.match(src('components/EpisodeRow.tsx'), /!ep\.thumbnailURL && <img src="\/beaver\.png"/)
+  assert.match(src('components/EpisodeCard.tsx'), /src="\/beaver\.png"/)
 })
 
 // ── E-board lists ──
 test('the standing flag on Users and request rows', () => {
-  assert.equal(standingFlag(0), ''); assert.equal(standingFlag(1), '1 mistake'); assert.equal(standingFlag(2), 'Warning'); assert.equal(standingFlag(3), 'Banned')
+  assert.equal(standingFlag(0), ''); assert.equal(standingFlag(1), 'First strike'); assert.equal(standingFlag(2), 'Second strike'); assert.equal(standingFlag(3), 'Banned')
   assert.equal(standingFlag(0, Date.now() + 100_000), 'Banned')
   assert.match(src('app/admin/users/page.tsx'), /standingFlag\(/); assert.match(src('components/admin/today/NeedsApproval.tsx'), /standingFlag\(/)
   assert.match(src('app/api/admin/users/route.ts'), /strikeLevel/)
 })
 test('strikes: confirm or excuse a pending flag, take back a confirmed one, a manual add needs a member and a note', () => {
-  assert.deepEqual(strikeActions('pending'), ['confirm', 'excuse']); assert.deepEqual(strikeActions('confirmed'), ['excuse']); assert.deepEqual(strikeActions('excused'), [])
+  assert.deepEqual(strikeActions('pending'), ['confirm', 'excuse']); assert.deepEqual(strikeActions('pending', false), ['confirm']); assert.deepEqual(strikeActions('confirmed'), ['excuse']); assert.deepEqual(strikeActions('excused'), [])
   assert.equal(actionLabel('confirmed', 'excuse'), 'Take back'); assert.equal(actionLabel('pending', 'excuse'), 'Excuse')
   assert.match(manualAddProblem('', 'x'), /Pick a member/); assert.match(manualAddProblem('u:abc', ' '), /note/); assert.equal(manualAddProblem('u:abc', 'late'), '')
   assert.match(src('app/admin/notifications/page.tsx'), /<StrikesPanel pendingOnly/)
 })
-test('the Shows tab has Strikes, Studio list and Club events for E-board and Admin', () => {
+test('Strikes is in Users; Studio list and Club events are in Schedule, for E-board and Admin', () => {
   for (const role of ['director', 'admin'] as const) {
-    const titles = menuFor(role).find(t => t.id === 'shows')!.tiles.map(t => t.title)
-    for (const t of ['Strikes', 'Studio list', 'Club events']) assert.ok(titles.includes(t), `${role} ${t}`)
+    const tiles = (id: string) => menuFor(role).find(t => t.id === id)!.tiles.map(t => t.title)
+    assert.ok(tiles('users').includes('Strikes'), `${role} Strikes`)
+    for (const t of ['Studio list', 'Club events']) assert.ok(tiles('schedule').includes(t), `${role} ${t}`)
   }
   for (const p of ['strikes', 'studio-list', 'club-events']) assert.match(src(`app/admin/${p}/page.tsx`), /isDirector/)
 })

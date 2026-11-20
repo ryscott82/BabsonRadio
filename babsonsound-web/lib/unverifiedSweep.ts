@@ -1,4 +1,4 @@
-// The daily clean-up of accounts that never verified their email (see lib/verifyClock.ts). All outside work is passed in,
+// The daily reminder for accounts that never verified their email (see lib/verifyClock.ts). All outside work is passed in,
 // so this file has no server imports and the tests can run it with fakes.
 import { verifyStage } from './verifyClock.ts'
 
@@ -17,19 +17,12 @@ export type SweepDeps = {
   /** The user's saved profile bits: demo flag, name, level, and whether the reminder already went out. */
   profile: (uid: string) => Promise<{ demo: boolean; name: string; level: string; reminded: boolean }>
   /** Sends the day-10 reminder. Returns false when mail is not set up or failed (then nothing is marked). */
-  remind: (u: SweepUser, deleteAt: number) => Promise<boolean>
+  remind: (u: SweepUser) => Promise<boolean>
   markReminded: (uid: string) => Promise<void>
-  /** Writes the accountDeletions record BEFORE anything is removed; returns a function that marks it done. */
-  logDelete: (u: SweepUser, p: { name: string; level: string }) => Promise<() => Promise<void>>
-  /** deleteAccountData(uid): removes the data and the sign-in, which frees the email. */
-  remove: (uid: string) => Promise<void>
-  /** Safety cap per run (default 25) so one run stays well inside the function time limit. */
-  maxDeletes?: number
 }
 
 export async function sweepUnverified(d: SweepDeps) {
-  const out = { scanned: 0, reminded: 0, deleted: 0, skipped: 0, failed: 0 }
-  const cap = d.maxDeletes ?? 25
+  const out = { scanned: 0, reminded: 0, skipped: 0, failed: 0 }
   let token: string | undefined
   do {
     const page = await d.list(token)
@@ -39,19 +32,12 @@ export async function sweepUnverified(d: SweepDeps) {
       // Nothing to verify without an email.
       if (u.emailVerified || !u.email) continue
       const stage = verifyStage({ emailVerified: false, graceUntil: u.graceUntil, createdMs: u.createdMs, now: d.now })
-      if (stage !== 'remind' && stage !== 'delete') continue
+      if (stage !== 'remind') continue
       try {
         const p = await d.profile(u.uid)
         if (p.demo) { out.skipped++; continue }
-        if (stage === 'delete') {
-          if (out.deleted >= cap) { out.skipped++; continue }
-          const done = await d.logDelete(u, p)
-          await d.remove(u.uid)
-          await done()
-          out.deleted++
-        } else if (!p.reminded) {
-          const end = u.graceUntil ?? u.createdMs + 7 * 86_400_000
-          if (await d.remind(u, end + 7 * 86_400_000)) { await d.markReminded(u.uid); out.reminded++ } else out.skipped++
+        if (!p.reminded) {
+          if (await d.remind(u)) { await d.markReminded(u.uid); out.reminded++ } else out.skipped++
         }
       } catch (e) {
         out.failed++

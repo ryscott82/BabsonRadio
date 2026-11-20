@@ -17,7 +17,7 @@ export default function PhraseModal({ onClose }: { onClose: () => void }) {
           <h2 id="phrase-title" className="hw-title text-4xl flex-1">Explicit phrase reference</h2>
           <button type="button" className="gbtn h-12 px-5 text-xl" onClick={onClose}>Close</button>
         </div>
-        <p className="text-xl opacity-85">Slurs: never. Explicit words and profanity: not from 6 AM to 10 PM Eastern. Not sure? Leave it out.</p>
+        <p className="text-xl opacity-85">Slurs: never. Explicit words and profanity: not from 6 AM to 8 PM Eastern. Not sure? Leave it out.</p>
         <PhraseReference variant="booth" autoFocus />
       </div>
     </div>

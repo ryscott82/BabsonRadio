@@ -8,6 +8,13 @@ export const SELF_PASS_PERCENT = 100
 export const SELF_QUESTIONS = 10
 /** Each quiz: exactly this many of these radio topics (3 in all), and the rest studio (the equipment and the booth). */
 export const QUIZ_MIX = { slurs: 1, privacy: 1, radio: 1 } as const
+/** Questions that are on every quiz, whatever the pool holds (the door QR code rule: everyone must know to scan it before tapping the OneCard). */
+export const REQUIRED_QUESTION_IDS = ['door-qr'] as const
+/** The pool with the required questions added from `defaults` when a saved bank does not have them (an old saved bank, or one that deleted them). */
+export function withRequired<T extends { id: string }>(pool: T[], defaults: T[]): T[] {
+  const missing = defaults.filter(q => (REQUIRED_QUESTION_IDS as readonly string[]).includes(q.id) && !pool.some(p => p.id === q.id))
+  return missing.length ? [...pool, ...missing] : pool
+}
 /** The quiz opens this long after the video was first opened (the video is about 6 minutes), so the video can't be skipped. */
 export const SELF_MIN_WATCH_MS = 5 * 60_000
 /** A perfect quiz lets you sign the agreement for this long. */
@@ -43,8 +50,9 @@ export function drawQuestions<T>(pool: T[], count: number, seed: string): T[] {
 export function drawQuiz<T extends { topic: string }>(pool: T[], count: number, seed: string): T[] {
   const of = (topic: string) => pool.filter(q => q.topic === topic)
   const fixed = Object.entries(QUIZ_MIX).flatMap(([topic, n]) => drawQuestions(of(topic), n, `${seed}:${topic}`))
-  const studio = drawQuestions(of('studio'), Math.max(0, count - fixed.length), `${seed}:studio`)
-  return drawQuestions([...fixed, ...studio], count, `${seed}:order`)
+  const must = pool.filter(q => (REQUIRED_QUESTION_IDS as readonly string[]).includes((q as unknown as { id: string }).id))
+  const studio = drawQuestions(of('studio').filter(q => !must.includes(q)), Math.max(0, count - fixed.length - must.length), `${seed}:studio`)
+  return drawQuestions([...fixed, ...must, ...studio], count, `${seed}:order`)
 }
 
 export type SelfGate = { ok: true } | { ok: false; status: number; code: string; message: string }

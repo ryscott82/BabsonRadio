@@ -7,6 +7,7 @@ import { azuraConfigured } from '@/lib/server/azuracast'
 import { getAnnouncement } from '@/lib/server/announcement'
 import { usageStatus } from '@/lib/server/serverUsage'
 import { findAll, loadConfig as loadWords } from '@/lib/server/wordFilter'
+import { pendingStrikeRows } from '@/lib/server/strikes'
 import { PENDING_MAX, criticalOf, shapePending, shapeUpcoming, upcomingItems, type HostInfo, type PendingSource } from '@/lib/todayData'
 
 export const runtime = 'nodejs'
@@ -15,7 +16,7 @@ let cache: { at: number; v: { sessions: number; hours: number } } | null = null
 let answer: { at: number; v: unknown } | null = null // the whole reply, shared for 20 seconds so several people do not each rebuild it
 
 // Everything the Today page needs in one call (E-board and Admins): on air now, the next student shows (at least 10) with each real show's host (name and email only: no other contact detail,
-// ever), pending show requests with why each is waiting (up to 20), the critical strip, and the last 24 hours of listening.
+// ever), pending show requests with why each is waiting (up to 20), strikes waiting for a decision (up to 20), the critical strip, and the last 24 hours of listening.
 // The whole reply is kept 20 s per server instance, so the page's 60 s refresh from several people costs one build.
 export async function GET(req: Request) {
   return handle(async () => {
@@ -59,6 +60,7 @@ export async function GET(req: Request) {
     const words = (await loadWords(db)).custom
     const pending = shapePending(pendSrc, text => findAll(text, words).some(h => h.tier !== 'crude'), uid => minors.has(uid), uid => strikeCount.get(uid) ?? 0)
 
+    const strikes = await pendingStrikeRows(db).catch(() => [])
     const [deadAir, usage] = await Promise.all([
       db.collection('ops').doc('deadair').get().then(d => d.get('active') === true).catch(() => false),
       usageStatus(db, now).catch(() => null),
@@ -84,7 +86,7 @@ export async function GET(req: Request) {
       nowPlaying: { configured: np.configured, song: np.title ? `${np.artist ? np.artist + ' – ' : ''}${np.title}` : '', listeners: np.listeners, isLive: np.isLive, streamer: np.streamer, playlist: np.playlist },
       onAir: { title: np.blockTitle, isShow: np.isShow, endAt: np.showEnd },
       next, announcement, last24h: cache.v,
-      pending: pending.rows, pendingTotal: pending.total,
+      pending: pending.rows, pendingTotal: pending.total, strikes,
       critical: criticalOf({ configured: np.configured, npTitle: np.title, npPlayedAt: np.playedAt, deadAirActive: deadAir, usage: usage ? { pct: usage.pct, overall: usage.overall } : null }),
     }
     answer = { at: Date.now(), v: out }

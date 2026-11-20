@@ -11,7 +11,6 @@ import { decryptJson, encryptJson } from './pii'
 import { normalizeUS } from '../phone'
 import { hasPhone, savePhone } from './phoneStore'
 import { judgeAge } from '../age'
-import { AVATAR_COLORS } from '../profile'
 import { guessGradYear, validGradYear } from '../terms'
 import { REQUIRED, STEP_IDS, isStepId, setupState, stepsFor, type SetupInput, type SetupState, type Skips, type StepId } from '../setup'
 
@@ -39,14 +38,13 @@ export function setupInput(t: DecodedIdToken, a: Access, u: DocumentSnapshot): S
     const r = raw[id]
     if (r) skips[id] = { count: num(r.count), lastShownAt: num(r.lastShownAt), lastSkippedAt: num(r.lastSkippedAt) }
   }
-  const avatar = u.get('avatarColor')
   return {
     level: a.level, demo: a.demo,
     emailVerified: t.email_verified === true,
     graceUntil: typeof t.graceUntil === 'number' ? t.graceUntil : null,
     joinedAt: (u.get('joinedAt') as Timestamp | undefined)?.toMillis?.() ?? null,
     firstName: String(u.get('firstName') ?? ''),
-    avatarChosen: typeof avatar === 'string' && avatar !== '',
+    hostAsked: u.get('hostPromptAt') != null,
     birthdayDone: u.get('ageData') != null,
     gradYear: String(u.get('gradYear') ?? ''),
     hasPhone: hasPhone(u),
@@ -77,6 +75,8 @@ export async function skipStep(t: DecodedIdToken, a: Access, rawStep: unknown, n
   const ref = adminDb().collection('users').doc(t.uid)
   const before = await ref.get()
   if (!before.exists) throw new HttpError(404, 'Profile not found.')
+  // The host pop-up is asked once: "not now" answers it too.
+  if (step === 'host') { await ref.update({ hostPromptAt: Timestamp.fromMillis(now) }); return settled(t, a, await ref.get(), now) }
   if (!settled(t, a, before, now).steps.find(s => s.id === step)?.done) {
     await ref.update({
       [`setup.skips.${step}.count`]: FieldValue.increment(1),
@@ -113,9 +113,9 @@ export async function saveStep(t: DecodedIdToken, a: Access, rawStep: unknown, v
       break
     }
 
-    case 'avatar':
-      if (!AVATAR_COLORS.some(c => c.id === v.avatarColor)) throw new HttpError(400, 'Pick one of the colors.', 'BR-SET-008')
-      update.avatarColor = v.avatarColor
+    case 'host':
+      // The "Want to host a show?" pop-up: asked once, whether they take the button or not.
+      update.hostPromptAt = Timestamp.fromMillis(now)
       break
 
     case 'birthday': {

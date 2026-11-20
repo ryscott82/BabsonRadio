@@ -12,7 +12,7 @@ import { LINKS } from '@/lib/links'
 import { activeHref, linksFor, profileMenu } from '@/lib/siteNav'
 
 export default function Nav() {
-  const { user, userDoc, isAdmin, isDirector, isBabson, isGuest } = useAuth()
+  const { user, userDoc, isAdmin, isDirector, isArts, isBabson, isGuest } = useAuth()
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)      // profile menu
   const [mobileOpen, setMobileOpen] = useState(false)  // hamburger menu on phones
@@ -28,7 +28,7 @@ export default function Nav() {
   if (pathname === '/coming-soon' || pathname.startsWith('/admin') || pathname.startsWith('/booth')) return null
 
   const showHost = hosting && !isGuest
-  const links = linksFor({ isGuest, hosting: showHost }) // guests: Live and Members
+  const links = linksFor({ isGuest, hosting: showHost, arts: isArts }) // guests: Live and Members
   const showAdmin = isAdmin || isDirector
   const canRequest = isBabson
   const active = (href: string) => activeHref(pathname, href)

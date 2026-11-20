@@ -1,13 +1,14 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, readJson } from '@/lib/server/http'
-import { checkSignature } from '@/lib/server/conduct'
+import { checkSignature, markPendingReady, saveSignedName } from '@/lib/server/conduct'
 import { studioActor, writeGrants } from '@/lib/server/studio'
 import { loadStudioForm } from '@/lib/server/studioForm'
 import { loadQuizBank } from '@/lib/server/quizBank'
+import { QUIZ } from '@/lib/training'
 import { STUDIO_CONFIG } from '@/lib/studioConfig'
 import { badgeExpiry, gradeQuiz } from '@/lib/studioRules'
-import { SELF_MIN_WATCH_MS, SELF_PASS_PERCENT, SELF_QUESTIONS, drawQuiz, selfQuizGate, watchLeftSec } from '@/lib/selfTraining'
+import { SELF_MIN_WATCH_MS, SELF_PASS_PERCENT, SELF_QUESTIONS, drawQuiz, selfQuizGate, watchLeftSec, withRequired } from '@/lib/selfTraining'
 
 export const runtime = 'nodejs'
 
@@ -39,7 +40,7 @@ export async function GET(req: Request) {
     const attempts = Number(snap.get('attempts') ?? 0)
     // The questions come from the bank edited on Settings > Training quiz. The ids shown are saved, so grading uses the same
     // questions even if the bank changes in between (or another server still has the old bank cached).
-    const bank = (await loadQuizBank(adminDb())).questions
+    const bank = withRequired((await loadQuizBank(adminDb())).questions, QUIZ)
     const kept = snap.get('drawnAttempt') === attempts && Array.isArray(snap.get('drawnIds')) ? (snap.get('drawnIds') as string[]) : null
     const keptQs = kept?.map(id => bank.find(q => q.id === id)).filter(q => q != null)
     const drawn = keptQs && keptQs.length === kept!.length ? keptQs : drawQuiz(bank, SELF_QUESTIONS, `${actor.t.uid}:${attempts}`)
@@ -77,6 +78,8 @@ export async function POST(req: Request) {
         ref.set({ signedAt: Timestamp.fromMillis(now), signedVersion: sig.version }, { merge: true }),
         adminDb().collection('users').doc(uid).set({ conductVersion: sig.version, conductSignedAt: Timestamp.fromMillis(now), conductConsentId: consent.id }, { merge: true }),
       ])
+      await saveSignedName(adminDb(), actor.t, sig.typedName)
+      await markPendingReady(adminDb(), uid, false).catch(() => {})
       return { signed: true }
     }
 
@@ -85,7 +88,7 @@ export async function POST(req: Request) {
     const gate = selfQuizGate({ startedAt: num(snap.get('startedAt')), lastAttemptAt: num(snap.get('lastAttemptAt')), now })
     if (!gate.ok) throw new HttpError(gate.status, gate.message, gate.code)
     const attempts = Number(snap.get('attempts') ?? 0)
-    const bank = (await loadQuizBank(adminDb())).questions
+    const bank = withRequired((await loadQuizBank(adminDb())).questions, QUIZ)
     const shownIds = snap.get('drawnAttempt') === attempts && Array.isArray(snap.get('drawnIds')) ? (snap.get('drawnIds') as string[]) : null
     const drawn = shownIds ? shownIds.map(id => bank.find(q => q.id === id)).filter(q => q != null) : drawQuiz(bank, SELF_QUESTIONS, `${uid}:${attempts}`)
     if (shownIds && drawn.length !== shownIds.length) throw new HttpError(409, 'The quiz questions were just changed. Reload the page for a new set.')

@@ -10,7 +10,7 @@ import { notifyAdmins } from './push'
 import { assertAllAdults, recordConsent } from './publicContent'
 import { touchesCleanHours } from '../conduct'
 import { SLOT_RULES, type SlotCategory, type SlotType } from '../slots'
-import { autoApproveAtMs, autoEligible, pendingCount } from '../slotAuto'
+import { autoApproveAtMs, autoEligible, pendingCount, trainByMs } from '../slotAuto'
 import { loadSlotRules } from './slotRules'
 import { loadStudioRules } from './studioRules'
 import { assertNotBanned, rememberGuests, studioBusy } from './studioBook'
@@ -23,6 +23,8 @@ export type NewRequest = {
   publicConsent?: Record<string, unknown> | null
   /** who is coming (or justMe) and whether a live show is not using the studio */
   guests: Guest[]; justMe: boolean; noStudio: boolean
+  /** 'new' = the person ticked the gear and content boxes on this request; 'legacy' = an older app build that only sends the policy tick */
+  acks?: 'new' | 'legacy'
 }
 export type Skipped = { startAt: number; reason: 'conflict' | 'too-far' | 'too-soon' | 'already-requested' }
 
@@ -36,7 +38,7 @@ export async function createSlotRequests(db: Firestore, t: DecodedIdToken, b: Ne
   const rules = await loadSlotRules(db)
   const studio = await loadStudioRules(db)
   const user = await db.collection('users').doc(t.uid).get()
-  assertNotBanned(user, now) // three confirmed strikes pause new requests
+  assertNotBanned(user, now, { studio: holdsStudio({ type: b.type, noStudio: b.noStudio }) }) // a semester ban pauses new requests; the one-week studio ban only those that use the studio
   const stepMs = b.durationMin * 60_000
   const skipped: Skipped[] = []
   const mine = (await db.collection('slotRequests').where('requesterUid', '==', t.uid).get()).docs
@@ -60,14 +62,12 @@ export async function createSlotRequests(db: Firestore, t: DecodedIdToken, b: Ne
   }
   if (!ok.length) throw new HttpError(409, 'Those times are already booked or already requested.')
 
-  // Pre-recorded shows are open to students. Live shows need the radioTrained badge (directors and admins always have it). The on-air agreements are signed
-  // right after they submit, so a request is saved first and carries a flag for whether the account has signed yet.
+  // Anyone can request a show before they are trained. They have 48 hours to take the training (trainByAt) or the request is cancelled, and it
+  // is not approved automatically until they have (autoEligible). The on-air agreements are signed right after they submit (or at the training),
+  // so a request is saved first and carries a flag for whether the account has signed yet.
   const ready = await readiness(db, t)
-  // A radio badge that ran out blocks NEW live requests until renewed. Shows already approved stay on the schedule.
-  if (b.type === 'live' && !ready.trained) {
-    if ((await accessOf(t)).radioExpired) throw new HttpError(403, 'Your training has ended. Retake it at babsonradio.com/training to request a live show.', 'BR-TRN-010')
-    throw new HttpError(403, 'Take the training at babsonradio.com/training to request a live show.', 'BR-TRN-001')
-  }
+  // A radio badge that ran out blocks NEW requests until renewed. Shows already approved stay on the schedule.
+  if (!ready.trained && (await accessOf(t)).radioExpired) throw new HttpError(403, 'Your training has ended. Retake it at babsonradio.com/training to request a show.', 'BR-TRN-010')
 
   const groupId = o.groupId || (starts.length > 1 ? db.collection('slotRequests').doc().id : null)
   // A group counts as one pending request: adding to a group that is already pending does not use another.
@@ -78,7 +78,7 @@ export async function createSlotRequests(db: Firestore, t: DecodedIdToken, b: Ne
   const wantsPublic = b.publicConsent != null && typeof b.publicConsent === 'object'
   if (wantsPublic) await assertAllAdults(db, [t.uid])
 
-  const eligible = autoEligible({ type: b.type, conductSigned: ready.conductSigned, radioTrained: ready.trained })
+  const eligible = autoEligible({ type: b.type, radioTrained: ready.trained })
   const created = Timestamp.fromMillis(now)
   const refs = ok.map(() => db.collection('slotRequests').doc())
   const batch = db.batch()
@@ -89,12 +89,13 @@ export async function createSlotRequests(db: Firestore, t: DecodedIdToken, b: Ne
     title: b.title, description: b.description, location: b.location, type: b.type, category: b.category, audioURL: b.audioURL,
     imageUrl: b.img?.imageUrl ?? '', imagePath: b.img?.imagePath ?? '',
     startAt: Timestamp.fromMillis(s), endAt: Timestamp.fromMillis(s + stepMs), durationMin: b.durationMin,
-    status: 'pending', createdAt: created, makePublic: false, cleanHours: touchesCleanHours(s, s + stepMs), conductSigned: ready.conductSigned, receiveRatings: b.receiveRatings,
+    status: 'pending', createdAt: created, makePublic: false, cleanHours: touchesCleanHours(s, s + stepMs), conductSigned: ready.conductSigned, gearAck: b.acks === 'new', contentAck: b.acks === 'new', receiveRatings: b.receiveRatings,
     ...(groupId ? { groupId } : {}),
     guests: b.guests, justMe: b.justMe, noStudio: b.type === 'live' && b.noStudio, policyVersion: POLICY_VERSION,
     ...(b.guests.length ? { purgeAt: Timestamp.fromMillis(purgeAtMs(s)) } : {}),
     // Approves itself at this time unless staff hold it, the week limit applies, or the agreement / training is missing (lib/server/autoApprove.ts).
     autoApproveAt: Timestamp.fromMillis(autoApproveAtMs(now, s, rules)), autoEligible: eligible,
+    ...(ready.trained ? {} : { trainByAt: Timestamp.fromMillis(trainByMs(now, s)) }),
   }))
   await batch.commit()
 
@@ -108,5 +109,5 @@ export async function createSlotRequests(db: Firestore, t: DecodedIdToken, b: Ne
   after(() => notifyAdmins('requests', { title: 'New show request', body: `${who}: ${b.title}${ok.length > 1 ? ` (${ok.length} weeks)` : ''}` }, t.uid))
   after(() => rememberGuests(db, t.uid, b.guests, now).catch(() => {}))
   const q = quietInfo(studio.quiet, ok[0], ok[0] + stepMs)
-  return { id: refs[0].id, ids: refs.map(r => r.id), skipped, groupId, needsAgreement: !ready.conductSigned, quiet: q.quiet, warning: q.warning }
+  return { id: refs[0].id, ids: refs.map(r => r.id), skipped, groupId, needsTraining: !ready.trained, trainBy: ready.trained ? null : trainByMs(now, ok[0]), quiet: q.quiet, warning: q.warning }
 }

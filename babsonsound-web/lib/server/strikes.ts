@@ -5,7 +5,7 @@ import { HttpError } from './http'
 import { loadStudioRules } from './studioRules'
 import { azHistory, azuraConfigured } from './azuracast'
 import { sendMail, strikeMail } from './mailer'
-import { STRIKE_KINDS, KIND_TEXT, bannedUntilOf, emailKindFor, levelOf, liveNoShow, prerecordedNoAudio, semesterEndMs, standingOf, strikeId, counts, type StrikeKind, type StrikeLike } from '../strikesCore'
+import { STRIKE_KINDS, KIND_TEXT, banEmailKind, bannedUntilOf, emailKindFor, isBanKind, studioBanUntilOf, levelOf, liveNoShow, prerecordedNoAudio, semesterEndMs, standingOf, strikeId, counts, type StrikeKind, type StrikeLike } from '../strikesCore'
 
 // Strikes (collection `strikes`, admin SDK only). Detection only FLAGS (status 'pending'). A person on the E-board confirms or excuses each one.
 // A confirmed strike carries `expiresAt` (the end of the semester date in Settings when it was confirmed) and counts until then.
@@ -39,12 +39,13 @@ export async function flagStrike(db: Firestore, o: { uid: string; kind: StrikeKi
 export async function refreshStanding(db: Firestore, uid: string, now = Date.now()) {
   const snap = await db.collection('strikes').where('uid', '==', uid).get()
   const list = snap.docs.map(docOf)
-  const level = levelOf(list, now), until = bannedUntilOf(list, now)
+  const level = levelOf(list, now), until = bannedUntilOf(list, now), studioUntil = studioBanUntilOf(list, now)
   const live = list.filter(s => counts(s, now)), last = live.length ? Math.max(...live.map(s => s.expiresAt ?? 0)) : 0
   await db.collection('users').doc(uid).set({
     strikeLevel: level, strikeUntil: last ? Timestamp.fromMillis(last) : FieldValue.delete(), bannedUntil: until ? until : FieldValue.delete(),
+    studioBannedUntil: studioUntil ? studioUntil : FieldValue.delete(),
   }, { merge: true })
-  return { level, bannedUntil: until }
+  return { level, bannedUntil: until, studioBannedUntil: studioUntil }
 }
 
 /** GET /api/me/standing */
@@ -70,17 +71,30 @@ export async function decideStrike(db: Firestore, id: string, action: 'confirm' 
     return docOf(d)
   })
   const st = await refreshStanding(db, s.uid, now)
-  if (action === 'confirm') await mailStrike(db, s, st.level, st.bannedUntil, expiresAt)
-  return { ok: true, uid: s.uid, level: st.level, bannedUntil: st.bannedUntil }
+  if (action === 'confirm') await mailStrike(db, s, st.level, st.bannedUntil, st.studioBannedUntil, expiresAt)
+  return { ok: true, uid: s.uid, level: st.level, bannedUntil: st.bannedUntil, studioBannedUntil: st.studioBannedUntil }
 }
 
-async function mailStrike(db: Firestore, s: StrikeDoc, level: number, bannedUntil: number | null, expiresAt: number) {
+async function mailStrike(db: Firestore, s: StrikeDoc, level: number, bannedUntil: number | null, studioBannedUntil: number | null, expiresAt: number) {
   const u = await db.collection('users').doc(s.uid).get()
   const to = String(u.get('email') ?? '')
   if (!to) return
-  const until = new Date(bannedUntil ?? expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })
-  const m = strikeMail({ kind: emailKindFor(level), reason: (KIND_TEXT[s.kind as StrikeKind] ?? 'a strike').toLowerCase(), until })
+  const day = (ms: number) => new Date(ms).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })
+  // First strike: a friendly email. Second: a week without the studio. Third: no hosting or booking until the semester ends. Bans given directly have their own email.
+  const kind = isBanKind(s.kind) ? banEmailKind(s.kind) : emailKindFor(level)
+  const until = day(kind === 'warning' || kind === 'studio-ban' ? studioBannedUntil ?? expiresAt : bannedUntil ?? expiresAt)
+  const m = strikeMail({ kind, reason: (KIND_TEXT[s.kind as StrikeKind] ?? 'a strike').toLowerCase(), until })
   after(() => sendMail(to, m.subject, m.text, m.html))
+}
+
+/** The strikes waiting for a decision (up to 20, newest first) with the person's name, for the Overview's Needs approval box. */
+export async function pendingStrikeRows(db: Firestore) {
+  const snap = await db.collection('strikes').where('status', '==', 'pending').limit(20).get()
+  const rows = snap.docs.map(docOf).sort((a, b) => b.at - a.at)
+  const uids = [...new Set(rows.map(r => r.uid))]
+  const users = uids.length ? await db.getAll(...uids.map(u => db.collection('users').doc(u)), { fieldMask: ['firstName', 'lastName', 'email'] }) : []
+  const who = new Map(users.map(u => [u.id, { name: [u.get('firstName'), u.get('lastName')].filter(Boolean).join(' ') || '(no name)', email: String(u.get('email') ?? '') }]))
+  return rows.map(r => ({ ...r, name: who.get(r.uid)?.name ?? '', email: who.get(r.uid)?.email ?? '', reason: KIND_TEXT[r.kind as StrikeKind] ?? 'Strike' }))
 }
 
 /** Pending first (up to 100), then the latest 50 that were decided. */

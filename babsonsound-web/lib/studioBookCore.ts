@@ -6,7 +6,7 @@ import { nyParts } from './slotAuto.ts'
 export const STUDIO_STEP_MIN = 30
 export const LIVE_MAX_MINUTES = 90
 /** Stored with every request and booking that was made with the policy box ticked. */
-export const POLICY_VERSION = '2026-11-12'
+export const POLICY_VERSION = '2026-11-20'
 export const QUIET_WARNING = 'Quiet hours: no loud DJ sets, keep the volume as low as possible'
 export const GUEST_KEEP_DAYS = 90
 

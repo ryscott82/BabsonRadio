@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       title, description, location, type: r.get('type') as SlotType, category: r.get('category') as SlotCategory, audioURL: String(r.get('audioURL') ?? ''),
       img: r.get('imageUrl') ? { imageUrl: String(r.get('imageUrl')), imagePath: String(r.get('imagePath') ?? '') } : null,
       durationMin: Number(r.get('durationMin')), receiveRatings: r.get('receiveRatings') !== false, publicConsent: null,
-      guests, justMe: g.justMe, noStudio: r.get('noStudio') === true,
+      guests, justMe: g.justMe, noStudio: r.get('noStudio') === true, acks: r.get('gearAck') === true ? 'new' : 'legacy',
     }, repeatStarts(startMs, weeks), { hardFirst: false, groupId })
     if (!r.get('groupId')) await ref.update({ groupId }).catch(() => {})
     return out

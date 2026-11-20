@@ -10,11 +10,11 @@ const hrefs = (role: 'director' | 'admin') => menuFor(role).flatMap(s => s.tiles
 const tabOf = (h: string) => SECTIONS.find(s => s.tiles.some(t => t.href === h))?.id
 
 // ── tabs per role ──
-test('E-board sees Overview, Users, Shows, Content and Notifications, in that order, and no Documentation or Advanced', () => {
-  assert.deepEqual(titles('director'), ['Overview', 'Users', 'Shows', 'Content', 'Notifications'])
+test('E-board sees Overview, Users, Schedule, Content and Notifications, in that order, and no Documentation or Advanced', () => {
+  assert.deepEqual(titles('director'), ['Overview', 'Users', 'Schedule', 'Content', 'Notifications'])
 })
 test('an admin sees the same five, then Documentation and Advanced', () => {
-  assert.deepEqual(titles('admin'), ['Overview', 'Users', 'Shows', 'Content', 'Notifications', 'Documentation', 'Advanced'])
+  assert.deepEqual(titles('admin'), ['Overview', 'Users', 'Schedule', 'Content', 'Notifications', 'Documentation', 'Advanced'])
 })
 test('nothing Admin-only is in the E-board menu, not even a heading, and no tab is empty', () => {
   const adminOnly = SECTIONS.filter(s => !s.admin).flatMap(s => s.tiles).filter(t => t.admin).map(t => t.href)
@@ -26,18 +26,19 @@ test('nothing Admin-only is in the E-board menu, not even a heading, and no tab 
 })
 test('tab membership matches the design', () => {
   const admin = (id: string) => menuFor('admin').find(s => s.id === id)!
-  assert.deepEqual(admin('users').tiles.map(t => t.title), ['Users and roles', 'Training', 'Training quiz', 'Phone changes', 'Phone lookup', 'Birthdays', 'Studio PC log'])
-  assert.deepEqual(admin('shows').tiles.map(t => t.title), ['Schedule', 'Show requests', 'Show changes', 'Auto DJ', 'Set lists', 'Strikes', 'Studio list', 'Club events'])
+  assert.deepEqual(admin('users').tiles.map(t => t.title), ['Users and roles', 'Training', 'Training quiz', 'Strikes', 'Phone changes', 'Phone lookup', 'Birthdays', 'Studio PC log'])
+  assert.deepEqual(admin('schedule').tiles.map(t => t.title), ['On-air schedule', 'Show requests', 'Show changes', 'Studio list', 'Club events'])
   assert.deepEqual(admin('content').groups[0].tiles.map(t => t.title), ['Episodes', 'Music library', 'Uploads', 'Song requests', 'Blocked words'])
   assert.equal(admin('content').groups[1].title, 'Content library')
   assert.deepEqual(admin('advanced').groups.map(g => g.title), ['Server', 'Limits and defaults', 'Site and content settings', 'Tools'])
   assert.deepEqual(admin('advanced').tiles.map(t => t.title).sort(),
-    ['Bugs and ideas', 'Easter eggs', 'Expert settings', 'Launch email', 'Listening limits', 'Page text', 'Server load', 'Stats', 'Studio form', 'Tests'].sort())
+    ['Auto DJ', 'Bugs and ideas', 'Easter eggs', 'Expert settings', 'Launch email', 'Listening limits', 'Page text', 'Server load', 'Stats', 'Studio form', 'Tests'].sort())
 })
-test('E-board Users tab has Training and the Studio PC log; Shows has Auto DJ; Content has Blocked words and no library settings', () => {
+test('E-board Users tab has Training, Strikes and the Studio PC log; Auto DJ is in Advanced (E-board reach it by search); Content has Blocked words and no library settings', () => {
   const t = (id: string) => menuFor('director').find(s => s.id === id)!.tiles.map(x => x.href)
-  assert.deepEqual(t('users'), ['/admin/training', '/admin/quiz', '/admin/booth'])
-  assert.ok(t('shows').includes('/admin/autoschedule'))
+  assert.deepEqual(t('users'), ['/admin/training', '/admin/quiz', '/admin/strikes', '/admin/booth'])
+  assert.ok(!t('schedule').includes('/admin/autoschedule'))
+  assert.equal(tabOf('/admin/autoschedule'), 'advanced')
   assert.ok(t('content').includes('/admin/blocked-words'))
   assert.equal(menuFor('director').find(s => s.id === 'content')!.groups.length, 1)
 })
@@ -60,14 +61,15 @@ test('Notifications is a tab that is itself a page, with the unread badge from t
   assert.match(shell, /if \(!user \|\| !isDirector\) return\n\s+apiGet<\{ items: unknown\[\]; newReports/) // both roles read it, once
 })
 test('E-board keeps what they could open before: Stats is reachable from search and the More links, and so are the old pages', () => {
-  assert.deepEqual(eboardExtras().map(e => e.href), ['/admin/stats'])
+  assert.deepEqual(eboardExtras().map(e => e.href).sort(), ['/admin/autoschedule', '/admin/stats'])
+  assert.ok(searchMenu('director', 'auto dj').some(e => e.href === '/admin/autoschedule'))
   assert.ok(searchMenu('director', 'stats').some(e => e.href === '/admin/stats'))
-  for (const h of ['/admin/schedule', '/admin/slots', '/admin/show-updates', '/admin/autoschedule', '/admin/booth', '/admin/library', '/admin/requests', '/admin/training', '/admin/blocked-words']) assert.ok(hrefs('director').includes(h), h)
+  for (const h of ['/admin/schedule', '/admin/slots', '/admin/show-updates', '/admin/booth', '/admin/library', '/admin/requests', '/admin/training', '/admin/blocked-words']) assert.ok(hrefs('director').includes(h), h)
 })
 
 // ── old addresses ──
 test('every old URL still opens: in the menu exactly once, or a redirect page that exists', () => {
-  const old = ['schedule', 'slots', 'show-updates', 'booth', 'setlists', 'library', 'music-library', 'media', 'autoschedule', 'requests', 'blocked-words',
+  const old = ['schedule', 'slots', 'show-updates', 'booth', 'library', 'music-library', 'media', 'autoschedule', 'requests', 'blocked-words',
     'users', 'training', 'studio-form', 'phone-changes', 'phone-lookup', 'birthdays', 'launch-email', 'feedback', 'site-text',
     'listening-limits', 'easter-eggs', 'stats', 'server-load', 'tests', 'docs'].map(p => `/admin/${p}`)
   const all = [...hrefs('admin'), ...menuFor('admin').flatMap(s => (s.href ? [s.href] : []))]
@@ -82,9 +84,9 @@ test('/admin/notify redirects to /admin/notifications; the old settings address 
 })
 test('old # links land on the right tab: #people, #music, #system, #customize, #settings, #onair, #messages, and the new names', () => {
   assert.equal(resolveHash('#people'), 'users'); assert.equal(resolveHash('#music'), 'content'); assert.equal(resolveHash('#system'), 'advanced')
-  assert.equal(resolveHash('#customize'), 'advanced'); assert.equal(resolveHash('#settings'), 'advanced'); assert.equal(resolveHash('#onair'), 'shows')
+  assert.equal(resolveHash('#customize'), 'advanced'); assert.equal(resolveHash('#settings'), 'advanced'); assert.equal(resolveHash('#onair'), 'schedule'); assert.equal(resolveHash('#shows'), 'schedule')
   assert.equal(resolveHash('#messages'), 'notifications'); assert.equal(resolveHash('#rules'), 'advanced'); assert.equal(resolveHash('#tools'), 'advanced')
-  for (const id of ['users', 'shows', 'content', 'notifications', 'advanced']) assert.equal(resolveHash(`#${id}`), id)
+  for (const id of ['users', 'schedule', 'content', 'notifications', 'advanced']) assert.equal(resolveHash(`#${id}`), id)
   assert.equal(resolveHash(''), 'home'); assert.equal(resolveHash('#nonsense'), 'home')
   for (const target of Object.values(LEGACY_HASH)) assert.ok(SECTIONS.some(s => s.id === target), target)
 })
@@ -126,9 +128,9 @@ test('E-board on a page that sits in Advanced (Stats) goes back to home, not to 
   assert.equal(backTarget('/admin/stats', 'admin').href, '/admin#advanced')
 })
 test('arrived from search: Back goes to the tab the person was on, only for that page', () => {
-  const from = readFromNote(fromNote('shows', '/admin/users'))
-  assert.deepEqual(from, { tab: 'shows', href: '/admin/users' })
-  assert.equal(backTarget('/admin/users', 'admin', from).href, '/admin#shows')
+  const from = readFromNote(fromNote('schedule', '/admin/users'))
+  assert.deepEqual(from, { tab: 'schedule', href: '/admin/users' })
+  assert.equal(backTarget('/admin/users', 'admin', from).href, '/admin#schedule')
   assert.equal(backTarget('/admin/training', 'admin', from).href, '/admin#users') // a different page ignores the note
   assert.equal(backTarget('/admin/users', 'director', readFromNote(fromNote('advanced', '/admin/users'))).href, '/admin') // hidden tab → home
   assert.equal(backTarget('/admin/slots', 'admin', readFromNote(fromNote('home', '/admin/slots'))).href, '/admin')
@@ -201,4 +203,17 @@ test('Documentation is a tab of its own (Admins), the Overview is the home name,
   assert.equal(resolveHash('#docs', 'admin'), 'docs'); assert.equal(resolveHash('#docs', 'director'), 'home')
   assert.ok(searchMenu('admin', 'documentation').some(e => e.href === '/admin/docs'))
   assert.match(src('app/admin/page.tsx'), /<h1 className="text-4xl font-light leading-tight">Overview<\/h1>/)
+})
+
+test('set lists sit inside each show entry on the schedule page; the old Set lists address goes there', async () => {
+  const { setlistsFor, unmatchedSetlists, setlistsCsv } = await import('./setlistsFor.ts')
+  const mk = (id: string, showTitle: string, startAt: number, songs = 'a\nb') => ({ id, showTitle, startAt, songs, songCount: 2 })
+  const items = [mk('1', 'Friday Mix', 1), mk('2', ' friday  mix ', 3), mk('3', 'Gone Show', 2), mk('4', '', 4)]
+  assert.deepEqual(setlistsFor(items, 'Friday Mix').map(i => i.id), ['2', '1']) // same show, newest first
+  assert.deepEqual(setlistsFor(items, ''), [])
+  assert.deepEqual(unmatchedSetlists(items, ['Friday Mix']).map(i => i.id), ['3', '4']) // nothing is lost from view
+  assert.equal(setlistsCsv([mk('1', 'A "x"', 1)]).split('\n').length, 3)
+  assert.ok(!SECTIONS.flatMap(s => s.tiles).some(t => t.href === '/admin/setlists'))
+  assert.match(src('app/admin/setlists/page.tsx'), /redirect\('\/admin\/schedule'\)/)
+  assert.match(src('app/admin/schedule/page.tsx'), /<ShowSetLists items=\{setlistsFor\(setlists, s\.showName\)\}/)
 })

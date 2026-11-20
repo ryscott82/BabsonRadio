@@ -7,8 +7,9 @@ import { isListedOwner, isVerifiedOwner } from '../ownerRule'
 import { badgeActive } from '../studioRules'
 
 /** One access level per person. */
-export type Level = 'guest' | 'student' | 'director' | 'admin'
-export const LEVELS: Level[] = ['guest', 'student', 'director', 'admin']
+/** 'arts' is BabsonARTS staff: students with the studio and radio badges and their own Settings menu (strikes and bans, adding staff, the studio form link). */
+export type Level = 'guest' | 'student' | 'arts' | 'director' | 'admin'
+export const LEVELS: Level[] = ['guest', 'student', 'arts', 'director', 'admin']
 
 /** Exact school domains. Subdomains (students.babson.edu) are NOT matched, same as the old BABSON_EMAIL rule. */
 export const SCHOOL_EMAIL = /^[a-z0-9._%+-]+@(babson|olin|wellesley)\.edu$/
@@ -103,7 +104,7 @@ export async function accessOf(t: DecodedIdToken): Promise<Access> {
   const trusted = schoolVerified || t.email_verified === true || demo || owner
   if (level !== 'guest' && !trusted) level = 'guest'
 
-  const high = level === 'admin' || level === 'director'
+  const high = level === 'admin' || level === 'director' || level === 'arts'
   // Badges from Studio training run out on a date (users.studioExpiresAt / radioExpiresAt). No date = the old flow, never expires.
   const expiry = (k: string): number | null => { const v = field(k) as { toMillis?: () => number } | null | undefined; return v?.toMillis?.() ?? null }
   const studioExp = high ? null : expiry('studioExpiresAt'), radioExp = high ? null : expiry('radioExpiresAt')

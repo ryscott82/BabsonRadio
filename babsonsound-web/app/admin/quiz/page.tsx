@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
-import { ErrorText, PrimaryButton } from '@/components/AuthUI'
 import type { QuizQuestion, QuizTopic } from '@/lib/training'
 import { CSV_HEADER, LIMITS, QUIZ_NEEDS, TOPICS, TOPIC_LABEL, answerLetter, checkQuestion, planImport, readImport, toCsv } from '@/lib/quizBank'
 
@@ -14,8 +13,8 @@ import { CSV_HEADER, LIMITS, QUIZ_NEEDS, TOPICS, TOPIC_LABEL, answerLetter, chec
 interface Bank { questions: QuizQuestion[]; builtIn: boolean; updatedAt: number | null; updatedBy: string; lastAction: string; canUndo: boolean; problem: string; note?: string }
 type Draft = { id?: string; topic: QuizTopic; q: string; options: string[]; answer: number; why: string }
 const empty = (topic: QuizTopic = 'studio'): Draft => ({ topic, q: '', options: ['', '', '', ''], answer: 0, why: '' })
-const field = 'sk-field w-full rounded-xl px-4 py-3 text-base text-br-dk-text focus:outline-none'
-const small = 'sk-key rounded-lg px-4 min-h-11 text-base font-semibold text-br-dk-text disabled:opacity-50'
+const field = 'ops-field w-full min-h-11'
+const small = 'ops-btn px-4 min-h-11 disabled:opacity-50'
 
 function download(name: string, text: string) {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/csv' }))
@@ -81,64 +80,64 @@ export default function QuizBankPage() {
 
   return (
     <div className="px-5 lg:px-8 py-8 space-y-6 max-w-4xl">
-      <h1 className="font-display text-br-dk-text text-3xl tracking-[0.1em]">Training quiz</h1>
-      <p className="text-base text-br-dk-sub">
+      <h1 className="text-4xl font-light leading-tight">Training quiz</h1>
+      <p className="text-base text-white">
         The questions for the training at babsonradio.com/training. Each quiz is mostly the studio: {QUIZ_NEEDS.studio} studio and equipment
         questions, plus 3 radio ones ({QUIZ_NEEDS.radio} on going on air, {QUIZ_NEEDS.slurs} on slurs, {QUIZ_NEEDS.privacy} on private information), picked at random. Every answer has to be right. People who get one wrong
         see the explanation, never the right answer. Changes reach the quiz within a minute.
       </p>
 
       {bank && (
-        <div className="sk-raised rounded-xl p-4 space-y-1">
-          <p className="text-base text-br-dk-text">
+        <div className="ops-card p-4 space-y-1">
+          <p className="text-base text-white">
             {bank.questions.length} questions: {TOPICS.map(t => `${count(t)} ${TOPIC_LABEL[t].toLowerCase()}`).join(', ')}.
           </p>
-          {bank.problem ? <p className="text-base text-br-red">{bank.problem}</p> : <p className="text-base text-br-dk-sub">Enough of each to fill a quiz.</p>}
-          <p className="text-base text-br-dk-sub">
+          {bank.problem ? <p className="text-base bg-white text-[#9d1c14] px-3 py-1 font-semibold">{bank.problem}</p> : <p className="text-base text-white">Enough of each to fill a quiz.</p>}
+          <p className="text-base text-white">
             {bank.builtIn ? 'These are the built-in questions. The first change saves them as the bank.' : `Last change: ${bank.lastAction || 'saved'}${bank.updatedBy ? ` by ${bank.updatedBy}` : ''}${bank.updatedAt ? `, ${new Date(bank.updatedAt).toLocaleString()}` : ''}.`}
           </p>
         </div>
       )}
 
-      <div className="whitespace-pre-line"><ErrorText>{error}</ErrorText></div>
-      {notice && <p role="status" className="text-base text-br-gold">{notice}</p>}
+      <div className="whitespace-pre-line">{error && <p role="alert" className="text-base font-semibold bg-white text-[#9d1c14] px-3 py-1">{error}</p>}</div>
+      {notice && <p role="status" className="text-base text-white font-semibold">{notice}</p>}
 
       {/* Add or edit one question */}
       {editing ? (
-        <section className="sk-raised rounded-xl p-4 space-y-3" aria-label={editing.id ? 'Edit question' : 'New question'}>
-          <h2 className="text-br-dk-text text-lg">{editing.id ? 'Edit question' : 'New question'}</h2>
-          <label className="block space-y-1"><span className="text-base text-br-dk-sub">Topic</span>
+        <section className="ops-card p-4 space-y-3" aria-label={editing.id ? 'Edit question' : 'New question'}>
+          <h2 className="text-white text-lg">{editing.id ? 'Edit question' : 'New question'}</h2>
+          <label className="block space-y-1"><span className="text-base text-white">Topic</span>
             <select value={editing.topic} onChange={e => setEditing({ ...editing, topic: e.target.value as QuizTopic })} className={field}>
               {TOPICS.map(t => <option key={t} value={t}>{TOPIC_LABEL[t]}</option>)}
             </select>
           </label>
-          <label className="block space-y-1"><span className="text-base text-br-dk-sub">Question</span>
+          <label className="block space-y-1"><span className="text-base text-white">Question</span>
             <textarea value={editing.q} maxLength={LIMITS.q} rows={2} onChange={e => setEditing({ ...editing, q: e.target.value })} className={field} />
           </label>
           <fieldset className="space-y-2">
-            <legend className="text-base text-br-dk-sub">Answers (pick the right one)</legend>
+            <legend className="text-base text-white">Answers (pick the right one)</legend>
             {editing.options.map((o, i) => (
               <div key={i} className="flex items-center gap-3">
                 <input type="radio" name="right" aria-label={`Answer ${answerLetter(i)} is right`} checked={editing.answer === i} onChange={() => setEditing({ ...editing, answer: i })} />
-                <span className="text-base text-br-dk-sub w-5">{answerLetter(i)}</span>
+                <span className="text-base text-white w-5">{answerLetter(i)}</span>
                 <input value={o} maxLength={LIMITS.option} onChange={e => setEditing({ ...editing, options: editing.options.map((x, j) => (j === i ? e.target.value : x)) })} className={field} />
                 {editing.options.length > LIMITS.minOptions && (
-                  <button type="button" aria-label={`Remove answer ${answerLetter(i)}`} className="text-br-dk-sub text-xl px-2"
+                  <button type="button" aria-label={`Remove answer ${answerLetter(i)}`} className="text-white text-xl px-2"
                     onClick={() => setEditing({ ...editing, options: editing.options.filter((_, j) => j !== i), answer: editing.answer === i ? 0 : editing.answer > i ? editing.answer - 1 : editing.answer })}>×</button>
                 )}
               </div>
             ))}
-            {editing.options.length < LIMITS.maxOptions && <button type="button" className="text-base text-br-gold underline" onClick={() => setEditing({ ...editing, options: [...editing.options, ''] })}>Add an answer</button>}
+            {editing.options.length < LIMITS.maxOptions && <button type="button" className="text-base text-white font-semibold underline underline-offset-2" onClick={() => setEditing({ ...editing, options: [...editing.options, ''] })}>Add an answer</button>}
           </fieldset>
-          <label className="block space-y-1"><span className="text-base text-br-dk-sub">Why (shown to people who get it wrong)</span>
+          <label className="block space-y-1"><span className="text-base text-white">Why (shown to people who get it wrong)</span>
             <textarea value={editing.why} maxLength={LIMITS.why} rows={2} onChange={e => setEditing({ ...editing, why: e.target.value })} className={field} />
           </label>
-          {draftCheck && !draftCheck.ok && (editing.q || editing.why) && <p className="text-base text-br-dk-sub">{draftCheck.error}</p>}
+          {draftCheck && !draftCheck.ok && (editing.q || editing.why) && <p className="text-base text-white">{draftCheck.error}</p>}
           <div className="flex flex-wrap gap-3">
-            <PrimaryButton busy={busy === 'save'} disabled={!draftCheck?.ok}
+            <button type="button" className={small} disabled={busy === 'save' || !draftCheck?.ok}
               onClick={async () => { if (await send({ action: 'save', question: { ...editing, options: editing.options.filter(o => o.trim()) } }, 'save')) setEditing(null) }}>
-              {editing.id ? 'Save' : 'Add question'}
-            </PrimaryButton>
+              {busy === 'save' ? 'Saving…' : editing.id ? 'Save' : 'Add question'}
+            </button>
             <button type="button" className={small} onClick={() => setEditing(null)}>Cancel</button>
           </div>
         </section>
@@ -151,7 +150,7 @@ export default function QuizBankPage() {
         <div className="flex flex-wrap gap-2 items-center">
           {(['all', ...TOPICS] as const).map(t => (
             <button key={t} type="button" aria-pressed={topic === t} onClick={() => setTopic(t)}
-              className={`rounded-full px-4 min-h-11 text-base ${topic === t ? 'sk-key text-br-gold ring-1 ring-br-gold' : 'sk-key text-br-dk-text'}`}>
+              className={`px-4 min-h-11 text-base ops-btn`}>
               {t === 'all' ? `All (${bank?.questions.length ?? 0})` : `${TOPIC_LABEL[t].replace(' (not in the quiz now)', '').replace('Radio: ', '')} (${count(t)})`}
             </button>
           ))}
@@ -160,43 +159,43 @@ export default function QuizBankPage() {
 
         {isAdmin && shown.length > 0 && (
           <div className="flex flex-wrap items-center gap-3">
-            <button type="button" className="text-base text-br-gold underline" onClick={() => setPicked(p => (shown.every(q => p.has(q.id)) ? new Set() : new Set(shown.map(q => q.id))))}>
+            <button type="button" className="text-base text-white font-semibold underline underline-offset-2" onClick={() => setPicked(p => (shown.every(q => p.has(q.id)) ? new Set() : new Set(shown.map(q => q.id))))}>
               {shown.every(q => picked.has(q.id)) ? 'Untick all' : `Tick all ${shown.length} shown`}
             </button>
             {picked.size > 0 && (confirmMany
               ? <>
-                  <span className="text-base text-br-dk-text">Delete {picked.size} {picked.size === 1 ? 'question' : 'questions'}? You can undo this once.</span>
-                  <button type="button" className="sk-key rounded-lg px-4 min-h-11 text-base font-semibold text-br-red disabled:opacity-50" disabled={busy === 'many'} onClick={() => send({ action: 'deleteMany', ids: [...picked] }, 'many')}>Yes, delete</button>
+                  <span className="text-base text-white">Delete {picked.size} {picked.size === 1 ? 'question' : 'questions'}? You can undo this once.</span>
+                  <button type="button" className="ops-btn-red px-4 min-h-11 disabled:opacity-50" disabled={busy === 'many'} onClick={() => send({ action: 'deleteMany', ids: [...picked] }, 'many')}>Yes, delete</button>
                   <button type="button" className={small} onClick={() => setConfirmMany(false)}>Keep them</button>
                 </>
               : <button type="button" className={small} onClick={() => setConfirmMany(true)}>Delete ticked ({picked.size})</button>)}
           </div>
         )}
 
-        {bank && shown.length === 0 && <p className="text-base text-br-dk-sub">No questions match.</p>}
+        {bank && shown.length === 0 && <p className="text-base text-white">No questions match.</p>}
         <ul className="space-y-3">
           {shown.map(q => (
-            <li key={q.id} className="sk-field rounded-xl p-4 space-y-2">
+            <li key={q.id} className="ops-card p-4 space-y-2">
               <div className="flex gap-3 items-start">
                 {isAdmin && <input type="checkbox" className="mt-1.5" aria-label={`Tick "${q.q}"`} checked={picked.has(q.id)}
                   onChange={() => setPicked(p => { const n = new Set(p); if (n.has(q.id)) n.delete(q.id); else n.add(q.id); return n })} />}
                 <div className="flex-1 space-y-1">
-                  <p className="text-base text-br-dk-sub">{TOPIC_LABEL[q.topic]}</p>
-                  <p className="text-base text-br-dk-text font-semibold">{q.q}</p>
+                  <p className="text-base text-white">{TOPIC_LABEL[q.topic]}</p>
+                  <p className="text-base text-white font-semibold">{q.q}</p>
                   <ol className="space-y-0.5">
-                    {q.options.map((o, i) => <li key={i} className={`text-base ${i === q.answer ? 'text-br-gold' : 'text-br-dk-sub'}`}>{answerLetter(i)}. {o}{i === q.answer ? ' (right)' : ''}</li>)}
+                    {q.options.map((o, i) => <li key={i} className={`text-base ${i === q.answer ? 'text-white font-semibold' : 'text-white'}`}>{answerLetter(i)}. {o}{i === q.answer ? ' (right)' : ''}</li>)}
                   </ol>
-                  <p className="text-base text-br-dk-sub">Why: {q.why}</p>
+                  <p className="text-base text-white">Why: {q.why}</p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-3">
-                <button type="button" className="text-base text-br-gold underline" onClick={() => { setNotice(''); setEditing({ id: q.id, topic: q.topic, q: q.q, options: [...q.options], answer: q.answer, why: q.why }); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Edit</button>
+                <button type="button" className="text-base text-white font-semibold underline underline-offset-2" onClick={() => { setNotice(''); setEditing({ id: q.id, topic: q.topic, q: q.q, options: [...q.options], answer: q.answer, why: q.why }); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Edit</button>
                 {confirmId === q.id
                   ? <>
-                      <button type="button" className="text-base text-br-red underline" disabled={busy === q.id} onClick={() => send({ action: 'delete', id: q.id }, q.id)}>Yes, delete it</button>
-                      <button type="button" className="text-base text-br-dk-sub underline" onClick={() => setConfirmId('')}>Keep it</button>
+                      <button type="button" className="text-base bg-white text-[#9d1c14] px-3 py-1 font-semibold underline" disabled={busy === q.id} onClick={() => send({ action: 'delete', id: q.id }, q.id)}>Yes, delete it</button>
+                      <button type="button" className="text-base text-white underline" onClick={() => setConfirmId('')}>Keep it</button>
                     </>
-                  : <button type="button" className="text-base text-br-dk-sub underline" onClick={() => setConfirmId(q.id)}>Delete</button>}
+                  : <button type="button" className="text-base text-white underline" onClick={() => setConfirmId(q.id)}>Delete</button>}
               </div>
             </li>
           ))}
@@ -205,8 +204,8 @@ export default function QuizBankPage() {
 
       {/* Batch import */}
       <section className="space-y-3 pt-4 border-t border-white/15" aria-label="Import questions">
-        <h2 className="text-br-dk-text text-lg">Import questions</h2>
-        <p className="text-base text-br-dk-sub">
+        <h2 className="text-white text-lg">Import questions</h2>
+        <p className="text-base text-white">
           Paste or pick a CSV file with the columns <span className="font-mono">{CSV_HEADER.join(',')}</span> (answer is the letter of the right one,
           e and f can be left out), or a JSON list. Questions already in the bank are skipped. If any question has a problem, nothing is imported.
         </p>
@@ -221,19 +220,19 @@ export default function QuizBankPage() {
         <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={6} placeholder="Paste CSV or JSON here" aria-label="Questions to import" className={`${field} font-mono`} />
         {preview && (
           preview.errors.length
-            ? <ul className="space-y-1" aria-label="Problems">{preview.errors.slice(0, 10).map(e => <li key={e} className="text-base text-br-red">{e}</li>)}{preview.errors.length > 10 && <li className="text-base text-br-dk-sub">…and {preview.errors.length - 10} more.</li>}</ul>
-            : <p className="text-base text-br-dk-text">Ready: {preview.add} new {preview.add === 1 ? 'question' : 'questions'}{preview.skipped ? `, ${preview.skipped} already in the bank` : ''}.</p>
+            ? <ul className="space-y-1" aria-label="Problems">{preview.errors.slice(0, 10).map(e => <li key={e} className="text-base bg-white text-[#9d1c14] px-3 py-1 font-semibold">{e}</li>)}{preview.errors.length > 10 && <li className="text-base text-white">…and {preview.errors.length - 10} more.</li>}</ul>
+            : <p className="text-base text-white">Ready: {preview.add} new {preview.add === 1 ? 'question' : 'questions'}{preview.skipped ? `, ${preview.skipped} already in the bank` : ''}.</p>
         )}
-        <PrimaryButton busy={busy === 'import'} disabled={!preview || preview.errors.length > 0 || preview.add === 0}
+        <button type="button" className={small} disabled={busy === 'import' || !preview || preview.errors.length > 0 || preview.add === 0}
           onClick={async () => { if (preview && await send({ action: 'import', rows: preview.rows }, 'import')) setImportText('') }}>
-          Import
-        </PrimaryButton>
+          {busy === 'import' ? 'Importing…' : 'Import'}
+        </button>
       </section>
 
       {isAdmin && bank?.canUndo && (
         <section className="space-y-2 pt-4 border-t border-white/15">
-          <h2 className="text-br-dk-text text-lg">Undo</h2>
-          <p className="text-base text-br-dk-sub">Puts the bank back to how it was before the last import or bulk delete.</p>
+          <h2 className="text-white text-lg">Undo</h2>
+          <p className="text-base text-white">Puts the bank back to how it was before the last import or bulk delete.</p>
           <button type="button" className={small} disabled={busy === 'undo'} onClick={() => send({ action: 'undo' }, 'undo')}>Undo the last import or bulk delete</button>
         </section>
       )}

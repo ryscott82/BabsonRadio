@@ -38,9 +38,13 @@ export async function requireStudioBadge(t: DecodedIdToken) {
   return a
 }
 
-/** A ban from three confirmed strikes pauses new show requests and studio bookings. */
-export function assertNotBanned(user: FirebaseFirestore.DocumentSnapshot, now: number) {
-  const v = user.get('bannedUntil')
+/** A semester ban (three strikes, or given directly) pauses new show requests and studio bookings. The one-week studio ban (second strike) pauses only what uses the studio: pass `studio`. */
+export function assertNotBanned(user: FirebaseFirestore.DocumentSnapshot, now: number, o: { studio?: boolean } = {}) {
+  const v = user.get('bannedUntil'), w = user.get('studioBannedUntil')
+  if (o.studio && isBanned(w, now)) {
+    const d = new Date(w as number).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })
+    throw new HttpError(403, `The studio is paused for you until ${d}. Talk to the E-board if you think this is a mistake.`, 'BR-STR-001')
+  }
   const until = typeof v === 'number' ? v : 0
   if (isBanned(until, now)) {
     const d = new Date(until).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })
@@ -105,7 +109,7 @@ export async function bookStudio(db: Firestore, t: DecodedIdToken, i: { startMs:
   if (bad) throw new HttpError(bad.status, bad.message, 'BR-BKG-001')
   if (!withinCapacity(i.guests.length, rules.capacity)) throw new HttpError(400, `With you in the room, at most ${rules.capacity} people fit.`, 'BR-BKG-004')
   const user = await db.collection('users').doc(t.uid).get()
-  assertNotBanned(user, now)
+  assertNotBanned(user, now, { studio: true })
   const start = i.startMs, end = i.startMs + i.durationMin * 60_000
   const ref = db.collection('studioBookings').doc()
   const info = quietInfo(rules.quiet, start, end)

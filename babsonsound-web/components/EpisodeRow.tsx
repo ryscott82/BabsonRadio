@@ -21,7 +21,8 @@ export function EpisodeRow({ ep, saved, onSave, onPlay }: { ep: Ep; saved: boole
       <button onClick={() => onPlay(ep)} aria-label={`Play ${ep.title}`} className="relative shrink-0 w-28 h-16 rounded-lg overflow-hidden bg-[#1B1B18] bg-[url(/hw/leather-black.jpg)] bg-[length:240px_auto] shadow-[inset_0_0_0_1px_rgba(232,212,160,.35),inset_0_2px_6px_rgba(0,0,0,.6)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {ep.thumbnailURL && <img src={ep.thumbnailURL} alt="" className="absolute inset-0 w-full h-full object-cover" />}
-        {!ep.thumbnailURL && ep.audio && <span aria-hidden className="absolute inset-0 flex items-center justify-center text-3xl text-br-gold/40">♪</span>}
+        {/* No picture: the Babson Radio logo */}
+        {!ep.thumbnailURL && <img src="/beaver.png" alt="" aria-hidden className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] object-contain opacity-90" />}
         <span className="absolute inset-0 flex items-center justify-center">
           <span className="w-8 h-8 rounded-full flex items-center justify-center text-[#1a1710] text-[13px] pl-0.5 bg-[url(/hw/steel.jpg)] bg-[length:90px_auto] shadow-[0_2px_0_#6f6d65,0_4px_6px_rgba(0,0,0,.5),inset_0_1px_0_rgba(255,255,255,.55)]">▶</span>
         </span>

@@ -3,15 +3,17 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { api } from '@/lib/auth'
+import { useAuth } from '@/contexts/AuthContext'
 import ConfirmDialog from '../ConfirmDialog'
-import { standingFlag } from '@/lib/strikesAdmin'
+import { actionLabel, standingFlag, strikeActions, type StrikeAction, type StrikeRow } from '@/lib/strikesAdmin'
 import { holdBody, holdLabel } from '@/lib/slotWording'
 import { approveAllBody, approveAllLabel, flagWords, isFlagged, moreWaiting, noteLine, resultLines, waitingFor, type ApproveResultRow, type PendingRow } from '@/lib/todayPage'
 
 const when = (ms: number) => new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
 
 /** Pending show requests: why each one is waiting, Approve and Decline per row, and Approve all behind a confirm list that names every request. */
-export default function NeedsApproval({ rows, total, onChanged }: { rows: PendingRow[] | null; total: number; onChanged: () => void }) {
+export default function NeedsApproval({ rows, total, strikes = [], onChanged }: { rows: PendingRow[] | null; total: number; strikes?: StrikeRow[]; onChanged: () => void }) {
+  const { isAdmin } = useAuth()
   const [busy, setBusy] = useState('')
   const [err, setErr] = useState('')
   const [declining, setDeclining] = useState<string | null>(null)
@@ -32,6 +34,13 @@ export default function NeedsApproval({ rows, total, onChanged }: { rows: Pendin
     catch (e) { setErr(e instanceof Error ? e.message : 'Could not save that.') }
     setBusy('')
   }
+  // A strike waiting for a decision: E-board, BabsonARTS and Admins confirm it (the person is emailed); only an Admin can excuse it.
+  async function decideStrike(r: StrikeRow, action: StrikeAction) {
+    setBusy(r.id); setErr('')
+    try { await api('/api/admin/strikes/decide', { id: r.id, action, note: '' }); onChanged() }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Could not save that.') }
+    setBusy('')
+  }
   // The confirm box lists `shown` and the server gets exactly those ids, even if a poll changes `rows` while the box is open.
   const [shown, setShown] = useState<PendingRow[]>([])
   async function approveAll() {
@@ -46,11 +55,11 @@ export default function NeedsApproval({ rows, total, onChanged }: { rows: Pendin
   return (
     <section className="ops-card p-5 space-y-3 min-h-[10rem] min-w-0 lg:h-full lg:flex lg:flex-col" aria-label="Needs approval" aria-busy={!rows}>
       <div className="flex flex-wrap items-center gap-3 shrink-0">
-        <h2 className="text-2xl font-light flex-1">Needs approval{rows && rows.length > 0 ? ` (${total})` : ''}</h2>
+        <h2 className="text-2xl font-light flex-1">Needs approval{rows && rows.length + strikes.length > 0 ? ` (${total + strikes.length})` : ''}</h2>
         {rows && rows.length > 1 && <button type="button" className="ops-btn px-4 min-h-11" onClick={() => { setShown(rows); setResults(null); setAsking(true) }}>Approve all</button>}
       </div>
       {!rows && <div className="space-y-3"><div className="h-6 w-full bg-white/25 motion-safe:animate-pulse" aria-hidden /><div className="h-6 w-2/3 bg-white/25 motion-safe:animate-pulse" aria-hidden /></div>}
-      {rows && rows.length === 0 && <p className="text-base">Nothing is waiting.</p>}
+      {rows && rows.length === 0 && strikes.length === 0 && <p className="text-base">Nothing is waiting.</p>}
       {err && <p role="alert" className="text-base font-semibold bg-white text-[#9d1c14] px-3 py-1">{err}</p>}
       <ul className="divide-y divide-white/25 lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
         {rows?.map(r => (
@@ -80,6 +89,24 @@ export default function NeedsApproval({ rows, total, onChanged }: { rows: Pendin
           </li>
         ))}
       </ul>
+      {strikes.length > 0 && (
+        <div className="shrink-0 space-y-2 border-t border-white/25 pt-3">
+          <h3 className="text-xl font-light">Strikes ({strikes.length})</h3>
+          <ul className="divide-y divide-white/25 max-h-72 overflow-y-auto">
+            {strikes.map(s => (
+              <li key={s.id} className="py-3 space-y-2">
+                <p className="text-lg leading-snug"><Link href={`/admin/users/${encodeURIComponent(s.uid)}`} className="underline underline-offset-2">{s.name || '(no name)'}</Link><span className="text-base opacity-90"> · {s.reason}</span></p>
+                <p className="text-base opacity-90">{when(s.at)}{s.note ? ` · ${s.note}` : ''}</p>
+                <div className="flex flex-wrap gap-2">
+                  {strikeActions(s.status, isAdmin).map(a => a === 'confirm'
+                    ? <button key={a} type="button" className="ops-btn-red px-4 min-h-11 disabled:opacity-50" disabled={!!busy} onClick={() => decideStrike(s, a)}>{busy === s.id ? 'Working…' : 'Confirm strike'}</button>
+                    : <button key={a} type="button" className="ops-btn px-4 min-h-11 disabled:opacity-50" disabled={!!busy} onClick={() => decideStrike(s, a)}>{actionLabel(s.status, a)}</button>)}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {extra > 0 && <p className="text-base">{extra} more waiting. They show here once these are done, or open Show requests.</p>}
 
       {asking && !results && (

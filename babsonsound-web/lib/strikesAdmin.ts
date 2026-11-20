@@ -3,19 +3,22 @@
 /** The small flag on a Users row or a request row: '' for good standing. `level` is 0 to 3 (3 = banned). */
 export function standingFlag(level: number, bannedUntil?: number | null, now: number = Date.now()): string {
   if (level >= 3 || (typeof bannedUntil === 'number' && bannedUntil > now)) return 'Banned'
-  if (level === 2) return 'Warning'
-  if (level === 1) return '1 mistake'
+  if (level === 2) return 'Second strike'
+  if (level === 1) return 'First strike'
   return ''
 }
 
 export interface StrikeRow { id: string; uid: string; status: string; at: number; note: string; name: string; email: string; reason: string }
 
 export type StrikeAction = 'confirm' | 'excuse'
-/** What the E-board can press: a pending flag is confirmed or excused; a confirmed strike can only be taken back (excused). */
-export function strikeActions(status: string): StrikeAction[] {
-  return status === 'pending' ? ['confirm', 'excuse'] : status === 'confirmed' ? ['excuse'] : []
+/** What a person can press (only an Admin can excuse): a pending flag is confirmed or excused; a confirmed strike can only be taken back (excused). */
+export function strikeActions(status: string, isAdmin = true): StrikeAction[] {
+  const all: StrikeAction[] = status === 'pending' ? ['confirm', 'excuse'] : status === 'confirmed' ? ['excuse'] : []
+  return isAdmin ? all : all.filter(a => a !== 'excuse') // E-board and BabsonARTS confirm; only an Admin excuses or takes one back
 }
 export const actionLabel = (status: string, a: StrikeAction) => (a === 'confirm' ? 'Confirm' : status === 'confirmed' ? 'Take back' : 'Excuse')
+export const BAN_OPTIONS = [{ id: 'strike', label: 'Strike' }, { id: 'ban-studio', label: 'Studio ban, one week' }, { id: 'ban-semester', label: 'Ban for the semester' }] as const
+export type BanOption = (typeof BAN_OPTIONS)[number]['id']
 export const STATUS_WORD: Record<string, string> = { pending: 'Waiting for you', confirmed: 'Confirmed', excused: 'Excused', expired: 'Ended with the semester' }
 
 export const pendingStrikes = (rows: StrikeRow[]) => rows.filter(r => r.status === 'pending')

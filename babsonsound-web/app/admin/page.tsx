@@ -14,6 +14,7 @@ import NeedsApproval from '@/components/admin/today/NeedsApproval'
 import ReportBug from '@/components/admin/today/ReportBug'
 import { FROM_KEY, eboardExtras, fromNote, menuFor, resolveHash, type AdminRole, type BadgeKey, type SearchEntry, type TabId } from '@/lib/adminMenu'
 import { roleLabel } from '@/lib/roleLabel'
+import type { StrikeRow } from '@/lib/strikesAdmin'
 import { DASHBOARD_URL, startPolling, type Critical, type NextRow, type PendingRow } from '@/lib/todayPage'
 
 interface Dash {
@@ -21,6 +22,7 @@ interface Dash {
   next: NextRow[]
   pending: PendingRow[]
   pendingTotal: number
+  strikes?: StrikeRow[]
   critical: Critical
 }
 
@@ -122,7 +124,7 @@ export default function AdminPage() {
             </div>
           </div>
           <div className={`${box} lg:col-start-1 lg:row-start-2`}>
-            <NeedsApproval rows={dash ? dash.pending : null} total={dash?.pendingTotal ?? 0} onChanged={load} />
+            <NeedsApproval rows={dash ? dash.pending : null} total={dash?.pendingTotal ?? 0} strikes={dash?.strikes ?? []} onChanged={load} />
           </div>
           <div className={`${box} lg:col-start-2 lg:row-start-1`}>
             <ComingUp rows={dash ? dash.next : null} />

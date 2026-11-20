@@ -100,4 +100,8 @@ export function clearDraft(store: Pick<Storage, 'removeItem'> | undefined = safe
 function safeStore(): Storage | undefined { try { return typeof localStorage === 'undefined' ? undefined : localStorage } catch { return undefined } }
 
 // ── the policy box ──
-export const POLICY_TEXT = 'I understand that a missed show or booking gets a mistake, then a warning, then a ban from hosting and booking for the rest of the semester. The E-board can excuse a mistake.'
+export const POLICY_TEXT = 'I understand that a missed show or booking is a strike: the first sends a warning email, the second pauses my studio bookings for a week, and the third bans me from hosting and booking for the rest of the semester. An Admin can excuse a strike.'
+
+// The two ticks on a show request. Training already has the full agreement, so a request only asks for these. Each opens its guide in a new tab.
+export const GEAR_ACK = { text: 'I will not misuse the studio gear, and I have read the', link: { href: '/members/guides/gear-policy', label: 'gear policy' } } as const
+export const CONTENT_ACK = { text: 'My show will follow the', link: { href: '/members/guides/content-requirements', label: 'content requirements' } } as const

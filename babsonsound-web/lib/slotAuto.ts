@@ -83,11 +83,20 @@ export type Requester = { level: string; conductVersion: unknown; radioTrained: 
 
 /** Directors and admins always count as trained; a student needs the radio badge and it must not have ended. */
 export const radioTrainedFromProfile = (p: { level: string; radioTrained: boolean; radioExpiresAt: number | null }, now: number) =>
-  p.level === 'director' || p.level === 'admin' || (p.level === 'student' && p.radioTrained === true && badgeActive(p.radioExpiresAt, now))
+  p.level === 'director' || p.level === 'admin' || p.level === 'arts' || (p.level === 'student' && p.radioTrained === true && badgeActive(p.radioExpiresAt, now))
 
-/** Could this request ever approve itself? Worked out when it is made and again when it comes due. */
-export const autoEligible = (i: { type: string; conductSigned: boolean; radioTrained: boolean }) =>
-  i.conductSigned && (i.type !== 'live' || i.radioTrained)
+/** Could this request ever approve itself? Worked out when it is made and again when it comes due. Nobody is approved automatically until they are trained (any kind of show). */
+// Training includes the full agreement, so a trained host needs nothing else; each request carries its own two ticks (gear, content).
+export const autoEligible = (i: { type: string; radioTrained: boolean }) =>
+  i.radioTrained
+
+/** Someone who is not trained yet can still book a show, but has this long to take the training or the request is cancelled. */
+export const TRAIN_WITHIN_MS = 48 * HOUR
+/** When the training is due for a request made now: 48 hours on, or the show's start if that comes first. */
+export const trainByMs = (createdMs: number, startMs: number) => Math.min(createdMs + TRAIN_WITHIN_MS, startMs)
+/** Is this request past its training deadline with the training still not done? Only a pending request is cancelled; one staff already approved is left to them. */
+export const trainingLapsed = (i: { status: string; trainByAt: number | null; trained: boolean; now: number }) =>
+  i.status === 'pending' && i.trainByAt != null && i.trainByAt <= i.now && !i.trained
 
 export type BlockReason = 'week-limit' | 'agreement' | 'training' | 'conflict' | 'past' | 'ineligible'
 export type AutoVerdict = { action: 'approve' } | { action: 'wait' } | { action: 'skip'; reason: BlockReason | 'held' | 'not-pending' }
@@ -107,7 +116,7 @@ export function evaluateAuto(i: {
   if (i.autoApproveAt == null || i.autoApproveAt > i.now) return { action: 'wait' }
   if (i.requester.level === 'guest') return { action: 'skip', reason: 'ineligible' }
   if (i.requester.conductVersion !== i.conductVersion) return { action: 'skip', reason: 'agreement' }
-  if (i.type === 'live' && !radioTrainedFromProfile(i.requester, i.now)) return { action: 'skip', reason: 'training' }
+  if (!radioTrainedFromProfile(i.requester, i.now)) return { action: 'skip', reason: 'training' }
   if (i.startMs <= i.now) return { action: 'skip', reason: 'past' }
   if (i.conflict) return { action: 'skip', reason: 'conflict' }
   if (i.autoStartsInWeek >= (i.rules ?? DEFAULT_AUTO_RULES).weekLimit) return { action: 'skip', reason: 'week-limit' }

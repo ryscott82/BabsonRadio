@@ -3,6 +3,7 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/server/admin'
 import { HttpError, handle, requireUser } from '@/lib/server/http'
 import { accessOf } from '@/lib/server/access'
+import { assertNotBanned } from '@/lib/server/studioBook'
 import { addCrew, crewFresh } from '@/lib/crew'
 import { crewRef, loadCrew, logEvent } from '@/lib/server/booth'
 import { censor } from '@/lib/server/wordFilter'
@@ -21,6 +22,8 @@ export async function POST(req: Request) {
     if (a.level === 'student' && !(a.studio && a.radio)) throw new HttpError(403, 'Take the training first.', 'BR-STU-020')
     const db = adminDb()
     const now = Date.now()
+    // A studio ban (second strike, one week) or a semester ban keeps the studio closed to them: no sign-in from the door either. Staff are not held to it.
+    if (a.level === 'student') assertNotBanned(await db.collection('users').doc(t.uid).get(), now, { studio: true })
 
     // One scan every few seconds per person.
     const cool = db.collection('boothDoorCooldown').doc(t.uid)

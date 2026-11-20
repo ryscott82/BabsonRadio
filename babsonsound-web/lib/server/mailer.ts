@@ -64,14 +64,13 @@ export function friendInviteMail(o: { firstName: string; email: string }) {
   return { subject, text, html }
 }
 
-/** Day-10 reminder: verify the email or the account is deleted on day 14. */
-export function verifyReminderMail(o: { deleteAt: number }) {
-  const when = new Date(o.deleteAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'America/New_York' })
-  const subject = 'Verify your email to keep your Babson Sound account'
+/** Day-10 reminder: verify the email to get member features back. */
+export function verifyReminderMail() {
+  const subject = 'Verify your email to unlock your Babson Sound account'
   const link = 'https://babsonradio.com/auth'
   const lines = [
-    'Your Babson Radio email is not verified yet, so your account is locked.',
-    `Verify it by ${when} or the account will be deleted.`,
+    'Your Babson Radio email is not verified yet, so member features are locked.',
+    'Verify it to unlock them. Your account and everything in it is kept.',
     `Sign in at ${link} and tap Resend email if you need a new link.`,
   ]
   const text = ['Hi,', '', ...lines, '', 'Babson Radio'].join('\n')
@@ -142,17 +141,23 @@ export function studioReleasedMail(o: { when: string }) {
 }
 
 /** A strike was confirmed by the E-board. 1 = a friendly note, 2 = a formal warning, 3 = the semester pause. */
-export function strikeMail(o: { kind: 'mistake' | 'warning' | 'ban'; reason: string; until: string }) {
+export function strikeMail(o: { kind: 'mistake' | 'warning' | 'ban' | 'studio-ban'; reason: string; until: string }) {
+  if (o.kind === 'studio-ban') {
+    return plainMail('The studio is paused for you for one week', [
+      `The studio is paused for you until ${o.until}: ${o.reason}.`,
+      'Show requests and everything else stay as they are. If you think this is a mistake, reply to this email or talk to the E-board.',
+    ])
+  }
   if (o.kind === 'mistake') {
     return plainMail('A note about your Babson Radio booking', [
-      `The E-board marked this as a mistake: ${o.reason}.`,
-      'It happens. Nothing else changes, and it clears at the end of the semester.',
+      `This is your first strike: ${o.reason}.`,
+      'It happens. Nothing else changes. A second strike pauses the studio for a week, and a third pauses show requests and studio bookings until the semester ends. Strikes clear at the end of the semester.',
     ])
   }
   if (o.kind === 'warning') {
     return plainMail('Warning: second strike on your Babson Sound account', [
       `The E-board confirmed a second strike: ${o.reason}.`,
-      'A third strike this semester pauses new show requests and studio bookings until the semester ends. Strikes clear at the end of the semester.',
+      `The studio is paused for you for one week, until ${o.until}. A third strike this semester pauses new show requests and studio bookings until the semester ends. Strikes clear at the end of the semester.`,
       'If you think this is a mistake, reply to this email or talk to the E-board.',
     ])
   }
@@ -180,4 +185,12 @@ export function showReminderMail(o: { lead: string; place: string; offUrl: strin
   const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1710;line-height:1.5">${
     lines.map(l => `<p>${escapeHtml(l)}</p>`).join('')}<p style="font-size:13px;color:#6b6558"><a href="${escapeHtml(o.offUrl)}" style="color:#6b6558">Turn these reminders off</a></p></div>`
   return { text, html }
+}
+
+/** A show request cancelled because the training was not taken within 48 hours of booking. */
+export function trainingLapsedMail(title: string) {
+  const subject = `Your show request “${title}” was cancelled`
+  const text = ['Hi,', '', `Your request for “${title}” was cancelled because the training was not taken within 48 hours.`, '', 'Take the training at https://babsonradio.com/training, then request a time again at https://babsonradio.com/slots.', '', 'Babson Radio'].join('\n')
+  const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1710;line-height:1.5"><p>Hi,</p><p>Your request for “${escapeHtml(title)}” was cancelled because the training was not taken within 48 hours.</p><p><a href="https://babsonradio.com/training">Take the training</a>, then <a href="https://babsonradio.com/slots">request a time again</a>.</p><p>Babson Radio</p></div>`
+  return { subject, text, html }
 }

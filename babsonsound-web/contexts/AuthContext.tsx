@@ -5,7 +5,7 @@ import { type User } from 'firebase/auth'
 import { apiGet, onAuthChange, getUserDoc, refreshUser } from '@/lib/auth'
 import type { SetupState } from '@/lib/setup'
 
-export type Level = 'guest' | 'student' | 'director' | 'admin'
+export type Level = 'guest' | 'student' | 'arts' | 'director' | 'admin'
 
 /** What /api/me says about access. The server is the source of truth, so the browser does not guess from the email. */
 interface Me { level: Level; studioTrained: boolean; radioTrained: boolean; isBabson: boolean; setup?: SetupState }
@@ -33,6 +33,8 @@ interface AuthContextValue {
   loading: boolean
   isAdmin: boolean
   isDirector: boolean
+  /** BabsonARTS staff (the Settings menu). */
+  isArts: boolean
   /** guest | student | director | admin (guest until the profile loads) */
   level: Level
   /** badges; directors and admins count as both */
@@ -58,7 +60,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue>({
-  user: null, userDoc: null, loading: true, isAdmin: false, isDirector: false,
+  user: null, userDoc: null, loading: true, isAdmin: false, isDirector: false, isArts: false,
   level: 'guest', studioTrained: false, radioTrained: false,
   isBabson: false, isGuest: false, needsVerification: false,
   canListenLive: false, hasMemberAccess: false, hasLibraryAccess: false,
@@ -126,12 +128,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isStudent = isBabson
   const isAdmin = isBabson && level === 'admin'
   const isDirector = isBabson && (level === 'admin' || level === 'director')
-  const studioTrained = isDirector || (isBabson && me?.studioTrained === true)
-  const radioTrained = isDirector || (isBabson && me?.radioTrained === true)
+  const isArts = isBabson && level === 'arts'
+  const studioTrained = isDirector || isArts || (isBabson && me?.studioTrained === true)
+  const radioTrained = isDirector || isArts || (isBabson && me?.radioTrained === true)
 
   return (
     <AuthContext.Provider value={{
-      user, userDoc, loading, isAdmin, isDirector, level, studioTrained, radioTrained, isBabson, isGuest, needsVerification,
+      user, userDoc, loading, isAdmin, isDirector, isArts, level, studioTrained, radioTrained, isBabson, isGuest, needsVerification,
       canListenLive: isStudent || isGuest,
       hasMemberAccess: isStudent,
       hasLibraryAccess: isStudent,

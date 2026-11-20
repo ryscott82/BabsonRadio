@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { api, apiGet } from '@/lib/auth'
-import { actionLabel, decidedStrikes, manualAddProblem, pendingStrikes, STATUS_WORD, strikeActions, uidOfPerson, type StrikeAction, type StrikeRow } from '@/lib/strikesAdmin'
+import { useAuth } from '@/contexts/AuthContext'
+import { BAN_OPTIONS, actionLabel, decidedStrikes, manualAddProblem, pendingStrikes, STATUS_WORD, strikeActions, uidOfPerson, type BanOption, type StrikeAction, type StrikeRow } from '@/lib/strikesAdmin'
 import type { Suggestion } from '@/lib/guestPicker'
 
 const when = (ms: number) => new Date(ms).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })
@@ -12,6 +13,7 @@ const when = (ms: number) => new Date(ms).toLocaleString('en-US', { weekday: 'sh
  * the decided ones and a manual add. Loads once when opened and after each decision. Nothing polls.
  */
 export default function StrikesPanel({ pendingOnly = false }: { pendingOnly?: boolean }) {
+  const { isAdmin } = useAuth()
   const [rows, setRows] = useState<StrikeRow[] | null>(null)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState('')
@@ -36,7 +38,7 @@ export default function StrikesPanel({ pendingOnly = false }: { pendingOnly?: bo
     <li key={r.id} className="py-3 space-y-2">
       <p className="text-lg leading-snug">{r.name || '(no name)'}<span className="text-base opacity-90"> · {r.reason}</span></p>
       <p className="text-base opacity-90">{when(r.at)} · {STATUS_WORD[r.status] ?? r.status}{r.note ? ` · ${r.note}` : ''}</p>
-      {strikeActions(r.status).length > 0 && (excusing === r.id ? (
+      {strikeActions(r.status, isAdmin).length > 0 && (excusing === r.id ? (
         <div className="space-y-2">
           <label className="block text-base">Note (optional)
             <input className="ops-field w-full min-h-11 mt-1" value={note} onChange={e => setNote(e.target.value)} maxLength={300} />
@@ -48,7 +50,7 @@ export default function StrikesPanel({ pendingOnly = false }: { pendingOnly?: bo
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {strikeActions(r.status).map(a => a === 'confirm'
+          {strikeActions(r.status, isAdmin).map(a => a === 'confirm'
             ? <button key={a} type="button" className="ops-btn-red px-4 min-h-11 disabled:opacity-50" disabled={busy === r.id} onClick={() => decide(r, 'confirm')}>{busy === r.id ? 'Working…' : actionLabel(r.status, a)}</button>
             : <button key={a} type="button" className="ops-btn px-4 min-h-11" onClick={() => { setExcusing(r.id); setNote('') }}>{actionLabel(r.status, a)}</button>)}
         </div>
@@ -82,7 +84,8 @@ function ManualAdd({ onAdded }: { onAdded: () => void }) {
   const [results, setResults] = useState<Suggestion[]>([])
   const [person, setPerson] = useState<Suggestion | null>(null)
   const [note, setNote] = useState('')
-  const [now2, setNow2] = useState(false)
+  const [now2, setNow2] = useState(true)
+  const [kind, setKind] = useState<BanOption>('strike')
   const [err, setErr] = useState('')
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
@@ -99,14 +102,14 @@ function ManualAdd({ onAdded }: { onAdded: () => void }) {
     const p = manualAddProblem(person?.id ?? '', note)
     if (p) { setErr(p); return }
     setBusy(true)
-    try { await api('/api/admin/strikes/add', { uid: uidOfPerson(person!.id), note: note.trim(), confirm: now2 }); setMsg(now2 ? 'Added and confirmed.' : 'Added. It is waiting for a decision.'); setPerson(null); setQ(''); setNote(''); setNow2(false); onAdded() }
+    try { await api('/api/admin/strikes/add', { uid: uidOfPerson(person!.id), note: note.trim(), confirm: now2, kind }); setMsg(now2 ? 'Added and confirmed.' : 'Added. It is waiting for a decision.'); setPerson(null); setQ(''); setNote(''); setNow2(false); onAdded() }
     catch (er) { setErr(er instanceof Error ? er.message : 'Could not add that.') }
     setBusy(false)
   }
 
   return (
-    <section className="ops-card p-5 space-y-3" aria-label="Add a strike">
-      <h2 className="text-2xl font-light">Add a strike</h2>
+    <section className="ops-card p-5 space-y-3" aria-label="Issue a strike or ban">
+      <h2 className="text-2xl font-light">Issue a strike or ban</h2>
       <form onSubmit={add} className="space-y-3">
         {person ? (
           <p className="text-base">{person.name} <span className="opacity-90">({person.emailMasked})</span> <button type="button" className="underline underline-offset-2 ml-2" onClick={() => setPerson(null)}>Change</button></p>
@@ -122,13 +125,18 @@ function ManualAdd({ onAdded }: { onAdded: () => void }) {
             )}
           </div>
         )}
+        <label className="block text-base">What to issue
+          <select className="ops-field w-full min-h-11 mt-1" value={kind} onChange={e => setKind(e.target.value as BanOption)}>
+            {BAN_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
+        </label>
         <label className="block text-base">Note
           <input className="ops-field w-full min-h-11 mt-1" value={note} maxLength={300} onChange={e => setNote(e.target.value)} placeholder="What happened" />
         </label>
-        <label className="flex items-center gap-3 text-base min-h-11"><input type="checkbox" className="w-5 h-5" checked={now2} onChange={e => setNow2(e.target.checked)} />Confirm it now (no email is sent)</label>
+        <label className="flex items-center gap-3 text-base min-h-11"><input type="checkbox" className="w-5 h-5" checked={now2} onChange={e => setNow2(e.target.checked)} />Confirm it now (the person is emailed)</label>
         {err && <p role="alert" className="text-base font-semibold">{err}</p>}
         {msg && <p role="status" className="text-base">{msg}</p>}
-        <button type="submit" disabled={busy} className="ops-btn px-5 min-h-11 disabled:opacity-50">Add strike</button>
+        <button type="submit" disabled={busy} className="ops-btn px-5 min-h-11 disabled:opacity-50">Issue</button>
       </form>
     </section>
   )

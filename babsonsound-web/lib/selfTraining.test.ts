@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test'
+import test, { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { SELF_MIN_WATCH_MS, SELF_QUESTIONS, SELF_RETRY_MS, drawQuestions, drawQuiz, selfQuizGate, watchLeftSec } from './selfTraining.ts'
 import { QUIZ } from './training.ts'
@@ -56,4 +56,20 @@ describe('drawQuiz (3 radio: one slurs, one privacy, one on air; 7 studio)', () 
     assert.equal(new Set(QUIZ.map(q => q.id)).size, QUIZ.length)
     for (const q of QUIZ) assert.ok(q.answer >= 0 && q.answer < q.options.length, q.id)
   })
+})
+
+test('the door QR question is on every quiz, even when a saved bank does not have it', async () => {
+  const { QUIZ } = await import('./training.ts')
+  const { drawQuiz, withRequired, SELF_QUESTIONS } = await import('./selfTraining.ts')
+  const q = QUIZ.find(x => x.id === 'door-qr')!
+  assert.equal(q.options[q.answer], 'You must scan the door QR code before tapping your OneCard to gain access to the radio room')
+  const saved = QUIZ.filter(x => x.id !== 'door-qr') // an old saved bank, or one where it was deleted
+  const pool = withRequired(saved, QUIZ)
+  assert.equal(pool.some(x => x.id === 'door-qr'), true)
+  for (let i = 0; i < 200; i++) {
+    const quiz = drawQuiz(pool, SELF_QUESTIONS, `seed-${i}`)
+    assert.equal(quiz.length, SELF_QUESTIONS)
+    assert.equal(quiz.filter(x => x.id === 'door-qr').length, 1, `quiz ${i}`)
+    assert.equal(quiz.filter(x => x.topic === 'slurs' || x.topic === 'privacy' || x.topic === 'radio').length, 3)
+  }
 })

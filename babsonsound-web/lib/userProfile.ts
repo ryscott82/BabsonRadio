@@ -13,7 +13,7 @@ export function trainingOf(flag: boolean | undefined, expiresAt: number | null |
 }
 
 export function shapeProfile(u: ProfileUser, slots: ProfileSlot[], now: number) {
-  const level = u.level === 'admin' || u.level === 'director' || u.level === 'student' ? u.level : 'guest'
+  const level = u.level === 'admin' || u.level === 'director' || u.level === 'arts' || u.level === 'student' ? u.level : 'guest'
   const shows = [...slots].sort((a, b) => b.startAt - a.startAt).slice(0, 50).map(s => ({ id: s.id, title: s.title, startAt: s.startAt, type: s.type, status: s.status }))
   return {
     name: [u.firstName ?? u.displayName ?? '', u.lastName ?? ''].join(' ').trim() || 'Unknown',

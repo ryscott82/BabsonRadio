@@ -108,5 +108,5 @@ test('the agreement is two parts: eleven lines to tick, 8 for the Radio Room and
   assert.equal(STUDIO_CLAUSES.length, 8); assert.equal(ON_AIR_CLAUSES.length, 3)
   const all = HOST_AGREEMENTS.map(a => [a.intro ?? '', ...a.clauses].join(' ')).join(' ')
   for (const must of [/untrained member/, /QR code or my Babson Sound Account/, /WhatsApp/, /quiet hours/, /sign out of the booth/, /recorded/, /18 or older/, /Terms of Use/, /Privacy Policy/,
-    /nondiscrimination/, /report to Babson/, /explicit songs from 6AM to 10PM/, /slurs/, /babsonradio\.com\/words/, /private information/, /responsible for everything on air/, /set list/, /rights holders/]) assert.match(all, must)
+    /nondiscrimination/, /report to Babson/, /explicit songs from 6AM to 8PM/, /slurs/, /babsonradio\.com\/words/, /private information/, /responsible for everything on air/, /set list/, /rights holders/]) assert.match(all, must)
 })

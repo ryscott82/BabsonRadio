@@ -8,6 +8,8 @@ import EverythingOnAir from '@/components/admin/EverythingOnAir'
 import { ErrorText, Field, PrimaryButton } from '@/components/AuthUI'
 import ImagePicker from '@/components/ImagePicker'
 import ColorPicker from '@/components/ColorPicker'
+import ShowSetLists from '@/components/admin/ShowSetLists'
+import { setlistsFor, unmatchedSetlists, type SetListItem } from '@/lib/setlistsFor'
 
 interface Show {
   id: string; showName: string; dayOfWeek: number; startTime: string; endTime: string; description: string
@@ -36,6 +38,7 @@ export default function AdminSchedulePage() {
   const [shows, setShows] = useState<Show[]>([])
   const [edit, setEdit] = useState<Show | null>(null)
   const [events, setEvents] = useState<Ev[]>([])
+  const [setlists, setSetlists] = useState<SetListItem[]>([])
   const [editEv, setEditEv] = useState<Ev | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -46,6 +49,8 @@ export default function AdminSchedulePage() {
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load the schedule.') }
     try { setEvents((await apiGet<{ events: Ev[] }>('/api/admin/events')).events) }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load events.') }
+    try { setSetlists((await apiGet<{ items: SetListItem[] }>('/api/admin/setlists')).items) }
+    catch { /* set lists are an extra; the schedule still works without them */ }
   }, [])
 
   useEffect(() => { if (!loading && (!user || !isDirector)) router.replace('/') }, [loading, user, isDirector, router])
@@ -202,7 +207,7 @@ export default function AdminSchedulePage() {
           <section key={d} className="space-y-2">
             <h2 className="font-display text-br-gold tracking-widest text-sm">{d}</h2>
             {list.map(s => (
-              <div key={s.id} className={`sk-raised rounded-xl px-4 py-3 flex items-center gap-4 ${s.isActive ? '' : 'opacity-60'}`}>
+              <div key={s.id} className={`sk-raised rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-4 ${s.isActive ? '' : 'opacity-60'}`}>
                 {s.imageUrl
                   // eslint-disable-next-line @next/next/no-img-element
                   ? <img src={s.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
@@ -213,6 +218,7 @@ export default function AdminSchedulePage() {
                 </div>
                 <button onClick={() => { setEdit({ ...s }); setNotice('') }} className="text-xs text-br-gold">Edit</button>
                 <button onClick={() => remove(s)} className="text-xs text-br-dk-sub hover:text-br-red">Delete</button>
+                <ShowSetLists items={setlistsFor(setlists, s.showName)} label={s.showName} />
               </div>
             ))}
           </section>
@@ -267,7 +273,7 @@ export default function AdminSchedulePage() {
 
       <section className="space-y-2">
         {events.map(ev => (
-          <div key={ev.id} className="sk-raised rounded-xl px-4 py-3 flex items-center gap-4">
+          <div key={ev.id} className="sk-raised rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-4">
             <div className="w-12 h-12 rounded-lg sk-field shrink-0 overflow-hidden" style={ev.color ? { background: ev.color } : undefined}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               {ev.imageUrl && <img src={ev.imageUrl} alt="" className="w-full h-full object-cover" />}
@@ -278,10 +284,20 @@ export default function AdminSchedulePage() {
             </div>
             <button onClick={() => { setEditEv({ ...ev }); setNotice('') }} className="text-xs text-br-gold">Edit</button>
             <button onClick={() => removeEv(ev)} className="text-xs text-br-dk-sub hover:text-br-red">Delete</button>
+            <ShowSetLists items={setlistsFor(setlists, ev.title)} label={ev.title} />
           </div>
         ))}
         {events.length === 0 && !editEv && <p className="text-sm text-br-dk-sub">No one-time events yet.</p>}
       </section>
+      {unmatchedSetlists(setlists, [...shows.map(s => s.showName), ...events.map(e => e.title)]).length > 0 && (
+        <section className="space-y-2">
+          <h2 className="font-display text-br-dk-text text-2xl tracking-[0.1em]">Other set lists</h2>
+          <p className="text-sm text-br-dk-sub">Set lists for shows that are no longer on the schedule, or whose name changed.</p>
+          <div className="sk-raised rounded-xl px-4 py-3 flex flex-wrap">
+            <ShowSetLists items={unmatchedSetlists(setlists, [...shows.map(s => s.showName), ...events.map(e => e.title)])} label="other" />
+          </div>
+        </section>
+      )}
       {shows.length === 0 && !edit && <p className="text-sm text-br-dk-sub">No weekly shows yet. Add the first one.</p>}
     </div>
   )

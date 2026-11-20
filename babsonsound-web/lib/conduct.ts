@@ -3,11 +3,11 @@
 //  2. Radio Agreement (3 lines: explicit songs and slurs, private information, responsibility and song lists)
 // NOT LEGAL ADVICE. Have Babson Legal read both before launch (see "Questions to ask" in the beta guide).
 
-export const AGREEMENTS_VERSION = '2026-11-14d'
+export const AGREEMENTS_VERSION = '2026-11-14e'
 export const CONDUCT_VERSION = AGREEMENTS_VERSION
 
 /** The clean hours, in station time. Anything on air between these hours must be clean. CONFIRM with the exec board. */
-export const CLEAN_HOURS = { startHour: 6, endHour: 22, timezone: 'America/New_York' } as const
+export const CLEAN_HOURS = { startHour: 6, endHour: 20, timezone: 'America/New_York' } as const
 
 /** Station-local hour (0-23.99) for a timestamp. */
 function localHour(ms: number): number {
@@ -46,7 +46,7 @@ export const STUDIO_CLAUSES: string[] = [
 ]
 
 export const ON_AIR_CLAUSES: string[] = [
-  'I will not play explicit songs from 6AM to 10PM, and will not air any egregious words or slurs at any time. I have checked all explicit phrases against the reference tool at babsonradio.com/words',
+  'I will not play explicit songs from 6AM to 8PM, and will not air any egregious words or slurs at any time. If one slips out, I apologize on air once and move on without repeating it. After 8PM I still keep foul language to a minimum. I have checked all explicit phrases against the reference tool at babsonradio.com/words',
   'I will not share private information about anyone while on-air including but not limited to phone number, email, or address.',
   'I am responsible for everything on air during my time, and staff decide what airs and can change or cancel my slot. I add every song I play (title and artist) to my set list during or right after each show, and before it airs for a pre-recorded show, so the station can report it to the rights holders. Missing lists can cost me future slots.',
 ]

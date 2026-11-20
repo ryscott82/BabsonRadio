@@ -7,7 +7,6 @@ import { api, resendVerification, signOut } from '@/lib/auth'
 import { sharedAudio } from '@/lib/spectrum'
 import { judgeAge } from '@/lib/age'
 import { normalizeUS } from '@/lib/phone'
-import { AVATAR_COLORS, discStyle } from '@/lib/profile'
 import { gradYearOptions } from '@/lib/terms'
 import type { SetupState } from '@/lib/setup'
 import type { PromptStep } from '@/lib/setup-ui'
@@ -17,7 +16,8 @@ import { ErrorText, Field, formatPhone } from '@/components/AuthUI'
 // The name cannot be dismissed. Anything else can be: it goes to the back of the line and comes up again on a later visit.
 // It holds off on sign-in and policy pages, over another dialog or the full-screen board, and while the stream is starting.
 
-const QUIET = ['/auth', '/privacy', '/terms', '/support', '/unsubscribe', '/delete-account', '/coming-soon', '/admin', '/booth']
+// The training pages are quiet too: the agreement there asks for the name, and it becomes the account name.
+const QUIET = ['/auth', '/privacy', '/terms', '/support', '/unsubscribe', '/delete-account', '/coming-soon', '/admin', '/booth', '/training']
 const quiet = (p: string) => QUIET.some(q => p === q || p.startsWith(`${q}/`))
 
 /** The stream is starting: audio was asked to play but has not got enough data yet. */
@@ -66,11 +66,12 @@ export default function SetupPrompt() {
   }, [])
 
   if (!user || !step) return null
-  const done = (s?: SetupState) => { if (s) applySetup(s); setStep(null) }
-  return <Modal step={step} done={done} close={() => setStep(null)} reload={reload} />
+  // Saving a step goes straight to the next one; "Not now" (close) just closes.
+  const done = (s?: SetupState, goNext = true) => { if (s) applySetup(s); setStep(goNext && s?.next && s.next !== 'verifyEmail' ? s.next : null) }
+  return <Modal key={step} step={step} done={done} close={() => setStep(null)} reload={reload} />
 }
 
-function Modal({ step, done, close, reload }: { step: PromptStep; done: (s?: SetupState) => void; close: () => void; reload: () => Promise<void> }) {
+function Modal({ step, done, close, reload }: { step: PromptStep; done: (s?: SetupState, goNext?: boolean) => void; close: () => void; reload: () => Promise<void> }) {
   const { user, userDoc, setup } = useAuth()
   const router = useRouter()
   const [err, setErr] = useState('')
@@ -80,8 +81,6 @@ function Modal({ step, done, close, reload }: { step: PromptStep; done: (s?: Set
 
   // name
   const [name, setName] = useState([userDoc?.firstName, userDoc?.lastName].filter((x): x is string => typeof x === 'string' && !!x).join(' '))
-  // avatar
-  const [color, setColor] = useState('')
   // birthday
   const [year, setYear] = useState(String(new Date().getFullYear() - 18)); const [month, setMonth] = useState(''); const [day, setDay] = useState('')
   const [consent, setConsent] = useState(false)
@@ -116,7 +115,7 @@ function Modal({ step, done, close, reload }: { step: PromptStep; done: (s?: Set
   const save = () => {
     switch (step) {
       case 'name': return send('/api/me/setup', { step, value: { name } })
-      case 'avatar': return send('/api/me/setup', { step, value: { avatarColor: color } })
+      case 'host': return send('/api/me/setup', { step, value: {} })
       case 'birthday': return send('/api/me/setup', { step, value: { year, month, day, parentalConsent: consent } })
       case 'gradYear': return send('/api/me/setup', { step, value: { gradYear: grad } })
       case 'phone': return send('/api/me/setup', { step, value: { phone } })
@@ -125,18 +124,18 @@ function Modal({ step, done, close, reload }: { step: PromptStep; done: (s?: Set
   function notNow() {
     if (step === 'verify') return close()
     setBusy(true)
-    api<{ setup: SetupState }>('/api/me/setup/skip', { step }).then(r => done(r.setup)).catch(() => close())
+    api<{ setup: SetupState }>('/api/me/setup/skip', { step }).then(r => done(r.setup, false)).catch(() => close())
   }
 
   const ready = step === 'name' ? name.trim().length > 0
-    : step === 'avatar' ? !!color
+    : step === 'host' ? true
     : step === 'birthday' ? (!!year && verdict !== 'ask-more' && verdict !== 'invalid') && !(needConsent && !consent)
     : step === 'gradYear' ? !!grad
     : step === 'phone' ? !!normalizeUS(phone)
     : false
 
   const title: Record<PromptStep, string> = {
-    name: "What's your name?", avatar: 'Pick your color', birthday: 'When were you born?', gradYear: 'Graduation year',
+    name: "What's your name?", host: 'Want to host a show?', birthday: 'When were you born?', gradYear: 'Graduation year',
     phone: 'Phone number', verify: 'Verify your email',
   }
 
@@ -148,15 +147,6 @@ function Modal({ step, done, close, reload }: { step: PromptStep; done: (s?: Set
         {step === 'name' && (
           <div className="space-y-3">
             <Field label="Name" value={name} onChange={e => setName(e.target.value)} autoComplete="name" maxLength={100} />
-          </div>
-        )}
-
-        {step === 'avatar' && (
-          <div className="flex flex-wrap justify-center gap-3 py-1" role="radiogroup" aria-label="Profile color">
-            {AVATAR_COLORS.map(c => (
-              <button key={c.id} type="button" role="radio" aria-checked={color === c.id} aria-label={c.id.replace(/-/g, ' ')} onClick={() => setColor(c.id)}
-                      className={`hw-disc h-9 w-9 ${color === c.id ? 'outline outline-2 outline-offset-2 outline-br-gold' : ''}`} style={discStyle(c.hex)} />
-            ))}
           </div>
         )}
 
@@ -204,6 +194,8 @@ function Modal({ step, done, close, reload }: { step: PromptStep; done: (s?: Set
           </div>
         )}
 
+        {step === 'host' && <p className="text-sm text-br-dk-sub">Pick a time for your own show on Babson Radio.</p>}
+
         {step === 'verify' && (
           <p className="text-sm text-br-dk-sub">We sent a link to {user?.email ?? 'your email'}.{sent ? ' Sent again.' : ''}</p>
         )}
@@ -218,6 +210,9 @@ function Modal({ step, done, close, reload }: { step: PromptStep; done: (s?: Set
                       onClick={async () => { try { await resendVerification(); setSent(true); setErr('') } catch (e) { setErr(e instanceof Error ? e.message : 'Try again in a minute.') } }}>Resend</button>
               <button type="button" className="sk-btn rounded-xl px-4 py-3 text-sm" onClick={async () => { await reload(); close() }}>I verified</button>
             </span>
+          ) : step === 'host' ? (
+            <button type="button" disabled={busy} className="sk-btn rounded-xl px-5 py-3 text-sm disabled:opacity-50"
+                    onClick={async () => { setBusy(true); try { const r = await api<{ setup: SetupState }>('/api/me/setup', { step, value: {} }); done(r.setup, false); router.push('/slots') } catch { close(); router.push('/slots') } }}>Take me to the scheduling page</button>
           ) : (
             <button type="button" disabled={busy || !ready} onClick={save} className="sk-btn rounded-xl px-8 py-3 text-sm disabled:opacity-50">{busy ? 'Saving…' : 'Next'}</button>
           )}

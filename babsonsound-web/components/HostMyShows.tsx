@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { api } from '@/lib/auth'
 import { ErrorText } from '@/components/AuthUI'
 import { SLOT_TYPES, type SlotType } from '@/lib/slots'
@@ -10,6 +11,7 @@ import { LIVE_MAX_MINUTES } from '@/lib/studioBookCore'
 export interface Mine extends AutoInfo {
   id: string; title: string; description: string; type: SlotType; category: string; audioURL: string; startAt: number; endAt: number; durationMin: number
   status: 'pending' | 'approved' | 'declined' | 'cancelled'; staffNote: string; connectionInfo: string; attachedRecordingId: string
+  trainByAt?: number | null
 }
 
 const WORD: Record<Mine['status'], string> = { pending: 'Pending', approved: 'Approved', declined: 'Declined', cancelled: 'Cancelled' }
@@ -56,7 +58,8 @@ export default function HostMyShows({ items, maxRepeatWeeks, onChanged, onPickAn
             <p className="text-base text-br-dk-sub">{fmt(r.startAt)} · {r.durationMin} min · {SLOT_TYPES[r.type]}</p>
             {r.status === 'pending' && (
               <div>
-                <p className="text-base text-br-dk-text">{autoLine(r, now, fmt)}</p>
+                {r.trainByAt ? <p className="text-base text-br-dk-text">Take the <Link href="/training" className="text-br-gold underline underline-offset-4">training</Link> by {fmt(r.trainByAt)} or this request is cancelled. It is approved once you have.</p>
+                  : <p className="text-base text-br-dk-text">{autoLine(r, now, fmt)}</p>}
                 {autoHelp(r, now, 'student') && <p className="text-base text-br-dk-sub">{autoHelp(r, now, 'student')}</p>}
               </div>
             )}

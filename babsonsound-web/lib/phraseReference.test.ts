@@ -7,8 +7,8 @@ const src = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), 'ut
 
 test('each result says what it means for going on air', () => {
   assert.equal(phraseVerdict('banned').tone, 'no'); assert.match(phraseVerdict('banned').title, /Slur/)
-  assert.match(phraseVerdict('explicit').text, /6 AM to 10 PM Eastern/)
-  assert.match(phraseVerdict('crude').text, /6 AM to 10 PM Eastern/)
+  assert.match(phraseVerdict('explicit').text, /6 AM to 8 PM Eastern/)
+  assert.match(phraseVerdict('crude').text, /6 AM to 8 PM Eastern/)
   assert.match(phraseVerdict('clean').text, /does not make it fine/)
 })
 
@@ -44,5 +44,5 @@ test('Resources on the Members page: the reference first, then every guide, and 
     assert.match(md, /^# /, g.slug)
     assert.match(g.slug, /^[a-z0-9-]+$/)
   }
-  assert.match(src('app/members/page.tsx'), /<Section id="resources" title="Resources"><ResourcesCard/)
+  assert.match(src('app/members/page.tsx'), /<Quadrant id="resources" title="Resources"><ResourcesCard/)
 })

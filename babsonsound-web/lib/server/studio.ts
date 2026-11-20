@@ -7,6 +7,7 @@ import { adminAuth } from './admin'
 import { HttpError, requireUser } from './http'
 import { accessOf, forgetAccess, isOwnerEmail, type Access } from './access'
 import { SITE_URL } from '../links'
+import { markPendingReady } from './conduct'
 import {
   BADGES, badgeActive, badgeExpiry, effectiveStatus, freshGuard, guardFail, guardStep, isTrainerLevel, memberGate,
   type Badge, type Gate, type Guard, type SessionStatus,
@@ -188,6 +189,8 @@ export async function writeGrants(db: Firestore, grants: NewGrant[], now: number
     if (created) done.push(g.badge)
   }
   if (grants.length) forgetAccess(grants[0].uid)
+  // Show requests made before the training can now approve themselves (and stop the 48 hour countdown).
+  for (const uid of new Set(grants.filter(g => g.badge === 'radio').map(g => g.uid))) await markPendingReady(db, uid, true).catch(() => {})
   return done
 }
 

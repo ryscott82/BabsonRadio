@@ -11,16 +11,19 @@ const MIN = 60_000, DAY = 24 * 60 * MIN
 /** A student who is verified but has done nothing else. */
 const base = (over: Partial<SetupInput> = {}): SetupInput => ({
   level: 'student', demo: false, emailVerified: true, graceUntil: null, joinedAt: NOW - DAY,
-  firstName: '', avatarChosen: false, birthdayDone: false, gradYear: '', hasPhone: false, skips: {}, ...over,
+  firstName: '', hostAsked: false, birthdayDone: false, gradYear: '', hasPhone: false, skips: {}, ...over,
 })
 
-test('steps come in order: name first, pick your color last', () => {
+test('steps come in order: name first, the host-a-show question last (students only)', () => {
   const s = setupState(base({ emailVerified: false }), NOW)
-  assert.deepEqual(s.steps.map(x => x.id), ['verifyEmail', 'name', 'birthday', 'gradYear', 'phone', 'avatar'])
+  assert.deepEqual(s.steps.map(x => x.id), ['verifyEmail', 'name', 'birthday', 'gradYear', 'phone', 'host'])
   assert.equal(s.next, 'name') // verifying the email has its own banner; it is never the prompt
   assert.equal(setupState(base({ firstName: 'Ryan' }), NOW).next, 'birthday')
   assert.equal(setupState(base({ firstName: 'Ryan', birthdayDone: true }), NOW).next, 'gradYear')
-  assert.equal(setupState(base({ firstName: 'Ryan', birthdayDone: true, gradYear: '2028', hasPhone: true }), NOW).next, 'avatar')
+  assert.equal(setupState(base({ firstName: 'Ryan', birthdayDone: true, gradYear: '2028', hasPhone: true }), NOW).next, 'host')
+  assert.equal(setupState(base({ firstName: 'Ryan', birthdayDone: true, gradYear: '2028', hasPhone: true, hostAsked: true }), NOW).next, null)
+  // not for guests, directors or admins
+  for (const level of ['guest', 'director', 'admin']) assert.equal(stepsFor(level).includes('host'), false, level)
 })
 
 test('counts and the email deadline', () => {
@@ -38,9 +41,9 @@ test('a dismissed step goes to the back and comes around again', () => {
   const named = { firstName: 'R' }
   assert.equal(setupState(base(named), NOW).next, 'birthday')
   assert.equal(setupState(base({ ...named, skips: skip('birthday', NOW - MIN) }), NOW).next, 'gradYear')
-  assert.equal(setupState(base({ ...named, skips: { ...skip('birthday', NOW - 3 * MIN), ...skip('gradYear', NOW - 2 * MIN), ...skip('phone', NOW - MIN) } }), NOW).next, 'avatar')
+  assert.equal(setupState(base({ ...named, skips: { ...skip('birthday', NOW - 3 * MIN), ...skip('gradYear', NOW - 2 * MIN), ...skip('phone', NOW - MIN) } }), NOW).next, 'host')
   // everything left has been dismissed: the one dismissed longest ago comes first
-  const all = { ...named, birthdayDone: false, skips: { ...skip('birthday', NOW - 9 * MIN), ...skip('gradYear', NOW - 8 * MIN), ...skip('phone', NOW - 7 * MIN), ...skip('avatar', NOW - 5 * MIN) } }
+  const all = { ...named, birthdayDone: false, skips: { ...skip('birthday', NOW - 9 * MIN), ...skip('gradYear', NOW - 8 * MIN), ...skip('phone', NOW - 7 * MIN), ...skip('host', NOW - 5 * MIN) } }
   assert.equal(setupState(base(all), NOW).next, 'birthday')
 })
 
@@ -85,24 +88,25 @@ test('a Guest never gets the graduation year step', () => {
   assert.equal(stepsFor('guest').includes('gradYear'), false)
   for (const level of ['student', 'director', 'admin']) assert.equal(stepsFor(level).includes('gradYear'), true, level)
   // a Guest who has done everything else has nothing left to be asked
-  const done: Partial<SetupInput> = { level: 'guest', firstName: 'G', avatarChosen: true, birthdayDone: true }
+  const done: Partial<SetupInput> = { level: 'guest', firstName: 'G', hostAsked: true, birthdayDone: true }
   const g = setupState(base(done), NOW)
   assert.equal(g.next, null)
-  assert.equal(g.total, 4)
+  assert.equal(g.total, 3)
   assert.equal(g.steps.some(s => s.id === 'gradYear' || s.id === 'phone'), false)
   // the same person as a student is asked for graduation year, then phone
   assert.equal(setupState(base({ ...done, level: 'student' }), NOW).next, 'gradYear')
   assert.equal(setupState(base({ ...done, level: 'student', gradYear: '2028' }), NOW).next, 'phone')
   assert.equal(setupState(base({ ...done, level: 'student', gradYear: '2028', hasPhone: true }), NOW).next, null)
-  assert.equal(stepsFor('student').at(-1), 'avatar')
+  assert.equal(stepsFor('student').at(-1), 'host')
+  assert.equal(stepsFor('student').includes('avatar' as never), false) // the profile color is chosen from the profile menu
   assert.equal(stepsFor('student').includes('instagram' as never), false) // Instagram is only on the profile page
   assert.equal(stepsFor('guest').includes('phone'), false)
 })
 
 test('an unverified email never blocks the prompts for the other steps', () => {
-  const s = setupState(base({ emailVerified: false, firstName: 'R', avatarChosen: true }), NOW)
+  const s = setupState(base({ emailVerified: false, firstName: 'R', hostAsked: true }), NOW)
   assert.equal(s.next, 'birthday')
-  assert.equal(setupState(base({ emailVerified: false, level: 'student', firstName: 'R', avatarChosen: true, birthdayDone: true, gradYear: '2028', hasPhone: true }), NOW).next, null)
+  assert.equal(setupState(base({ emailVerified: false, level: 'student', firstName: 'R', hostAsked: true, birthdayDone: true, gradYear: '2028', hasPhone: true }), NOW).next, null)
 })
 
 test('the demo account has nothing to set up', () => {

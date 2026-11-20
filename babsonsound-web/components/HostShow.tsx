@@ -8,7 +8,7 @@ import { SLOT_CATEGORIES, SLOT_RULES, SLOT_TYPES } from '@/lib/slots'
 import { ErrorText, Field, PrimaryButton } from '@/components/AuthUI'
 import ImagePicker from '@/components/ImagePicker'
 import PublicAgreement, { type PublicSignature } from '@/components/PublicAgreement'
-import HostAgreements from '@/components/HostAgreements'
+import HostAcks from '@/components/HostAcks'
 import HostOptions from '@/components/HostOptions'
 import GuestPicker from '@/components/GuestPicker'
 import PolicyBox from '@/components/PolicyBox'
@@ -22,7 +22,7 @@ import { guestsProblem, toPayload, type GuestChip } from '@/lib/guestPicker'
 import { bannedNotice, fmtWhen, type Standing } from '@/lib/membersPage'
 
 interface Options {
-  canLive: boolean; trainedReason: null | 'training' | 'expired'; agreementSigned: boolean
+  canLive: boolean; trainedReason: null | 'training' | 'expired'
   lastShow: { title: string; description: string; location: string; type: string; category: string; durationMin: number; audioURL: string } | null
   rules: { minLeadHours: number; maxAdvanceDays: number; maxMinutes: number; autoApproveHours: number; maxRepeatWeeks: number; liveMaxMinutes: number; capacity: number; quietWarning: string }
   weekHasShow: Record<string, boolean>
@@ -45,7 +45,6 @@ export default function HostShow() {
   const [adult, setAdult] = useState<AdultStatus>('unknown')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [signErr, setSignErr] = useState('')
 
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [type, setType] = useState<ShowType>('live')
@@ -70,6 +69,8 @@ export default function HostShow() {
   const [chips, setChips] = useState<GuestChip[]>([])
   const [justMe, setJustMe] = useState(false)
   const [policy, setPolicy] = useState(false)
+  const [gearAck, setGearAck] = useState(false)
+  const [contentAck, setContentAck] = useState(false)
   const [formErr, setFormErr] = useState('')
   const [sent, setSent] = useState<Sent | null>(null)
   const [recId, setRecId] = useState('')
@@ -99,8 +100,8 @@ export default function HostShow() {
     if (!opts || seeded) return
     const q = new URLSearchParams(window.location.search)
     const d = loadDraft()
-    const t: ShowType = q.get('type') === 'prerecorded' ? 'prerecorded' : q.get('type') === 'live' ? 'live' : (d.type ?? (opts.canLive ? 'live' : 'prerecorded'))
-    const useType: ShowType = t === 'live' && !opts.canLive ? 'prerecorded' : t
+    const t: ShowType = q.get('type') === 'prerecorded' ? 'prerecorded' : q.get('type') === 'live' ? 'live' : (d.type ?? (opts.canLive || opts.trainedReason === 'training' ? 'live' : 'prerecorded'))
+    const useType: ShowType = t === 'live' && !opts.canLive && opts.trainedReason !== 'training' ? 'prerecorded' : t
     const last = opts.lastShow
     queueMicrotask(() => {
       setType(useType)
@@ -174,17 +175,12 @@ export default function HostShow() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  async function sign(s: { typedName: string; accepted: true; version: string }) {
-    setBusy(true); setSignErr('')
-    try { await api('/api/host/readiness', s); await loadOpts() } catch (e) { setSignErr(e instanceof Error ? e.message : 'Could not sign.') }
-    setBusy(false)
-  }
-
   async function send(e: React.FormEvent) {
     e.preventDefault(); setFormErr(''); setError('')
     const p = guestsProblem(chips, justMe)
     if (p) { setFormErr(p); return }
     if (!policy) { setFormErr('Tick the box to agree to the policy.'); return }
+    if (!gearAck || !contentAck) { setFormErr('Tick both boxes: the gear policy and the content requirements.'); return }
     if (sharePublic && !sig) { setFormErr('Tick every box and type your full name to share publicly, or turn that off.'); return }
     if (recId && !recClean) { setFormErr('Listen to the whole recording and tick the box to confirm it is clean.'); return }
     if (!pick || !opts) return
@@ -193,7 +189,7 @@ export default function HostShow() {
       const r = await api<{ id: string; ids?: string[]; skipped?: unknown[]; quiet?: boolean; warning?: string }>('/api/slots/request', {
         title, description, location, type, category, startAt: pick, durationMin: length, audioURL: type === 'prerecorded' ? audioURL : '',
         imageUrl: image?.url ?? '', imagePath: image?.path ?? '', receiveRatings, noStudio: type === 'live' && noStudio,
-        guests: toPayload(chips), justMe, policyAck: true, ...(sharePublic && sig ? { publicConsent: sig } : {}),
+        guests: toPayload(chips), justMe, policyAck: true, gearAck: true, contentAck: true, ...(sharePublic && sig ? { publicConsent: sig } : {}),
       })
       let line = notice?.line ?? ''
       if (recId && type === 'prerecorded') {
@@ -253,12 +249,6 @@ export default function HostShow() {
         <p role="status" className="sk-raised rounded-xl p-5 text-lg text-br-dk-text">{banned}</p>
       ) : !opts ? (
         <p className="text-base text-br-dk-sub">Loading…</p>
-      ) : !opts.agreementSigned ? (
-        <section className="sk-raised rounded-2xl p-5 space-y-4">
-          <h2 className="font-display text-br-gold tracking-widest text-lg">Sign once, then you are set</h2>
-          <p className="text-base text-br-dk-text">The on-air agreements come first, so there is no surprise after you send.</p>
-          <HostAgreements busy={busy} error={signErr} onSign={sign} />
-        </section>
       ) : (
         <form onSubmit={send} className="space-y-6">
           <ol className="flex gap-2" aria-label="Steps">
@@ -273,13 +263,14 @@ export default function HostShow() {
           {step === 1 && (
             <section className="space-y-5" aria-label="Pick a time">
               <div role="group" aria-label="Format" className="flex flex-wrap gap-2">
-                <button type="button" aria-pressed={type === 'live'} disabled={!opts.canLive} onClick={() => chooseType('live')} className={`${chip(type === 'live')} disabled:opacity-50`}>{SLOT_TYPES.live}</button>
+                <button type="button" aria-pressed={type === 'live'} disabled={!opts.canLive && opts.trainedReason !== 'training'} onClick={() => chooseType('live')} className={`${chip(type === 'live')} disabled:opacity-50`}>{SLOT_TYPES.live}</button>
                 <button type="button" aria-pressed={type === 'prerecorded'} onClick={() => chooseType('prerecorded')} className={chip(type === 'prerecorded')}>{SLOT_TYPES.prerecorded}</button>
               </div>
               {!opts.canLive && (
                 <p className="text-base text-br-dk-sub">
-                  {opts.trainedReason === 'expired' ? 'Your training has ended, so live is paused. ' : 'Live shows need the training first. '}
-                  <Link href="/training" className="text-br-gold underline underline-offset-4">{opts.trainedReason === 'expired' ? 'Retake the training' : 'Take the training'}</Link>. Pre-recorded is open now.
+                  {opts.trainedReason === 'expired'
+                    ? <>Your training has ended, so live is paused. <Link href="/training" className="text-br-gold underline underline-offset-4">Retake the training</Link>. Pre-recorded is open now.</>
+                    : <>You can book now. <Link href="/training" className="text-br-gold underline underline-offset-4">Take the training</Link> within 48 hours or the request is cancelled. It is not approved until you have.</>}
                 </p>
               )}
               <div className="space-y-2">
@@ -319,7 +310,7 @@ export default function HostShow() {
                   {conflict && !tooSoon && <p className="text-base text-br-red">{length} minutes runs into another booking. Pick a shorter length or another time.</p>}
                   {pickOk && notice && <p className="text-base text-br-dk-text">{notice.line}</p>}
                   {quiet && <p className="text-base text-br-gold">{opts.rules.quietWarning}</p>}
-                  {touchesCleanHours(pick, pickEnd) && <p className="text-base text-br-dk-sub">This time is in clean hours (6 AM to 10 PM): no explicit music or language.</p>}
+                  {touchesCleanHours(pick, pickEnd) && <p className="text-base text-br-dk-sub">This time is in clean hours (6 AM to 8 PM): no explicit music or language.</p>}
                 </div>
               )}
               <PrimaryButton type="button" disabled={!pickOk} onClick={() => setStep(2)}>Next: your show</PrimaryButton>
@@ -391,6 +382,7 @@ export default function HostShow() {
                 </label>
               )}
               <PolicyBox checked={policy} onChange={setPolicy} />
+              <HostAcks gear={gearAck} content={contentAck} onGear={setGearAck} onContent={setContentAck} />
               <ErrorText>{formErr}</ErrorText>
               <div className="flex gap-3">
                 <button type="button" onClick={() => setStep(2)} className="sk-key rounded-lg px-5 min-h-12 text-base text-br-dk-text">Back</button>

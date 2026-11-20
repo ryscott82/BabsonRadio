@@ -6,7 +6,7 @@ export const runtime = 'nodejs'
 
 // Save one setup step:  POST { step, value }  ->  { ok, setup }
 //   name      { firstName, lastName? }
-//   avatar    { avatarColor }
+//   host      {}   (the "Want to host a show?" pop-up was answered)
 //   birthday  { year, month?, day?, parentalConsent? }   (year alone is enough unless it sits on the 13 or 18 line)
 //   gradYear  { gradYear }                               (students only)
 //   phone     { phone }                                  (students only; only when no number is on the account yet. A number another member uses is allowed.)

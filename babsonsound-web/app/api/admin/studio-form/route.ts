@@ -1,18 +1,18 @@
-import { HttpError, handle, readJson, requireAdmin } from '@/lib/server/http'
+import { HttpError, handle, readJson, requireArts } from '@/lib/server/http'
 import { saveStudioForm, studioFormInfo } from '@/lib/server/studioForm'
 
 export const runtime = 'nodejs'
 
-// The Studio training form address shown on /studioaccess. Admins only.
+// The Studio training form address shown on /studioaccess. BabsonARTS and Admins.
 export async function GET(req: Request) {
-  return handle(async () => { await requireAdmin(req); return studioFormInfo() })
+  return handle(async () => { await requireArts(req); return studioFormInfo() })
 }
 
 // { url?, embed? }  saves a new address (a Microsoft Forms link; '' clears it, and STUDIO_FORM_URL in Vercel is used if there is one) and/or
 // turns "show the form inside the page" on or off.
 export async function POST(req: Request) {
   return handle(async () => {
-    const t = await requireAdmin(req)
+    const t = await requireArts(req)
     const b = await readJson(req)
     if (typeof b.url !== 'string' && typeof b.embed !== 'boolean') throw new HttpError(400, 'Nothing to save.')
     try {

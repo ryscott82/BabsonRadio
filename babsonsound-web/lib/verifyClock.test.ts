@@ -1,23 +1,22 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { DELETE_AFTER_MS, REMIND_AFTER_MS, graceEnd, isLockedStage, lockedMayCall, verifyStage } from './verifyClock.ts'
+import { REMIND_AFTER_MS, graceEnd, isLockedStage, lockedMayCall, verifyStage } from './verifyClock.ts'
 
 const DAY = 86_400_000
 const T0 = Date.UTC(2026, 9, 1)
 const at = (days: number, over: object = {}) =>
   verifyStage({ emailVerified: false, graceUntil: T0 + 7 * DAY, createdMs: T0, now: T0 + days * DAY, ...over })
 
-test('days 0-7 work as before, day 7 locks, day 10 reminds, day 14 deletes', () => {
+test('days 0-7 work as before, day 7 locks, day 10 reminds, and it stays locked (never deleted)', () => {
   assert.equal(at(0), 'grace')
   assert.equal(at(6.99), 'grace')
   assert.equal(at(7), 'locked')
   assert.equal(at(9.99), 'locked')
   assert.equal(at(10), 'remind')
-  assert.equal(at(13.99), 'remind')
-  assert.equal(at(14), 'delete')
-  assert.equal(at(60), 'delete')
+  assert.equal(at(14), 'remind')
+  assert.equal(at(60), 'remind')
+  assert.equal(isLockedStage(at(365)), true)
   assert.equal(REMIND_AFTER_MS, 3 * DAY)
-  assert.equal(DELETE_AFTER_MS, 7 * DAY)
 })
 
 test('a verified account is never locked or deleted, and the demo account is exempt', () => {
@@ -35,7 +34,7 @@ test('guests are on the same clock as students', () => {
 test('with no claim, grace is 7 days from creation', () => {
   assert.equal(graceEnd(null, T0), T0 + 7 * DAY)
   assert.equal(at(8, { graceUntil: null }), 'locked')
-  assert.equal(at(15, { graceUntil: undefined }), 'delete')
+  assert.equal(at(15, { graceUntil: undefined }), 'remind')
 })
 
 test('a claim set long after creation starts the clock from the claim, not from creation', () => {
@@ -43,7 +42,7 @@ test('a claim set long after creation starts the clock from the claim, not from 
   const stage = (d: number) => verifyStage({ emailVerified: false, graceUntil: setAt + 7 * DAY, createdMs: T0, now: setAt + d * DAY })
   assert.equal(stage(1), 'grace')
   assert.equal(stage(8), 'locked')
-  assert.equal(stage(15), 'delete')
+  assert.equal(stage(15), 'remind')
 })
 
 test('locked accounts reach only /api/me, /api/auth and the account routes', () => {

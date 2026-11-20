@@ -6,19 +6,19 @@
 import { VERIFY_GRACE_MS } from './verify-grace.ts'
 
 /** In the order they are offered. iOS adds contacts later. */
-export const STEP_IDS = ['verifyEmail', 'name', 'birthday', 'gradYear', 'phone', 'avatar'] as const
+export const STEP_IDS = ['verifyEmail', 'name', 'birthday', 'gradYear', 'phone', 'host'] as const
 export type StepId = (typeof STEP_IDS)[number]
 export const isStepId = (v: unknown): v is StepId => typeof v === 'string' && (STEP_IDS as readonly string[]).includes(v)
 
 /** The email (by its deadline) and the name are required: the name cannot be dismissed. Everything else can be skipped and comes back. */
-export const REQUIRED: Record<StepId, boolean> = { verifyEmail: true, name: true, avatar: false, birthday: false, gradYear: false, phone: false }
+export const REQUIRED: Record<StepId, boolean> = { verifyEmail: true, name: true, host: false, birthday: false, gradYear: false, phone: false }
 
 export interface SkipRec { count: number; lastShownAt: number; lastSkippedAt: number }
 export type Skips = Partial<Record<StepId, Partial<SkipRec>>>
 
-/** Which steps apply to a person. Graduation year and phone are for students (and above) only: a Guest never sees them. Pick-your-color is always last. */
+/** Which steps apply to a person. Graduation year and phone are for students (and above) only: a Guest never sees them. "Want to host a show?" is for Babson students only and comes last (the profile color is chosen from the profile menu, not here). */
 const STUDENT_ONLY: readonly StepId[] = ['gradYear', 'phone']
-export const stepsFor = (level: string): StepId[] => STEP_IDS.filter(id => !STUDENT_ONLY.includes(id) || level !== 'guest')
+export const stepsFor = (level: string): StepId[] => STEP_IDS.filter(id => id === 'host' ? level === 'student' : !STUDENT_ONLY.includes(id) || level !== 'guest')
 
 export interface SetupInput {
   level: string
@@ -30,7 +30,8 @@ export interface SetupInput {
   /** ms the profile was created (fallback for the email deadline). */
   joinedAt: number | null
   firstName: string
-  avatarChosen: boolean
+  /** The "Want to host a show?" pop-up has been answered (button or not now). */
+  hostAsked: boolean
   birthdayDone: boolean
   gradYear: string
   hasPhone: boolean
@@ -57,7 +58,7 @@ export function setupState(i: SetupInput, _now: number): SetupState {
   const doneBy: Record<StepId, boolean> = {
     verifyEmail: i.emailVerified,
     name: i.firstName.trim().length > 0,
-    avatar: i.avatarChosen,
+    host: i.hostAsked,
     birthday: i.birthdayDone,
     gradYear: i.gradYear !== '',
     phone: i.hasPhone,

@@ -47,13 +47,15 @@ export default function EpisodeCard({ episode, layout = 'card' }: EpisodeCardPro
     />
   ) : (
     <div className="absolute inset-0 sk-field flex items-center justify-center">
+      {/* No picture: the Babson Radio logo, with the episode number on top when there is one */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/beaver.png" alt="" aria-hidden className="absolute inset-3 w-[calc(100%-1.5rem)] h-[calc(100%-1.5rem)] object-contain opacity-80" />
       {episode.episodeNumber && (
-        <div className="text-center">
+        <div className="relative text-center">
           <p className="font-display text-br-dk-muted text-sm tracking-[0.2em]">Ep</p>
-          <p className="font-display text-br-dk-text text-3xl">{episode.episodeNumber}</p>
+          <p className="font-display text-br-dk-text text-3xl drop-shadow">{episode.episodeNumber}</p>
         </div>
       )}
-      
     </div>
   )
 

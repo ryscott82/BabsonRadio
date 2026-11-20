@@ -2,7 +2,9 @@ import 'server-only'
 import { FieldValue, Timestamp, type Firestore, type QueryDocumentSnapshot } from 'firebase-admin/firestore'
 import { HttpError } from './http'
 import { rebuildAutoSchedule } from './autoschedule'
-import { sendMail, slotDecisionMail } from './mailer'
+import { sendMail, slotDecisionMail, trainingLapsedMail } from './mailer'
+import { releaseImage } from './slots'
+import { radioTrainedFromProfile } from '../slotAuto'
 import { AutoSkip, approveRequest, whenText, type ApprovedMail } from './slotApproval'
 
 // The auto-approver. A pending request carries `autoApproveAt` (24 h after it was made, or 12 h before the show if that is sooner).
@@ -29,6 +31,7 @@ export function dueRequests(docs: QueryDocumentSnapshot[], now: number, uid?: st
 export async function runAutoApprove(db: Firestore, o: { now?: number; uid?: string; candidates?: QueryDocumentSnapshot[]; force?: boolean } = {}): Promise<AutoRun> {
   const now = o.now ?? Date.now()
   const docs = o.candidates ?? (await db.collection('slotRequests').where('autoApproveAt', '<=', Timestamp.fromMillis(now)).limit(60).get()).docs
+  await cancelUntrained(db, now).catch(e => console.error('[cancel untrained]', e))
   const out: AutoRun = { checked: 0, approved: 0, blocked: 0, failed: 0 }
   const mails: ApprovedMail[] = []
   for (const d of dueRequests(docs, now, o.uid)) {
@@ -60,6 +63,34 @@ export async function runAutoApprove(db: Firestore, o: { now?: number; uid?: str
     await rebuildAutoSchedule(db).catch(e => console.error('[autoschedule]', e))
   }
   return out
+}
+
+/**
+ * Cancels pending requests whose person was told to take the training within 48 hours and has not (trainByAt has passed). Cheap: one query on trainByAt,
+ * and it runs with the auto-approver, so it needs no cron of its own.
+ */
+export async function cancelUntrained(db: Firestore, now = Date.now()): Promise<number> {
+  const snap = await db.collection('slotRequests').where('trainByAt', '<=', Timestamp.fromMillis(now)).limit(20).get()
+  let n = 0
+  for (const d of snap.docs) {
+    if (d.get('status') !== 'pending') { await d.ref.update({ trainByAt: FieldValue.delete() }).catch(() => {}); continue }
+    const u = await db.collection('users').doc(String(d.get('requesterUid'))).get()
+    const trained = radioTrainedFromProfile({
+      level: String(u.get('level') ?? 'student'), radioTrained: u.get('radioTrained') === true, radioExpiresAt: ms(u.get('radioExpiresAt')),
+    }, now)
+    if (trained) { await d.ref.update({ trainByAt: FieldValue.delete() }).catch(() => {}); continue }
+    try {
+      await d.ref.update({
+        status: 'cancelled', cancelledAt: Timestamp.fromMillis(now), cancelReason: 'Training not taken within 48 hours', cancelledFrom: 'pending',
+        trainByAt: FieldValue.delete(), autoApproveAt: FieldValue.delete(), autoBlockedReason: FieldValue.delete(), autoCheckedAt: FieldValue.delete(),
+      })
+      n++
+      await releaseImage(db, d.get('imagePath'), d.id).catch(() => {})
+      const to = String(d.get('requesterEmail') ?? '')
+      if (to) { const m = trainingLapsedMail(String(d.get('title') ?? 'your show')); await sendMail(to, m.subject, m.text, m.html).catch(() => false) }
+    } catch (e) { console.error('[training lapsed]', d.id, e) }
+  }
+  return n
 }
 
 /** Clears the stuck markers when staff or the student change something that could free the request (hold released, agreement signed). */

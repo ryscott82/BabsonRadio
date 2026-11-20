@@ -181,7 +181,7 @@ test('critical: site down, dead air and server time, from what the dashboard alr
 test('the E-board label: shown for the stored value `director`, which does not change', () => {
   assert.equal(roleLabel('director'), 'E-board'); assert.equal(roleLabel('admin'), 'Admin'); assert.equal(roleLabel('student'), 'Student'); assert.equal(roleLabel('guest'), 'Guest')
   assert.equal(roleLabel('something-else'), 'something-else')
-  assert.deepEqual(Object.keys(ROLE_LABEL), ['guest', 'student', 'director', 'admin'])
+  assert.deepEqual(Object.keys(ROLE_LABEL), ['guest', 'student', 'arts', 'director', 'admin'])
   assert.equal(STAFF_ONLY, 'E-board and admins only.')
   assert.match(src('lib/server/http.ts'), /need\(req, a => a\.level === 'director' \|\| a\.level === 'admin', STAFF_ONLY\)/)
   assert.match(src('lib/server/access.ts'), /'director'/, 'the stored value is untouched')

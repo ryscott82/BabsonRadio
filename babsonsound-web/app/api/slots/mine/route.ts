@@ -38,6 +38,8 @@ export async function GET(req: Request) {
         held,
         autoApproveAt: pending && !held ? due : null,
         autoBlockedReason: pending ? String(d.get('autoBlockedReason') ?? '') : '',
+        // Not trained yet: take the training by this time (ms) or the request is cancelled. null once trained.
+        trainByAt: pending ? ((d.get('trainByAt')?.toMillis?.() as number | undefined) ?? null) : null,
         approvedBy: approved ? (d.get('approvedBy') === 'auto' ? 'auto' : 'staff') : '',
       }
     }).sort((a, b) => b.createdAt - a.createdAt).slice(0, 50)

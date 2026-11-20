@@ -113,7 +113,7 @@ export default function StudioBooking({ standing, onMine }: { standing: Standing
       <div className="space-y-3">
         <p className="text-base text-br-dk-text">Booking the studio needs the Studio badge. Training takes one session.</p>
         <p className="text-base text-br-dk-sub">{WALK_IN_NOTE}</p>
-        <a href="#training" className="sk-key hw-pill inline-flex items-center justify-center h-11 px-5 rounded-full text-base font-semibold">Get trained</a>
+        <a href="/training" className="sk-key hw-pill inline-flex items-center justify-center h-11 px-5 rounded-full text-base font-semibold">Get trained</a>
       </div>
     )
   }

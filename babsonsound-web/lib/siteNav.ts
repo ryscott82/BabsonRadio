@@ -12,9 +12,11 @@ export const NAV_LINKS: NavLink[] = [
 ]
 
 /** Guests (not a Babson, Olin or Wellesley email) only have Live and Members (events and info). */
-export function linksFor(o: { isGuest: boolean; hosting: boolean }): NavLink[] {
+export function linksFor(o: { isGuest: boolean; hosting: boolean; arts?: boolean }): NavLink[] {
   if (o.isGuest) return NAV_LINKS.filter(l => l.href === '/' || l.href === '/members')
-  return o.hosting ? [...NAV_LINKS, { href: '/host', label: 'Host' }] : NAV_LINKS
+  // BabsonARTS staff (signed in) also get a Settings tab: strikes and bans, adding staff, the studio form link.
+  const base = o.hosting ? [...NAV_LINKS, { href: '/host', label: 'Host' }] : NAV_LINKS
+  return o.arts ? [...base, { href: '/arts', label: 'Settings' }] : base
 }
 
 /** Old addresses that still work. /shows (the list) now lives on the Library page; /shows/<name> pages are unchanged. */
@@ -28,6 +30,7 @@ export const LEGACY_REDIRECTS: { source: string; destination: string }[] = [
 
 /** Which bar link is lit for a path. Show pages belong to Library. */
 export function activeHref(pathname: string, href: string): boolean {
+  if (href === '/arts') return pathname === '/arts' || pathname.startsWith('/arts/')
   if (href === '/') return pathname === '/'
   if (href === '/library') return pathname === '/library' || pathname.startsWith('/library/') || pathname === '/shows' || pathname.startsWith('/shows/')
   if (href === '/members') return pathname === '/members' || pathname.startsWith('/members/') || pathname === '/slots' || pathname === '/training' || pathname.startsWith('/training/')

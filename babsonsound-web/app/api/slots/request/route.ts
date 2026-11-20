@@ -16,7 +16,7 @@ export const runtime = 'nodejs'
 // (12 hours before the show if that is sooner) when nothing stops it (lib/server/autoApprove.ts).
 // Optional `repeatWeeks` (0 to 3) asks for the same New York time on the next weeks too, as one group (`groupId`). Weeks that are taken, too soon,
 // too far ahead or already requested are skipped. Reply: { id, ids, skipped, groupId, needsAgreement, quiet, warning }. A group counts as one pending request.
-// Also required: `policyAck: true` (the policy box) and who is coming: `guests` [{ name, email } | { id }] or `justMe: true`. A live show is at most 90 minutes
+// Also required: `policyAck: true` (the policy box), `gearAck: true` and `contentAck: true` (older app builds that send neither still work) and who is coming: `guests` [{ name, email } | { id }] or `justMe: true`. A live show is at most 90 minutes
 // (pre-recorded shows keep the longer cap) and holds the studio unless `noStudio: true`. Three confirmed strikes pause new requests.
 export async function POST(req: Request) {
   return handle(async () => {
@@ -50,6 +50,9 @@ export async function POST(req: Request) {
     const tooLong = liveLengthError(type, durationMin)
     if (tooLong) throw new HttpError(400, tooLong, 'BR-SLT-006')
     if (b.policyAck !== true) throw new HttpError(400, 'Tick the box to agree to the studio and show policy.', 'BR-BKG-005')
+    // Two ticks replace the long agreement (training already has it): gear misuse and the content requirements. Older app builds send neither field and still work.
+    const legacyApp = b.gearAck === undefined && b.contentAck === undefined
+    if (!legacyApp && (b.gearAck !== true || b.contentAck !== true)) throw new HttpError(400, 'Tick both boxes: the gear policy and the content requirements.', 'BR-BKG-005')
 
     if (audioURL) {
       if (type !== 'prerecorded') throw new HttpError(400, 'An audio link only applies to pre-recorded shows.')
@@ -68,7 +71,7 @@ export async function POST(req: Request) {
     const wantsPublic = b.publicConsent != null && typeof b.publicConsent === 'object'
     const r = await createSlotRequests(db, t, {
       title, description, location, type, category, audioURL, img, durationMin, receiveRatings: b.receiveRatings !== false,
-      publicConsent: wantsPublic ? (b.publicConsent as Record<string, unknown>) : null, guests, justMe: g.justMe, noStudio: b.noStudio === true,
+      publicConsent: wantsPublic ? (b.publicConsent as Record<string, unknown>) : null, guests, justMe: g.justMe, noStudio: b.noStudio === true, acks: legacyApp ? 'legacy' : 'new',
     }, [startMs, ...repeatStarts(startMs, weeks)], { hardFirst: true })
     return r
   })

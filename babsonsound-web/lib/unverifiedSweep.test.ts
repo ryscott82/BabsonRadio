@@ -11,33 +11,27 @@ const user = (uid: string, daysPastGrace: number, over: Partial<SweepUser> = {})
 })
 
 function run(users: SweepUser[], over: Partial<SweepDeps> = {}, profiles: Record<string, object> = {}) {
-  const calls = { removed: [] as string[], logged: [] as string[], done: [] as string[], reminded: [] as string[], marked: [] as string[] }
+  const calls = { reminded: [] as string[], marked: [] as string[] }
   const deps: SweepDeps = {
     now: NOW,
     list: async () => ({ users }),
     profile: async uid => ({ demo: false, name: 'N', level: 'guest', reminded: false, ...(profiles[uid] ?? {}) }),
     remind: async u => { calls.reminded.push(u.uid); return true },
     markReminded: async uid => { calls.marked.push(uid) },
-    logDelete: async u => { calls.logged.push(u.uid); return async () => { calls.done.push(u.uid) } },
-    remove: async uid => { calls.removed.push(uid) },
     ...over,
   }
   return sweepUnverified(deps).then(out => ({ out, calls }))
 }
 
-test('deletes accounts unverified after day 14, logs first, leaves younger and verified ones', async () => {
-  const { out, calls } = await run([
-    user('old', 7), user('old2', 30), user('locked', 4), user('fresh', -2), user('ok', 20, { emailVerified: true }),
-  ])
-  assert.deepEqual(calls.removed.sort(), ['old', 'old2'])
-  assert.deepEqual(calls.logged.sort(), ['old', 'old2'])
-  assert.deepEqual(calls.done.sort(), ['old', 'old2'])
-  assert.equal(out.deleted, 2)
+test('never deletes: long-unverified accounts are only reminded, and the sweep has no way to remove one', async () => {
+  const { out, calls } = await run([user('old', 30), user('older', 90), user('ok', 20, { emailVerified: true })], {}, { old: { reminded: true }, older: { reminded: true } })
+  assert.deepEqual(calls.reminded, [])
+  assert.equal('deleted' in out, false)
 })
 
-test('the demo account is never touched', async () => {
-  const { calls } = await run([user('demo', 30)], {}, { demo: { demo: true } })
-  assert.deepEqual(calls.removed, [])
+test('the demo account is never reminded', async () => {
+  const { calls } = await run([user('demo', 3.5)], {}, { demo: { demo: true } })
+  assert.deepEqual(calls.reminded, [])
 })
 
 test('reminder goes out once around day 10, only when mail works', async () => {
@@ -53,24 +47,23 @@ test('reminder goes out once around day 10, only when mail works', async () => {
 
 test('accounts with no email are skipped; an account with no claim follows 7 days from creation', async () => {
   const { calls } = await run([
-    user('no-email', 30, { email: null }),
-    user('no-claim', 8, { graceUntil: null, createdMs: NOW - 22 * DAY }),
+    user('no-email', 3.5, { email: null }),
+    user('no-claim', 3.5, { graceUntil: null, createdMs: NOW - 10.5 * DAY }),
   ])
-  assert.deepEqual(calls.removed, ['no-claim'])
+  assert.deepEqual(calls.reminded, ['no-claim'])
 })
 
-test('one failing account does not stop the rest, and the cap limits deletes per run', async () => {
-  let { out, calls } = await run([user('a', 9), user('b', 9)], { remove: async uid => { if (uid === 'a') throw new Error('boom'); calls0.push(uid) } })
+test('one failing account does not stop the rest', async () => {
+  const { out, calls } = await run([user('a', 3.5), user('b', 3.5)], { remind: async u => { if (u.uid === 'a') throw new Error('boom'); calls0.push(u.uid); return true } })
   assert.equal(out.failed, 1)
-  assert.equal(out.deleted, 1)
-  ;({ out, calls } = await run([user('1', 9), user('2', 9), user('3', 9)], { maxDeletes: 2 }))
-  assert.equal(calls.removed.length, 2)
-  assert.equal(out.skipped, 1)
+  assert.equal(out.reminded, 1)
+  assert.deepEqual(calls0, ['b'])
+  assert.deepEqual(calls.reminded, [])
 })
 const calls0: string[] = []
 
 test('walks every page of users', async () => {
-  const pages: Record<string, { users: SweepUser[]; next?: string }> = { start: { users: [user('p1', 9)], next: 'two' }, two: { users: [user('p2', 9)] } }
+  const pages: Record<string, { users: SweepUser[]; next?: string }> = { start: { users: [user('p1', 3.5)], next: 'two' }, two: { users: [user('p2', 3.5)] } }
   const { calls } = await run([], { list: async t => pages[t ?? 'start'] })
-  assert.deepEqual(calls.removed.sort(), ['p1', 'p2'])
+  assert.deepEqual(calls.reminded.sort(), ['p1', 'p2'])
 })

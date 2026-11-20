@@ -1,12 +1,12 @@
-// The Members page, with no React: who sees which section, the "Next up for me" lines, standing wording and the training rows.
+// The Members page, with no React: who sees which quadrant, the "Next up for me" lines, standing wording and the training rows.
 
-export type SectionId = 'next' | 'host' | 'studio' | 'standing' | 'training' | 'resources' | 'events' | 'info'
+export type SectionId = 'access' | 'host' | 'resources' | 'events' | 'info'
 export type Viewer = 'signed-out' | 'guest' | 'student'
 
 export const viewerOf = (o: { signedIn: boolean; isGuest: boolean; isBabson: boolean }): Viewer => (!o.signedIn ? 'signed-out' : o.isBabson ? 'student' : 'guest')
 
-/** Top to bottom. Everyone can read events and info; the rest are for signed-in students (hidden, not greyed, for everyone else). */
-const ALL: SectionId[] = ['next', 'host', 'studio', 'standing', 'training', 'resources', 'events', 'info']
+/** The four quadrants of the dashboard: Studio access (top left, with the studio events), Host a show (top right), Resources (bottom left), Info (bottom right). Everyone can read events and info; the rest are for signed-in students (hidden, not greyed, for everyone else). */
+const ALL: SectionId[] = ['access', 'host', 'resources', 'info']
 export function sectionsFor(v: Viewer): SectionId[] {
   return v === 'student' ? ALL : ['events', 'info']
 }
@@ -51,15 +51,16 @@ export function trainingDue(badges: BadgeRow[], now: number): string {
 }
 
 // ── Standing ──
-export interface Standing { level: number; label: string; bannedUntil: number | null; strikes: { date: string; reason: string }[] }
+export interface Standing { level: number; label: string; bannedUntil: number | null; studioBannedUntil?: number | null; strikes: { date: string; reason: string }[] }
 export type StandingTone = 'good' | 'note' | 'warn' | 'ban'
 
 export function standingView(s: Standing | null | undefined): { tone: StandingTone; headline: string; detail: string; lines: string[]; banned: boolean } {
   const lines = (s?.strikes ?? []).map(x => `${x.date}: ${x.reason}`)
   if (!s || s.level <= 0) return { tone: 'good', headline: 'Good standing', detail: 'Nothing to fix. Keep showing up and you stay here.', lines, banned: false }
-  if (s.level === 1) return { tone: 'note', headline: '1 mistake', detail: 'One missed show or booking so far. A second one is a warning.', lines, banned: false }
-  if (s.level === 2) return { tone: 'warn', headline: 'Warning', detail: 'Two mistakes. A third one means no hosting or booking for the rest of the semester.', lines, banned: false }
-  return { tone: 'ban', headline: s.bannedUntil ? `Banned until ${fmtDate(s.bannedUntil)}` : s.label, detail: 'You cannot request shows or book the studio until then. You can still listen to everything. Talk to the E-board if this looks wrong.', lines, banned: true }
+  if (s.level >= 3 || s.bannedUntil) return { tone: 'ban', headline: s.bannedUntil ? `Banned until ${fmtDate(s.bannedUntil)}` : s.label, detail: 'You cannot request shows or book the studio until then. You can still listen to everything. Talk to the E-board if this looks wrong.', lines, banned: true }
+  if (s.studioBannedUntil) return { tone: 'warn', headline: `Studio ban until ${fmtDate(s.studioBannedUntil)}`, detail: 'Second strike: the studio is paused for a week. You can still request shows that do not use it. A third strike means no hosting or booking for the rest of the semester.', lines, banned: false }
+  if (s.level === 2) return { tone: 'warn', headline: 'Second strike', detail: 'Your week without the studio is over. A third strike means no hosting or booking for the rest of the semester.', lines, banned: false }
+  return { tone: 'note', headline: 'First strike', detail: 'You were emailed. A second strike pauses the studio for a week.', lines, banned: false }
 }
 
 /** The sentence a banned person sees instead of the forms: why and until when. */
@@ -92,9 +93,9 @@ export const INFO = {
     'Be kind on air and in the room. The respect agreement applies to every show.',
     'Clean the studio when you leave: desk clear, mics off, chairs pushed in.',
     'Walk-ins are welcome whenever the studio is free. A booking just reserves it.',
-    'Missed shows and bookings count: a mistake, then a warning, then a ban for the semester. The E-board can excuse a mistake.',
+    'Missed shows and bookings count as strikes: the first sends an email, the second pauses the studio for a week, the third bans you for the semester. Only an admin can excuse a strike.',
   ],
-  cleanHours: 'Clean hours are 6 AM to 10 PM Eastern: no explicit music or language on air. Not sure about a word? Check the Explicit phrase reference under Resources.',
+  cleanHours: 'Clean hours are 6 AM to 8 PM Eastern: no explicit music or language on air. Not sure about a word? Check the Explicit phrase reference under Resources.',
   quietHours: 'Quiet hours: Monday to Friday 9 AM to 4 PM and 10 PM to 7 AM. No loud DJ sets, keep the volume as low as possible. Nothing is blocked.',
   contactNote: 'Questions? Write to the E-board. Anyone can reach us from the Support page.',
 }

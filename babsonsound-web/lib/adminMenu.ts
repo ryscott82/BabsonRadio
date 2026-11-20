@@ -1,13 +1,13 @@
 import type { OpsIcon } from '@/components/admin/OpsIcons'
 
-// The Settings menu (the whole admin panel is called Settings). Seven tabs, in this order: Overview (home), Users, Shows, Content, Notifications, Documentation, Advanced.
+// The Settings menu (the whole admin panel is called Settings). Seven tabs, in this order: Overview (home), Users, Schedule, Content, Notifications, Documentation, Advanced.
 // Pure (no React), so the role rules, the search, the old links and the Back targets are all tested.
 // E-board (stored role `director`) sees every tab except Advanced. Admins see all six. Hidden, not greyed out: a person never sees what they cannot use.
 // Rule for where a page lives: what people need often is in an everyday tab; what is rare, a default value or Admin-only is in Advanced.
 
 export type AdminRole = 'director' | 'admin'
 export type BadgeKey = 'pending' | 'reports' | 'alerts'
-export type TabId = 'home' | 'users' | 'shows' | 'content' | 'notifications' | 'docs' | 'advanced'
+export type TabId = 'home' | 'users' | 'schedule' | 'content' | 'notifications' | 'docs' | 'advanced'
 export interface MenuTile { href: string; icon: OpsIcon; title: string; text: string; admin?: boolean; badge?: BadgeKey; eboard?: boolean }
 export interface MenuGroup { title?: string; tiles: MenuTile[] }
 export interface MenuTab {
@@ -37,18 +37,16 @@ export const SECTIONS: MenuTab[] = [
     { href: '/admin/users', icon: 'users', title: 'Users and roles', text: 'Find people and give access', admin: true },
     { href: '/admin/training', icon: 'training', title: 'Training', text: 'Who is trained, check in and certify hosts' },
     { href: '/admin/quiz', icon: 'training', title: 'Training quiz', text: 'The question bank: add, edit and import questions (Admins can delete in bulk)' },
+    { href: '/admin/strikes', icon: 'blocked', title: 'Strikes', text: 'Missed shows to confirm or excuse, and who is in good standing' },
     { href: '/admin/phone-changes', icon: 'phone', title: 'Phone changes', text: 'Approve new numbers', admin: true },
     { href: '/admin/phone-lookup', icon: 'phone', title: 'Phone lookup', text: 'Find the account for a number', admin: true },
     { href: '/admin/birthdays', icon: 'birthdays', title: 'Birthdays', text: 'Who is celebrating soon', admin: true },
     { href: '/admin/booth', icon: 'users', title: 'Studio PC log', text: 'Who signed in at the studio and went live' },
   ] }] }),
-  tab({ id: 'shows', title: 'Shows', icon: 'schedule', groups: [{ tiles: [
-    { href: '/admin/schedule', icon: 'schedule', title: 'Schedule', text: 'See and edit what is on air, and one-time events' },
+  tab({ id: 'schedule', title: 'Schedule', icon: 'schedule', groups: [{ tiles: [
+    { href: '/admin/schedule', icon: 'schedule', title: 'On-air schedule', text: 'See and edit what is on air, one-time events, and each show\'s set lists' },
     { href: '/admin/slots', icon: 'slots', title: 'Show requests', text: 'Approve or decline requests', badge: 'pending' },
     { href: '/admin/show-updates', icon: 'updates', title: 'Show changes', text: 'Review edits hosts made' },
-    { href: '/admin/autoschedule', icon: 'auto', title: 'Auto DJ', text: 'Rules and playlists for the music between shows' },
-    { href: '/admin/setlists', icon: 'setlists', title: 'Set lists', text: 'Songs planned for shows', admin: true },
-    { href: '/admin/strikes', icon: 'blocked', title: 'Strikes', text: 'Missed shows to confirm or excuse, and who is in good standing' },
     { href: '/admin/studio-list', icon: 'training', title: 'Studio list', text: 'Who is coming to the studio and shows, with a CSV' },
     { href: '/admin/club-events', icon: 'announce', title: 'Club events', text: 'Add and edit events shown on the Members page' },
   ] }] }),
@@ -75,6 +73,7 @@ export const SECTIONS: MenuTab[] = [
     ] },
     { title: 'Limits and defaults', tiles: [
       { href: '/admin/listening-limits', icon: 'stats', title: 'Listening limits', text: 'When the player asks "still listening?", when it stops, and sleep hours', admin: true },
+      { href: '/admin/autoschedule', icon: 'auto', title: 'Auto DJ', text: 'Rules and playlists for the music between shows', admin: true, eboard: true },
       { href: '/admin/expert', icon: 'auto', title: 'Expert settings', text: 'Every setting with its default. You almost never need these', admin: true },
     ] },
     { title: 'Site and content settings', tiles: [
@@ -109,10 +108,10 @@ export const eboardExtras = (): (MenuTile & { where: string })[] =>
 
 /** Where an old link opens. Every address that worked before still works: the old tab names go to their new homes. */
 export const LEGACY_HASH: Record<string, TabId> = {
-  onair: 'shows', people: 'users', music: 'content', messages: 'notifications',
+  onair: 'schedule', shows: 'schedule', people: 'users', music: 'content', messages: 'notifications',
   customize: 'advanced', rules: 'advanced', system: 'advanced', tools: 'advanced', settings: 'advanced',
 }
-const TAB_IDS = new Set<string>(['home', 'users', 'shows', 'content', 'notifications', 'docs', 'advanced'])
+const TAB_IDS = new Set<string>(['home', 'users', 'schedule', 'content', 'notifications', 'docs', 'advanced'])
 
 /** "#people" -> "users". Unknown or empty -> "home". A tab the role cannot see -> "home". */
 export function resolveHash(hash: string, role: AdminRole = 'admin'): TabId {

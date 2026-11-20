@@ -1,13 +1,10 @@
 import 'server-only'
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from './admin'
-import { deleteAccountData } from './deleteAccount'
 import { mailConfigured, sendMail, verifyReminderMail } from './mailer'
 import { sweepUnverified } from '../unverifiedSweep'
 
-export const REASON_UNVERIFIED = 'unverified after 14 days'
-
-/** Daily: remind unverified accounts around day 10 and delete them after day 14. Runs inside an existing cron. */
+/** Daily: remind unverified (locked) accounts once, around day 10. Nothing is deleted. Runs inside an existing cron. */
 export function runUnverifiedSweep(now = Date.now()) {
   const auth = adminAuth(), db = adminDb()
   return sweepUnverified({
@@ -30,20 +27,11 @@ export function runUnverifiedSweep(now = Date.now()) {
         name: [s.get('firstName'), s.get('lastName')].filter(Boolean).join(' '),
       }
     },
-    remind: async (u, deleteAt) => {
+    remind: async u => {
       if (!mailConfigured() || !u.email) return false
-      const m = verifyReminderMail({ deleteAt })
+      const m = verifyReminderMail()
       return sendMail(u.email, m.subject, m.text, m.html)
     },
     markReminded: uid => db.collection('users').doc(uid).set({ verifyReminderAt: Timestamp.now() }, { merge: true }).then(() => {}),
-    logDelete: async (u, p) => {
-      const log = db.collection('accountDeletions').doc()
-      await log.set({
-        uid: u.uid, email: (u.email ?? '').toLowerCase(), name: p.name, level: p.level, reason: REASON_UNVERIFIED,
-        byUid: 'system', byEmail: '', byName: 'Automatic cleanup', at: Timestamp.now(), done: false,
-      })
-      return () => log.update({ done: true }).then(() => {})
-    },
-    remove: uid => deleteAccountData(uid),
   })
 }

@@ -94,6 +94,11 @@ export const requireRadioTrained = (req: Request) =>
 /** Director or admin. */
 export const requireDirector = (req: Request) =>
   need(req, a => a.level === 'director' || a.level === 'admin', STAFF_ONLY)
+/** Who can issue and confirm strikes and bans: E-board, Admins and BabsonARTS staff. (Only Admins can excuse one: see requireAdmin.) */
+export const requireStrikeStaff = (req: Request) =>
+  need(req, a => a.level === 'director' || a.level === 'admin' || a.level === 'arts', 'E-board, BabsonARTS and Admins only.')
+/** BabsonARTS staff (and Admins): the Settings menu. */
+export const requireArts = (req: Request) => need(req, a => a.level === 'arts' || a.level === 'admin', 'BabsonARTS and Admins only.')
 /** Admin only. */
 export const requireAdmin = (req: Request) => need(req, a => a.level === 'admin', 'Admins only.')
 export const requireStaff = requireAdmin

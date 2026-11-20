@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
   AUTO, addWeeksWallClock, autoApproveAtMs, autoEligible, autoStartsInSameWeek, autoStartsOf, checkAudioUpdate, cleanWeeks, evaluateAuto,
-  nyToMs, nyWeekKey, openWindow, pendingCount, repeatStarts, toOpenRanges, weekKeysFrom, type Requester,
+  nyToMs, nyWeekKey, openWindow, pendingCount, repeatStarts, toOpenRanges, trainByMs, trainingLapsed, TRAIN_WITHIN_MS, weekKeysFrom, type Requester,
 } from './slotAuto.ts'
 import { CONDUCT_VERSION } from './conduct.ts'
 
@@ -83,13 +83,14 @@ test('the on-air agreement must be signed (current version) at approval time', (
   assert.deepEqual(base({ requester: { ...GOOD, conductVersion: 'old-version' } }), { action: 'skip', reason: 'agreement' })
 })
 
-test('a live show needs the radio badge, and an expired badge does not count', () => {
+test('any show needs the radio badge to approve itself, and an expired badge does not count', () => {
   const expired: Requester = { ...GOOD, radioExpiresAt: NOW - 1 }
   assert.deepEqual(base({ type: 'live', requester: expired }), { action: 'skip', reason: 'training' })
   assert.deepEqual(base({ type: 'live', requester: { ...GOOD, radioTrained: false } }), { action: 'skip', reason: 'training' })
+  assert.deepEqual(base({ type: 'prerecorded', requester: { ...GOOD, radioTrained: false } }), { action: 'skip', reason: 'training' })
   assert.deepEqual(base({ type: 'live', requester: { ...GOOD, radioExpiresAt: NOW + DAY } }), { action: 'approve' })
   assert.deepEqual(base({ type: 'live', requester: { ...GOOD, level: 'director', radioTrained: false } }), { action: 'approve' }) // directors always count
-  assert.deepEqual(base({ type: 'prerecorded', requester: expired }), { action: 'approve' })                                  // pre-recorded needs no badge
+  assert.deepEqual(base({ type: 'prerecorded', requester: expired }), { action: 'skip', reason: 'training' })
   assert.deepEqual(base({ requester: { ...GOOD, level: 'guest' } }), { action: 'skip', reason: 'ineligible' })
 })
 
@@ -99,11 +100,11 @@ test('a time taken since the request was made blocks it at approval time, and so
   assert.deepEqual(base({ startMs: NOW - 1 }), { action: 'skip', reason: 'past' })
 })
 
-test('eligibility at request time: agreement signed, and for live shows the radio badge', () => {
-  assert.equal(autoEligible({ type: 'prerecorded', conductSigned: true, radioTrained: false }), true)
-  assert.equal(autoEligible({ type: 'live', conductSigned: true, radioTrained: true }), true)
-  assert.equal(autoEligible({ type: 'live', conductSigned: true, radioTrained: false }), false)
-  assert.equal(autoEligible({ type: 'prerecorded', conductSigned: false, radioTrained: true }), false)
+test('eligibility at request time: the radio badge, for every kind of show (the training already holds the full agreement)', () => {
+  assert.equal(autoEligible({ type: 'prerecorded', radioTrained: false }), false)
+  assert.equal(autoEligible({ type: 'live', radioTrained: true }), true)
+  assert.equal(autoEligible({ type: 'live', radioTrained: false }), false)
+  assert.equal(autoEligible({ type: 'prerecorded', radioTrained: true }), true)
 })
 
 // ── repeat ──
@@ -193,4 +194,16 @@ test('hold is staff only and blocks auto-approval', () => {
   assert.match(h, /requireDirector/)
   assert.match(src('lib/server/autoApprove.ts'), /d\.get\('held'\) !== true/)
   assert.match(src('lib/server/slotApproval.ts'), /held: r\.get\('held'\) === true/)
+})
+
+test('an untrained person has 48 hours (or until the show starts) to take the training', () => {
+  assert.equal(TRAIN_WITHIN_MS, 48 * 3_600_000)
+  assert.equal(trainByMs(NOW, NOW + 5 * DAY), NOW + 2 * DAY)
+  assert.equal(trainByMs(NOW, NOW + DAY), NOW + DAY) // a show tomorrow: due by its start
+  const due = { status: 'pending', trainByAt: NOW - 1, trained: false, now: NOW }
+  assert.equal(trainingLapsed(due), true)
+  assert.equal(trainingLapsed({ ...due, trained: true }), false)
+  assert.equal(trainingLapsed({ ...due, trainByAt: NOW + 1 }), false)
+  assert.equal(trainingLapsed({ ...due, status: 'approved' }), false)
+  assert.equal(trainingLapsed({ ...due, trainByAt: null }), false)
 })

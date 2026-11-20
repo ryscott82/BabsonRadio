@@ -5,7 +5,7 @@
 // The questions go to the browser WITHOUT answers; the server grades. The technical and new privacy questions (Nov 14) are drafts:
 // review the wording and the gear details before launch. Change TRAINING_VERSION when the pool changes (grants record it).
 
-export const TRAINING_VERSION = '2026-11-14d'
+export const TRAINING_VERSION = '2026-11-14e'
 export const PASS_PERCENT = 100
 
 export type QuizTopic = 'slurs' | 'privacy' | 'radio' | 'studio' | 'rules'
@@ -13,13 +13,15 @@ export interface QuizQuestion { id: string; topic: QuizTopic; q: string; options
 
 export const QUIZ: QuizQuestion[] = [
   { id: 'clean-hours', topic: 'radio', q: 'Your show starts at 4 PM. Which song can you play?', options: ['A song marked Explicit, because it is only a little rude', 'A song you have not checked, because most radio edits are fine', 'A song you have checked and know is clean', 'Any song, if you say "listener discretion" first'], answer: 2,
-    why: 'During the clean hours (6 AM to 10 PM Eastern) only songs you have confirmed are clean may air. Warnings do not change that. Not sure about a lyric? Check it in the Explicit phrase reference (babsonradio.com/words).' },
+    why: 'During the clean hours (6 AM to 8 PM Eastern) only songs you have confirmed are clean may air. Warnings do not change that. Not sure about a lyric? Check it in the Explicit phrase reference (babsonradio.com/words).' },
+  { id: 'after-hours', topic: 'radio', q: 'It is 9 PM. A word the Explicit phrase reference allows after 8 PM slips out on air. What do you do?', options: ['Apologize and end the show', 'No apology needed, but keep foul language to a minimum', 'Say it again so listeners know it is allowed', 'Egregious slurs are allowed after 8 PM too'], answer: 1,
+    why: 'After 8 PM the words the Explicit phrase reference allows do not need an apology, but keep foul language to a minimum. Egregious slurs are never allowed, at any hour.' },
   { id: 'explicit-def', topic: 'radio', q: 'What counts as explicit?', options: ['Only songs with a Parental Advisory sticker', 'Any song marked Explicit, plus any song or clip with profanity or graphic sexual or violent content', 'Only songs with swearing in the chorus', 'Anything a listener complains about'], answer: 1,
     why: 'The label is a minimum. Profanity or graphic content makes it explicit even without a sticker. The Explicit phrase reference (babsonradio.com/words) checks words for you.' },
-  { id: 'slur-song', topic: 'slurs', q: 'A clean radio edit bleeps most swearing but still contains a slur. Can you play it?', options: ['Yes, it is the clean edit', 'Yes, if the artist is a member of that group', 'Only after 10 PM', 'No. Slurs are never allowed at any hour, in any version'], answer: 3,
+  { id: 'slur-song', topic: 'slurs', q: 'A clean radio edit bleeps most swearing but still contains a slur. Can you play it?', options: ['Yes, it is the clean edit', 'Yes, if the artist is a member of that group', 'Only after 8 PM', 'No. Slurs are never allowed at any hour, in any version'], answer: 3,
     why: 'The agreement bans slurs at all hours, including in songs, edits, and quotes. Check lyrics in the Explicit phrase reference (babsonradio.com/words) before you play them.' },
-  { id: 'bleep', topic: 'slurs', q: 'A guest says a slur, then says "sorry, bleep that." What do you do?', options: ['Nothing, they apologized', 'Cut them off or go to a song, apologize on air, and tell the E-board after the show', 'Say it again to explain what they meant', 'Delete the recording and tell nobody'], answer: 1,
-    why: 'You are responsible for guests. Stop it, move on, and report it so staff can follow up.' },
+  { id: 'bleep', topic: 'slurs', q: 'A guest says a slur on air, then says "sorry, bleep that." What do you do?', options: ['Nothing, they apologized', 'Apologize on air once and move on, and do not repeat the word', 'Say it again to explain what they meant', 'Delete the recording and tell nobody'], answer: 1,
+    why: 'You are responsible for guests. Apologize once, move on, and never repeat the word. Tell the E-board after the show so staff can follow up.' },
   { id: 'unsure', topic: 'slurs', q: 'You are not sure a word is a slur. What do you do?', options: ['Air it, because it is probably fine', 'Leave it out, then check the Explicit phrase reference or ask the E-board', 'Say it once and see if anyone complains', 'Ask listeners to vote'], answer: 1,
     why: 'When unsure, leave it out. The Explicit phrase reference (babsonradio.com/words) or the E-board can answer later without risk.' },
   { id: 'requests', topic: 'rules', q: 'A friend texts and asks you to play one specific song right now. What is the rule?', options: ['Play it, it is only one song', 'Play it only if it is by an artist already in the rotation', 'Follow the show rules the station gave you. Station rules on requests and song order exist because of music-licensing law', 'Ask the whole group chat first'], answer: 2,
@@ -66,9 +68,9 @@ export const QUIZ: QuizQuestion[] = [
   { id: 'tech-broken', topic: 'studio', q: 'A cable or mic seems broken. What should you do?', options: ['Rewire the mixer until it works', 'Borrow a cable from another room', 'Leave the wiring as it is and post what happened in the Babson Sound WhatsApp', 'Say nothing and use the other mic'], answer: 2,
     why: 'All the gear belongs to Babson Sound. Report breakages in the WhatsApp so they get fixed for the next person.' },
   // ── Studio: getting in, guests, quiet hours, leaving it tidy (drafts, Nov 14) ──
-  { id: 'studio-access', topic: 'studio', q: 'How do you get into the studio?', options: ['Prop the door open so it is easier next time', 'Borrow a friend’s OneCard', 'Ask someone walking by to let you in', 'Tap your own OneCard, and never let in anyone who is not trained'], answer: 3,
-    why: 'Studio access is personal. Use your own OneCard and keep the door shut behind you.' },
-  { id: 'studio-guests', topic: 'studio', q: 'A friend wants to come and play on the CDJs with you. When can they?', options: ['Any time, if you stay with them', 'Only after they have a Babson Sound account and have done the training', 'Only after 10 PM', 'Only if they bring their own headphones'], answer: 1,
+  { id: 'door-qr', topic: 'studio', q: 'How do you get into the radio room?', options: ['Tap your OneCard, then scan the door QR code', 'Just tap your OneCard', 'Ask someone inside to open the door', 'You must scan the door QR code before tapping your OneCard to gain access to the radio room'], answer: 3,
+    why: 'You must scan the door QR code before tapping your OneCard to gain access to the radio room. The QR code is how the site knows who is in the room. Scanning it first is the rule, every time.' },
+  { id: 'studio-guests', topic: 'studio', q: 'A friend wants to come and play on the CDJs with you. When can they?', options: ['Any time, if you stay with them', 'Only after they have a Babson Sound account and have done the training', 'Only after 8 PM', 'Only if they bring their own headphones'], answer: 1,
     why: 'Nobody uses the studio or its gear until they have an account and are trained. You are responsible for anyone you bring.' },
   { id: 'studio-quiet', topic: 'studio', q: 'It is Tuesday at 11 AM, during quiet hours. What does that mean in the studio?', options: ['The studio is closed', 'Only radio shows can happen', 'Keep the volume as low as possible: no loud DJ sets', 'Nothing, quiet hours are only at night'], answer: 2,
     why: 'Quiet hours are Monday to Friday 9 AM to 4 PM and 10 PM to 7 AM. The studio stays open, but keep it quiet.' },

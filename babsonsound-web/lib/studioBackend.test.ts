@@ -6,10 +6,13 @@ import {
   DEFAULT_STUDIO, LIVE_MAX_MINUTES, QUIET_WARNING, canSeeGuests, checkBookingTime, cleanGuests, holdsRoom, holdsStudio, isReleasable, liveLengthError, maskEmail, overlaps,
   parseQuiet, purgeAtMs, quietAt, quietInfo, quietRanges, quietUntil, quietNextStart, readStudioRules, upcomingHeld, withinCapacity, freeCancel,
 } from './studioBookCore.ts'
-import { BAN_LEVEL, counts, bannedUntilOf, isBanned, isLateCancel, levelOf, liveNoShow, prerecordedNoAudio, semesterEndMs, standingOf, strikeId } from './strikesCore.ts'
+import { BAN_LEVEL, banEmailKind, counts, bannedUntilOf, emailKindFor, isBanned, studioBanUntilOf, isLateCancel, levelOf, liveNoShow, prerecordedNoAudio, semesterEndMs, standingOf, strikeId } from './strikesCore.ts'
 import { MIN_SHOWS, buildPopular, cellsFor, gridLevels, shouldRebuild, topWindows } from './popularCore.ts'
 import { BY_KEY, SETTINGS, checkValue, defaultsOf, planPatch } from './adminSettings.ts'
 import { csvCell, guestCsv } from './studioList.ts'
+import { ROLE_LABEL, roleLabel } from './roleLabel.ts'
+import { linksFor } from './siteNav.ts'
+import { strikeActions } from './strikesAdmin.ts'
 import { shapePending } from './todayData.ts'
 import { attachProblem, cleanPath, cleanRecordingId, pcRecorderProblem } from './recordingsCore.ts'
 
@@ -136,23 +139,23 @@ test('detection only flags: every automatic strike is pending, never confirmed',
   assert.equal(counts({ kind: 'live-no-show', status: 'pending', at: 1 }, NOW), false)
   assert.equal(strikeId('live-no-show', 'abc'), strikeId('live-no-show', 'abc')) // flagging the same show twice is one strike
 })
-test('levels: 1 mistake, 2 warning, 3 semester ban', () => {
+test('levels: first strike, second strike (studio ban), 3 semester ban', () => {
   assert.equal(standingOf([], NOW).label, 'Good standing')
-  assert.equal(standingOf(confirmed(1), NOW).label, '1 mistake'); assert.equal(standingOf(confirmed(2), NOW).label, 'Warning')
+  assert.equal(standingOf(confirmed(1), NOW).label, 'First strike'); assert.match(standingOf(confirmed(2), NOW).label, /^Studio ban until /)
   const three = standingOf(confirmed(3), NOW); assert.equal(three.level, BAN_LEVEL); assert.match(three.label, /^Banned until Dec 18, 2026$/); assert.equal(three.bannedUntil, NEXT_END)
   assert.equal(three.strikes.length, 3); assert.deepEqual(Object.keys(three.strikes[0]), ['date', 'reason'])
   assert.equal(levelOf([...confirmed(2), { kind: 'manual', status: 'pending', at: NOW }, { kind: 'manual', status: 'excused', at: NOW }], NOW), 2)
 })
 test('the ban blocks requests and bookings, and lifting a strike lifts it', () => {
   assert.equal(isBanned(NEXT_END, NOW), true); assert.equal(isBanned(NOW - 1, NOW), false); assert.equal(isBanned(undefined, NOW), false)
-  assert.match(src('lib/server/studioBook.ts'), /assertNotBanned\(user, now\)\n[\s\S]*const start/) // bookings
-  assert.match(src('lib/server/slotCreate.ts'), /assertNotBanned\(user, now\)/) // show requests (and repeats, which use the same code)
+  assert.match(src('lib/server/studioBook.ts'), /assertNotBanned\(user, now, \{ studio: true \}\)\n[\s\S]*const start/) // bookings
+  assert.match(src('lib/server/slotCreate.ts'), /assertNotBanned\(user, now, \{ studio: holdsStudio/) // show requests (and repeats, which use the same code)
   assert.match(src('lib/server/studioBook.ts'), /'BR-STR-001'/)
   const lifted = confirmed(3).map((s, i) => (i === 0 ? { ...s, status: 'excused' } : s))
   assert.equal(levelOf(lifted, NOW), 2); assert.equal(bannedUntilOf(lifted, NOW), null)
   const st = src('lib/server/strikes.ts'); assert.match(st, /st !== 'pending' && st !== 'confirmed'/) // excusing a confirmed strike is the lift
   assert.match(st, /bannedUntil: until \? until : FieldValue\.delete\(\)/)
-  assert.match(src('app/api/admin/strikes/decide/route.ts'), /requireDirector/)
+  assert.match(src('app/api/admin/strikes/decide/route.ts'), /requireAdmin\(req\) : await requireStrikeStaff\(req\)/) // anyone on staff confirms, only an Admin excuses
 })
 test('strikes expire at the semester end', () => {
   assert.equal(counts(confirmed(1)[0], NEXT_END - 1), true); assert.equal(counts(confirmed(1)[0], NEXT_END + 1), false)
@@ -172,7 +175,8 @@ test('what is flagged: live with no connection, pre-recorded without audio, late
 })
 test('standing and strikes routes: who can call them', () => {
   assert.match(src('app/api/me/standing/route.ts'), /requireMember/)
-  for (const f of ['app/api/admin/strikes/route.ts', 'app/api/admin/strikes/decide/route.ts', 'app/api/admin/strikes/add/route.ts', 'app/api/admin/studio/list/route.ts']) assert.match(src(f), /requireDirector/, f)
+  for (const f of ['app/api/admin/strikes/route.ts', 'app/api/admin/strikes/add/route.ts']) assert.match(src(f), /requireStrikeStaff/, f)
+  assert.match(src('app/api/admin/studio/list/route.ts'), /requireDirector/)
 })
 
 // ── live shows ──────────────────────────────────────────────
@@ -345,4 +349,39 @@ test('every error code the new routes use is documented', () => {
   const codes = new Set<string>(JSON.parse(src('lib/error-codes.json')).map((c: { code: string }) => c.code))
   const files = ['lib/server/studioBook.ts', 'lib/server/strikes.ts', 'lib/server/recordings.ts', 'app/api/studio/book/route.ts', 'app/api/studio/cancel/route.ts', 'app/api/slots/request/route.ts', 'app/api/slots/repeat/route.ts', 'app/api/recordings/attach/route.ts', 'app/api/events/club/route.ts', 'app/api/booth/recordings/start/route.ts', 'app/api/booth/recordings/complete/route.ts', 'lib/server/boothRecordings.ts', 'lib/recordingsCore.ts']
   for (const f of files) for (const m of src(f).matchAll(/BR-[A-Z]{3}-\d{3}/g)) assert.ok(codes.has(m[0]), `${m[0]} in ${f}`)
+})
+
+test('second strike: the studio is paused for a week; a ban given directly acts like a strike that is not counted', () => {
+  const DAY7 = 7 * 86_400_000
+  const at2 = confirmed(2)
+  assert.equal(studioBanUntilOf(confirmed(1), NOW), null)
+  assert.equal(studioBanUntilOf(at2.map(s => ({ ...s, decidedAt: NOW })), NOW), NOW + DAY7)
+  assert.equal(studioBanUntilOf(at2.map(s => ({ ...s, decidedAt: NOW - DAY7 - 1 })), NOW), null, 'a week later it is over')
+  const sb = standingOf(at2.map(s => ({ ...s, decidedAt: NOW })), NOW)
+  assert.match(sb.label, /^Studio ban until /); assert.equal(sb.studioBannedUntil, NOW + DAY7); assert.equal(sb.bannedUntil, null)
+  // bans given directly
+  const studio = [{ kind: 'ban-studio', status: 'confirmed', at: NOW, decidedAt: NOW, expiresAt: NEXT_END }]
+  assert.equal(levelOf(studio, NOW), 0); assert.equal(studioBanUntilOf(studio, NOW), NOW + DAY7); assert.equal(bannedUntilOf(studio, NOW), null)
+  const sem = [{ kind: 'ban-semester', status: 'confirmed', at: NOW, decidedAt: NOW, expiresAt: NEXT_END }]
+  assert.equal(levelOf(sem, NOW), 0); assert.equal(bannedUntilOf(sem, NOW), NEXT_END); assert.match(standingOf(sem, NOW).label, /^Banned until /)
+  assert.equal(emailKindFor(1), 'mistake'); assert.equal(emailKindFor(2), 'warning'); assert.equal(emailKindFor(3), 'ban'); assert.equal(banEmailKind('ban-studio'), 'studio-ban')
+  // the studio ban stops studio bookings and the door; the semester ban stops everything
+  assert.match(src('lib/server/studioBook.ts'), /o\.studio && isBanned\(w, now\)/)
+  assert.match(src('app/api/booth/door/route.ts'), /assertNotBanned\(await db\.collection\('users'\)\.doc\(t\.uid\)\.get\(\), now, \{ studio: true \}\)/)
+  assert.match(src('lib/server/strikes.ts'), /studioBannedUntil: studioUntil \? studioUntil : FieldValue\.delete\(\)/)
+})
+test('strikes and BabsonARTS: E-board and BabsonARTS issue and confirm, only an Admin excuses; Overview shows waiting strikes', () => {
+  assert.match(src('lib/server/http.ts'), /requireStrikeStaff = \(req: Request\) =>\n  need\(req, a => a\.level === 'director' \|\| a\.level === 'admin' \|\| a\.level === 'arts'/)
+  assert.deepEqual(strikeActions('pending', false), ['confirm']); assert.deepEqual(strikeActions('confirmed', false), []); assert.deepEqual(strikeActions('pending', true), ['confirm', 'excuse'])
+  assert.match(src('app/api/admin/dashboard/route.ts'), /pendingStrikeRows/); assert.match(src('components/admin/today/NeedsApproval.tsx'), /strikeActions\(s\.status, isAdmin\)/)
+  assert.match(src('app/api/admin/strikes/add/route.ts'), /decideStrike\(db, id, 'confirm'/) // issuing and confirming sends the email
+})
+test('BabsonARTS level: roles, nav Settings tab, staff and studio form routes', () => {
+  assert.deepEqual(Object.keys(ROLE_LABEL), ['guest', 'student', 'arts', 'director', 'admin']); assert.equal(roleLabel('arts'), 'BabsonARTS')
+  assert.match(src('lib/server/access.ts'), /type Level = 'guest' \| 'student' \| 'arts' \| 'director' \| 'admin'/)
+  assert.deepEqual(linksFor({ isGuest: false, hosting: false, arts: true }).at(-1), { href: '/arts', label: 'Settings' })
+  assert.equal(linksFor({ isGuest: false, hosting: false }).some(l => l.href === '/arts'), false)
+  assert.equal(linksFor({ isGuest: true, hosting: false, arts: true }).some(l => l.href === '/arts'), false)
+  assert.match(src('app/api/admin/studio-form/route.ts'), /requireArts/); assert.match(src('app/api/arts/staff/route.ts'), /ADDABLE: Level\[\] = \['arts', 'director', 'admin'\]/)
+  assert.match(src('firestore.rules'), /\['student', 'arts', 'director', 'admin'\]/)
 })

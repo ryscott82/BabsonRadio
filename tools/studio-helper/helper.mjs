@@ -17,6 +17,7 @@ import { normalizeOne } from './lib/normalize.mjs'
 import { createBrowser } from './lib/browser.mjs'
 import { createDoorWatch } from './lib/doorwatch.mjs'
 import { createUpdates, CHECK_MS } from './lib/updates.mjs'
+import { createButtRestart } from './lib/buttrestart.mjs'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 
@@ -247,6 +248,24 @@ setInterval(() => uploads.cleanup(), 3_600_000).unref?.()
 
 // Live shows: who is on air + the booth's "Show info", and the automatic archive of BUTT's recording when the show ends.
 const ARCHIVE_LIVE = process.env.ARCHIVE_LIVE_SHOWS !== '0'
+
+// Restart BUTT a few seconds after End show and Stop recording, once the recording has been moved out of its folder (on Nov 19 BUTT
+// needed a restart before it would stream again). RESTART_BUTT=0 turns it off. See lib/buttrestart.mjs.
+const RESTART_BUTT = process.env.RESTART_BUTT !== '0'
+const buttRestart = createButtRestart({
+  status, now: Date.now, sleep: ms => new Promise(r => setTimeout(r, ms)), log,
+  quit: () => butt(['-q']),
+  forceKill: () => (process.platform === 'win32' ? run('taskkill', ['/im', 'butt.exe', '/f'], 15_000) : run('pkill', ['-x', 'butt'], 15_000)),
+  isRunning: () => (process.platform === 'win32'
+    ? run('tasklist', ['/FI', 'IMAGENAME eq butt.exe', '/NH'], 15_000).then(out => /butt\.exe/i.test(out))
+    : run('pgrep', ['-x', 'butt'], 15_000).then(() => true, () => false)),
+  launch: () => {
+    const c = spawn(BUTT, [], { detached: true, stdio: 'ignore', windowsHide: false, ...(BUTT.includes('\\') || BUTT.includes('/') ? { cwd: dirname(BUTT) } : {}) })
+    c.on('error', e => log('BUTT RESTART could not start BUTT:', e.message))
+    c.unref()
+  },
+  recorderActive: () => recorder.state().state !== 'idle',
+})
 // ── Studio browser (a Chrome window beside the booth: split screen or full) ──
 const browserFile = process.env.BOOTH_BROWSER_FILE || 'C:\\BabsonRadio\\browser.json'
 const browser = createBrowser({
@@ -513,6 +532,7 @@ const server = createServer(async (req, res) => {
     if (url.pathname === '/live/start') {
       if (!c.l) return send(res, 403, { error: "You can't go live right now." }, origin)
       if (recorder.active()) return send(res, 409, { error: 'A recording is going. Stop it before going live.' }, origin)
+      await buttRestart.beforeStart() // never connect while BUTT is being restarted
       const st = await serial(async () => {
         const now = await status()
         if (!now.connected && !now.connecting) await butt(BUTT_SERVER ? ['-s', BUTT_SERVER] : ['-s'])
@@ -536,11 +556,13 @@ const server = createServer(async (req, res) => {
         return status()
       })
       log(`LIVE STOP   ${c.n} (${c.u})`)
+      if (RESTART_BUTT) void buttRestart.request() // in the background: the archive has moved the file out of BUTT's folder
       return send(res, 200, st, origin)
     }
     // ── Record a show (BUTT's recorder only, no stream) ──
     if (url.pathname === '/record/start') {
       if (c.r !== true) return send(res, 403, { error: 'Finish studio training to record in the studio.' }, origin)
+      await buttRestart.beforeStart() // never start a recording while BUTT is being restarted
       return send(res, 200, await serial(() => recorder.start(c)), origin)
     }
     // Anyone signed in can pause or stop a recording, so nobody is stuck with one running (like ending the stream).
@@ -551,6 +573,7 @@ const server = createServer(async (req, res) => {
     }
     if (url.pathname === '/record/stop') {
       const t = await serial(() => recorder.stop())
+      if (RESTART_BUTT) void buttRestart.request() // in the background: stop() has moved the recording out of BUTT's folder
       return send(res, 200, { id: t.id, durationSec: t.durationSec, mine: t.uid === c.u }, origin)
     }
     if (url.pathname === '/record/save') {

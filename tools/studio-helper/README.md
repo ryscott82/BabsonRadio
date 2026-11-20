@@ -145,6 +145,21 @@ Exit kiosk Chrome with Alt+F4.
 ## Testing on a laptop
 Set `ALLOW_LOCALHOST=1` in `.env`, run `npm run dev` in `babsonsound-web`, and open `http://localhost:3000/booth`. Use the same `STUDIO_PC_SECRET` in `.env.local`.
 
+## BUTT restarts after a show or recording is saved
+
+On Nov 19 BUTT had to be restarted before it would stream again. So about 3 seconds after **End show** (`/live/stop`) and **Stop recording**
+(`/record/stop`), once the recording has been moved out of BUTT's folder, the helper restarts BUTT in the background (`lib/buttrestart.mjs`):
+
+- Skipped if BUTT is streaming, connecting or recording, if a recording is running in the helper, or if BUTT was restarted less than 20 s ago.
+  Several stops close together are one restart.
+- It asks BUTT to quit (`butt -q`), waits until BUTT stops answering and `butt.exe` is gone, and force-closes it (`taskkill /im butt.exe /f`)
+  if it hasn't quit within 15 s. Then it starts `BUTT_PATH` again (no arguments, so BUTT opens with its saved settings) and waits up to 30 s for
+  it to answer on its command port. If BUTT can't be closed, a second BUTT is never started.
+- **Go live** or **Record** pressed during the 3 s wait cancels the restart. Pressed while BUTT is closed, it waits until BUTT is back, so a
+  stream or a recording never starts with BUTT down.
+- It never holds up the page: errors are only logged (lines start with `BUTT RESTART`).
+- `RESTART_BUTT=0` in `.env` turns it off.
+
 ## Live shows are archived automatically
 
 BUTT already records every show (`RECORD_SHOWS`, on by default). When a host goes live the helper notes who is on air and where BUTT is writing;

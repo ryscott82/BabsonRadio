@@ -55,7 +55,7 @@ async function start() {
       FFMPEG_PATH: join(here, 'fake-ffmpeg.mjs'), FFPROBE_PATH: join(here, 'fake-ffmpeg.mjs'),
       AZURACAST_URL: `http://127.0.0.1:${azSrv.address().port}`, AZURACAST_API_KEY: 'k', AZURACAST_STATION_ID: '1', AZURACAST_STATION: 'babson_radio', // the short name must win over the number
       SITE_URL: `http://127.0.0.1:${siteSrv.address().port}`, ARCHIVE_MIN_SECONDS: '5',
-      UPDATE_CHECK: '0', REPO_DIR: dir, UPDATE_SCRIPT: join(dir, 'no-update.cmd'),
+      UPDATE_CHECK: '0', RESTART_BUTT: '0', REPO_DIR: dir, UPDATE_SCRIPT: join(dir, 'no-update.cmd'),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })

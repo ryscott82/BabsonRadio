@@ -12,7 +12,7 @@ import { DEFAULT_CONFIG } from '../autoschedule'
 export async function requestablePlaylists(): Promise<string[]> {
   const live = await azPlaylistNames()
   if (live.length) return live
-  return [...new Set([...DEFAULT_CONFIG.rules.flatMap(r => r.fillers), ...DEFAULT_CONFIG.defaultFillers, ...DEFAULT_VOTE_GENRES])].sort((a, b) => a.localeCompare(b))
+  return [...new Set([...DEFAULT_CONFIG.playlists.map(p => p.name), ...DEFAULT_VOTE_GENRES])].sort((a, b) => a.localeCompare(b))
 }
 
 export const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()

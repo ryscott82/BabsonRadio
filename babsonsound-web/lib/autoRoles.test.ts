@@ -19,6 +19,7 @@ const saved = (): AutoConfig => sanitizeConfig({
   colorChanging: true, syncToAzuraCast: true, playlistMap: { 'Lofi Beats': 'Lofi (live)' }, weightOverrides: { jazz: 2 },
 })
 const newRules = [{ id: 'r1', name: 'Mornings', days: [1, 2], start: '08:00', end: '10:00', fillers: ['Indie Folk'], priority: 5 }]
+const PL = (...n: string[]) => n.map(name => ({ name }))
 
 test('the field lists cover the whole config, with no field in both', () => {
   const all = Object.keys(DEFAULT_CONFIG).sort()
@@ -36,7 +37,7 @@ test('a Director cannot send any Admin-only field, even with the same value, and
 test('a Director save changes only rules and default fillers; a stale copy of the Admin values cannot put old ones back', () => {
   const now = saved()
   // The Director's page loaded long ago: it holds the defaults for everything Admin-only. Even if those were sent, the merge ignores them.
-  const stale = { ...DEFAULT_CONFIG, rules: newRules, defaultFillers: ['Acoustic'] }
+  const stale = { ...DEFAULT_CONFIG, playlists: PL('Indie Folk', 'Acoustic'), rules: newRules, defaultFillers: ['Acoustic'] }
   const out = applyDirectorSave(now, stale)
   for (const f of ADMIN_FIELDS) assert.deepEqual(out[f], now[f], f)
   assert.equal(out.rules.length, 1); assert.equal(out.rules[0].id, 'r1'); assert.deepEqual(out.defaultFillers, ['Acoustic'])
@@ -53,7 +54,7 @@ test('a Director save still goes through sanitizeConfig, and a per-rule off swit
 
 test('a rule that is switched off is not used when planning', () => {
   const plan = (enabled: boolean) => planAutoBlocks({
-    cfg: sanitizeConfig({ ...DEFAULT_CONFIG, defaultFillers: ['Default Mix'], rules: [{ id: 'all', name: 'All day', days: [0, 1, 2, 3, 4, 5, 6], start: '00:00', end: '24:00', fillers: ['Only Rule'], priority: 5, enabled }] }),
+    cfg: sanitizeConfig({ ...DEFAULT_CONFIG, playlists: PL('Only Rule', 'Default Mix'), defaultFillers: ['Default Mix'], rules: [{ id: 'all', name: 'All day', days: [0, 1, 2, 3, 4, 5, 6], start: '00:00', end: '24:00', fillers: ['Only Rule'], priority: 5, enabled }] }),
     fromMs: Date.UTC(2026, 10, 16, 15), untilMs: Date.UTC(2026, 10, 16, 18), busy: [], weekly: [],
   })
   assert.ok(plan(true).every(b => b.label === 'Only Rule'))
@@ -68,7 +69,7 @@ test('an Admin can change everything', () => {
 
 test('a Director GET carries the rules, default fillers and a read-only on/off, and nothing else', () => {
   const v = directorView({ ...saved(), rules: sanitizeConfig({ rules: newRules }).rules })
-  assert.deepEqual(Object.keys(v).sort(), ['defaultFillers', 'enabled', 'rules'])
+  assert.deepEqual(Object.keys(v).sort(), ['defaultFillers', 'enabled', 'playlists', 'rules'])
   const text = JSON.stringify(v)
   for (const secret of ['Lofi (live)', 'America/Chicago', 'playlistMap', 'weightOverrides', 'calendar', 'apiKey', 'AZURACAST', 'timezone', 'syncToAzuraCast']) assert.equal(text.includes(secret), false, secret)
 })

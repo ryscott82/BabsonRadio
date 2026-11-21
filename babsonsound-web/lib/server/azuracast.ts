@@ -66,7 +66,9 @@ export interface Status {
   genres: { genre: string; playlist: string; found: boolean }[]
 }
 
+/** The playlists the Auto DJ manages: the playlist list (on or excluded). Without a list (an older config), the names used by the rules. */
 function genresOf(cfg: AutoConfig, extra: string[] = []): string[] {
+  if (cfg.playlists) return cfg.playlists.map(p => p.name)
   return [...new Set([...cfg.rules.flatMap(r => r.fillers), ...cfg.defaultFillers, ...extra])]
 }
 
@@ -104,14 +106,17 @@ export async function syncToAzuraCast(db: Firestore, cfg: AutoConfig, now = Date
     const genres = genresOf(cfg, blocks.map(b => b.label))
     const updated: SyncResult['updated'] = []
     const missing: string[] = []
+    const off = new Set((cfg.playlists ?? []).filter(p => p.enabled === false).map(p => norm(p.name)))
     for (const genre of genres) {
       const target = cfg.playlistMap[genre] || genre
       const pl = byName.get(norm(target))
-      if (!pl) { if (blocks.some(b => b.label === genre)) missing.push(target); continue }
-      const mine = blocks.filter(b => b.label === genre)
+      const excluded = off.has(norm(genre))
+      if (!pl) { if (!excluded && blocks.some(b => b.label === genre)) missing.push(target); continue }
+      // An excluded playlist, or one with no block coming up, is switched off in AzuraCast: a playlist that is on with no schedule plays all day.
+      const mine = excluded ? [] : blocks.filter(b => b.label === genre)
       const items = mine.flatMap(b => blockToItems(b.startMs, b.endMs, cfg.timezone))
       await az(`/station/${station()}/playlist/${pl.id}`, {
-        method: 'PUT', body: JSON.stringify({ is_enabled: true, schedule_items: items }),
+        method: 'PUT', body: JSON.stringify({ is_enabled: mine.length > 0, schedule_items: items }),
       })
       updated.push({ playlist: pl.name, blocks: mine.length })
     }

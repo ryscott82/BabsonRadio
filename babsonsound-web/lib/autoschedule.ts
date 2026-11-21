@@ -27,8 +27,13 @@ export interface AutoRule {
   enabled?: boolean
 }
 
+/** One genre playlist the Auto DJ can schedule. `enabled: false` = temporarily excluded: kept with its times, but not scheduled. */
+export interface AutoPlaylist { name: string; enabled?: boolean }
+
 export interface AutoConfig {
   enabled: boolean
+  /** The playlists the Auto DJ may use (the names match AzuraCast playlists, or the playlist map). Add, remove or exclude them on the Auto DJ page. */
+  playlists: AutoPlaylist[]
   timezone: string          // IANA, e.g. "America/New_York"
   horizonHours: number      // how far ahead to fill (default 48)
   stepMinutes: number       // planning grid (default 30)
@@ -52,6 +57,7 @@ export interface PlannedBlock { startMs: number; endMs: number; label: string; r
 
 export const DEFAULT_CONFIG: AutoConfig = {
   enabled: true,
+  playlists: [{ name: 'Jazz House for Studying' }, { name: 'Pop Hits' }],
   timezone: 'America/New_York',
   horizonHours: 48,
   stepMinutes: 30,
@@ -62,19 +68,37 @@ export const DEFAULT_CONFIG: AutoConfig = {
   colorChanging: false,
   playlistMap: {},
   weightOverrides: {},
-  defaultFillers: ['Indie & Alt', 'Throwback Hits', 'Pop Hits', 'Hip-Hop & R&B'],
+  defaultFillers: ['Pop Hits', 'Jazz House for Studying'],
   rules: [
     // Nights run to 4am: study music Sun–Wed nights, party music Thu–Sat nights, then a gentle wake-up until 7.
     // Each night is several genres in 2-hour blocks, and `learn` leans toward whatever listeners are enjoying.
     { id: 'study-night', name: 'Study nights (Sun–Wed, to 4am)', days: [0, 1, 2, 3], start: '21:00', end: '04:00',
-      fillers: ['Lofi Beats', 'Jazz House for Studying', 'Chill Jazz', 'Acoustic'], priority: 20, blockMinutes: 120 },
+      fillers: ['Jazz House for Studying'], priority: 20, blockMinutes: 120 },
     { id: 'party-night', name: 'Party nights (Thu–Sat, to 4am)', days: [4, 5, 6], start: '21:00', end: '04:00',
-      fillers: ['Dance Mix', 'Pop Hits', 'Hip-Hop & R&B', 'Throwback Hits'], priority: 20, blockMinutes: 120 },
+      fillers: ['Pop Hits'], priority: 20, blockMinutes: 120 },
     { id: 'wake-up', name: 'Wake-up (4am to 7am)', days: [0, 1, 2, 3, 4, 5, 6], start: '04:00', end: '07:00',
-      fillers: ['Acoustic Morning', 'Indie Folk', 'Chill Jazz'], priority: 15 },
+      fillers: ['Jazz House for Studying'], priority: 15 },
     { id: 'weekday-morning', name: 'Weekday mornings', days: [1, 2, 3, 4, 5], start: '07:00', end: '10:00',
-      fillers: ['Acoustic Morning', 'Indie Folk'], priority: 10 },
+      fillers: ['Jazz House for Studying'], priority: 10 },
   ],
+}
+
+// ── Playlists the Auto DJ may use ───────────────────────────────
+
+const plKey = (s: string) => s.trim().toLowerCase()
+
+/** The playlists that are on (not temporarily excluded), under their saved names. */
+export const activePlaylists = (cfg: Pick<AutoConfig, 'playlists'>): string[] => (cfg.playlists ?? []).filter(p => p.enabled !== false).map(p => p.name)
+
+/**
+ * What a block can play: the block's own playlists that are on, or every playlist that is on when none of them is (the others fill in for an
+ * excluded or removed playlist). A config without a playlist list (older callers) uses the names as given.
+ */
+export function poolOf(fillers: string[], cfg: Pick<AutoConfig, 'playlists'>): string[] {
+  if (!cfg.playlists) return [...new Set(fillers)]
+  const active = activePlaylists(cfg)
+  const hit = [...new Set(fillers.flatMap(f => active.filter(a => plKey(a) === plKey(f))))]
+  return hit.length ? hit : active
 }
 
 // ── Time helpers ────────────────────────────────────────────────
@@ -246,7 +270,8 @@ export function planAutoBlocks(opts: {
       .sort((a, b) => b.priority - a.priority)[0]
     if (rule?.quiet) continue // nothing scheduled here: the default playlist plays
     const ruleId = rule?.id ?? 'default'
-    const pool = (rule?.fillers.length ? rule.fillers : cfg.defaultFillers)
+    const pool = poolOf(rule?.fillers.length ? rule.fillers : cfg.defaultFillers, cfg)
+    if (!pool.length) continue // every playlist is excluded or removed: nothing is scheduled here and the default playlist plays
     const last = raw[raw.length - 1]
     // Longest block here: the rule's own length (e.g. 2h at night) or the global maximum.
     const blockMs = rule?.oneGenre ? 24 * 3600_000 : rule?.blockMinutes ? rule.blockMinutes * 60_000 : maxBlock
@@ -301,7 +326,7 @@ export function planAutoBlocks(opts: {
       return weightAt(f, b.startMs) * (0.4 + gap * 0.15) + (hash(b.startMs / step + f.length) % 1000) / 1e6
     }
     const ranked = [...options].sort((x, y) => score(y) - score(x))
-    const label = ranked[0] ?? 'Indie & Alt'
+    const label = ranked[0] ?? b.pool[0]
     lastUsed.set(label, i)
     prev = label
     return { startMs: b.startMs, endMs: b.endMs, label, ruleId: b.ruleId }
@@ -323,12 +348,29 @@ export function sanitizeConfig(input: unknown): AutoConfig {
   let timezone = text(o.timezone, 60) || d.timezone
   try { new Intl.DateTimeFormat('en-US', { timeZone: timezone }) } catch { timezone = d.timezone }
 
+  // The playlist list. Missing (an older saved config) = the default two. Names are unique ignoring case.
+  const seen = new Set<string>()
+  const playlists: AutoPlaylist[] = Array.isArray(o.playlists)
+    ? o.playlists.slice(0, 40).flatMap(x => {
+        const p = (typeof x === 'string' ? { name: x } : (x ?? {})) as Record<string, unknown>
+        const name = text(p.name, 40)
+        if (!name || /auto\s*-?dj/i.test(name) || seen.has(plKey(name))) return []
+        seen.add(plKey(name))
+        return [p.enabled === false ? { name, enabled: false } : { name }]
+      })
+    : d.playlists.map(p => ({ ...p }))
+  const canon = new Map(playlists.map(p => [plKey(p.name), p.name]))
+  /** Fillers under the playlist list's own spelling and only those on the list. With nothing on the list, they are kept as they are. */
+  const onList = (names: string[]) => (canon.size ? [...new Set(names.flatMap(n => (canon.has(plKey(n)) ? [canon.get(plKey(n)) as string] : [])))] : names)
+
   const rules: AutoRule[] = (Array.isArray(o.rules) ? o.rules : []).slice(0, 30).flatMap((r, i) => {
     const x = (r ?? {}) as Record<string, unknown>
     const start = text(x.start, 5), end = text(x.end, 5)
     const days = (Array.isArray(x.days) ? x.days : []).map(Number).filter(n => Number.isInteger(n) && n >= 0 && n <= 6)
-    const fillers = list(x.fillers)
     const quiet = x.quiet === true
+    // A block whose playlists are all gone from the list uses every playlist that is left, so its times are kept and it shows up under them.
+    const mine = list(x.fillers)
+    const fillers = quiet ? mine : (() => { const keep = onList(mine); return keep.length || !canon.size ? keep : playlists.map(p => p.name) })()
     if (parseClock(start) === null || parseClock(end) === null || !days.length || (!fillers.length && !quiet)) return []
     return [{
       id: text(x.id, 40).replace(/[^a-z0-9-]/gi, '') || `rule-${i + 1}`,
@@ -344,6 +386,7 @@ export function sanitizeConfig(input: unknown): AutoConfig {
 
   return {
     enabled: o.enabled !== false,
+    playlists,
     timezone,
     horizonHours: clamp(o.horizonHours, 6, 168, d.horizonHours),
     stepMinutes: [15, 30, 60].includes(Number(o.stepMinutes)) ? Number(o.stepMinutes) : d.stepMinutes,
@@ -357,18 +400,18 @@ export function sanitizeConfig(input: unknown): AutoConfig {
       .filter(([k, v]) => k && Number.isFinite(v))),
     playlistMap: Object.fromEntries(Object.entries((o.playlistMap ?? {}) as Record<string, unknown>).slice(0, 60)
       .map(([k, v]) => [text(k, 40), text(v, 80)]).filter(([k, v]) => k && v)),
-    defaultFillers: list(o.defaultFillers).length ? list(o.defaultFillers) : d.defaultFillers,
+    defaultFillers: (() => { const keep = onList(list(o.defaultFillers)); return keep.length ? keep : canon.size ? playlists.map(p => p.name) : list(o.defaultFillers).length ? list(o.defaultFillers) : d.defaultFillers })(),
     rules,
   }
 }
 
 
 // ── Who may read and change what ────────────────────────────────
-// Directors run the station day to day; Admins protect the machinery. The server (app/api/admin/autoschedule) and the Auto DJ page both
+// Directors run the station day to day (rules, default playlists and the playlist list); Admins protect the machinery. The server (app/api/admin/autoschedule) and the Auto DJ page both
 // use these lists. A per-rule on/off is part of `rules`, so it is a Director field.
 
 /** What a Director may change (and read). */
-export const DIRECTOR_FIELDS = ['rules', 'defaultFillers'] as const
+export const DIRECTOR_FIELDS = ['rules', 'defaultFillers', 'playlists'] as const
 /** What only an Admin may change. `enabled` (the master switch) is also shown to Directors, read-only. */
 export const ADMIN_FIELDS = [
   'enabled', 'timezone', 'horizonHours', 'stepMinutes', 'maxBlockMinutes', 'lockMinutes', 'learn', 'colorChanging', 'weightOverrides', 'syncToAzuraCast', 'playlistMap',
@@ -381,7 +424,7 @@ export const DIRECTOR_READ_ONLY = ['enabled'] as const
 export type DirectorView = Pick<AutoConfig, (typeof DIRECTOR_FIELDS)[number]> & { enabled: boolean }
 
 /** What a Director is sent: the rules and default fillers, and whether Auto DJ is on. Nothing else. */
-export const directorView = (cfg: AutoConfig): DirectorView => ({ enabled: cfg.enabled, rules: cfg.rules, defaultFillers: cfg.defaultFillers })
+export const directorView = (cfg: AutoConfig): DirectorView => ({ enabled: cfg.enabled, rules: cfg.rules, defaultFillers: cfg.defaultFillers, playlists: cfg.playlists })
 
 /** Fields in a Director's request that they may not set (any key that is not a Director field, even if the value is unchanged). */
 export const forbiddenForDirector = (posted: unknown): string[] =>
@@ -394,5 +437,6 @@ export function applyDirectorSave(current: AutoConfig, posted: unknown): AutoCon
     ...current,
     rules: o.rules === undefined ? current.rules : o.rules,
     defaultFillers: o.defaultFillers === undefined ? current.defaultFillers : o.defaultFillers,
+    playlists: o.playlists === undefined ? current.playlists : o.playlists,
   })
 }

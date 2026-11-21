@@ -65,7 +65,6 @@ export default function AutoSchedulePage() {
   const [busy, setBusy] = useState('')
   const [status, setStatus] = useState<Status | null>(null)
   const [sync, setSync] = useState<Sync | null>(null)
-  const [extraGenres, setExtraGenres] = useState<string[]>([])
 
   useEffect(() => { if (!loading && (!user || !isDirector)) router.replace('/') }, [loading, user, isDirector, router])
   useEffect(() => {
@@ -80,8 +79,7 @@ export default function AutoSchedulePage() {
   const admin = showsAdvanced(role)
 
   const update = (patch: Partial<AutoConfig>) => setCfg({ ...cfg, ...patch })
-  const genres = Array.from(new Set([...extraGenres, ...cfg.defaultFillers, ...cfg.rules.flatMap(r => r.fillers)]))
-  const setGenres = (g: string[]) => setExtraGenres(g)
+  const genres = (cfg.playlists ?? []).map(p => p.name)
   const lines = (s: string) => s.split(',').map(x => x.trim()).filter(Boolean)
 
   async function run(label: string, fn: () => Promise<void>) {
@@ -128,7 +126,7 @@ export default function AutoSchedulePage() {
           Auto DJ is <strong>{cfg.enabled ? 'on' : 'off'}</strong>.{!admin && ' Only an Admin can switch it on or off.'} Pick a playlist, set when it plays, and turn a block off to keep it without scheduling it.
         </p>
 
-        <AutoPlanner cfg={cfg} update={update} genres={genres} setGenres={setGenres} />
+        <AutoPlanner cfg={cfg} update={update} />
 
         <div className="sk-raised rounded-2xl p-5 space-y-3">
           <label className="block"><span className={lab}>Default playlists when no block applies (comma separated)</span>

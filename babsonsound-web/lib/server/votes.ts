@@ -1,6 +1,6 @@
 import 'server-only'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
-import { clipInterval } from '../autoschedule'
+import { activePlaylists, clipInterval } from '../autoschedule'
 import { loadConfig } from './autoschedule'
 import { syncToAzuraCast } from './azuracast'
 import { buildScheduleFeed } from './scheduleFeed'
@@ -51,12 +51,10 @@ export async function thresholdFor(db: Firestore, blockMs: number): Promise<numb
 /**
  * The broad genres listeners can vote on. Keep these general: each one needs a playlist in AzuraCast with the same name
  * (or an entry in the auto-scheduler's playlist map). Staff can replace the list by saving { list: [...] } to the
- * Firestore document config/voteGenres; until then this is used.
+ * Firestore document config/voteGenres; until then this is used. Either way only playlists that are on in the Auto DJ's playlist list
+ * (not removed, not temporarily excluded) are offered.
  */
-export const DEFAULT_VOTE_GENRES = [
-  'Pop Hits', 'Hip-Hop & R&B', 'Indie & Alt', 'Throwback Hits',
-  'Dance Mix', 'Acoustic', 'Lofi Beats', 'Jazz House for Studying',
-]
+export const DEFAULT_VOTE_GENRES = ['Pop Hits', 'Jazz House for Studying']
 /** How many choices each hour shows, so votes bunch up instead of spreading thin. */
 export const OPTIONS_PER_HOUR = 5
 
@@ -71,7 +69,14 @@ let genresCache: { at: number; saved: unknown } | null = null
 export async function voteOptions(db: Firestore, blockMs: number): Promise<string[]> {
   if (!genresCache || Date.now() - genresCache.at > 30_000) genresCache = { at: Date.now(), saved: (await db.collection('config').doc('voteGenres').get()).get('list') }
   const saved = genresCache.saved
-  const pool = (Array.isArray(saved) && saved.length ? saved.map(String) : DEFAULT_VOTE_GENRES).filter((v, i, a) => v && a.indexOf(v) === i && !/ [-–—] /.test(v)) // genres only: never "Artist - Song" (listeners must not pick specific recordings, see the DMCA note in FEATURES.md)
+  let pool = (Array.isArray(saved) && saved.length ? saved.map(String) : DEFAULT_VOTE_GENRES).filter((v, i, a) => v && a.indexOf(v) === i && !/ [-–—] /.test(v)) // genres only: never "Artist - Song" (listeners must not pick specific recordings, see the DMCA note in FEATURES.md)
+  // Only playlists that are on in the Auto DJ's list. If none of the saved genres match, every playlist that is on is offered.
+  const cfg = await loadConfig(db).catch(() => null)
+  const active = cfg?.playlists ? activePlaylists(cfg) : []
+  if (active.length) {
+    const on = pool.filter(g => active.some(a => a.toLowerCase() === g.toLowerCase()))
+    pool = on.length ? on : active
+  }
   if (pool.length <= OPTIONS_PER_HOUR) return pool
   const rnd = seeded(blockMs / HOUR)
   const out = [...pool]

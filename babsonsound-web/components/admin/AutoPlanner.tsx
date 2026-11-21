@@ -38,9 +38,10 @@ const windowText = (r: AutoRule) => `${dayText(r.days)} ${clock(r.start)}–${cl
 // A stable color per playlist name.
 function hue(label: string) { let h = 0; for (const c of label) h = (h * 31 + c.charCodeAt(0)) % 360; return h }
 
-export default function AutoPlanner({ cfg, update, genres, setGenres }: {
-  cfg: AutoConfig; update: (p: Partial<AutoConfig>) => void; genres: string[]; setGenres: (g: string[]) => void
-}) {
+export default function AutoPlanner({ cfg, update }: { cfg: AutoConfig; update: (p: Partial<AutoConfig>) => void }) {
+  const lists = cfg.playlists ?? []
+  const genres = lists.map(p => p.name)
+  const isOff = (g: string) => lists.some(p => p.name === g && p.enabled === false)
   const [sel, setSel] = useState<string>(genres[0] ?? QUIET)
   const [newName, setNewName] = useState('')
   const [items, setItems] = useState<Item[]>([])
@@ -59,19 +60,24 @@ export default function AutoPlanner({ cfg, update, genres, setGenres }: {
   const withGenre = (r: AutoRule, g: string) => setRule(r.id, { fillers: r.fillers.includes(g) ? r.fillers.filter(x => x !== g) : [...r.fillers, g] })
   const newRule = (extra: Partial<AutoRule>): AutoRule => ({ id: `rule-${Date.now().toString(36)}`, name: 'New block', days: [1, 2, 3, 4, 5], start: '12:00', end: '14:00', fillers: [], priority: 10, ...extra })
 
+  /** Take a playlist out of the Auto DJ for good (the playlist in AzuraCast is not touched). Blocks that only had it go too. */
   function removePlaylist(g: string) {
     update({
+      playlists: lists.filter(p => p.name !== g),
       rules: cfg.rules.map(r => ({ ...r, fillers: r.fillers.filter(x => x !== g) })).filter(r => r.quiet || r.fillers.length > 0),
       defaultFillers: cfg.defaultFillers.filter(x => x !== g),
     })
-    setGenres(genres.filter(x => x !== g)); setSel(genres.find(x => x !== g) ?? QUIET)
+    setSel(genres.find(x => x !== g) ?? QUIET)
   }
   function addPlaylist() {
     const v = newName.trim()
     if (!v) return
-    if (!genres.includes(v)) { update({ defaultFillers: [...cfg.defaultFillers, v] }); setGenres([...genres, v]) }
-    setSel(v); setNewName('')
+    const have = genres.find(g => g.toLowerCase() === v.toLowerCase())
+    if (!have) update({ playlists: [...lists, { name: v }], defaultFillers: [...cfg.defaultFillers, v] })
+    setSel(have ?? v); setNewName('')
   }
+  /** Skip a playlist for now: it keeps its times and settings, the others fill in, and AzuraCast stops playing it. */
+  const setExcluded = (g: string, off: boolean) => update({ playlists: lists.map(p => (p.name === g ? (off ? { name: g, enabled: false } : { name: g }) : p)) })
 
   // ── The grid: three days from the start of today in station time ──
   const dayStart = useMemo(() => {
@@ -152,8 +158,8 @@ export default function AutoPlanner({ cfg, update, genres, setGenres }: {
                 <button type="button" role="option" aria-selected={sel === g} onClick={() => setSel(g)} style={on(sel === g)}
                         className="w-full text-left px-3 py-2 flex items-baseline gap-3">
                   <span aria-hidden className="w-2.5 h-2.5 shrink-0 self-center" style={{ background: `hsl(${hue(g)} 55% 50%)` }} />
-                  <span className="text-sm truncate">{g}</span>
-                  <span className="text-sm text-br-dk-muted ml-auto shrink-0 truncate max-w-[55%]">{w.length ? windowText(w[0]) + (w.length > 1 ? ` +${w.length - 1}` : '') : cfg.defaultFillers.includes(g) ? 'Fallback' : 'Not scheduled'}</span>
+                  <span className={`text-sm truncate ${isOff(g) ? 'line-through opacity-60' : ''}`}>{g}</span>
+                  <span className="text-sm text-br-dk-muted ml-auto shrink-0 truncate max-w-[55%]">{isOff(g) ? 'Excluded for now' : w.length ? windowText(w[0]) + (w.length > 1 ? ` +${w.length - 1}` : '') : cfg.defaultFillers.includes(g) ? 'Fallback' : 'Not scheduled'}</span>
                 </button>
               </li>
             )
@@ -175,6 +181,15 @@ export default function AutoPlanner({ cfg, update, genres, setGenres }: {
         <div className="border-t border-br-dk-border pt-3 space-y-3">
           <h3 className="text-br-dk-text text-base font-semibold">{sel === QUIET ? 'Quiet hours' : sel}</h3>
           {sel === QUIET && <p className="text-sm text-br-dk-sub">Nothing is scheduled; the AzuraCast default plays.</p>}
+          {sel !== QUIET && (
+            <div>
+              <label className="flex items-center gap-2 text-base text-br-dk-text min-h-11">
+                <input type="checkbox" className="w-5 h-5" checked={isOff(sel)} onChange={e => setExcluded(sel, e.target.checked)} />
+                Leave this playlist out for now
+              </label>
+              <p className="text-sm text-br-dk-sub">{isOff(sel) ? 'It is not scheduled, and the other playlists fill its times. Its times and settings are kept. Uncheck to bring it back, then press Rebuild now.' : 'Keeps its times and settings, but stops it being scheduled until you uncheck this.'}</p>
+            </div>
+          )}
           {rulesFor.length === 0 && <p className="text-sm text-br-dk-sub">{sel === QUIET ? 'No quiet hours.' : 'Not in any time block yet.'}</p>}
           {rulesFor.map(r => <div key={r.id}>{renderRule(r)}</div>)}
           <div className="flex flex-wrap gap-2 items-center">
@@ -196,7 +211,7 @@ export default function AutoPlanner({ cfg, update, genres, setGenres }: {
                        onChange={e => update({ defaultFillers: e.target.checked ? [...cfg.defaultFillers, sel] : cfg.defaultFillers.filter(x => x !== sel) })} />
                 Fallback when no block applies
               </label>
-              <button type="button" className="text-br-dk-sub hover:text-br-red" onClick={() => { if (window.confirm(`Remove ${sel} everywhere?`)) removePlaylist(sel) }}>Remove playlist</button>
+              <button type="button" className="text-br-dk-sub hover:text-br-red" onClick={() => { if (window.confirm(`Remove ${sel} from the Auto DJ? Its blocks are removed too. The playlist in AzuraCast is not deleted. To keep it for later, use "Leave this playlist out for now" instead.`)) removePlaylist(sel) }}>Remove playlist</button>
             </div>
           )}
         </div>

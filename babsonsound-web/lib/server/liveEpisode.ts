@@ -3,6 +3,8 @@ import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 import { az, azuraConfigured, station } from './azuracast'
 import { azFindMedia, azPlaylistList, azSetPlaylists } from './azuraMedia'
 import { liveEpisodeDoc, type LiveShowInfo } from '../recordingsCore'
+import { buildTimeline, defaultMode, readTimeline, recordingStart } from '../trackLog'
+import { timelineRows } from './booth'
 
 // A live show the studio PC archived becomes an audio episode in the Babson Sound library, played straight from AzuraCast.
 // The file goes into an "on-demand" playlist (named ARCHIVE_PLAYLIST) that is switched off for the radio, so it never airs; AzuraCast serves
@@ -39,7 +41,15 @@ export async function publishLiveEpisode(db: Firestore, recId: string): Promise<
     crewUids: Array.isArray(rec.get('crewUids')) ? (rec.get('crewUids') as unknown[]).map(String) : [],
   })
   const at = Timestamp.fromMillis(live?.startedAt || rec.get('createdAt')?.toMillis?.() || Date.now())
-  await epRef.set({ ...doc, publishedAt: at })
+  // What the booth played and which mode the show was in, on the recording's own clock, so the episode player can show it as it plays.
+  let timeline: ReturnType<typeof readTimeline> = null
+  const dur = Number(rec.get('durationSec') ?? 0)
+  if (live?.startedAt && live.endedAt > live.startedAt) {
+    const from = recordingStart(live.startedAt, live.endedAt, dur)
+    const rows = await timelineRows(db, live.startedAt, live.endedAt + 5_000).catch(() => [])
+    timeline = readTimeline(buildTimeline(rows, from, dur > 0 ? from + dur * 1000 : live.endedAt, defaultMode(live.category)))
+  }
+  await epRef.set({ ...doc, ...(timeline ? { timeline } : {}), publishedAt: at })
   await rec.ref.update({ status: 'aired', episodeId: recId })
   return 'published'
 }

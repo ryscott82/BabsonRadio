@@ -4,10 +4,11 @@ import { HttpError, handle } from '@/lib/server/http'
 import { requireLibrary } from '@/lib/server/guests'
 import { toEpisode } from '@/lib/server/episodes'
 import { isEpisodeId, matchSetlist } from '@/lib/episodePlayer'
+import { readTimeline } from '@/lib/trackLog'
 
 export const runtime = 'nodejs'
 
-// One episode for its own page (/episode/<id>): its details and, for a live show, the set list the host entered. A public episode opens for anyone
+// One episode for its own page (/episode/<id>): its details and, for a live show, the set list the host entered and the timed track list the booth logged. A public episode opens for anyone
 // (that is what a shared link needs); a private one needs a signed-in Babson student, like the rest of the Library.
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   return handle(async () => {
@@ -26,6 +27,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       setlist = matchSetlist((hit?.docs ?? []).map(d => ({ showTitle: String(d.get('showTitle') ?? ''), startAt: (d.get('startAt') as Timestamp).toMillis(), songs: String(d.get('songs') ?? '') })), [ep.title, ep.showName], ep.publishedAt)
     }
     const { hostUids: _hosts, ...out } = ep // eslint-disable-line @typescript-eslint/no-unused-vars -- account ids are not for the page
-    return { episode: out, setlist }
+    // What the booth played and which mode the show was in, on the recording's clock (live shows only; null for the rest).
+    return { episode: out, setlist, timeline: readTimeline(snap.get('timeline')) }
   }, { 'Cache-Control': req.headers.get('authorization') ? 'private, no-store' : 'public, s-maxage=60, stale-while-revalidate=300' })
 }

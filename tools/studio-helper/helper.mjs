@@ -377,7 +377,7 @@ async function library() {
     const low = pls.map(p => p.toLowerCase())
     return {
       id: String(m.unique_id || m.id), title: m.title || m.text || m.path?.split('/').pop() || 'Untitled', artist: m.artist || '',
-      length: Number(m.length) || 0, playlists: pls,
+      length: Number(m.length) || 0, playlists: pls, art: typeof m.art === 'string' ? m.art : '', // the cover picture's address; the site checks it before listeners see it
       bed: low.some(p => BED_LISTS.includes(p)), stationId: low.some(p => ID_LISTS.includes(p)),
       pad: low.some(p => PAD_LISTS.includes(p)), ad: low.some(p => AD_LISTS.includes(p)),
     }

@@ -76,9 +76,16 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   const nextHeld = useHeld(hasSong ? np?.next : null, 1000, 5000)
   const previewHeld = useHeld(!loading && !user ? true : null, 1000, 5000)
   const showLineHeld = useHeld(!onAir && np?.showTitle ? np.showTitle : null, 1000, 5000)
-  const subline = onAir && np?.showTitle && !np.showOnly
-    ? `${np.showTitle}${np.streamer ? ` with ${np.streamer}` : ''}`
-    : (np?.artist || 'Babson Radio')
+  // A music show (the host's Talk / Music switch in the booth): the song is the star, with the show name on top. A talk show with music playing
+  // gets a small now-playing bar on the cover instead.
+  const musicShow = !!np?.isLive && np.mode === 'music'
+  const showName = np?.showTitle || np?.blockTitle || ''
+  const mini = !!np?.isLive && np.mode === 'talk' && np.track ? np.track : null
+  const subline = musicShow
+    ? (np?.artist || '')
+    : onAir && np?.showTitle && !np.showOnly
+      ? `${np.showTitle}${np.streamer ? ` with ${np.streamer}` : ''}`
+      : (np?.artist || 'Babson Radio')
   // Knob travel: 0..75% is the element volume (0 to 100%); past 75% adds up to +6 dB of boost with a soft clipper (needs a stream that allows Web Audio).
   const UNITY = 0.75, MAX_DB = 6
   const [volume, setVolume] = useState(0.64)
@@ -290,6 +297,12 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
   return (
     <>
     <div className={`relative ${pane ? '' : ''}`}>
+      {musicShow && showName && (
+        <div className="mb-6 text-center" aria-live="polite">
+          <p className="hw-sub text-xs tracking-[0.3em]">ON AIR</p>
+          <p className="font-display text-br-dk-text text-2xl sm:text-3xl tracking-[0.08em] line-clamp-2">{showName}</p>
+        </div>
+      )}
       <div className={`flex flex-col gap-8 ${pane ? 'lg:grid lg:grid-cols-[1.1fr_1fr] lg:gap-14 lg:items-center' : 'md:flex-row md:items-center md:gap-12'}`}>
 
         {/* Cover on the desk, record peeking out, ON AIR sign on its corner (live shows only) */}
@@ -305,6 +318,16 @@ export default function LivePlayer({ pane = false }: { pane?: boolean }) {
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src="/beaver.png" alt="" className="w-[62%] h-auto drop-shadow-[0_3px_6px_rgba(0,0,0,.45)]" />
+              )}
+              {mini && (
+                <div className="absolute inset-x-0 bottom-0 flex items-center gap-2.5 bg-black/70 px-2.5 py-2 backdrop-blur-sm" role="status" aria-label={mini.bed ? 'Background music' : 'Now playing'}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={mini.art || '/beaver.png'} alt="" className={`h-9 w-9 shrink-0 rounded object-cover ${mini.art ? '' : 'bg-[#1B1B18] p-1 object-contain'}`} />
+                  <span className="min-w-0 leading-tight">
+                    <span className="block text-[0.65rem] tracking-[0.2em] text-br-gold uppercase">{mini.bed ? 'Background music' : 'Now playing'}</span>
+                    <span className="block truncate text-sm text-white">{mini.title}{mini.artist ? ` · ${mini.artist}` : ''}</span>
+                  </span>
+                </div>
               )}
             </div>
             {onAir && <OnAirSign />}

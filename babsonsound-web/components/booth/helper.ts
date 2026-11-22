@@ -4,7 +4,7 @@ import type { CSSProperties } from 'react'
 // Talks to the studio helper on 127.0.0.1 (tools/studio-helper).
 
 export interface Butt { connected: boolean; connecting: boolean; recording: boolean; signal: boolean; silence: boolean; streamSeconds: number; volumeLeft: number; volumeRight: number; song: string }
-export interface Track { id: string; title: string; artist: string; length: number; playlists: string[]; bed: boolean; stationId: boolean; pad: boolean; ad: boolean }
+export interface Track { id: string; title: string; artist: string; length: number; playlists: string[]; bed: boolean; stationId: boolean; pad: boolean; ad: boolean; /** Cover picture address from AzuraCast ('' when none). */ art?: string }
 export type LibraryKind = 'beds' | 'ids' | 'pads' | 'ads' | 'all'
 
 export async function library(token: string, kind: LibraryKind, q = ''): Promise<Track[]> {

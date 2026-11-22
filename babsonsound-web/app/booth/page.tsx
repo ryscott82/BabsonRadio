@@ -16,6 +16,7 @@ import { useInputMeter } from '@/components/booth/useInputMeter'
 import LevelMeter from '@/components/booth/LevelMeter'
 import DeviceSettings, { type Devices } from '@/components/booth/DeviceSettings'
 import MusicPlayer from '@/components/booth/MusicPlayer'
+import { defaultMode, type LiveMode } from '@/lib/trackLog'
 import Soundboard from '@/components/booth/Soundboard'
 import { useClockNotices, useStationId } from '@/components/booth/ClockScreen'
 import { useAutoGain } from '@/components/booth/useAutoGain'
@@ -279,12 +280,35 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, night, bypass
     await helper('/live/stop', { token: await token() })
     await waitButt(b => !b.connected && !b.connecting)
     await report('live_stop').catch(() => {})
+    setPickedMode(null) // the next show starts from its own category
   })
 
+  // Talk show or Music show: starts from the show's category (Music = music show) and the host can flip it at any time. Listeners see it
+  // (a small now-playing line, or the song large) and the live log keeps it, so a recording shows the same thing when it is played back.
+  const [pickedMode, setPickedMode] = useState<LiveMode | null>(null)
+  const showMode: LiveMode = pickedMode ?? defaultMode(info.show?.category)
+  const liveRef = useRef(live)
+  useEffect(() => { liveRef.current = live }, [live])
+  useEffect(() => { if (live) report('mode', { mode: showMode }).catch(() => {}) }, [live, showMode, report])
+
+  const trackOn = useRef(false), idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onAired = useCallback((t: Track) => {
     if (!t.bed) setLastMusicAt(Date.now())
-    report('music', { title: t.title, artist: t.artist }).catch(() => {})
+    if (idleTimer.current) { clearTimeout(idleTimer.current); idleTimer.current = null }
+    trackOn.current = true
+    report('music', { title: t.title, artist: t.artist, art: t.art ?? '', bed: t.bed }).catch(() => {})
   }, [report])
+  // The music stopped (or an ad or station ID is on): tell listeners after a moment, so the changeover between two songs is not a gap.
+  const onIdle = useCallback(() => {
+    if (idleTimer.current) clearTimeout(idleTimer.current)
+    idleTimer.current = setTimeout(() => {
+      idleTimer.current = null
+      if (!trackOn.current) return
+      trackOn.current = false
+      if (liveRef.current) report('gap').catch(() => {})
+    }, 1500)
+  }, [report])
+  useEffect(() => () => { if (idleTimer.current) clearTimeout(idleTimer.current) }, [])
 
   const leave = useCallback(async (kind: 'sign_out' | 'idle_out') => {
     await closeBrowser().catch(() => {}) // the window closes; its sign-ins stay in the studio browser's own profile
@@ -447,7 +471,7 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, night, bypass
 
           <div className="eng s" style={{ left: 12, top: 269 }}>In the studio</div>
           {bypass ? <div id="hostlist" className="lw row px"><span className="dim">Nobody signed in</span></div>
-            : <CrewPanel crew={s?.crew ?? []} driverName={s?.firstName || s?.name || ''} onAir={!idle} getToken={token} onToast={setToast} />}
+            : <CrewPanel sessionId={s?.sessionId ?? ''} crew={s?.crew ?? []} driverName={s?.firstName || s?.name || ''} onAir={!idle} getToken={token} onToast={setToast} />}
           {confirmOut ? (
             <>
               <Btn id="signout" onClick={signOutNow} disabled={!!busy}>{live ? 'End and sign out' : 'Stop and sign out'}</Btn>
@@ -483,7 +507,7 @@ function Console({ butt, buttRef, buttErr, browserSt, onExitPanel, night, bypass
           </div>
         ) : (
           <>
-            <MusicPlayer getToken={token} live={live} output={devices.music} idCue={idCue} adCue={adCue} onAired={onAired} onTrack={setNowTrack} />
+            <MusicPlayer getToken={token} live={live} output={devices.music} idCue={idCue} adCue={adCue} onAired={onAired} onIdle={onIdle} onTrack={setNowTrack} mode={showMode} onMode={setPickedMode} />
             <Soundboard getToken={token} output={devices.music} />
           </>
         )}
@@ -635,15 +659,17 @@ function GoLive(p: {
     <>
       {p.canGoLive ? (
         <>
+          {/* Go live stays off until both switches are on. */}
+          <div className="eng s" style={{ left: 12, top: 329 }}>Check to go live:</div>
           <Sw id="micsw" on={soundOk} onChange={toggleMic} label="Mic check" /><Led id="micled" c={soundOk ? 'green' : ''} />
-          <div className="eng s" style={{ left: 74, top: 329 }}>Mic check</div>
+          <div className="eng s" style={{ left: 162, top: 329 }}>Mic check</div>
           <Sw id="cleansw" on={clean} onChange={setClean} label="Clean music only" /><Led id="cleanled" c={clean ? 'green' : ''} />
-          <div className="eng s" style={{ left: 222, top: 329 }}>Clean music only</div>
+          <div className="eng s" style={{ left: 286, top: 329 }}>Clean music only</div>
         </>
       ) : <div className="eng s" style={{ left: 12, top: 329 }}>{p.reason}</div>}
       <Btn id="golive" kind="lv" onClick={p.onGoLive} disabled={!!p.busy || !p.canGoLive || !p.ready || !ok}>
         <b>{p.busy === 'live' ? 'Going live…' : 'Go live'}</b>
-        <span>{!p.canGoLive ? 'Not available yet' : ok ? 'Starts the stream and the recording' : soundOk ? 'Flip Clean music only first' : 'Say something into the mic'}</span>
+        <span>{!p.canGoLive ? 'Not available yet' : ok ? 'Starts the stream and the recording' : soundOk ? 'Switch on Clean music only first' : clean ? 'Say something into the mic, or switch on Mic check' : 'Switch on both checks to go live'}</span>
       </Btn>
     </>
   )

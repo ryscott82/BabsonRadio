@@ -9,6 +9,7 @@ import { accessOf as accessOfUser } from './access'
 import { censor } from './wordFilter'
 import { requireUser } from './http'
 import { buildScheduleFeed } from './scheduleFeed'
+import { cleanMode, type BoothTrack, type LiveMode, type LogRow } from '../trackLog'
 
 // Studio PC (booth): who may go live from the studio, and the sign-in log. See tools/studio-helper/README.md.
 // Collections (admin SDK only): boothSessions/{id} one per sign-in on the studio PC, boothEvents/{id} what happened in it.
@@ -76,7 +77,8 @@ export async function touchSession(db: Firestore, sessionId: string, info: Sessi
   return ref.id
 }
 
-export const EVENT_KINDS = ['live_start', 'live_stop', 'song', 'music', 'sign_out', 'idle_out', 'quiet_ack'] as const
+/** gap = the music stopped, mode = the host switched between Talk and Music. */
+export const EVENT_KINDS = ['live_start', 'live_stop', 'song', 'music', 'gap', 'mode', 'sign_out', 'idle_out', 'quiet_ack'] as const
 /** Logged by other routes, not sent by the page. */
 type OtherKind = 'note' | 'crew_join' | 'handoff'
 export type EventKind = (typeof EVENT_KINDS)[number] | OtherKind | 'sign_in'
@@ -104,7 +106,7 @@ export async function recordEvent(db: Firestore, sessionId: string, uid: string,
       patch.songCount = FieldValue.increment(1)
     } else if (kind === 'music') {
       patch.musicCount = FieldValue.increment(1)
-    } else if (kind === 'note' || kind === 'quiet_ack') {
+    } else if (kind === 'note' || kind === 'quiet_ack' || kind === 'gap' || kind === 'mode') {
       // nothing to count
     } else {
       stopClock()
@@ -122,27 +124,77 @@ export async function recordEvent(db: Firestore, sessionId: string, uid: string,
   if (kind === 'live_start' && uid !== BYPASS_UID) await db.collection('users').doc(uid).set({ hostedLive: true }, { merge: true }).catch(() => {})
 }
 
-// ── Song typed on the studio PC ─────────────────────────────
-// During a live show the site normally shows the show and host names (live streams rarely carry track info). When the host
-// types the song on the studio PC it is kept here and shown instead, until they type another, go off air or sign out.
-const SONG_MAX_AGE_MS = 3 * 3_600_000
+// ── What is playing from the studio PC ──────────────────────
+// A live stream rarely carries track info, so during a live show the site shows the show and host names. The booth tells the site
+// what it is playing (a song picked from the library or one the host typed) and which mode the show is in, and the site shows that
+// to listeners (see nowplaying.ts): "talk" = a small now-playing line, "music" = the song large with the show name on top.
+// One document, boothNowPlaying/current, until the host goes off air or signs out.
+const NOW_MAX_AGE_MS = 3 * 3_600_000
 
+export interface BoothNow { mode: LiveMode | ''; track: BoothTrack | null }
+
+const nowRef = (db: Firestore) => db.collection('boothNowPlaying').doc('current')
+
+/** Changes some fields of the one now-playing document. A document left by another session is replaced, not merged. */
+async function writeNow(db: Firestore, sessionId: string, patch: Record<string, unknown>, now: number) {
+  const ref = nowRef(db)
+  const d = await ref.get()
+  const base = d.exists && d.get('sessionId') === sessionId ? (d.data() ?? {}) : {}
+  await ref.set({ ...base, ...patch, sessionId, at: Timestamp.fromMillis(now) })
+}
+
+/** A song the host typed on the studio PC (no picture). */
 export async function setBoothSong(db: Firestore, sessionId: string, title: string, artist: string, now = Date.now()) {
-  await db.collection('boothNowPlaying').doc('current').set({ sessionId, title, artist, at: Timestamp.fromMillis(now) })
+  await writeNow(db, sessionId, { title, artist, art: '', bed: false }, now)
+}
+
+/** A track the booth started from the library. art must already be checked (lib/artProxy.ts allowedArtUrl) or ''. */
+export async function setBoothTrack(db: Firestore, sessionId: string, t: BoothTrack, now = Date.now()) {
+  await writeNow(db, sessionId, { title: t.title, artist: t.artist, art: t.art, bed: t.bed }, now)
+}
+
+/** The music stopped (faded out, paused, ended with nothing queued, or an ad or station ID is playing). */
+export async function setBoothGap(db: Firestore, sessionId: string, now = Date.now()) {
+  await writeNow(db, sessionId, { title: '', artist: '', art: '', bed: false }, now)
+}
+
+export async function setBoothMode(db: Firestore, sessionId: string, mode: LiveMode, now = Date.now()) {
+  await writeNow(db, sessionId, { mode }, now)
 }
 
 export async function clearBoothSong(db: Firestore, sessionId: string) {
-  const ref = db.collection('boothNowPlaying').doc('current')
+  const ref = nowRef(db)
   const d = await ref.get()
   if (d.exists && d.get('sessionId') === sessionId) await ref.delete()
 }
 
-export async function boothSong(db: Firestore, now = Date.now()): Promise<{ title: string; artist: string } | null> {
-  const d = await db.collection('boothNowPlaying').doc('current').get()
+export async function boothNow(db: Firestore, now = Date.now()): Promise<BoothNow | null> {
+  const d = await nowRef(db).get()
   const at = (d.get('at') as Timestamp | undefined)?.toMillis() ?? 0
-  if (!d.exists || now - at > SONG_MAX_AGE_MS) return null
-  const title = String(d.get('title') ?? ''), artist = String(d.get('artist') ?? '')
-  return title ? { title, artist } : null
+  if (!d.exists || now - at > NOW_MAX_AGE_MS) return null
+  const title = String(d.get('title') ?? '')
+  return {
+    mode: cleanMode(d.get('mode')),
+    track: title ? { title, artist: String(d.get('artist') ?? ''), art: String(d.get('art') ?? ''), bed: d.get('bed') === true } : null,
+  }
+}
+
+// ── The live log, for on-demand playback ────────────────────
+// Every track start, gap and mode change goes in boothTimeline with the time it happened. When the recording is published as an episode,
+// publishLiveEpisode turns these rows into the episode's timeline on the recording's own clock (lib/trackLog.ts).
+export async function logTimeline(db: Firestore, sessionId: string, uid: string, row: LogRow) {
+  await db.collection('boothTimeline').add({
+    sessionId, uid, kind: row.kind, mode: row.mode ?? '', title: row.title ?? '', artist: row.artist ?? '', art: row.art ?? '', bed: row.bed === true,
+    at: Timestamp.fromMillis(row.at),
+  })
+}
+
+export async function timelineRows(db: Firestore, from: number, to: number): Promise<LogRow[]> {
+  const snap = await db.collection('boothTimeline').where('at', '>=', Timestamp.fromMillis(from)).where('at', '<=', Timestamp.fromMillis(to)).limit(2000).get()
+  return snap.docs.map(d => ({
+    at: (d.get('at') as Timestamp).toMillis(), kind: d.get('kind') as LogRow['kind'], mode: cleanMode(d.get('mode')) || undefined,
+    title: String(d.get('title') ?? ''), artist: String(d.get('artist') ?? ''), art: String(d.get('art') ?? ''), bed: d.get('bed') === true,
+  }))
 }
 
 // ── Ad breaks, handoff notes, who is on next ────────────────

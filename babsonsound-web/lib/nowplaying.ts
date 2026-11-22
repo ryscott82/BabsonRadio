@@ -23,6 +23,10 @@ export interface NowPlaying {
   ratingsOn?: boolean
   /** A show is on air without track info: title/artist are the show and host names. */
   showOnly?: boolean
+  /** While a booth show is live: 'music' = the song is the star (cover, title and artist large, show name on top), 'talk' = a talk show. '' otherwise. */
+  mode?: '' | 'talk' | 'music'
+  /** What the booth is playing right now (a song, a bed or a typed title), or null between songs. */
+  track?: { title: string; artist: string; art: string; bed: boolean } | null
   note: { headline: string; message: string; updatedAt: number; by: string } | null
   announcement: { text: string; updatedAt: number; until: number } | null
   /** False when staff turned the browser audio processing off. */
@@ -117,7 +121,7 @@ export function useNowPlaying(everyMs = 12_000): NowPlaying | null {
 
   // No cover, but one was showing a little while ago: it's on its way. Keep asking every 4 s (up to 2 minutes) until it lands.
   const lastArtAt = useRef(0)
-  const noArt = !!np && !np.art && !np.showOnly
+  const noArt = !!np && !np.art && !np.showOnly && !np.mode // a booth track with no cover is not waiting for one
   const hasArt = !!np?.art
   useEffect(() => { if (hasArt) lastArtAt.current = Date.now() }, [hasArt])
   useEffect(() => {
@@ -169,5 +173,5 @@ export function useNowPlaying(everyMs = 12_000): NowPlaying | null {
     const t = setTimeout(() => setGone(held.art), Math.max(0, held.at + LINGER_MS - Date.now()))
     return () => clearTimeout(t)
   }, [art, held])
-  return useMemo(() => (shown && !art && held.art && gone !== held.art && !shown.showOnly ? { ...shown, art: held.art } : shown), [shown, art, held.art, gone])
+  return useMemo(() => (shown && !art && held.art && gone !== held.art && !shown.showOnly && !shown.mode ? { ...shown, art: held.art } : shown), [shown, art, held.art, gone])
 }

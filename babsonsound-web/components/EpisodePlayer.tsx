@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiGet } from '@/lib/auth'
+import { modeAt, trackAt, type Timeline } from '@/lib/trackLog'
 import { BACK_SEC, FORWARD_SEC, clampTime, episodeLink, fmtTime, nextSpeed, positionKey, resumeAt, speedLabel } from '@/lib/episodePlayer'
 
 export interface PlayerEp { id: string; title: string; showName: string; thumbnailURL: string; duration: number }
@@ -9,9 +10,11 @@ export interface PlayerEp { id: string; title: string; showName: string; thumbna
 /**
  * The player for a recorded show (audio episodes, played straight from AzuraCast): the show's picture or the Babson Radio logo, play and pause,
  * 15 seconds back, 30 forward, a seek bar, speed, and a Share button that copies the episode's link (optionally starting at the current time).
+ * A live show comes with the booth's log of what it played and its Talk / Music mode, so the player shows the same thing as it plays: a small bar
+ * for a talk show, the song large for a music show, and a track list where a tap jumps to that song.
  * It remembers where each listener stopped, on that device only. startAt (from ?t= in a shared link) wins over the remembered place.
  */
-export default function EpisodePlayer({ ep, startAt = 0, autoPlay = false }: { ep: PlayerEp; startAt?: number; autoPlay?: boolean }) {
+export default function EpisodePlayer({ ep, startAt = 0, autoPlay = false, timeline = null }: { ep: PlayerEp; startAt?: number; autoPlay?: boolean; timeline?: Timeline | null }) {
   const audio = useRef<HTMLAudioElement>(null)
   const [url, setUrl] = useState('')
   const [err, setErr] = useState('')
@@ -58,6 +61,10 @@ export default function EpisodePlayer({ ep, startAt = 0, autoPlay = false }: { e
     setTimeout(() => setCopied(''), 4000)
   }
 
+  const mode = timeline ? modeAt(timeline, cur) : 'talk'
+  const track = timeline ? trackAt(timeline, cur) : null
+  const list = (timeline?.tracks ?? []).filter(k => !k.bed)
+  const jump = (t: number) => { seek(t); audio.current?.play().catch(() => {}) }
   const btn = 'sk-key rounded-lg min-h-11 min-w-11 px-3 text-sm font-display tracking-widest text-br-dk-text disabled:opacity-50'
   return (
     <div className="bg-black/60 p-4 sm:p-6 space-y-4">
@@ -74,6 +81,25 @@ export default function EpisodePlayer({ ep, startAt = 0, autoPlay = false }: { e
           <p className="text-xs text-br-dk-sub mt-1">Babson Radio</p>
         </div>
       </div>
+
+      {timeline && mode === 'music' && (
+        <div className="flex flex-col items-center gap-2 py-1 text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={track?.art || ep.thumbnailURL || '/beaver.png'} alt="" className={`h-44 w-44 sm:h-60 sm:w-60 rounded-xl bg-[#1B1B18] ${track?.art || ep.thumbnailURL ? 'object-cover' : 'object-contain p-4'}`} />
+          <p className="text-br-dk-text text-lg sm:text-xl line-clamp-2">{track ? track.title : ep.showName || ep.title}</p>
+          <p className="text-sm text-br-dk-sub line-clamp-1">{track ? track.artist : 'Babson Radio'}</p>
+        </div>
+      )}
+      {timeline && mode === 'talk' && track && (
+        <div className="flex items-center gap-3 rounded-lg bg-black/40 px-3 py-2" role="status" aria-label={track.bed ? 'Background music' : 'Now playing'}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={track.art || '/beaver.png'} alt="" className={`h-10 w-10 shrink-0 rounded bg-[#1B1B18] ${track.art ? 'object-cover' : 'object-contain p-1'}`} />
+          <span className="min-w-0 leading-tight">
+            <span className="block text-[0.65rem] tracking-[0.2em] text-br-gold uppercase">{track.bed ? 'Background music' : 'Now playing'}</span>
+            <span className="block truncate text-sm text-br-dk-text">{track.title}{track.artist ? ` · ${track.artist}` : ''}</span>
+          </span>
+        </div>
+      )}
 
       {err ? <p role="alert" className="text-sm text-red-400">{err}</p> : !url ? <p className="text-sm text-br-dk-sub">Loading…</p> : (
         <>
@@ -97,6 +123,30 @@ export default function EpisodePlayer({ ep, startAt = 0, autoPlay = false }: { e
             <label className="flex items-center gap-2 min-h-11"><input type="checkbox" checked={withTime} onChange={e => setWithTime(e.target.checked)} /> Start at {fmtTime(cur)}</label>
             <span role="status" aria-live="polite" className="text-br-gold break-all">{copied}</span>
           </div>
+          {list.length > 0 && (
+            <section className="space-y-1 pt-2" aria-label="Tracklist">
+              <h2 className="font-display text-br-gold tracking-widest text-sm">{timeline && modeAt(timeline, 0) === 'music' ? 'Tracklist' : 'Music in this show'}</h2>
+              <ol className="max-h-72 overflow-y-auto space-y-0.5">
+                {list.map((k, i) => {
+                  const on = !!track && track.s === k.s && track.title === k.title
+                  return (
+                    <li key={`${k.s}-${i}`}>
+                      <button type="button" onClick={() => jump(k.s)} aria-current={on ? 'true' : undefined}
+                              className={`flex w-full min-h-11 items-center gap-3 rounded-lg px-2 py-1 text-left ${on ? 'bg-br-gold/15' : 'hover:bg-white/5'}`}>
+                        <span className="w-14 shrink-0 text-right text-xs tabular-nums text-br-dk-sub">{fmtTime(k.s)}</span>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={k.art || '/beaver.png'} alt="" className={`h-9 w-9 shrink-0 rounded bg-[#1B1B18] ${k.art ? 'object-cover' : 'object-contain p-1'}`} />
+                        <span className="min-w-0 text-sm leading-tight">
+                          <span className={`block truncate ${on ? 'text-br-gold' : 'text-br-dk-text'}`}>{k.title}</span>
+                          {k.artist && <span className="block truncate text-xs text-br-dk-sub">{k.artist}</span>}
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ol>
+            </section>
+          )}
         </>
       )}
     </div>

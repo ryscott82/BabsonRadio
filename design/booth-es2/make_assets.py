@@ -62,12 +62,12 @@ P_LEFT, P_RIGHT = (12, 55, 184, 452), (628, 55, 320, 452)
 MID = {"full": (204, 55, 416, 452), "split": (32, 55, 416, 452)}           # booth: raised smooth-grey panel
 MIDC = dict(timebox=(12, 12, 392, 140), f_show=(78, 172, 326, 22), f_track=(78, 198, 326, 22), f_host=(78, 224, 326, 22),
             hostlist=(78, 262, 214, 24), signout=(300, 262, 104, 24), modelive=(12, 296, 100, 22), moderec=(118, 296, 100, 22),
-            stay=(300, 292, 104, 20), adsbtn=(300, 296, 104, 22), micsw=(12, 324), micled=(58, 328), cleansw=(160, 324), cleanled=(206, 328),
+            stay=(300, 292, 104, 20), adsbtn=(300, 296, 104, 22), micsw=(100, 324), micled=(146, 328), cleansw=(224, 324), cleanled=(270, 328),
             golive=(12, 352, 392, 88))
 METER = dict(box=(22, 80, 60, 300), canvas=(4, 5, 52, 290), cells=32, pitch=9)
 BL = dict(fb=(22, 390, 164, 58), autosw=(78, 456), autoled=(124, 460), autolcd=(140, 455, 46, 22))
 ZONE_ROWS = [(87, 114), (114, 195), (195, 222), (222, 375)]      # too loud, sweet spot, good, too quiet (against the 32 cells)
-BR = dict(beds=(762, 61), all=(806, 61), playled=(926, 64), search=(638, 84, 300, 20), tr=(638, 108, 300, 100), kmu=(684, 252),
+BR = dict(beds=(762, 61), all=(806, 61), qbtn=(722, 212), nextbtn=(794, 212), xfbtn=(722, 270), modebtn=(792, 270), playled=(926, 64), search=(638, 84, 300, 20), tr=(638, 108, 300, 100), kmu=(684, 252),
           tplay=(744, 238), tfade=(778, 238, 62, 28), bysign=(713, 238, 150, 28), ksf=(892, 252), padstrip=(638, 328, 300, 170))
 POP = (520, 330)
 HELP = dict(doc=[(24, 58 + i * 32) for i in range(5)], docview=(168, 56, 328, 252))
@@ -626,6 +626,8 @@ def write_layout(root):
     for i, (y0, y1) in enumerate(ZONE_ROWS):
         box(f"#zone{i}", 102, y0, 86, min(y1 - y0, 60))
     btn("#bedsbtn", "metal", *BR["beds"], 40, 20); btn("#allbtn", "metal", *BR["all"], 40, 20)
+    btn("#qbtn", "metal", *BR["qbtn"], 68, 20); btn("#nextbtn", "metal", *BR["nextbtn"], 40, 20)   # queue, next song
+    btn("#xfbtn", "metal", *BR["xfbtn"], 68, 20); btn("#modebtn", "metal", *BR["modebtn"], 68, 20)   # crossfade length, Talk / Music show
     box("#playled", *BR["playled"]); box("#search", *BR["search"]); box("#tracks", *BR["tr"]); box("#pads", *BR["padstrip"])
     btn("#tplay", "round", *BR["tplay"], 28, 28); btn("#tfade", "metal", *BR["tfade"]); btn("#bysign", "green", *BR["bysign"])
     for name, (kx, ky) in (("music", BR["kmu"]), ("sfx", BR["ksf"])):

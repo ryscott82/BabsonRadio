@@ -6,10 +6,11 @@ import { useAuth } from '@/contexts/AuthContext'
 import { apiGet } from '@/lib/auth'
 import { openSignIn } from '@/lib/signInPrompt'
 import { parseStart } from '@/lib/episodePlayer'
+import type { Timeline } from '@/lib/trackLog'
 import EpisodePlayer from '@/components/EpisodePlayer'
 import { ago, type Ep } from '@/components/EpisodeRow'
 
-interface Loaded { episode: Ep & { visibility: 'public' | 'private' }; setlist: string[] }
+interface Loaded { episode: Ep & { visibility: 'public' | 'private' }; setlist: string[]; timeline?: Timeline | null }
 
 /** One episode on its own page, the address people share. Public episodes open for anyone; private ones ask for a Babson sign-in. */
 export default function EpisodeView({ id, t = '' }: { id: string; t?: string }) {
@@ -44,7 +45,7 @@ export default function EpisodeView({ id, t = '' }: { id: string; t?: string }) 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
       <div className="sk-raised rounded-2xl overflow-hidden">
-        {e.audio ? <EpisodePlayer ep={e} startAt={start} /> : (
+        {e.audio ? <EpisodePlayer ep={e} startAt={start} timeline={d.timeline ?? null} /> : (
           <div className="aspect-video bg-black">
             <iframe className="w-full h-full" title={e.title} allowFullScreen src={`https://www.youtube-nocookie.com/embed/${e.youtubeID}?rel=0${start ? `&start=${start}` : ''}`}
                     allow="encrypted-media; picture-in-picture" />

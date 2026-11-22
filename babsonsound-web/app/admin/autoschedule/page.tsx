@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, apiGet } from '@/lib/auth'
-import { DEFAULT_CONFIG, type AutoConfig } from '@/lib/autoschedule'
+import { type AutoConfig } from '@/lib/autoschedule'
 import { fullConfig, plainSaveError, savePayload, showsAdvanced, type AutoRole } from '@/lib/autoPage'
 import { ErrorText, PrimaryButton } from '@/components/AuthUI'
 import AutoPlanner from '@/components/admin/AutoPlanner'
@@ -80,14 +80,13 @@ export default function AutoSchedulePage() {
 
   const update = (patch: Partial<AutoConfig>) => setCfg({ ...cfg, ...patch })
   const genres = (cfg.playlists ?? []).map(p => p.name)
-  const lines = (s: string) => s.split(',').map(x => x.trim()).filter(Boolean)
 
   async function run(label: string, fn: () => Promise<void>) {
     setBusy(label); setError(''); setNotice('')
     try { await fn() } catch (e) { setError(plainSaveError(e)) }
     setBusy('')
   }
-  // A Director's save sends only the rules and default playlists; an Admin's sends everything.
+  // A Director's save sends only the Director fields (playlists, mix, hours set by hand); an Admin's sends everything.
   const persist = async () => {
     const r = await api<{ config: Partial<AutoConfig> }>('/api/admin/autoschedule', savePayload(cfg, role))
     setCfg(fullConfig(r.config))
@@ -121,22 +120,12 @@ export default function AutoSchedulePage() {
 
       {/* Rules and playlists: Directors and Admins */}
       <section className="space-y-6" aria-labelledby="rules-h">
-        <h2 id="rules-h" className="text-xl font-light text-br-dk-text">Rules and playlists</h2>
+        <h2 id="rules-h" className="text-xl font-light text-br-dk-text">Playlists and schedule</h2>
         <p className="text-base text-br-dk-sub">
-          Auto DJ is <strong>{cfg.enabled ? 'on' : 'off'}</strong>.{!admin && ' Only an Admin can switch it on or off.'} Pick a playlist, set when it plays, and turn a block off to keep it without scheduling it.
+          Auto DJ is <strong>{cfg.enabled ? 'on' : 'off'}</strong>.{!admin && ' Only an Admin can switch it on or off.'} Set how often each playlist plays in each part of the week and the schedule fills itself. Press Rebuild now after changing anything.
         </p>
 
         <AutoPlanner cfg={cfg} update={update} />
-
-        <div className="sk-raised rounded-2xl p-5 space-y-3">
-          <label className="block"><span className={lab}>Default playlists when no block applies (comma separated)</span>
-            <input className={`${box} w-full`} key={cfg.defaultFillers.join('|')} defaultValue={cfg.defaultFillers.join(', ')}
-                   onBlur={e => update({ defaultFillers: lines(e.target.value) })} /></label>
-          <button type="button" className={btn}
-                  onClick={() => { if (window.confirm('Replace all blocks with the suggested schedule? Nothing is saved until you press Save.')) update({ rules: DEFAULT_CONFIG.rules.map(r => ({ ...r })) }) }}>
-            Load suggested schedule
-          </button>
-        </div>
 
         <ErrorText>{error}</ErrorText>
         {notice && <p className="text-base text-br-gold">{notice}</p>}
@@ -183,6 +172,10 @@ export default function AutoSchedulePage() {
               <label className="flex items-center gap-3 text-base text-br-dk-text min-h-11">
                 <input type="checkbox" className="w-5 h-5" checked={cfg.colorChanging === true} onChange={e => update({ colorChanging: e.target.checked })} />
                 Color-changing background at night
+              </label>
+              <label className="flex items-center gap-3 text-base text-br-dk-text min-h-11">
+                <input type="checkbox" className="w-5 h-5" checked={cfg.colorWeekendNights !== false} onChange={e => update({ colorWeekendNights: e.target.checked })} />
+                Also turn the album-color background on by itself on weekend nights (Thu–Sat, 9p–5a)
               </label>
             </div>
 

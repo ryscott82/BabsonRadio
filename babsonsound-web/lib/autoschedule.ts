@@ -46,9 +46,15 @@ export interface AutoConfig {
   learn: boolean
   /** Night-time color-changing background (album colors) while the auto DJ is on air. */
   colorChanging: boolean
+  /** The album-color background also comes on by itself on weekend nights (unless a host picked the standard look). Default on. */
+  colorWeekendNights: boolean
   /** Manual frequency per playlist (lowercase name → multiplier, 1 = average, 0 = avoid). A playlist not listed here uses the learned value. */
   weightOverrides: Record<string, number>
   rules: AutoRule[]
+  /** How often each playlist plays in each part of the week, 0 (never) to 1 (the most). Key = lowercase playlist name. This is what normally fills the schedule. */
+  mix: Record<string, Partial<Record<Part, number>>>
+  /** Hours set by hand ("dow-hour" → playlist name, or QUIET for nothing scheduled). These always win over the mix. Rarely needed. */
+  grid: Record<string, string>
 }
 
 export interface Interval { startMs: number; endMs: number }
@@ -66,21 +72,17 @@ export const DEFAULT_CONFIG: AutoConfig = {
   syncToAzuraCast: false,
   learn: true,
   colorChanging: false,
+  colorWeekendNights: true,
   playlistMap: {},
   weightOverrides: {},
   defaultFillers: ['Pop Hits', 'Jazz House for Studying'],
-  rules: [
-    // Nights run to 4am: study music Sun–Wed nights, party music Thu–Sat nights, then a gentle wake-up until 7.
-    // Each night is several genres in 2-hour blocks, and `learn` leans toward whatever listeners are enjoying.
-    { id: 'study-night', name: 'Study nights (Sun–Wed, to 4am)', days: [0, 1, 2, 3], start: '21:00', end: '04:00',
-      fillers: ['Jazz House for Studying'], priority: 20, blockMinutes: 120 },
-    { id: 'party-night', name: 'Party nights (Thu–Sat, to 4am)', days: [4, 5, 6], start: '21:00', end: '04:00',
-      fillers: ['Pop Hits'], priority: 20, blockMinutes: 120 },
-    { id: 'wake-up', name: 'Wake-up (4am to 7am)', days: [0, 1, 2, 3, 4, 5, 6], start: '04:00', end: '07:00',
-      fillers: ['Jazz House for Studying'], priority: 15 },
-    { id: 'weekday-morning', name: 'Weekday mornings', days: [1, 2, 3, 4, 5], start: '07:00', end: '10:00',
-      fillers: ['Jazz House for Studying'], priority: 10 },
-  ],
+  // Normally nobody edits a schedule: the mix below decides, and `learn` leans toward what listeners enjoy. Rules are only for old custom blocks.
+  rules: [],
+  mix: {
+    'jazz house for studying': { morning: 1, afternoon: 0.6, evening: 0.6, weekdayNight: 1, weekendNight: 0.2 },
+    'pop hits': { morning: 0.3, afternoon: 0.6, evening: 0.8, weekdayNight: 0.3, weekendNight: 1 },
+  },
+  grid: {},
 }
 
 // ── Playlists the Auto DJ may use ───────────────────────────────
@@ -100,6 +102,43 @@ export function poolOf(fillers: string[], cfg: Pick<AutoConfig, 'playlists'>): s
   const hit = [...new Set(fillers.flatMap(f => active.filter(a => plKey(a) === plKey(f))))]
   return hit.length ? hit : active
 }
+
+// ── The five parts of the week ──────────────────────────────────
+
+/** Mornings 5a–12p, afternoons 12–5p, evenings 5–9p, then the night: Sun–Wed nights are weeknights, Thu, Fri and Sat nights are weekend nights (Thursday is a party night at Babson) (a night belongs to the day it starts). */
+export type Part = 'morning' | 'afternoon' | 'evening' | 'weekdayNight' | 'weekendNight'
+export const PARTS: { id: Part; label: string; when: string }[] = [
+  { id: 'morning', label: 'Mornings', when: '5a–12p' },
+  { id: 'afternoon', label: 'Afternoons', when: '12–5p' },
+  { id: 'evening', label: 'Evenings', when: '5–9p' },
+  { id: 'weekdayNight', label: 'Weeknights', when: 'Sun–Wed, 9p–5a' },
+  { id: 'weekendNight', label: 'Weekend nights', when: 'Thu–Sat, 9p–5a' },
+]
+const PART_IDS = PARTS.map(p => p.id)
+/** The grid value that means "nothing scheduled here" (AzuraCast's default plays). */
+export const QUIET = '__quiet'
+/** What a playlist with no saved numbers starts at. */
+export const NEW_PLAYLIST_MIX = 0.5
+
+/** Which part of the week a station-local moment falls in. */
+export function partOf(dow: number, minutes: number): Part {
+  const h = Math.floor(minutes / 60)
+  if (h >= 5 && h < 12) return 'morning'
+  if (h >= 12 && h < 17) return 'afternoon'
+  if (h >= 17 && h < 21) return 'evening'
+  const nightDow = h >= 21 ? dow : (dow + 6) % 7 // after midnight it is still the night that began yesterday
+  return nightDow >= 4 && nightDow <= 6 ? 'weekendNight' : 'weekdayNight'
+}
+/** How often a playlist plays in a part: the saved number, or what a new playlist starts at. */
+export const mixOf = (cfg: Pick<AutoConfig, 'mix'>, name: string, part: Part): number => cfg.mix?.[plKey(name)]?.[part] ?? NEW_PLAYLIST_MIX
+/** Is the album-color background on by default at this moment? True on weekend nights when the setting is on. */
+export function colorOnByDefault(cfg: Pick<AutoConfig, 'colorChanging' | 'colorWeekendNights' | 'timezone'>, ms: number): boolean {
+  if (cfg.colorChanging) return true
+  if (cfg.colorWeekendNights === false) return false
+  const p = localParts(ms, cfg.timezone)
+  return partOf(p.dow, p.minutes) === 'weekendNight'
+}
+export const gridKey = (dow: number, hour: number) => `${dow}-${hour}`
 
 // ── Time helpers ────────────────────────────────────────────────
 
@@ -260,18 +299,26 @@ export function planAutoBlocks(opts: {
     })
 
   // 1–4: tag free slices by rule and merge neighbours
-  type Raw = { startMs: number; endMs: number; ruleId: string; pool: string[]; oneGenre?: boolean; dayKey?: number }
+  type Raw = { startMs: number; endMs: number; ruleId: string; pool: string[]; part?: Part; oneGenre?: boolean; dayKey?: number }
+  const allOn = cfg.playlists ? activePlaylists(cfg) : []
   const raw: Raw[] = []
   for (let t = first; t + step <= opts.untilMs; t += step) {
     if (taken(t, t + step)) continue
     const p = localParts(t, cfg.timezone)
-    const rule = cfg.rules
+    // 1) an hour set by hand always wins   2) an older custom block   3) the mix for this part of the week
+    const cell = cfg.grid?.[gridKey(p.dow, Math.floor(p.minutes / 60))]
+    if (cell === QUIET) continue // nothing scheduled here: the default playlist plays
+    const cellName = cell ? allOn.find(a => plKey(a) === plKey(cell)) : undefined
+    const rule = cellName ? undefined : cfg.rules
       .filter(r => r.enabled !== false && ruleMatches(r, p.dow, p.minutes))
       .sort((a, b) => b.priority - a.priority)[0]
-    if (rule?.quiet) continue // nothing scheduled here: the default playlist plays
-    const ruleId = rule?.id ?? 'default'
-    const pool = poolOf(rule?.fillers.length ? rule.fillers : cfg.defaultFillers, cfg)
-    if (!pool.length) continue // every playlist is excluded or removed: nothing is scheduled here and the default playlist plays
+    if (rule?.quiet) continue
+    let ruleId: string, pool: string[], part: Part | undefined
+    if (cellName) { ruleId = `grid:${cellName}`; pool = [cellName] }
+    else if (rule) { ruleId = rule.id; pool = poolOf(rule.fillers.length ? rule.fillers : cfg.defaultFillers, cfg) }
+    else if (cfg.playlists) { part = partOf(p.dow, p.minutes); ruleId = `part:${part}`; pool = allOn.filter(a => mixOf(cfg, a, part as Part) > 0) }
+    else { ruleId = 'default'; pool = poolOf(cfg.defaultFillers, cfg) } // an older caller without a playlist list
+    if (!pool.length) continue // nothing may play here (all excluded, or every number is 0): nothing is scheduled and the default playlist plays
     const last = raw[raw.length - 1]
     // Longest block here: the rule's own length (e.g. 2h at night) or the global maximum.
     const blockMs = rule?.oneGenre ? 24 * 3600_000 : rule?.blockMinutes ? rule.blockMinutes * 60_000 : maxBlock
@@ -286,7 +333,7 @@ export function planAutoBlocks(opts: {
     else {
       // The day this window began (a window running past midnight still belongs to the evening it started).
       const startedYesterday = ruleStart !== null && p.minutes < ruleStart
-      raw.push({ startMs: t, endMs: t + step, ruleId, pool, oneGenre: rule?.oneGenre,
+      raw.push({ startMs: t, endMs: t + step, ruleId, pool, part, oneGenre: rule?.oneGenre,
         dayKey: Math.floor(Date.UTC(p.y, p.m - 1, p.d) / 86_400_000) - (startedYesterday ? 1 : 0) })
     }
   }
@@ -305,6 +352,7 @@ export function planAutoBlocks(opts: {
   }
   const useWeights = Object.keys(OV).length > 0 || (cfg.learn && Object.keys(W).length > 0)
   let prev = opts.lastLabel
+  const usedIn = new Map<Part, Map<string, number>>()
   return raw.map((b, i) => {
     if (b.oneGenre && b.dayKey !== undefined && b.pool.length) {
       // Same genre all window long (also after a show interrupts it); a different one tomorrow.
@@ -315,6 +363,21 @@ export function planAutoBlocks(opts: {
       const use = idx === prevIdx ? pickGenre(b.pool, b.dayKey, b.ruleId, wf, idx) : idx
       prev = b.pool[use]
       return { startMs: b.startMs, endMs: b.endMs, label: b.pool[use], ruleId: b.ruleId }
+    }
+    if (b.part && b.pool.length > 1) {
+      // The mix: each playlist gets its share of this part of the week (its number, times what listeners like), so a 1 plays about twice as often as a 0.5.
+      const part = b.part
+      const minutes = (b.endMs - b.startMs) / 60_000
+      const used = usedIn.get(part) ?? new Map<string, number>()
+      usedIn.set(part, used)
+      const w = b.pool.map(f => mixOf(cfg, f, part) * weightAt(f, b.startMs))
+      const total = w.reduce((x, y) => x + y, 0)
+      const spent = [...used.values()].reduce((x, y) => x + y, 0) + minutes
+      const sc = b.pool.map((f, k) => (total > 0 ? w[k] / total : mixOf(cfg, f, part)) - (used.get(f) ?? 0) / spent + (hash(b.startMs / step + f.length) % 1000) / 1e7)
+      const label = b.pool[sc.indexOf(Math.max(...sc))]
+      used.set(label, (used.get(label) ?? 0) + minutes)
+      lastUsed.set(label, i); prev = label
+      return { startMs: b.startMs, endMs: b.endMs, label, ruleId: b.ruleId }
     }
     let options = b.pool.length > 1 ? b.pool.filter(f => f !== prev) : b.pool
     // A playlist set to 0 is skipped whenever something else can play.
@@ -331,6 +394,38 @@ export function planAutoBlocks(opts: {
     prev = label
     return { startMs: b.startMs, endMs: b.endMs, label, ruleId: b.ruleId }
   })
+}
+
+/** The mix for every playlist on the list: numbers clamped to 0–1 (two decimals), gaps filled from the defaults, or half for a new playlist. */
+function cleanMix(v: unknown, playlists: AutoPlaylist[]): AutoConfig['mix'] {
+  const src = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
+  const out: AutoConfig['mix'] = {}
+  for (const p of playlists) {
+    const k = plKey(p.name)
+    const mine = (src[k] ?? Object.entries(src).find(([n]) => plKey(n) === k)?.[1] ?? {}) as Record<string, unknown>
+    const base = DEFAULT_CONFIG.mix[k] ?? {}
+    const row: Partial<Record<Part, number>> = {}
+    for (const id of PART_IDS) {
+      const n = Number(mine[id])
+      row[id] = mine[id] !== undefined && mine[id] !== null && mine[id] !== '' && Number.isFinite(n) ? Math.round(Math.min(1, Math.max(0, n)) * 100) / 100 : base[id] ?? NEW_PLAYLIST_MIX
+    }
+    out[k] = row
+  }
+  return out
+}
+
+/** Hours set by hand: only real days and hours, and only playlists that are on the list (or QUIET). */
+function cleanGrid(v: unknown, playlists: AutoPlaylist[]): Record<string, string> {
+  const canon = new Map(playlists.map(p => [plKey(p.name), p.name]))
+  const out: Record<string, string> = {}
+  for (const [k, val] of Object.entries((v && typeof v === 'object' ? v : {}) as Record<string, unknown>).slice(0, 200)) {
+    const m = /^([0-6])-(\d{1,2})$/.exec(k)
+    if (!m || Number(m[2]) > 23) continue
+    const name = typeof val === 'string' ? val.trim() : ''
+    if (name === QUIET) out[`${m[1]}-${Number(m[2])}`] = QUIET
+    else if (canon.has(plKey(name))) out[`${m[1]}-${Number(m[2])}`] = canon.get(plKey(name)) as string
+  }
+  return out
 }
 
 // ── Validation (used when staff save settings) ──────────────────
@@ -363,7 +458,11 @@ export function sanitizeConfig(input: unknown): AutoConfig {
   /** Fillers under the playlist list's own spelling and only those on the list. With nothing on the list, they are kept as they are. */
   const onList = (names: string[]) => (canon.size ? [...new Set(names.flatMap(n => (canon.has(plKey(n)) ? [canon.get(plKey(n)) as string] : [])))] : names)
 
-  const rules: AutoRule[] = (Array.isArray(o.rules) ? o.rules : []).slice(0, 30).flatMap((r, i) => {
+  // An older saved config (before the mix existed) still carries the four stock blocks that used to be the schedule; the mix replaces them.
+  const STOCK = ['study-night', 'party-night', 'wake-up', 'weekday-morning']
+  const oldRules = Array.isArray(o.rules) ? o.rules : []
+  const keepRules = o.mix === undefined ? oldRules.filter(r => !STOCK.includes(String((r as { id?: unknown })?.id))) : oldRules
+  const rules: AutoRule[] = keepRules.slice(0, 30).flatMap((r, i) => {
     const x = (r ?? {}) as Record<string, unknown>
     const start = text(x.start, 5), end = text(x.end, 5)
     const days = (Array.isArray(x.days) ? x.days : []).map(Number).filter(n => Number.isInteger(n) && n >= 0 && n <= 6)
@@ -395,11 +494,14 @@ export function sanitizeConfig(input: unknown): AutoConfig {
     syncToAzuraCast: o.syncToAzuraCast === true,
     learn: o.learn !== false,
     colorChanging: o.colorChanging === true,
+    colorWeekendNights: o.colorWeekendNights !== false,
     weightOverrides: Object.fromEntries(Object.entries((o.weightOverrides ?? {}) as Record<string, unknown>).slice(0, 60)
       .map(([k, v]) => [text(k, 40).toLowerCase(), Math.round(Math.min(3, Math.max(0, Number(v))) * 100) / 100] as const)
       .filter(([k, v]) => k && Number.isFinite(v))),
     playlistMap: Object.fromEntries(Object.entries((o.playlistMap ?? {}) as Record<string, unknown>).slice(0, 60)
       .map(([k, v]) => [text(k, 40), text(v, 80)]).filter(([k, v]) => k && v)),
+    mix: cleanMix(o.mix, playlists),
+    grid: cleanGrid(o.grid, playlists),
     defaultFillers: (() => { const keep = onList(list(o.defaultFillers)); return keep.length ? keep : canon.size ? playlists.map(p => p.name) : list(o.defaultFillers).length ? list(o.defaultFillers) : d.defaultFillers })(),
     rules,
   }
@@ -411,10 +513,10 @@ export function sanitizeConfig(input: unknown): AutoConfig {
 // use these lists. A per-rule on/off is part of `rules`, so it is a Director field.
 
 /** What a Director may change (and read). */
-export const DIRECTOR_FIELDS = ['rules', 'defaultFillers', 'playlists'] as const
+export const DIRECTOR_FIELDS = ['rules', 'defaultFillers', 'playlists', 'mix', 'grid'] as const
 /** What only an Admin may change. `enabled` (the master switch) is also shown to Directors, read-only. */
 export const ADMIN_FIELDS = [
-  'enabled', 'timezone', 'horizonHours', 'stepMinutes', 'maxBlockMinutes', 'lockMinutes', 'learn', 'colorChanging', 'weightOverrides', 'syncToAzuraCast', 'playlistMap',
+  'enabled', 'timezone', 'horizonHours', 'stepMinutes', 'maxBlockMinutes', 'lockMinutes', 'learn', 'colorChanging', 'colorWeekendNights', 'weightOverrides', 'syncToAzuraCast', 'playlistMap',
 ] as const
 /** Read by Admins only, not part of the saved config: the calendar feed link. */
 export const ADMIN_EXTRAS = ['calendarUrl'] as const
@@ -424,7 +526,7 @@ export const DIRECTOR_READ_ONLY = ['enabled'] as const
 export type DirectorView = Pick<AutoConfig, (typeof DIRECTOR_FIELDS)[number]> & { enabled: boolean }
 
 /** What a Director is sent: the rules and default fillers, and whether Auto DJ is on. Nothing else. */
-export const directorView = (cfg: AutoConfig): DirectorView => ({ enabled: cfg.enabled, rules: cfg.rules, defaultFillers: cfg.defaultFillers, playlists: cfg.playlists })
+export const directorView = (cfg: AutoConfig): DirectorView => ({ enabled: cfg.enabled, rules: cfg.rules, defaultFillers: cfg.defaultFillers, playlists: cfg.playlists, mix: cfg.mix, grid: cfg.grid })
 
 /** Fields in a Director's request that they may not set (any key that is not a Director field, even if the value is unchanged). */
 export const forbiddenForDirector = (posted: unknown): string[] =>
@@ -438,5 +540,7 @@ export function applyDirectorSave(current: AutoConfig, posted: unknown): AutoCon
     rules: o.rules === undefined ? current.rules : o.rules,
     defaultFillers: o.defaultFillers === undefined ? current.defaultFillers : o.defaultFillers,
     playlists: o.playlists === undefined ? current.playlists : o.playlists,
+    mix: o.mix === undefined ? current.mix : o.mix,
+    grid: o.grid === undefined ? current.grid : o.grid,
   })
 }

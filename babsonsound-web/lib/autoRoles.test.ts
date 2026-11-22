@@ -52,9 +52,9 @@ test('a Director save still goes through sanitizeConfig, and a per-rule off swit
   assert.equal(sanitizeConfig({ ...DEFAULT_CONFIG, rules: [{ ...newRules[0] }] }).rules[0].enabled, undefined, 'on is the default and is not stored')
 })
 
-test('a rule that is switched off is not used when planning', () => {
+test('a rule that is switched off is not used when planning; the mix fills in', () => {
   const plan = (enabled: boolean) => planAutoBlocks({
-    cfg: sanitizeConfig({ ...DEFAULT_CONFIG, playlists: PL('Only Rule', 'Default Mix'), defaultFillers: ['Default Mix'], rules: [{ id: 'all', name: 'All day', days: [0, 1, 2, 3, 4, 5, 6], start: '00:00', end: '24:00', fillers: ['Only Rule'], priority: 5, enabled }] }),
+    cfg: sanitizeConfig({ ...DEFAULT_CONFIG, playlists: PL('Only Rule', 'Default Mix'), defaultFillers: ['Default Mix'], mix: { 'default mix': { morning: 1, afternoon: 1, evening: 1, weekdayNight: 1, weekendNight: 1 }, 'only rule': { morning: 0, afternoon: 0, evening: 0, weekdayNight: 0, weekendNight: 0 } }, rules: [{ id: 'all', name: 'All day', days: [0, 1, 2, 3, 4, 5, 6], start: '00:00', end: '24:00', fillers: ['Only Rule'], priority: 5, enabled }] }),
     fromMs: Date.UTC(2026, 10, 16, 15), untilMs: Date.UTC(2026, 10, 16, 18), busy: [], weekly: [],
   })
   assert.ok(plan(true).every(b => b.label === 'Only Rule'))
@@ -69,7 +69,7 @@ test('an Admin can change everything', () => {
 
 test('a Director GET carries the rules, default fillers and a read-only on/off, and nothing else', () => {
   const v = directorView({ ...saved(), rules: sanitizeConfig({ rules: newRules }).rules })
-  assert.deepEqual(Object.keys(v).sort(), ['defaultFillers', 'enabled', 'playlists', 'rules'])
+  assert.deepEqual(Object.keys(v).sort(), ['defaultFillers', 'enabled', 'grid', 'mix', 'playlists', 'rules'])
   const text = JSON.stringify(v)
   for (const secret of ['Lofi (live)', 'America/Chicago', 'playlistMap', 'weightOverrides', 'calendar', 'apiKey', 'AZURACAST', 'timezone', 'syncToAzuraCast']) assert.equal(text.includes(secret), false, secret)
 })

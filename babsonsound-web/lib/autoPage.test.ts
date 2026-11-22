@@ -16,7 +16,7 @@ test("an Admin's save sends everything", () => {
 })
 
 test('a rule switched off is part of the Director save', () => {
-  const rules = DEFAULT_CONFIG.rules.map((r, i) => (i === 0 ? { ...r, enabled: false } : r))
+  const rules = [{ id: 'r1', name: 'R', days: [1], start: '08:00', end: '10:00', fillers: ['Pop Hits'], priority: 5, enabled: false }]
   const sent = savePayload({ ...DEFAULT_CONFIG, rules }, 'director').config.rules!
   assert.equal(sent[0].enabled, false)
 })

@@ -103,6 +103,7 @@ const RAW: readonly RawDef[] = [
   { key: 'auto.syncToAzuraCast', label: 'Send the plan to the stream server', store: 'auto', path: ['syncToAzuraCast'], kind: 'bool', default: false, level: 3 },
   { key: 'auto.learn', label: 'Lean toward what listeners enjoy', store: 'auto', path: ['learn'], kind: 'bool', default: true, level: 2 },
   { key: 'auto.colorChanging', label: 'Colour-changing schedule blocks', store: 'auto', path: ['colorChanging'], kind: 'bool', default: false, level: 2 },
+  { key: 'auto.colorWeekendNights', label: 'Album-colour background on weekend nights', store: 'auto', path: ['colorWeekendNights'], kind: 'bool', default: true, level: 2 },
 ]
 
 /** On a page of its own (main): the values a person plausibly changes in a normal month. Everything else is Expert. */

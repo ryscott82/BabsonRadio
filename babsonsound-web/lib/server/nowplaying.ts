@@ -1,6 +1,8 @@
 import { censor } from './wordFilter'
 import 'server-only'
 import { adminDb } from './admin'
+import { loadConfig } from './autoschedule'
+import { colorOnByDefault } from '../autoschedule'
 import { currentOnAir, getColorChanging, getNote, hostPrefsFor, type LiveNote } from './live'
 import { listenerSample } from './taste'
 import { getAnnouncement, type Announcement } from './announcement'
@@ -10,7 +12,8 @@ import { MAINTENANCE_TITLE, getMaintenance } from './maintenance'
 import { lookupBeat } from './beats'
 import { trackActual } from './actualPlaylist'
 import { recordListeners } from './usage'
-import { boothSong } from './booth'
+import { boothNow } from './booth'
+import type { BoothTrack, LiveMode } from '../trackLog'
 
 // Public "what is on air" feed for the website and the iOS app.
 // Reads AzuraCast's public now-playing endpoint (no API key). Env: AZURACAST_URL, AZURACAST_STATION_ID.
@@ -55,6 +58,10 @@ export interface NowPlayingInfo {
   audioFx: boolean
   /** True when staff switched the ON AIR sign on by hand. */
   onAirManual: boolean
+  /** While a booth show is live: 'music' = the song is the star (cover, title, artist large, show name on top), 'talk' = a talk show (any music is background). '' when nobody is live from the booth. */
+  mode: LiveMode | ''
+  /** The track the booth is playing right now (a library song, a bed or a typed title), or null between songs. For a music show it is also in title/artist/art. */
+  track: BoothTrack | null
   /** True while maintenance mode is on: the title is "Babson Radio will be back shortly" and everything else about the song is blank. */
   maintenance: boolean
   updatedAt: number
@@ -70,7 +77,7 @@ type Built = Omit<NowPlayingInfo, 'announcement' | 'audioFx' | 'onAirManual' | '
 const empty = (configured: boolean): Built => ({
   configured, title: '', artist: '', album: '', art: '', elapsed: 0, duration: 0, playedAt: 0, history: [], bpm: 0, beatOffset: 0,
   isLive: false, streamer: '', playlist: '', listeners: 0, next: null, showTitle: '', blockTitle: '', color: '',
-  occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, colorChanging: false, hostEmojis: [], ratingsOn: true, showOnly: false, updatedAt: Date.now(),
+  occId: '', isShow: false, showStart: 0, showEnd: 0, note: null, colorChanging: false, hostEmojis: [], ratingsOn: true, showOnly: false, mode: '', track: null, updatedAt: Date.now(),
 })
 
 type Song = { text?: string; artist?: string; title?: string; album?: string; art?: string; custom_fields?: Record<string, unknown> | unknown[] }
@@ -90,7 +97,7 @@ async function onAir(): Promise<Pick<NowPlayingInfo, 'showTitle' | 'blockTitle' 
     const cur = await currentOnAir(db)
     if (!cur) return none
     const [note, baseColor, prefs] = await Promise.all([getNote(db, cur.occId), getColorChanging(db, cur), hostPrefsFor(db, cur)])
-    const colorChanging = prefs.theme === 'art' ? true : prefs.theme === 'standard' ? false : baseColor
+    const colorChanging = prefs.theme === 'art' ? true : prefs.theme === 'standard' ? false : baseColor || colorOnByDefault(await loadConfig(db), Date.now()) // weekend nights switch it on by themselves
     return {
       showTitle: cur.isShow ? cur.item.title : '', blockTitle: cur.item.title, color: cur.item.color, occId: cur.occId, isShow: cur.isShow,
       showStart: cur.item.startAt, showEnd: cur.item.endAt, note, colorChanging, hostEmojis: prefs.emojis, ratingsOn: true, hostNames: cur.item.hosts ?? [], eventNoMeta: cur.item.source === 'event' && cur.item.useAutoMeta !== true,
@@ -109,7 +116,7 @@ export async function getNowPlaying(): Promise<NowPlayingInfo> {
       ...base, announcement, audioFx, onAirManual, maintenance: true,
       title: MAINTENANCE_TITLE, artist: '', album: '', art: '', elapsed: 0, duration: 0, playedAt: 0, history: [], bpm: 0, beatOffset: 0,
       isLive: false, streamer: '', playlist: '', next: null, showTitle: '', blockTitle: '', color: '', occId: '', isShow: false, showStart: 0, showEnd: 0,
-      note: null, showOnly: false,
+      note: null, showOnly: false, mode: '', track: null,
     }
   }
   return { ...base, announcement, audioFx, onAirManual, maintenance: false }
@@ -157,7 +164,7 @@ async function build(): Promise<Built> {
       playlist,
       listeners: r.listeners?.current ?? 0,
       next: n && (n.title || n.text) ? { title: n.title || n.text || '', artist: n.artist ?? '' } : null,
-      ...(await onAir()), showOnly: false,
+      ...(await onAir()), showOnly: false, mode: '', track: null,
       updatedAt: Date.now(),
     }
     // A scheduled show that is not the auto DJ usually streams without track info. Show the show and host names instead
@@ -171,12 +178,16 @@ async function build(): Promise<Built> {
       value.album = ''; value.art = ''; value.bpm = 0; value.beatOffset = 0; value.duration = 0; value.elapsed = 0; value.next = null
       value.showOnly = true
     }
-    // A song the host typed on the studio PC wins over the show name while they are live (cleared when they go off air).
+    // What the booth says it is playing (a library song, a bed, or a title the host typed) and its mode (Talk or Music), while they are live.
+    // Music show: the song replaces the show name in title/artist/art (older apps show it too); between songs the show name stays.
+    // Talk show: title/artist stay the show and host names, and the track goes in `track` for the small now-playing line.
     if (value.isLive) {
-      const typed = await boothSong(adminDb()).catch(() => null)
-      if (typed) {
-        value.title = typed.title; value.artist = typed.artist
-        value.album = ''; value.art = ''; value.bpm = 0; value.beatOffset = 0; value.duration = 0; value.elapsed = 0; value.next = null
+      const b = await boothNow(adminDb()).catch(() => null)
+      value.mode = b?.mode || 'talk'
+      value.track = b?.track ?? null
+      if (b?.track && value.mode === 'music') {
+        value.title = b.track.title; value.artist = b.track.artist
+        value.album = ''; value.art = b.track.art; value.bpm = 0; value.beatOffset = 0; value.duration = 0; value.elapsed = 0; value.next = null
         value.showOnly = false
       }
     }
@@ -187,6 +198,7 @@ async function build(): Promise<Built> {
     value.title = censor(value.title); value.artist = censor(value.artist); value.album = censor(value.album)
     value.history = value.history.map(h => ({ ...h, title: censor(h.title), artist: censor(h.artist) }))
     if (value.next) value.next = { title: censor(value.next.title), artist: censor(value.next.artist) }
+    if (value.track) value.track = { ...value.track, title: censor(value.track.title), artist: censor(value.track.artist) }
     cache = { at: Date.now(), value }
     // Voting for the next hour closes 1 minute before it; this makes sure it is decided on time even if no one has the vote card open.
     void import('./votes').then(m => m.finalizeDue(adminDb())).catch(() => {})

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from 'react'
 import { apiGet } from '@/lib/auth'
-import { PARTS, QUIET, gridKey, localParts, mixOf, planAutoBlocks, type AutoConfig, type Daypart, type Part } from '@/lib/autoschedule'
+import { PARTS, QUIET, gridKey, localParts, mixOf, normalizeMix, planAutoBlocks, setShare, type AutoConfig, type Daypart, type Part } from '@/lib/autoschedule'
 
 // Auto DJ settings. Normally nobody edits a schedule: each playlist has a number from 0 to 1 for five parts of the week
 // (mornings, afternoons, evenings, weeknights, weekend nights) saying how often it plays, and the Auto DJ fills the schedule from those.
@@ -60,15 +60,13 @@ export default function AutoPlanner({ cfg, update }: { cfg: AutoConfig; update: 
   const box = 'sk-field px-2 py-1.5 text-sm text-br-dk-text'
 
   // ── Playlists and their numbers ──
-  const setMix = (g: string, part: Part, v: number) => {
-    const k = g.toLowerCase()
-    update({ mix: { ...cfg.mix, [k]: { ...(cfg.mix?.[k] ?? {}), [part]: Math.round(v * 100) / 100 } } })
-  }
+  // Each part's shares always add up to 1: moving one slider rescales the others.
+  const setMix = (g: string, part: Part, v: number) => update({ mix: setShare(cfg, g, part, v) })
   /** Take a playlist out of the Auto DJ for good (the playlist in AzuraCast is not touched). Hours set to it by hand go too. */
   function removePlaylist(g: string) {
-    const mix = { ...cfg.mix }; delete mix[g.toLowerCase()]
+    const left = lists.filter(p => p.name !== g)
     update({
-      playlists: lists.filter(p => p.name !== g), mix,
+      playlists: left, mix: normalizeMix(cfg.mix, left),
       grid: Object.fromEntries(Object.entries(cfg.grid ?? {}).filter(([, v]) => v !== g)),
       rules: cfg.rules.map(r => ({ ...r, fillers: r.fillers.filter(x => x !== g) })).filter(r => r.quiet || r.fillers.length > 0),
       defaultFillers: cfg.defaultFillers.filter(x => x !== g),
@@ -78,7 +76,7 @@ export default function AutoPlanner({ cfg, update }: { cfg: AutoConfig; update: 
   function addPlaylist() {
     const v = newName.trim()
     if (!v) return
-    if (!genres.some(g => g.toLowerCase() === v.toLowerCase())) update({ playlists: [...lists, { name: v }], defaultFillers: [...cfg.defaultFillers, v] })
+    if (!genres.some(g => g.toLowerCase() === v.toLowerCase())) { const next = [...lists, { name: v }]; update({ playlists: next, mix: normalizeMix(cfg.mix, next), defaultFillers: [...cfg.defaultFillers, v] }) }
     setNewName('')
   }
   /** Skip a playlist for now: it keeps its numbers, the others fill in, and AzuraCast stops playing it. */
@@ -130,7 +128,7 @@ export default function AutoPlanner({ cfg, update }: { cfg: AutoConfig; update: 
         <section className="sk-raised p-3 space-y-3">
           <h2 className="text-br-gold text-sm">How often each playlist plays</h2>
           <p className="text-sm text-br-dk-sub">
-            For each part of the week, slide a playlist from 0 (never) to 1 (the most). The Auto DJ fills the schedule from these numbers, so a 1 plays about twice as often as a 0.5. You should not need to touch the schedule itself.
+            For each part of the week, the playlists share 1.00 between them. Slide one up and the others shrink to make room, so a 0.60 plays about twice as often as a 0.30, and 0 means never in that part. You should not need to touch the schedule itself.
           </p>
           <ul className="space-y-3">
             {genres.map(g => (
@@ -168,7 +166,7 @@ export default function AutoPlanner({ cfg, update }: { cfg: AutoConfig; update: 
                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPlaylist() } }} />
             <button type="button" className="sk-key px-3 py-1.5 text-sm" onClick={addPlaylist}>Add</button>
           </div>
-          <p className="text-sm text-br-dk-muted">A new playlist starts at 0.5 everywhere. If every playlist is 0 for a part of the week, nothing is scheduled then and AzuraCast&rsquo;s default plays.</p>
+          <p className="text-sm text-br-dk-muted">A new playlist gets an equal share everywhere, and the others shrink to make room. A playlist you leave out keeps its share on screen, and the others fill in for it when the schedule is built.</p>
         </section>
 
         {/* Hours set by hand */}

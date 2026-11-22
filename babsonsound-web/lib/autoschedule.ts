@@ -51,7 +51,7 @@ export interface AutoConfig {
   /** Manual frequency per playlist (lowercase name → multiplier, 1 = average, 0 = avoid). A playlist not listed here uses the learned value. */
   weightOverrides: Record<string, number>
   rules: AutoRule[]
-  /** How often each playlist plays in each part of the week, 0 (never) to 1 (the most). Key = lowercase playlist name. This is what normally fills the schedule. */
+  /** Each playlist's share of each part of the week, 0 to 1; the shares of all playlists in a part add up to 1. Key = lowercase playlist name. This is what normally fills the schedule. */
   mix: Record<string, Partial<Record<Part, number>>>
   /** Hours set by hand ("dow-hour" → playlist name, or QUIET for nothing scheduled). These always win over the mix. Rarely needed. */
   grid: Record<string, string>
@@ -79,8 +79,8 @@ export const DEFAULT_CONFIG: AutoConfig = {
   // Normally nobody edits a schedule: the mix below decides, and `learn` leans toward what listeners enjoy. Rules are only for old custom blocks.
   rules: [],
   mix: {
-    'jazz house for studying': { morning: 1, afternoon: 0.6, evening: 0.6, weekdayNight: 1, weekendNight: 0.2 },
-    'pop hits': { morning: 0.3, afternoon: 0.6, evening: 0.8, weekdayNight: 0.3, weekendNight: 1 },
+    'jazz house for studying': { morning: 0.75, afternoon: 0.5, evening: 0.4, weekdayNight: 0.8, weekendNight: 0.2 },
+    'pop hits': { morning: 0.25, afternoon: 0.5, evening: 0.6, weekdayNight: 0.2, weekendNight: 0.8 },
   },
   grid: {},
 }
@@ -396,22 +396,46 @@ export function planAutoBlocks(opts: {
   })
 }
 
-/** The mix for every playlist on the list: numbers clamped to 0–1 (two decimals), gaps filled from the defaults, or half for a new playlist. */
-function cleanMix(v: unknown, playlists: AutoPlaylist[]): AutoConfig['mix'] {
+/**
+ * The mix for every playlist on the list, with each part's shares adding up to exactly 1 (two decimals). Numbers are clamped to 0–1, a missing
+ * one starts at the default (or an equal share), and the part is then scaled so it adds up to 1. A part where everything is 0 becomes equal shares.
+ */
+export function normalizeMix(v: unknown, playlists: { name: string }[]): AutoConfig['mix'] {
   const src = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
-  const out: AutoConfig['mix'] = {}
-  for (const p of playlists) {
-    const k = plKey(p.name)
-    const mine = (src[k] ?? Object.entries(src).find(([n]) => plKey(n) === k)?.[1] ?? {}) as Record<string, unknown>
-    const base = DEFAULT_CONFIG.mix[k] ?? {}
-    const row: Partial<Record<Part, number>> = {}
-    for (const id of PART_IDS) {
-      const n = Number(mine[id])
-      row[id] = mine[id] !== undefined && mine[id] !== null && mine[id] !== '' && Number.isFinite(n) ? Math.round(Math.min(1, Math.max(0, n)) * 100) / 100 : base[id] ?? NEW_PLAYLIST_MIX
-    }
-    out[k] = row
+  const keys = playlists.map(p => plKey(p.name))
+  const out: AutoConfig['mix'] = Object.fromEntries(keys.map(k => [k, {}]))
+  const n = keys.length
+  for (const id of PART_IDS) {
+    let vals = keys.map(k => {
+      const mine = (src[k] ?? Object.entries(src).find(([name]) => plKey(name) === k)?.[1] ?? {}) as Record<string, unknown>
+      const x = Number(mine[id])
+      return mine[id] !== undefined && mine[id] !== null && mine[id] !== '' && Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : DEFAULT_CONFIG.mix[k]?.[id] ?? 1 / n
+    })
+    let sum = vals.reduce((a, b) => a + b, 0)
+    if (sum <= 0) { vals = vals.map(() => 1); sum = n }
+    const cents = vals.map(x => Math.round((x / sum) * 100))
+    const diff = 100 - cents.reduce((a, b) => a + b, 0)
+    if (n) cents[cents.indexOf(Math.max(...cents))] += diff // rounding drift goes to the biggest share
+    keys.forEach((k, i) => { out[k][id] = cents[i] / 100 })
   }
   return out
+}
+
+/** One playlist's share in a part set to `value`; the others keep their relative sizes and fill the rest, so the part still adds up to 1. */
+export function setShare(cfg: Pick<AutoConfig, 'mix' | 'playlists'>, name: string, part: Part, value: number): AutoConfig['mix'] {
+  const names = (cfg.playlists ?? []).map(p => p.name)
+  const k = plKey(name)
+  const others = names.filter(x => plKey(x) !== k)
+  const v = others.length ? Math.round(Math.min(1, Math.max(0, value)) * 100) / 100 : 1
+  const rest = others.map(x => mixOf(cfg, x, part))
+  const restSum = rest.reduce((a, b) => a + b, 0)
+  const left = Math.round((1 - v) * 100)
+  const cents = others.map((_, i) => Math.round((restSum > 0 ? rest[i] / restSum : 1 / others.length) * left))
+  if (others.length) cents[cents.indexOf(Math.max(...cents))] += left - cents.reduce((a, b) => a + b, 0)
+  const mix = { ...cfg.mix }
+  mix[k] = { ...(mix[k] ?? {}), [part]: v }
+  others.forEach((x, i) => { mix[plKey(x)] = { ...(mix[plKey(x)] ?? {}), [part]: cents[i] / 100 } })
+  return mix
 }
 
 /** Hours set by hand: only real days and hours, and only playlists that are on the list (or QUIET). */
@@ -500,7 +524,7 @@ export function sanitizeConfig(input: unknown): AutoConfig {
       .filter(([k, v]) => k && Number.isFinite(v))),
     playlistMap: Object.fromEntries(Object.entries((o.playlistMap ?? {}) as Record<string, unknown>).slice(0, 60)
       .map(([k, v]) => [text(k, 40), text(v, 80)]).filter(([k, v]) => k && v)),
-    mix: cleanMix(o.mix, playlists),
+    mix: normalizeMix(o.mix, playlists),
     grid: cleanGrid(o.grid, playlists),
     defaultFillers: (() => { const keep = onList(list(o.defaultFillers)); return keep.length ? keep : canon.size ? playlists.map(p => p.name) : list(o.defaultFillers).length ? list(o.defaultFillers) : d.defaultFillers })(),
     rules,

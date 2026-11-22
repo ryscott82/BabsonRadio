@@ -46,7 +46,7 @@ test('planning never picks an excluded playlist, and plans nothing when none is 
 })
 
 // ── The mix and the manual grid ──
-import { PARTS, QUIET, gridKey, mixOf, partOf } from './autoschedule.ts'
+import { PARTS, QUIET, gridKey, mixOf, normalizeMix, partOf, setShare } from './autoschedule.ts'
 
 const WEEK = 7 * 24 * 3_600_000
 const week = (cfg: ReturnType<typeof sanitizeConfig>) => planAutoBlocks({ cfg, fromMs: Date.UTC(2026, 10, 15, 5), untilMs: Date.UTC(2026, 10, 15, 5) + WEEK, busy: [], weekly: [] })
@@ -73,12 +73,39 @@ test('with nothing set by hand the mix fills the week, and a number is how often
   assert.ok(Math.abs(a / b - 2) < 0.25, `A ${a}h vs B ${b}h`)
 })
 
-test('0 means never in that part, and a part with only zeros is left to AzuraCast', () => {
-  const cfg = sanitizeConfig({ ...DEFAULT_CONFIG, playlists: PL('A', 'B'), mix: { a: { ...ALL(1), morning: 0 }, b: { ...ALL(1), morning: 0, afternoon: 0 } } })
-  const bs = week(cfg)
-  const h = (ms: number) => Number(new Intl.DateTimeFormat('en-US', { timeZone: cfg.timezone, hour: '2-digit', hourCycle: 'h23' }).format(ms))
-  assert.ok(bs.every(b => h(b.startMs) < 5 || h(b.startMs) >= 12), 'no block starts in the morning')
-  assert.ok(bs.filter(b => h(b.startMs) >= 12 && h(b.startMs) < 17).every(b => b.label === 'A'), 'afternoons: only A')
+test('each part adds up to exactly 1 whatever was saved, and a part of all zeros becomes equal shares', () => {
+  const c = sanitizeConfig({ ...DEFAULT_CONFIG, playlists: PL('A', 'B', 'C'), mix: { a: { morning: 1, afternoon: 0, evening: 0.3 }, b: { morning: 1, afternoon: 0, evening: 0.3 }, c: { morning: 1, afternoon: 0, evening: 0.3 } } })
+  for (const part of ['morning', 'afternoon', 'evening', 'weekdayNight', 'weekendNight'] as const) {
+    const sum = ['A', 'B', 'C'].reduce((x, n) => x + Math.round(mixOf(c, n, part) * 100), 0)
+    assert.equal(sum, 100, part)
+  }
+  assert.equal(mixOf(c, 'A', 'afternoon') + mixOf(c, 'B', 'afternoon') + mixOf(c, 'C', 'afternoon') > 0.99, true)
+  assert.deepEqual(['A', 'B', 'C'].map(n => mixOf(c, n, 'morning')), [0.34, 0.33, 0.33])
+})
+
+test('moving one share rescales the others, which keep their relative sizes; 0 means never; a lone playlist is always 1', () => {
+  const cfg = sanitizeConfig({ ...DEFAULT_CONFIG, playlists: PL('A', 'B', 'C'), mix: { a: ALL(0.5), b: ALL(0.3), c: ALL(0.2) } })
+  const mix = setShare(cfg, 'A', 'evening', 0.7)
+  const at = (n: string) => mix[n.toLowerCase()].evening ?? 0
+  assert.equal(at('A'), 0.7)
+  assert.ok(Math.abs(at('A') + at('B') + at('C') - 1) < 1e-9)
+  assert.ok(Math.abs(at('B') / at('C') - 1.5) < 0.2)
+  assert.equal(mix.a.morning, 0.5, 'other parts are untouched')
+  const zero = setShare(cfg, 'A', 'evening', 0)
+  assert.equal(zero.a.evening, 0)
+  assert.ok(Math.abs((zero.b.evening ?? 0) + (zero.c.evening ?? 0) - 1) < 1e-9)
+  const lone = sanitizeConfig({ ...DEFAULT_CONFIG, playlists: PL('Solo'), mix: {} })
+  assert.equal(mixOf(lone, 'Solo', 'morning'), 1)
+  assert.equal(setShare(lone, 'Solo', 'morning', 0.2).solo.morning, 1)
+})
+
+test('adding a playlist gives it a share and the others shrink; removing one hands its share back', () => {
+  const two = sanitizeConfig({ ...DEFAULT_CONFIG, playlists: PL('Pop Hits', 'Jazz House for Studying') })
+  const three = normalizeMix(two.mix, PL('Pop Hits', 'Jazz House for Studying', 'New'))
+  for (const part of ['morning', 'weekendNight'] as const) assert.equal(Math.round(Object.values(three).reduce((x, r) => x + (r[part] ?? 0), 0) * 100), 100)
+  assert.ok((three['new'].morning ?? 0) > 0.2)
+  const back = normalizeMix(three, PL('Pop Hits', 'Jazz House for Studying'))
+  assert.equal(Math.round(Object.values(back).reduce((x, r) => x + (r.morning ?? 0), 0) * 100), 100)
 })
 
 test('an hour set by hand wins over the mix, QUIET schedules nothing, an excluded playlist in the grid is ignored', () => {
@@ -97,10 +124,10 @@ test('an hour set by hand wins over the mix, QUIET schedules nothing, an exclude
 
 test('the saved mix is cleaned: 0 to 1, gaps get defaults, deleted playlists are dropped, junk grid cells are dropped', () => {
   const c = sanitizeConfig({ ...DEFAULT_CONFIG, playlists: PL('Pop Hits', 'New One'), mix: { 'pop hits': { morning: 7, afternoon: -2, evening: 'x' }, gone: { morning: 1 } }, grid: { '1-10': 'Pop Hits', '9-1': 'Pop Hits', '1-30': 'Pop Hits', '1-5': 'Deleted' } })
-  assert.equal(mixOf(c, 'Pop Hits', 'morning'), 1)
-  assert.equal(mixOf(c, 'Pop Hits', 'afternoon'), 0)
-  assert.equal(mixOf(c, 'Pop Hits', 'evening'), 0.8)        // junk falls back to the default
-  assert.equal(mixOf(c, 'New One', 'weekendNight'), 0.5)    // a new playlist starts at half
+  assert.equal(mixOf(c, 'Pop Hits', 'afternoon'), 0)         // -2 is 0 and the other playlist takes the whole part
+  assert.equal(mixOf(c, 'New One', 'afternoon'), 1)
+  assert.ok(mixOf(c, 'Pop Hits', 'evening') > 0 && mixOf(c, 'Pop Hits', 'evening') < 1) // junk falls back to a default share
+  assert.ok(mixOf(c, 'New One', 'weekendNight') > 0)       // a playlist with no saved numbers still gets a share
   assert.equal('gone' in c.mix, false)
   assert.deepEqual(c.grid, { '1-10': 'Pop Hits' })
 })

@@ -1,7 +1,7 @@
 // The studio crew: the person signed in on the studio PC is the driver; anyone else who scans the door code while the booth is in use joins
 // the crew (credited on the show, attendance logged) and can take over when the driver agrees on the PC. Pure rules, shared with the tests.
 
-export const CREW_MAX = 8
+export const CREW_MAX = 11
 /** The booth page checks in every 4 minutes; no check-in for this long and the crew is forgotten (the PC closed without signing out). */
 export const CREW_FRESH_MS = 10 * 60_000
 

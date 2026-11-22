@@ -93,7 +93,8 @@ export default function RecordShow(p: {
       ) : (
         <>
           <Sw id="micsw" on={soundOk} onChange={toggleMic} label="Mic check" /><Led id="micled" c={soundOk ? 'green' : ''} />
-          <div className="eng s" style={{ left: 74, top: 329 }}>Mic check (ticks itself when we hear you)</div>
+          <div className="eng s" style={{ left: 12, top: 329 }}>Check to record:</div>
+          <div className="eng s" style={{ left: 162, top: 329 }}>Mic check (ticks itself when we hear you)</div>
           <Btn id="golive" kind="lv" onClick={() => act('start', '/record/start')} disabled={!!busy || !soundOk || !p.st?.canRecord || p.live || !p.ready}>
             <b>{busy === 'start' ? 'Starting…' : 'Record'}</b>
             <span>{why}</span>

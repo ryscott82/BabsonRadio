@@ -353,7 +353,7 @@ export function planAutoBlocks(opts: {
   const useWeights = Object.keys(OV).length > 0 || (cfg.learn && Object.keys(W).length > 0)
   let prev = opts.lastLabel
   const usedIn = new Map<Part, Map<string, number>>()
-  return raw.map((b, i) => {
+  const picked = raw.map((b, i) => {
     if (b.oneGenre && b.dayKey !== undefined && b.pool.length) {
       // Same genre all window long (also after a show interrupts it); a different one tomorrow.
       const wf = useWeights ? (f: string) => weightAt(f, b.startMs) : null
@@ -394,6 +394,14 @@ export function planAutoBlocks(opts: {
     prev = label
     return { startMs: b.startMs, endMs: b.endMs, label, ruleId: b.ruleId }
   })
+  // Back-to-back blocks of the same playlist read as one block (three 1-hour blocks of Jazz House are one 3-hour block).
+  const merged: PlannedBlock[] = []
+  for (const b of picked) {
+    const last = merged[merged.length - 1]
+    if (last && last.label === b.label && last.endMs === b.startMs) last.endMs = b.endMs
+    else merged.push({ ...b })
+  }
+  return merged
 }
 
 /**

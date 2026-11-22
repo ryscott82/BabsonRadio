@@ -43,19 +43,24 @@ function localDateTime(ms: number, tz: string) {
   return { date, hhmm: Math.floor(minutes / 60) * 100 + (minutes % 60) }
 }
 
-/** One planned block → one or two dated schedule items (split at local midnight). */
+/** One planned block → one dated schedule item per local day it touches (split at local midnight, so a long merged block is fine). */
 export function blockToItems(startMs: number, endMs: number, tz: string): ScheduleItem[] {
-  const a = localDateTime(startMs, tz)
-  const b = localDateTime(endMs - 1, tz) // last minute inside the block
   const item = (s: number, e: number, date: string): ScheduleItem =>
     ({ start_time: s, end_time: e, start_date: date, end_date: date, days: [], loop_once: false })
-  const endHHMM = localDateTime(endMs, tz)
-  if (a.date === b.date) {
-    // A block ending exactly at midnight is written as ending 23:59 so AzuraCast doesn't read it as overnight.
-    const e = endHHMM.date === a.date ? endHHMM.hhmm : 2359
-    return [item(a.hhmm, e, a.date)]
+  const out: ScheduleItem[] = []
+  let cur = startMs
+  for (let guard = 0; cur < endMs && guard < 60; guard++) {
+    const a = localDateTime(cur, tz)
+    const midnight = cur + (1440 - localParts(cur, tz).minutes) * 60_000 // the next local midnight
+    if (endMs <= midnight) {
+      // Ends today. A block ending exactly at midnight is written as ending 23:59 so AzuraCast doesn't read it as overnight.
+      out.push(item(a.hhmm, endMs === midnight ? 2359 : localDateTime(endMs, tz).hhmm, a.date))
+      break
+    }
+    out.push(item(a.hhmm, 2359, a.date))
+    cur = midnight
   }
-  return [item(a.hhmm, 2359, a.date), item(0, endHHMM.hhmm, b.date)]
+  return out
 }
 
 export interface Status {

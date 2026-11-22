@@ -154,3 +154,13 @@ test('album colors come on by themselves on weekend nights, unless the setting i
   assert.equal(sanitizeConfig({ ...DEFAULT_CONFIG, colorWeekendNights: undefined }).colorWeekendNights, true)
   assert.equal(sanitizeConfig({ ...DEFAULT_CONFIG, colorWeekendNights: false }).colorWeekendNights, false)
 })
+
+test('back-to-back blocks of the same playlist come out as one longer block', () => {
+  const cfg = sanitizeConfig({ ...DEFAULT_CONFIG, playlists: PL('A'), mix: { a: ALL(1) } })
+  const bs = planAutoBlocks({ cfg, fromMs: Date.UTC(2026, 10, 16, 14), untilMs: Date.UTC(2026, 10, 16, 17), busy: [], weekly: [] })
+  assert.equal(bs.length, 1)
+  assert.equal(bs[0].endMs - bs[0].startMs, 3 * 3_600_000)
+  // a booked show in the middle keeps two separate blocks
+  const split = planAutoBlocks({ cfg, fromMs: Date.UTC(2026, 10, 16, 14), untilMs: Date.UTC(2026, 10, 16, 17), busy: [{ startMs: Date.UTC(2026, 10, 16, 15), endMs: Date.UTC(2026, 10, 16, 16) }], weekly: [] })
+  assert.equal(split.length, 2)
+})
